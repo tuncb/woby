@@ -52,10 +52,10 @@ int main(int argc, char** argv) {
         auto mesh = woby::loadObjMesh(path);
         const double loadMs = elapsed(begin);
         output = {{"file", woby::pathToUtf8(path)}, {"variant", MAPPING_VARIANT}, {"load_ms", loadMs},
-            {"vertices", mesh.vertices.size()}, {"indices", mesh.indices.size()}, {"nodes", mesh.nodes.size()},
-            {"vertex_bytes", mesh.vertices.size()*sizeof(woby::Vertex)},
-            {"vertex_capacity_bytes", mesh.vertices.capacity()*sizeof(woby::Vertex)},
-            {"index_bytes", mesh.indices.size()*sizeof(uint32_t)},
+            {"vertices", meshGeometry(mesh).vertices.size()}, {"indices", meshGeometry(mesh).indices.size()}, {"nodes", meshGeometry(mesh).nodes.size()},
+            {"vertex_bytes", meshGeometry(mesh).vertices.size()*sizeof(woby::Vertex)},
+            {"vertex_capacity_bytes", meshGeometry(mesh).vertices.capacity()*sizeof(woby::Vertex)},
+            {"index_bytes", meshGeometry(mesh).indices.size()*sizeof(uint32_t)},
             {"source_point_bytes", mesh.sourceData->points.size()*sizeof(mesh.sourceData->points[0])},
             {"source_index_bytes", mesh.sourceData->indices.size()*sizeof(uint32_t)},
             {"layout", {sizeof(woby::Vertex), offsetof(woby::Vertex, position), offsetof(woby::Vertex, normal), offsetof(woby::Vertex, texcoord)}},
@@ -77,11 +77,11 @@ int main(int argc, char** argv) {
         output["point_entries"] = points.pointVertexIndices.size();
         output["stages"] = stages;
         // Full ordered byte fingerprints after all measured stages, not in load timing.
-        Json hashes = {{"vertices", hashVector(mesh.vertices)}, {"indices", hashVector(mesh.indices)},
+        Json hashes = {{"vertices", hashVector(meshGeometry(mesh).vertices)}, {"indices", hashVector(meshGeometry(mesh).indices)},
             {"source_points", hashSourcePoints(*mesh.sourceData)}, {"source_indices", hashVector(mesh.sourceData->indices)},
             {"point_indices", hashVector(points.pointVertexIndices)}};
         uint64_t nodes = 14695981039346656037ull;
-        for (const auto& node : mesh.nodes) {
+        for (const auto& node : meshGeometry(mesh).nodes) {
             nodes = hashBytes(nodes, node.name.data(), node.name.size());
             nodes = hashBytes(nodes, &node.indexOffset, sizeof(node.indexOffset));
             nodes = hashBytes(nodes, &node.indexCount, sizeof(node.indexCount));

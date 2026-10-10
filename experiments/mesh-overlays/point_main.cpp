@@ -83,7 +83,7 @@ int main(int argc,char** argv) {
         std::cerr<<"Loading source mesh"<<std::endl; auto start=Clock::now();
         const auto mesh=woby::loadObjMesh(std::filesystem::absolute(model)); const double loadMs=elapsed(start);
         Json report={{"schema",1},{"mode",mode},{"model",std::filesystem::absolute(model).string()},{"width",options.width},{"height",options.height},{"samples",options.samples},
-            {"source_vertices",mesh.vertices.size()},{"source_triangles",mesh.indices.size()/3},{"source_precise_positions",mesh.precisePositions.size()},
+            {"source_vertices",meshGeometry(mesh).vertices.size()},{"source_triangles",meshGeometry(mesh).indices.size()/3},{"source_precise_positions",meshGeometry(mesh).precisePositions.size()},
             {"source_load_ms",loadMs},{"opaque_surfaces",solid},{"zoom",zoom},{"rounds",rounds},{"point_budget_max",maximum},{"target_gpu_ms",targetMs},
             {"navigation_cuts",navigationCuts},{"results",Json::array()}};
         write(output/"results.json",report);

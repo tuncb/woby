@@ -383,8 +383,8 @@ TEST_CASE("scene history reloads removed geometry and restores folder identity a
     CHECK(f.state.files[0].objectId == fileId);
     CHECK(f.state.files[0].groupSettings[0].objectId == partId);
     CHECK(f.state.sceneNodes[0].objectId == folderId);
-    CHECK(f.state.files[0].mesh.vertices[1].position[0] == 1);
-    CHECK(f.state.files[0].mesh.indices == std::vector<uint32_t>{0, 1, 2});
+    CHECK(meshGeometry(f.state.files[0].mesh).vertices[1].position[0] == 1);
+    CHECK(meshGeometry(f.state.files[0].mesh).indices == std::vector<uint32_t>{0, 1, 2});
     CHECK(woby::missingComparisonPartCount(f.state, comparisonId) == 0);
     CHECK(woby::comparisonContains(f.state, partId, woby::ComparisonSide::a, comparisonId));
     f.step(true);
@@ -463,9 +463,9 @@ TEST_CASE("scene history retains all metadata-only actions beyond 100 until comm
     CHECK(f.history.snapshots.size() == actionCount + 1);
     for (const auto& snapshot : f.history.snapshots) {
         REQUIRE(snapshot.content.files.size() == 1);
-        CHECK(snapshot.content.files[0].mesh.vertices.empty());
-        CHECK(snapshot.content.files[0].mesh.indices.empty());
-        CHECK(snapshot.content.files[0].mesh.nodes.empty());
+        CHECK(meshGeometry(snapshot.content.files[0].mesh).vertices.empty());
+        CHECK(meshGeometry(snapshot.content.files[0].mesh).indices.empty());
+        CHECK(meshGeometry(snapshot.content.files[0].mesh).nodes.empty());
         CHECK(snapshot.content.files[0].path == f.source);
     }
     auto replacement = woby::prepareSceneReplacement(f.state, {}, woby::createSceneDocument(woby::UiState{}));
@@ -523,7 +523,7 @@ TEST_CASE("scene history edits reuse loaded geometry even when its source disapp
     CHECK(woby::createSceneDocument(f.state) == f.clean);
     f.step(true);
     CHECK(f.state.files[0].groupSettings[0].translation[0] == 3);
-    CHECK(f.state.files[0].mesh.indices.size() == 3);
+    CHECK(meshGeometry(f.state.files[0].mesh).indices.size() == 3);
 }
 
 TEST_CASE("scene history consumes failed reloads without changing the scene or creating phantom edits")

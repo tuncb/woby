@@ -43,15 +43,15 @@ void updateSceneInspector(SceneInspectorRuntime& runtime, const UiState& state)
         for (const auto& file : state.files) {
             if (file.objectId == id) {
                 next.statistics.push_back(std::to_string(file.groupSettings.size()) + " parts | "
-                    + std::to_string(file.mesh.vertices.size()) + " vertices | " + std::to_string(file.mesh.indices.size() / 3) + " triangles");
-                if (!file.mesh.lineIndices.empty()) { next.statistics.push_back(std::to_string(file.mesh.lineIndices.size() / 2) + " line segments"); }
-                if (!file.mesh.pointIndices.empty()) { next.statistics.push_back(std::to_string(file.mesh.pointIndices.size()) + " points"); }
+                    + std::to_string(meshGeometry(file.mesh).vertices.size()) + " vertices | " + std::to_string(meshGeometry(file.mesh).indices.size() / 3) + " triangles");
+                if (!meshGeometry(file.mesh).lineIndices.empty()) { next.statistics.push_back(std::to_string(meshGeometry(file.mesh).lineIndices.size() / 2) + " line segments"); }
+                if (!meshGeometry(file.mesh).pointIndices.empty()) { next.statistics.push_back(std::to_string(meshGeometry(file.mesh).pointIndices.size()) + " points"); }
                 next.bounds = originalMeshBounds(file.mesh);
                 break;
             }
-            for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
+            for (size_t i = 0; i < file.groupSettings.size() && i < meshGeometry(file.mesh).nodes.size(); ++i) {
                 if (file.groupSettings[i].objectId != id) { continue; }
-                const auto& node = file.mesh.nodes[i];
+                const auto& node = meshGeometry(file.mesh).nodes[i];
                 next.statistics.push_back(node.pointIndexCount ? std::to_string(node.pointIndexCount) + " points"
                     : node.lineIndexCount ? std::to_string(node.lineIndexCount / 2) + " line segments"
                     : std::to_string(node.indexCount / 3) + " triangles");

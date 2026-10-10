@@ -23,36 +23,36 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
 {
     const auto canceled = [&] { return shouldCancel && shouldCancel(); };
     if (canceled()) { return {}; }
-    (void)sceneBufferBytes(mesh.vertices.size(), sizeof(Vertex));
-    (void)sceneBufferBytes(mesh.indices.size(), sizeof(uint32_t));
-    (void)sceneBufferBytes(mesh.lineIndices.size(), sizeof(uint32_t));
-    if (features & gpuMeshEdges) { (void)sceneBufferBytes(mesh.indices.size(), 2 * sizeof(uint32_t)); }
-    if (empty(mesh) || mesh.indices.size() % 3 != 0 || mesh.lineIndices.size() % 2 != 0) {
+    (void)sceneBufferBytes(meshGeometry(mesh).vertices.size(), sizeof(Vertex));
+    (void)sceneBufferBytes(meshGeometry(mesh).indices.size(), sizeof(uint32_t));
+    (void)sceneBufferBytes(meshGeometry(mesh).lineIndices.size(), sizeof(uint32_t));
+    if (features & gpuMeshEdges) { (void)sceneBufferBytes(meshGeometry(mesh).indices.size(), 2 * sizeof(uint32_t)); }
+    if (empty(mesh) || meshGeometry(mesh).indices.size() % 3 != 0 || meshGeometry(mesh).lineIndices.size() % 2 != 0) {
         throw std::runtime_error("Scene needs valid triangles, line segments or points.");
     }
-    for (const auto* indices : {&mesh.indices, &mesh.lineIndices, &mesh.pointIndices}) {
+    for (const auto* indices : {&meshGeometry(mesh).indices, &meshGeometry(mesh).lineIndices, &meshGeometry(mesh).pointIndices}) {
         for (size_t i = 0; i < indices->size(); ++i) {
             if (i % 65536 == 0 && canceled()) { return {}; }
-            if ((*indices)[i] >= mesh.vertices.size()) {
-                throw std::runtime_error(indices == &mesh.lineIndices ? "Scene contains an invalid line vertex index."
-                    : indices == &mesh.pointIndices ? "Scene contains an invalid point vertex index."
+            if ((*indices)[i] >= meshGeometry(mesh).vertices.size()) {
+                throw std::runtime_error(indices == &meshGeometry(mesh).lineIndices ? "Scene contains an invalid line vertex index."
+                    : indices == &meshGeometry(mesh).pointIndices ? "Scene contains an invalid point vertex index."
                     : "Scene contains an invalid vertex index.");
             }
         }
     }
     SceneMeshPreparation result;
     result.features = features;
-    result.nodeRanges.reserve(mesh.nodes.size());
-    result.pointVertexIndices.reserve(mesh.vertices.size());
-    std::vector<size_t> vertexGroups(mesh.vertices.size(), mesh.nodes.size());
-    for (size_t nodeIndex = 0; nodeIndex < mesh.nodes.size(); ++nodeIndex) {
+    result.nodeRanges.reserve(meshGeometry(mesh).nodes.size());
+    result.pointVertexIndices.reserve(meshGeometry(mesh).vertices.size());
+    std::vector<size_t> vertexGroups(meshGeometry(mesh).vertices.size(), meshGeometry(mesh).nodes.size());
+    for (size_t nodeIndex = 0; nodeIndex < meshGeometry(mesh).nodes.size(); ++nodeIndex) {
         if (canceled()) { return {}; }
-        const auto& node = mesh.nodes[nodeIndex];
-        if (size_t(node.indexOffset) + node.indexCount > mesh.indices.size()
+        const auto& node = meshGeometry(mesh).nodes[nodeIndex];
+        if (size_t(node.indexOffset) + node.indexCount > meshGeometry(mesh).indices.size()
             || node.indexOffset % 3 != 0 || node.indexCount % 3 != 0
-            || size_t(node.lineIndexOffset) + node.lineIndexCount > mesh.lineIndices.size()
+            || size_t(node.lineIndexOffset) + node.lineIndexCount > meshGeometry(mesh).lineIndices.size()
             || node.lineIndexOffset % 2 != 0 || node.lineIndexCount % 2 != 0
-            || size_t(node.pointIndexOffset) + node.pointIndexCount > mesh.pointIndices.size()
+            || size_t(node.pointIndexOffset) + node.pointIndexCount > meshGeometry(mesh).pointIndices.size()
             || (node.indexCount && node.lineIndexCount)
             || (node.pointIndexCount && (node.indexCount || node.lineIndexCount))) {
             throw std::runtime_error("Scene contains an invalid primitive range.");
@@ -77,22 +77,22 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
         result.nodeRanges.push_back(range);
     }
     if (features & gpuMeshEdges) {
-        result.edgeIndices.reserve(mesh.indices.size() * 2);
-        for (size_t i = 0; i < mesh.indices.size(); i += 3) {
+        result.edgeIndices.reserve(meshGeometry(mesh).indices.size() * 2);
+        for (size_t i = 0; i < meshGeometry(mesh).indices.size(); i += 3) {
             if (i % 65536 == 0 && canceled()) { return {}; }
-            const auto a = mesh.indices[i], b = mesh.indices[i + 1], c = mesh.indices[i + 2];
+            const auto a = meshGeometry(mesh).indices[i], b = meshGeometry(mesh).indices[i + 1], c = meshGeometry(mesh).indices[i + 2];
             result.edgeIndices.insert(result.edgeIndices.end(), {a, b, b, c, c, a});
         }
     }
     if (canceled()) { return {}; }
-    result.uploadBytes = mesh.vertices.size() * sizeof(Vertex)
-        + (mesh.indices.size() + mesh.lineIndices.size() + result.edgeIndices.size()
+    result.uploadBytes = meshGeometry(mesh).vertices.size() * sizeof(Vertex)
+        + (meshGeometry(mesh).indices.size() + meshGeometry(mesh).lineIndices.size() + result.edgeIndices.size()
             + ((features & gpuMeshPoints) ? result.pointVertexIndices.size() : 0)) * sizeof(uint32_t);
     if (buildPointHierarchy && result.pointVertexIndices.size() >= 65536 && !mesh.freeform) {
         auto cloud = points::buildCloud(mesh, std::move(result.pointVertexIndices), result.nodeRanges, shouldCancel);
         if (!cloud) { return {}; }
-        result.compactOnly = mesh.indices.empty() && mesh.lineIndices.empty();
-        if (result.compactOnly) { result.uploadBytes -= mesh.vertices.size() * sizeof(Vertex); }
+        result.compactOnly = meshGeometry(mesh).indices.empty() && meshGeometry(mesh).lineIndices.empty();
+        if (result.compactOnly) { result.uploadBytes -= meshGeometry(mesh).vertices.size() * sizeof(Vertex); }
         if (features & gpuMeshPoints) { result.uploadBytes -= cloud->sourceVertices.size() * sizeof(uint32_t); }
         result.uploadBytes += (cloud->points.size() + cloud->proxies.size()) * sizeof(points::Point);
         result.pointCloud = std::make_shared<const points::Cloud>(std::move(*cloud));

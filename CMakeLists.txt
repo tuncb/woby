@@ -489,6 +489,8 @@ if(BUILD_TESTING)
     set_tests_properties(woby_utility_allocations PROPERTIES LABELS "unit;cpu")
 
     add_executable(woby_tests
+        tests/geometry_storage_benchmarks.cpp
+        tests/shared_geometry_tests.cpp
         tests/math_utils_tests.cpp
         tests/graphics_tests.cpp
         tests/graphics_diagnostics_tests.cpp

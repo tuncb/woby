@@ -217,7 +217,7 @@ void cornerTable(UiState& state, const Trace& trace, bool packing)
         for (const auto* name : {"corner","face -> triangle","p / n / uv","render vertex","+byte"}) { ImGui::TableSetupColumn(name); }
         if (packing) { ImGui::TableSetupColumn("intern result"); }
         ImGui::TableSetupScrollFreeze(0,1); ImGui::TableHeadersRow();
-        for (size_t i = 0; i < trace.mesh.indices.size(); ++i) {
+        for (size_t i = 0; i < meshGeometry(trace.mesh).indices.size(); ++i) {
             const size_t t = i/3, c = i%3; const auto& tri = trace.triangles[t]; const auto& key = tri.corners[c];
             ImGui::PushID(static_cast<int>(i)); ImGui::TableNextRow(); markRow(t == state.triangle);
             ImGui::TableNextColumn(); char name[32]; std::snprintf(name,sizeof(name),"C%zu",i);
@@ -226,8 +226,8 @@ void cornerTable(UiState& state, const Trace& trace, bool packing)
             }
             ImGui::TableNextColumn(); ImGui::Text("F%zu -> T%zu.%zu",tri.face,t,c);
             ImGui::TableNextColumn(); ImGui::Text("(%d, %d, %d)",key.position,key.normal,key.texcoord);
-            ImGui::TableNextColumn(); ImGui::TextColored(mint,"v%u",trace.mesh.indices[i]);
-            ImGui::TableNextColumn(); ImGui::Text("%s+%zu",packing ? "VB" : "corners",packing ? trace.mesh.indices[i]*size_t{32} : i*sizeof(Corner));
+            ImGui::TableNextColumn(); ImGui::TextColored(mint,"v%u",meshGeometry(trace.mesh).indices[i]);
+            ImGui::TableNextColumn(); ImGui::Text("%s+%zu",packing ? "VB" : "corners",packing ? meshGeometry(trace.mesh).indices[i]*size_t{32} : i*sizeof(Corner));
             if (packing) { ImGui::TableNextColumn(); ImGui::TextColored(trace.vertexEvents[i].created ? amber : muted,"%s",trace.vertexEvents[i].created ? "INSERT" : "REUSE"); }
             ImGui::PopID();
         }
@@ -244,8 +244,8 @@ void meshTable(UiState& state, const Trace& trace)
         for (const auto* name : {"vertex / +byte","source tuple p,n,uv","position / f32","normal / f32","UV / f32"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableSetupScrollFreeze(0,1); ImGui::TableHeadersRow();
         const auto selected = selectedVertex(state,trace);
-        for (size_t i = 0; i < trace.mesh.vertices.size(); ++i) {
-            const auto& v = trace.mesh.vertices[i]; const auto& key = trace.vertexKeys[i];
+        for (size_t i = 0; i < meshGeometry(trace.mesh).vertices.size(); ++i) {
+            const auto& v = meshGeometry(trace.mesh).vertices[i]; const auto& key = trace.vertexKeys[i];
             ImGui::PushID(static_cast<int>(i)); ImGui::TableNextRow();
             markRow(key.position == trace.vertexKeys[selected].position); ImGui::TableNextColumn();
             char name[40]; std::snprintf(name,sizeof(name),"v%zu / %03zu",i,i*32);
@@ -258,20 +258,20 @@ void meshTable(UiState& state, const Trace& trace)
         ImGui::EndTable();
     }
     heading("Retained CPU arrays / not uploaded");
-    ImGui::Text("precisePositions   %zu x 24 B    local coordinates per render vertex",trace.mesh.precisePositions.size());
+    ImGui::Text("precisePositions   %zu x 24 B    local coordinates per render vertex",meshGeometry(trace.mesh).precisePositions.size());
     ImGui::Text("sourceData.points  %zu x 24 B    original position identity, local frame",trace.mesh.sourceData->points.size());
     ImGui::Text("sourceData.indices %zu x 4 B     corner -> source position",trace.mesh.sourceData->indices.size());
     ImGui::Text("%zu B total CPU payload; headers and capacity are excluded.",payloadBytes(Node::mesh,trace));
     heading("Render indices versus original position indices / 4 B per element");
     if (dataTable("cpu-indices",4,ImGuiTableFlags_RowBg)) {
-        for (const auto* name : {"triangle","+byte","mesh.indices / render ID","sourceData.indices / source ID"}) { ImGui::TableSetupColumn(name); }
+        for (const auto* name : {"triangle","+byte","meshGeometry(mesh).indices / render ID","sourceData.indices / source ID"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow();
         for (size_t t = 0; t < trace.triangles.size(); ++t) {
             ImGui::PushID(static_cast<int>(t)); ImGui::TableNextRow(); markRow(t == state.triangle);
             ImGui::TableNextColumn(); char name[20]; std::snprintf(name,sizeof(name),"T%zu",t);
             if (ImGui::Selectable(name,t == state.triangle,ImGuiSelectableFlags_SpanAllColumns)) { selectTriangle(state,trace,t); }
             ImGui::TableNextColumn(); ImGui::Text("%zu",t*12);
-            ImGui::TableNextColumn(); const auto* ids = trace.mesh.indices.data()+t*3;
+            ImGui::TableNextColumn(); const auto* ids = meshGeometry(trace.mesh).indices.data()+t*3;
             ImGui::TextColored(mint,"[%u, %u, %u]",ids[0],ids[1],ids[2]);
             ImGui::TableNextColumn(); const auto* source = trace.mesh.sourceData->indices.data()+t*3;
             ImGui::TextColored(blue,"[%u, %u, %u]",source[0],source[1],source[2]); ImGui::PopID();
@@ -282,9 +282,9 @@ void meshTable(UiState& state, const Trace& trace)
     if (dataTable("sidecars",4,ImGuiTableFlags_RowBg)) {
         for (const auto* name : {"render vertex / +byte","precisePositions[v]","source position / +byte","sourceData.points[p]"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow();
-        for (size_t v = 0; v < trace.mesh.vertices.size(); ++v) {
+        for (size_t v = 0; v < meshGeometry(trace.mesh).vertices.size(); ++v) {
             const auto p = static_cast<size_t>(trace.vertexKeys[v].position);
-            const auto& a = trace.mesh.precisePositions[v]; const auto& b = trace.mesh.sourceData->points[p];
+            const auto& a = meshGeometry(trace.mesh).precisePositions[v]; const auto& b = trace.mesh.sourceData->points[p];
             ImGui::PushID(static_cast<int>(v)); ImGui::TableNextRow(); markRow(v == selectedVertex(state,trace));
             ImGui::TableNextColumn(); char name[32]; std::snprintf(name,sizeof(name),"v%zu / %zu",v,v*24);
             if (ImGui::Selectable(name,false,ImGuiSelectableFlags_SpanAllColumns)) { selectVertex(state,trace,v); }
@@ -301,7 +301,7 @@ void triangleIndices(UiState& state, const Trace& trace, const GpuCapture& gpu)
         for (const auto* name : {"primitive","IB +byte","uint32[3] / vertex IDs","VB offsets / bytes","GPU readback"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow();
         for (size_t t = 0; t < trace.triangles.size(); ++t) {
-            const auto a = trace.mesh.indices[t*3], b = trace.mesh.indices[t*3+1], c = trace.mesh.indices[t*3+2];
+            const auto a = meshGeometry(trace.mesh).indices[t*3], b = meshGeometry(trace.mesh).indices[t*3+1], c = meshGeometry(trace.mesh).indices[t*3+2];
             ImGui::PushID(static_cast<int>(t)); ImGui::TableNextRow(); markRow(t == state.triangle); ImGui::TableNextColumn();
             char name[20]; std::snprintf(name,sizeof(name),"T%zu",t);
             if (ImGui::Selectable(name,t == state.triangle,ImGuiSelectableFlags_SpanAllColumns)) { selectTriangle(state,trace,t); }
@@ -329,12 +329,12 @@ void uploadPanel(UiState& state, const Trace& trace, const GpuCapture& gpu)
     if (dataTable("ownership",4,ImGuiTableFlags_RowBg)) {
         for (const auto* name : {"allocation","element type","payload","lifetime"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow();
-        allocation("mesh.vertices","Vertex",trace.mesh.vertices.size(),32,"CPU capture");
-        allocation("mesh.indices","uint32",trace.mesh.indices.size(),4,"CPU capture");
+        allocation("meshGeometry(mesh).vertices","Vertex",meshGeometry(trace.mesh).vertices.size(),32,"CPU capture");
+        allocation("meshGeometry(mesh).indices","uint32",meshGeometry(trace.mesh).indices.size(),4,"CPU capture");
         allocation("graphics::copy (VB)","byte",gpu.vertexUpload.size(),1,"renderer-owned upload");
         allocation("graphics::copy (IB)","byte",gpu.indexUpload.size(),1,"renderer-owned upload");
-        allocation("device VB","Vertex",trace.mesh.vertices.size(),32,"GPU resource");
-        allocation("device IB","uint32",trace.mesh.indices.size(),4,"GPU resource");
+        allocation("device VB","Vertex",meshGeometry(trace.mesh).vertices.size(),32,"GPU resource");
+        allocation("device IB","uint32",meshGeometry(trace.mesh).indices.size(),4,"GPU resource");
         ImGui::EndTable();
     }
     heading("Executed calls / completion");
@@ -384,11 +384,11 @@ void splitPanel(UiState& state, const Trace& trace)
         ImGui::EndTable();
     }
     label("Quad rule: choose diagonal 0-2 only when it is shorter than 1-3; ties use 1-3.");
-    ImGui::Text("Positions stay shared: %zu polygon corners -> %zu triangle corners.",trace.originalCorners,trace.mesh.indices.size());
+    ImGui::Text("Positions stay shared: %zu polygon corners -> %zu triangle corners.",trace.originalCorners,meshGeometry(trace.mesh).indices.size());
 }
 void packPanel(UiState& state, const Trace& trace, bool compact)
 {
-    ImGui::TextColored(amber,"%zu corners -> %zu vertices + %zu indices",trace.mesh.indices.size(),trace.mesh.vertices.size(),trace.mesh.indices.size());
+    ImGui::TextColored(amber,"%zu corners -> %zu vertices + %zu indices",meshGeometry(trace.mesh).indices.size(),meshGeometry(trace.mesh).vertices.size(),meshGeometry(trace.mesh).indices.size());
     ImGui::Text("%zu source positions have multiple render identities.",trace.splitPositions);
     if (!compact || ImGui::CollapsingHeader("Packing rule")) {
         ImGui::TextUnformatted("id = vertexIndex({corner.position, corner.normal, corner.texcoord});\n"
@@ -453,13 +453,13 @@ void geometry(UiState& state, const Trace& trace, Viewport& view, float height)
     draw->PushClipRect(start,{start.x+canvas.x,start.y+canvas.y},true);
     std::array<ImVec2,3> points;
     for (size_t c = 0; c < 3; ++c) {
-        const auto projected = projectVertex(matrices,trace.mesh.vertices[trace.mesh.indices[state.triangle*3+c]]);
+        const auto projected = projectVertex(matrices,meshGeometry(trace.mesh).vertices[meshGeometry(trace.mesh).indices[state.triangle*3+c]]);
         points[c] = {start.x+projected[0]*canvas.x,start.y+projected[1]*canvas.y};
     }
     draw->AddTriangle(points[0],points[1],points[2],color(mint),1.5f);
     const ImVec2 center{(points[0].x+points[1].x+points[2].x)/3,(points[0].y+points[1].y+points[2].y)/3};
     for (size_t c = 0; c < 3; ++c) {
-        const auto vertex = trace.mesh.indices[state.triangle*3+c];
+        const auto vertex = meshGeometry(trace.mesh).indices[state.triangle*3+c];
         draw->AddCircleFilled(points[c],c == state.corner ? 5.0f : 3.0f,color(c == state.corner ? amber : mint));
         char name[32]; std::snprintf(name,sizeof(name),"c%zu / v%u",c,vertex);
         const auto size = ImGui::CalcTextSize(name);

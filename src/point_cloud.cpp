@@ -112,7 +112,7 @@ void validateView(const Matrix& projection,uint32_t width,uint32_t height,float 
 } // namespace
 
 Cloud buildCloud(const Mesh& mesh,uint32_t leafSize,uint32_t proxySize) {
-    if (mesh.vertices.empty()) return {};
+    if (meshGeometry(mesh).vertices.empty()) return {};
     auto prepared=prepareSceneMesh(mesh,gpuMeshPoints,{},false);
     return std::move(*buildCloud(mesh,std::move(prepared->pointVertexIndices),prepared->nodeRanges,{},leafSize,proxySize));
 }
@@ -132,7 +132,7 @@ std::optional<Cloud> buildCloud(const Mesh& mesh,std::vector<uint32_t> sourceVer
             std::min(1.0f,(.28f+float((groupIndex*19)%47)/100)*1.5f),std::min(1.0f,(.3f+float((groupIndex*31)%43)/100)*1.5f),1};
         cloud.groups.push_back(group);
         if (first==end) continue;
-        const auto position=[&](uint32_t id)->const std::array<float,3>& { return mesh.vertices[cloud.sourceVertices[id-1]].position; };
+        const auto position=[&](uint32_t id)->const std::array<float,3>& { return meshGeometry(mesh).vertices[cloud.sourceVertices[id-1]].position; };
         auto low=position(first), high=low;
         for (uint32_t id=first;id<end;++id) {
             if ((id&65535)==0) checkCancel(cancel);

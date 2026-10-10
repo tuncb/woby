@@ -687,8 +687,8 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
             || findComparison(state, comparison.objectId)->intersectionRequestRevision != runtime.jobs.intersection.consumedRequest)) { ready = false; }
         if (comparison.settings.mode == ComparisonMode::surfaceQuality) {
             ready = ready &&
-                (runtime.results.value.original.source.indices.empty() || woby::graphics::isValid(runtime.gpu.original.quality)) &&
-                (runtime.results.value.repaired.source.indices.empty() || woby::graphics::isValid(runtime.gpu.repaired.quality));
+                (meshGeometry(runtime.results.value.original.source).indices.empty() || woby::graphics::isValid(runtime.gpu.original.quality)) &&
+                (meshGeometry(runtime.results.value.repaired.source).indices.empty() || woby::graphics::isValid(runtime.gpu.repaired.quality));
         }
     }
     return ready;

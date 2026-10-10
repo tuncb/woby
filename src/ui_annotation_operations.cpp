@@ -18,9 +18,9 @@ bool validAttachments(const UiState& state, const UiAnnotation& item)
         const auto id = item.targetIds.empty() ? item.targetId : item.targetIds[i];
         bool found = false;
         for (const auto& file : state.files) {
-            for (size_t g = 0; g < file.groupSettings.size() && g < file.mesh.nodes.size(); ++g) {
+            for (size_t g = 0; g < file.groupSettings.size() && g < meshGeometry(file.mesh).nodes.size(); ++g) {
                 if (!id || file.groupSettings[g].objectId != id) { continue; }
-                const auto& node = file.mesh.nodes[g];
+                const auto& node = meshGeometry(file.mesh).nodes[g];
                 const auto& fingerprint = item.geometry.sources.empty() ? item.geometry.fingerprint : item.geometry.sources[i].fingerprint;
                 if (fingerprint != gestureFingerprint(file.mesh, node.indexOffset, node.indexCount)) { return false; }
                 for (const auto& segment : item.geometry.segments) {
@@ -50,8 +50,8 @@ SceneObjectId loadedTarget(const UiState& state, const SceneDocument& document, 
     const auto f = static_cast<size_t>(target.fileIndex), g = static_cast<size_t>(target.groupIndex);
     if (f >= state.files.size() || f >= document.files.size()) { return 0; }
     const auto& file = state.files[f];
-    if (g >= file.groupSettings.size() || g >= file.mesh.nodes.size() || g >= document.files[f].groups.size()
-        || file.mesh.nodes[g].name != document.files[f].groups[g].name) { return 0; }
+    if (g >= file.groupSettings.size() || g >= meshGeometry(file.mesh).nodes.size() || g >= document.files[f].groups.size()
+        || meshGeometry(file.mesh).nodes[g].name != document.files[f].groups[g].name) { return 0; }
     return file.groupSettings[g].objectId;
 }
 // Legacy annotation projectors address unrecentered model coordinates. Migrate
@@ -68,17 +68,17 @@ void migrateAnnotationFrame(UiAnnotation& item, const SceneAnnotationRecord& rec
     for (size_t i = 0; i < targets.size(); ++i) {
         if (targets[i].fileIndex < 0 || targets[i].groupIndex < 0) { return; }
         const auto f = static_cast<size_t>(targets[i].fileIndex), g = static_cast<size_t>(targets[i].groupIndex);
-        if (f >= state.files.size() || f >= document.files.size() || g >= state.files[f].mesh.nodes.size()) { return; }
+        if (f >= state.files.size() || f >= document.files.size() || g >= meshGeometry(state.files[f].mesh).nodes.size()) { return; }
         const auto& mesh = state.files[f].mesh;
         if (document.files[f].coordinateOrigin || mesh.origin == Coordinate{}) { continue; }
-        const auto& node = mesh.nodes[g];
+        const auto& node = meshGeometry(mesh).nodes[g];
         auto [it, inserted] = legacyMeshes.try_emplace(f);
         if (inserted) {
             auto& legacy = it->second;
-            legacy.vertices = mesh.vertices;
-            legacy.indices = mesh.indices;
-            for (size_t v = 0; v < legacy.vertices.size(); ++v) {
-                legacy.vertices[v].position = renderPosition(originalPosition(meshPosition(mesh,v),mesh.origin));
+            editMeshGeometry(legacy).vertices = meshGeometry(mesh).vertices;
+            editMeshGeometry(legacy).indices = meshGeometry(mesh).indices;
+            for (size_t v = 0; v < editMeshGeometry(legacy).vertices.size(); ++v) {
+                editMeshGeometry(legacy).vertices[v].position = renderPosition(originalPosition(meshPosition(mesh,v),mesh.origin));
             }
         }
         auto& fingerprint = geometry.sources.empty() ? geometry.fingerprint : geometry.sources[i].fingerprint;
@@ -143,9 +143,9 @@ std::vector<std::array<float, 3>> annotationVertices(const UiState& state, const
     if (!item.targetIds.empty()) { return annotationControlWorldPositions(item, scenePickParts(state, true)); }
     // Resolve the source independently of visibility, opacity, and selection.
     for (const auto& file : state.files) {
-        for (size_t g = 0; g < file.groupSettings.size() && g < file.mesh.nodes.size(); ++g) {
+        for (size_t g = 0; g < file.groupSettings.size() && g < meshGeometry(file.mesh).nodes.size(); ++g) {
             if (file.groupSettings[g].objectId == item.targetId) {
-                return annotationControlPositions(file.mesh, file.mesh.nodes[g].indexOffset, item.geometry);
+                return annotationControlPositions(file.mesh, meshGeometry(file.mesh).nodes[g].indexOffset, item.geometry);
             }
         }
     }

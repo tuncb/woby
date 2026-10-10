@@ -197,8 +197,8 @@ TEST_CASE("importer duplicate records are owned before buffers are released")
     imported.vertices = vertices.data(); imported.indices = indices.data();
     const auto mesh = woby::copyImportedMesh(imported);
     vertices.clear(); indices.clear();
-    CHECK(mesh.vertices.size() == 4);
-    CHECK(mesh.indices == std::vector<uint32_t>{2, 1, 0, 0, 1, 2});
+    CHECK(meshGeometry(mesh).vertices.size() == 4);
+    CHECK(meshGeometry(mesh).indices == std::vector<uint32_t>{2, 1, 0, 0, 1, 2});
     REQUIRE(mesh.sourceData);
     CHECK(mesh.sourceData->provenance == woby::SourceProvenance::importerVertices);
     CHECK(mesh.sourceData->points.size() == 4);
@@ -274,7 +274,7 @@ TEST_CASE("duplicate settings migrate old scenes and JSON findings are bounded")
     for (size_t i = 0; i < 120; ++i) { data->indices.insert(data->indices.end(), {0,1,2}); }
     woby::MeshComparison result;
     result.detectors[static_cast<size_t>(woby::DiagnosticCategory::duplicateTriangles)].phase = woby::IntersectionPhase::complete;
-    result.original.source.indices = {0,1,2};
+    editMeshGeometry(result.original.source).indices = {0,1,2};
     result.original.duplicates = woby::inspectDuplicates(inputFor(data));
     const auto json = woby::controlComparisonResults(result, .05)["aToB"]["detectors"]["duplicate_tris"];
     CHECK(json["count"] == 120);
@@ -354,9 +354,9 @@ TEST_CASE("duplicate Run toggles retain cached findings but hide disabled JSON r
     for (const auto& point : data->points) {
         Vertex vertex;
         for (size_t k = 0; k < 3; ++k) { vertex.position[k] = static_cast<float>(point[k]); }
-        source.vertices.push_back(vertex);
+        editMeshGeometry(source).vertices.push_back(vertex);
     }
-    source.indices = data->indices;
+    editMeshGeometry(source).indices = data->indices;
     source.duplicateInput = std::make_shared<DuplicateInput>(inputFor(data));
     ComparisonSettings settings;
     settings.mode = ComparisonMode::original;

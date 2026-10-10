@@ -34,37 +34,37 @@ Mesh surface(bool folded = false)
         for (float y : {-1.0f, 1.0f}) {
             Vertex vertex;
             vertex.position = {x, y, folded ? .2f + .6f * std::abs(x) : .5f};
-            mesh.vertices.push_back(vertex);
+            editMeshGeometry(mesh).vertices.push_back(vertex);
         }
     }
-    mesh.indices = {0, 2, 3, 0, 3, 1, 2, 4, 5, 2, 5, 3};
-    mesh.nodes = {{"surface", 0, 12}};
-    mesh.bounds = calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices = {0, 2, 3, 0, 3, 1, 2, 4, 5, 2, 5, 3};
+    editMeshGeometry(mesh).nodes = {{"surface", 0, 12}};
+    mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
     return mesh;
 }
 Mesh tessellatedSurface(uint32_t n, uint32_t layers = 1)
 {
     Mesh mesh;
     for (uint32_t layer = 0; layer < layers; ++layer) {
-        const auto offset = static_cast<uint32_t>(mesh.vertices.size());
+        const auto offset = static_cast<uint32_t>(meshGeometry(mesh).vertices.size());
         for (uint32_t y = 0; y <= n; ++y) {
             for (uint32_t x = 0; x <= n; ++x) {
                 Vertex vertex;
                 const float u = static_cast<float>(x) / static_cast<float>(n) * 2 - 1;
                 const float v = static_cast<float>(y) / static_cast<float>(n) * 2 - 1;
                 vertex.position = {u, v, .2f + .3f * u * u + static_cast<float>(layer) * .01f};
-                mesh.vertices.push_back(vertex);
+                editMeshGeometry(mesh).vertices.push_back(vertex);
             }
         }
         for (uint32_t y = 0; y < n; ++y) {
             for (uint32_t x = 0; x < n; ++x) {
                 const uint32_t a = offset + y * (n + 1) + x, b = a + 1, c = a + n + 1, d = c + 1;
-                mesh.indices.insert(mesh.indices.end(), {a,b,d,a,d,c});
+                editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {a,b,d,a,d,c});
             }
         }
     }
-    mesh.nodes = {{"surface", 0, static_cast<uint32_t>(mesh.indices.size())}};
-    mesh.bounds = calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).nodes = {{"surface", 0, static_cast<uint32_t>(meshGeometry(mesh).indices.size())}};
+    mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
     return mesh;
 }
 ScenePickView view()
@@ -83,7 +83,7 @@ Mesh holedSurface(bool multiple = false)
     for (float y : ys) {
         for (float x : xs) {
             Vertex vertex; vertex.position = {x, y, .5f + .2f * x};
-            mesh.vertices.push_back(vertex);
+            editMeshGeometry(mesh).vertices.push_back(vertex);
         }
     }
     const auto width = static_cast<uint32_t>(xs.size());
@@ -91,11 +91,11 @@ Mesh holedSurface(bool multiple = false)
         for (uint32_t x = 0; x + 1 < width; ++x) {
             if (y == 1 && (x == 1 || (multiple && x == 3))) { continue; }
             const uint32_t a = y * width + x, b = a + 1, c = a + width, d = c + 1;
-            mesh.indices.insert(mesh.indices.end(), {a,b,d,a,d,c});
+            editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {a,b,d,a,d,c});
         }
     }
-    mesh.nodes = {{"surface", 0, static_cast<uint32_t>(mesh.indices.size())}};
-    mesh.bounds = calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).nodes = {{"surface", 0, static_cast<uint32_t>(meshGeometry(mesh).indices.size())}};
+    mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
     return mesh;
 }
 struct Fixture {
@@ -129,18 +129,18 @@ TEST_CASE("annotations retain projection precision with a distant camera and tin
     SUBCASE("further zoomed out") { camera.distance *= 2; }
     SUBCASE("multiple source parts") {
         auto& mesh = fixture.state.files[0].mesh;
-        mesh.nodes = {{"left", 0, 6}, {"right", 6, 6}};
+        editMeshGeometry(mesh).nodes = {{"left", 0, 6}, {"right", 6, 6}};
         fixture.state.files[0] = createUiFileState(fixture.root / "model.obj", mesh, 0);
         fixture.state.sceneNodes.clear();
         appendDefaultSceneNodesForFiles(fixture.state, 0);
     }
     auto& mesh = fixture.state.files[0].mesh;
-    for (auto& vertex : mesh.vertices) {
+    for (auto& vertex : editMeshGeometry(mesh).vertices) {
         const auto p = vertex.position;
         vertex.position = {camera.target[0] + p[0] * 60000, camera.target[1],
             camera.target[2] + p[1] * 60000};
     }
-    mesh.bounds = calculateBounds(mesh.vertices);
+    mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
     auto distant = view();
     distant.homogeneousDepth = homogeneous;
     woby::lookAtMatrix(distant.view.data(), cameraEye(camera, SceneUpAxis::y), cameraLookAt(camera), cameraUp(camera, SceneUpAxis::y));
@@ -169,13 +169,13 @@ TEST_CASE("distant annotation projection distinguishes overlapping surface depth
 {
     Fixture fixture;
     auto front = surface();
-    for (auto& vertex : front.vertices) {
+    for (auto& vertex : editMeshGeometry(front).vertices) {
         vertex.position = {vertex.position[0] * 30000, vertex.position[1] * 30000, 0};
     }
-    front.bounds = calculateBounds(front.vertices);
+    front.bounds = calculateBounds(meshGeometry(front).vertices);
     auto back = front;
-    for (auto& vertex : back.vertices) { vertex.position[2] = 100; }
-    back.bounds = calculateBounds(back.vertices);
+    for (auto& vertex : editMeshGeometry(back).vertices) { vertex.position[2] = 100; }
+    back.bounds = calculateBounds(meshGeometry(back).vertices);
     fixture.state = {};
     fixture.state.files.push_back(createUiFileState(fixture.root / "back.obj", back, 0));
     fixture.state.files.push_back(createUiFileState(fixture.root / "front.obj", front, 1));
@@ -219,35 +219,35 @@ TEST_CASE("drawing projection grows from the pointer to the full rectangle")
 TEST_CASE("large mesh annotation cache preserves the source fingerprint")
 {
     auto mesh = tessellatedSurface(160);
-    const auto expected = annotationFingerprint(mesh, mesh.nodes[0].indexOffset, mesh.nodes[0].indexCount);
+    const auto expected = annotationFingerprint(mesh, meshGeometry(mesh).nodes[0].indexOffset, meshGeometry(mesh).nodes[0].indexCount);
     prepareAnnotationMeshCache(mesh);
     REQUIRE(mesh.annotationCache);
     REQUIRE(mesh.annotationCache->fingerprints.size() == 1);
     CHECK(mesh.annotationCache->fingerprints[0] == expected);
     CHECK(mesh.annotationCache->blocks.size() > 1);
     auto copy = mesh;
-    copy.vertices[0].position[2] += .1f;
+    editMeshGeometry(copy).vertices[0].position[2] += .1f;
     ScenePickPart part;
-    part.objectId = 1; part.mesh = &copy; part.indexCount = copy.indices.size(); part.solid = true;
+    part.objectId = 1; part.mesh = &copy; part.indexCount = meshGeometry(copy).indices.size(); part.solid = true;
     woby::identityMatrix(part.model.data());
     const auto gesture = annotationGestureProjection(std::array{part}, view(), 1, {0, 0});
-    CHECK(gesture.definition.fingerprint == annotationFingerprint(copy, 0, copy.indices.size()));
+    CHECK(gesture.definition.fingerprint == annotationFingerprint(copy, 0, meshGeometry(copy).indices.size()));
 }
 TEST_CASE("regional annotation projection preserves exact geometry and bounds scratch to candidates")
 {
     auto mesh = tessellatedSurface(160, 2);
     SUBCASE("shuffled source order") {
-        std::vector<std::array<uint32_t, 3>> triangles(mesh.indices.size() / 3);
-        for (size_t i = 0; i < triangles.size(); ++i) { std::copy_n(mesh.indices.begin() + static_cast<std::ptrdiff_t>(i * 3), 3, triangles[i].begin()); }
+        std::vector<std::array<uint32_t, 3>> triangles(meshGeometry(mesh).indices.size() / 3);
+        for (size_t i = 0; i < triangles.size(); ++i) { std::copy_n(meshGeometry(mesh).indices.begin() + static_cast<std::ptrdiff_t>(i * 3), 3, triangles[i].begin()); }
         std::mt19937 random(99);
         std::shuffle(triangles.begin(), triangles.end(), random);
-        for (size_t i = 0; i < triangles.size(); ++i) { std::copy(triangles[i].begin(), triangles[i].end(), mesh.indices.begin() + static_cast<std::ptrdiff_t>(i * 3)); }
+        for (size_t i = 0; i < triangles.size(); ++i) { std::copy(triangles[i].begin(), triangles[i].end(), editMeshGeometry(mesh).indices.begin() + static_cast<std::ptrdiff_t>(i * 3)); }
     }
     prepareAnnotationMeshCache(mesh);
     REQUIRE(mesh.annotationCache);
     REQUIRE_FALSE(mesh.annotationCache->spatial->tree.empty());
     ScenePickPart part;
-    part.objectId = 1; part.mesh = &mesh; part.indexCount = mesh.indices.size(); part.solid = true;
+    part.objectId = 1; part.mesh = &mesh; part.indexCount = meshGeometry(mesh).indices.size(); part.solid = true;
     woby::identityMatrix(part.model.data());
     const std::array<float, 2> start{-.025f, -.021f}, end{.024f, .031f};
     const auto full = annotationProjection(std::array{part}, view(), 1);
@@ -269,14 +269,14 @@ TEST_CASE("regional annotation scratch does not scale with unused source vertice
     auto mesh = tessellatedSurface(160);
     prepareAnnotationMeshCache(mesh);
     ScenePickPart part;
-    part.objectId = 1; part.mesh = &mesh; part.indexCount = mesh.indices.size(); part.solid = true;
+    part.objectId = 1; part.mesh = &mesh; part.indexCount = meshGeometry(mesh).indices.size(); part.solid = true;
     woby::identityMatrix(part.model.data());
     const auto region = annotationProjection(std::array{part}, view(), 1, {}, annotationRegion({-.02f, 0}, {.02f, 0}));
-    CHECK(region.triangles.size() < mesh.indices.size() / 30);
-    CHECK(region.vertices.size() < mesh.vertices.size() / 10);
+    CHECK(region.triangles.size() < meshGeometry(mesh).indices.size() / 30);
+    CHECK(region.vertices.size() < meshGeometry(mesh).vertices.size() / 10);
     const auto snapshot = snapshotAnnotationParts(std::array{part});
     REQUIRE(snapshot.owners.size() == 1);
-    CHECK(snapshot.owners[0] == mesh.annotationCache->snapshot);
+    CHECK(snapshot.owners[0]->storage == mesh.annotationCache->geometry);
     mesh = {}; // A projection worker can outlive removal/rebase of its source.
     const auto owned = annotationProjection(snapshot.parts, view(), 1, {}, annotationRegion({-.02f, 0}, {.02f, 0}));
     CHECK(projectAnnotation(owned, AnnotationShape::line, {-.02f, 0}, {.02f, 0})
@@ -297,14 +297,14 @@ TEST_CASE("annotation snapshots bound the aggregate copy of multiple small meshe
     std::vector<Mesh> meshes(5, tessellatedSurface(140));
     std::vector<ScenePickPart> parts;
     for (auto& mesh : meshes) {
-        ScenePickPart part; part.mesh = &mesh; part.indexCount = mesh.indices.size();
+        ScenePickPart part; part.mesh = &mesh; part.indexCount = meshGeometry(mesh).indices.size();
         parts.push_back(part);
     }
     CHECK_THROWS((void)snapshotAnnotationParts(parts));
     for (auto& mesh : meshes) { prepareAnnotationMeshCache(mesh); }
     const auto snapshot = snapshotAnnotationParts(parts);
     CHECK(snapshot.owners.size() == meshes.size());
-    for (size_t i = 0; i < meshes.size(); ++i) { CHECK(snapshot.owners[i] == meshes[i].annotationCache->snapshot); }
+    for (size_t i = 0; i < meshes.size(); ++i) { CHECK(snapshot.owners[i]->storage == meshes[i].annotationCache->geometry); }
 }
 void waitAnnotationWork(const std::shared_ptr<AnnotationWork>& work)
 {
@@ -378,7 +378,7 @@ TEST_CASE("background annotation commands publish once through operations and hi
         CHECK(history.snapshots.size() == 1);
     }
     SUBCASE("geometry cache invalidation rejects same-address geometry changes") {
-        fixture.state.files[0].mesh.vertices[0].position[0] += 1;
+        editMeshGeometry(fixture.state.files[0].mesh).vertices[0].position[0] += 1;
         renewMeshContentRevision(fixture.state.files[0].mesh);
         CHECK_THROWS((void)publishAnnotationCommand(fixture.state, clean, command, format));
     }
@@ -440,7 +440,7 @@ TEST_CASE("cached surface picking agrees with a full triangle scan")
     REQUIRE(mesh.annotationCache);
     const auto cache = mesh.annotationCache;
     ScenePickPart part;
-    part.objectId = 1; part.mesh = &mesh; part.indexCount = mesh.indices.size();
+    part.objectId = 1; part.mesh = &mesh; part.indexCount = meshGeometry(mesh).indices.size();
     part.solid = true; part.bounds = mesh.bounds;
     woby::identityMatrix(part.model.data());
     for (const PickPoint point : {PickPoint{0, 0}, {20, 150}, {100, 100}, {199, 199}, {200, 100}}) {
@@ -459,11 +459,11 @@ void siblingSurface(Fixture& fixture, float gap = 0, float depthJump = 0)
     for (const auto p : std::vector<std::array<float, 3>>{
         {-1,-1,.5f}, {-gap,-1,.5f}, {-gap,1,.5f}, {-1,1,.5f},
         {2+gap,-.9f,.8f+depthJump}, {3,-.9f,.8f+depthJump}, {3,.9f,.8f+depthJump}, {2+gap,.9f,.8f+depthJump}}) {
-        Vertex vertex; vertex.position = p; mesh.vertices.push_back(vertex);
+        Vertex vertex; vertex.position = p; editMeshGeometry(mesh).vertices.push_back(vertex);
     }
-    mesh.indices = {0,1,2,0,2,3,4,5,6,4,6,7};
-    mesh.nodes = {{"left",0,6}, {"right",6,6}};
-    mesh.bounds = calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices = {0,1,2,0,2,3,4,5,6,4,6,7};
+    editMeshGeometry(mesh).nodes = {{"left",0,6}, {"right",6,6}};
+    mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
     fixture.state = {};
     fixture.state.files.push_back(createUiFileState(fixture.root / "siblings.obj", mesh, 0));
     appendDefaultSceneNodesForFiles(fixture.state, 0);
@@ -659,8 +659,8 @@ TEST_CASE("annotation target picking includes transparency but projection ignore
 {
     Fixture fixture;
     auto front = surface();
-    for (auto& vertex : front.vertices) { vertex.position[2] = .2f; }
-    front.bounds = calculateBounds(front.vertices);
+    for (auto& vertex : editMeshGeometry(front).vertices) { vertex.position[2] = .2f; }
+    front.bounds = calculateBounds(meshGeometry(front).vertices);
     fixture.state.files.push_back(createUiFileState(fixture.root / "front.obj", std::move(front), 1));
     appendDefaultSceneNodesForFiles(fixture.state, 1);
     setFileOpacity(fixture.state.files[1].fileSettings, .5f);
@@ -795,9 +795,9 @@ TEST_CASE("annotation tool buttons disable until geometry preparation finishes")
 {
     AnnotationUiFixture fixture;
     auto& mesh = fixture.scene.state.files[0].mesh;
-    const auto triangle = std::array{mesh.indices[0], mesh.indices[1], mesh.indices[2]};
-    while (mesh.indices.size() < 50000 * 3) { mesh.indices.insert(mesh.indices.end(), triangle.begin(), triangle.end()); }
-    mesh.nodes[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
+    const auto triangle = std::array{meshGeometry(mesh).indices[0], meshGeometry(mesh).indices[1], meshGeometry(mesh).indices[2]};
+    while (meshGeometry(mesh).indices.size() < 50000 * 3) { editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), triangle.begin(), triangle.end()); }
+    editMeshGeometry(mesh).nodes[0].indexCount = static_cast<uint32_t>(meshGeometry(mesh).indices.size());
     mesh.annotationCache.reset();
     CHECK_FALSE(annotationMeshCacheReady(mesh));
     fixture.click(fixture.lineButton);
@@ -1139,7 +1139,7 @@ TEST_CASE("annotation move cursor does not expose handles behind another model")
     AnnotationUiFixture fixture;
     fixture.scene.add();
     auto front = surface();
-    for (auto& vertex : front.vertices) { vertex.position[2] = .1f; }
+    for (auto& vertex : editMeshGeometry(front).vertices) { vertex.position[2] = .1f; }
     fixture.scene.state.files.push_back(createUiFileState(fixture.scene.root / "front.obj", front, 1));
     appendDefaultSceneNodesForFiles(fixture.scene.state, 1); markSceneDirty(fixture.scene.state);
     CHECK(fixture.cursor({320,140}) == ImGuiMouseCursor_Arrow);
@@ -1211,7 +1211,7 @@ TEST_CASE("whole annotation movement requires a selected editable visible edge")
     SUBCASE("hidden") { setFileVisible(fixture.state.files[0], false); }
     SUBCASE("unresolved") { fixture.state.annotations[0].targetValid = false; }
     SUBCASE("occluded") {
-        auto mesh = surface(); for (auto& vertex : mesh.vertices) { vertex.position[2] = .1f; }
+        auto mesh = surface(); for (auto& vertex : editMeshGeometry(mesh).vertices) { vertex.position[2] = .1f; }
         fixture.state.files.push_back(createUiFileState(fixture.root / "front.obj", mesh, 1));
         appendDefaultSceneNodesForFiles(fixture.state, 1);
     }
@@ -1328,7 +1328,7 @@ TEST_CASE("annotation Properties never reports vertices for unresolved targets")
     const auto id = fixture.add();
     SUBCASE("missing source") { fixture.state.files.clear(); }
     SUBCASE("changed source") {
-        fixture.state.files[0].mesh.vertices[0].position[2] += .1f;
+        editMeshGeometry(fixture.state.files[0].mesh).vertices[0].position[2] += .1f;
         validateAnnotationTargets(fixture.state);
     }
     CHECK(annotationVertices(fixture.state, *findAnnotation(fixture.state, id)).empty());
@@ -1403,7 +1403,7 @@ TEST_CASE("surface rectangle keeps four projected sides on curved geometry")
 TEST_CASE("surface annotation rejects endpoints outside the model")
 {
     Fixture fixture;
-    fixture.state.files[0].mesh.indices.erase(fixture.state.files[0].mesh.indices.begin() + 6, fixture.state.files[0].mesh.indices.end());
+    editMeshGeometry(fixture.state.files[0].mesh).indices.erase(meshGeometry(fixture.state.files[0].mesh).indices.begin() + 6, meshGeometry(fixture.state.files[0].mesh).indices.end());
     CHECK_THROWS(fixture.geometry());
     CHECK_THROWS(fixture.geometry(AnnotationShape::rectangle));
 }
@@ -1411,21 +1411,21 @@ TEST_CASE("surface annotations bridge foreground edges onto rear layers")
 {
     Fixture fixture;
     auto& mesh = fixture.state.files[0].mesh;
-    for (auto& vertex : mesh.vertices) { vertex.position[2] = .8f; }
+    for (auto& vertex : editMeshGeometry(mesh).vertices) { vertex.position[2] = .8f; }
     for (size_t i = 0; i < 4; ++i) {
-        auto vertex = mesh.vertices[i]; vertex.position[2] = .2f;
-        mesh.vertices.push_back(vertex);
+        auto vertex = meshGeometry(mesh).vertices[i]; vertex.position[2] = .2f;
+        editMeshGeometry(mesh).vertices.push_back(vertex);
     }
-    mesh.indices.insert(mesh.indices.end(), {6,8,9,6,9,7});
+    editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {6,8,9,6,9,7});
     auto drawingView = view();
     SUBCASE("overlapping layers") {}
-    SUBCASE("adjacent layers without overlap") { mesh.indices.erase(mesh.indices.begin(), mesh.indices.begin() + 6); }
+    SUBCASE("adjacent layers without overlap") { editMeshGeometry(mesh).indices.erase(meshGeometry(mesh).indices.begin(), meshGeometry(mesh).indices.begin() + 6); }
     SUBCASE("perspective layers") {
         woby::lookAtMatrix(drawingView.view.data(), woby::Vec3(0,0,-3), woby::Vec3(0,0,0));
         woby::perspectiveMatrix(drawingView.projection.data(), 45, 1, .1f, 10, false);
     }
-    mesh.nodes[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
-    mesh.bounds = calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).nodes[0].indexCount = static_cast<uint32_t>(meshGeometry(mesh).indices.size());
+    mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
     for (const auto shape : {AnnotationShape::line, AnnotationShape::rectangle}) {
         for (const bool reversed : {false, true}) {
             const std::array<float, 2> a{-.3f,-.2f}, b{.3f,.2f};
@@ -1466,11 +1466,11 @@ TEST_CASE("rectangle depth transitions at corners close and use foreground handl
     SUBCASE("separate source parts") {}
     SUBCASE("single mesh") {
         auto mesh = fixture.state.files[0].mesh;
-        for (size_t i = 4; i < mesh.vertices.size(); ++i) {
-            mesh.vertices[i].position[0] -= 2; mesh.vertices[i].position[2] -= .3f;
+        for (size_t i = 4; i < meshGeometry(mesh).vertices.size(); ++i) {
+            editMeshGeometry(mesh).vertices[i].position[0] -= 2; editMeshGeometry(mesh).vertices[i].position[2] -= .3f;
         }
-        mesh.nodes = {{"surface",0,12}};
-        mesh.bounds = calculateBounds(mesh.vertices);
+        editMeshGeometry(mesh).nodes = {{"surface",0,12}};
+        mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
         fixture.state = {};
         fixture.state.files.push_back(createUiFileState(fixture.root / "corners.obj", mesh, 0));
         appendDefaultSceneNodesForFiles(fixture.state, 0);
@@ -1501,7 +1501,7 @@ TEST_CASE("rectangle depth transitions at corners close and use foreground handl
         for (size_t i = 0; i < controls.size(); ++i) {
             nearPoint(positions[i], {controls[i][0], controls[i][1], controls[i][0] == 0 ? .5f : .7f});
         }
-        if (fixture.state.files[0].mesh.nodes.size() == 1) {
+        if (meshGeometry(fixture.state.files[0].mesh).nodes.size() == 1) {
             const auto local = annotationControlPositions(fixture.state.files[0].mesh, 0, geometry);
             REQUIRE(local.size() == positions.size());
             for (size_t i = 0; i < local.size(); ++i) { nearPoint(local[i], positions[i]); }
@@ -1513,8 +1513,8 @@ TEST_CASE("duplicate vertices at exact mesh seams do not break surface annotatio
 {
     Fixture fixture(true);
     auto& mesh = fixture.state.files[0].mesh;
-    mesh.vertices.push_back(mesh.vertices[2]); mesh.vertices.push_back(mesh.vertices[3]);
-    mesh.indices = {0, 2, 3, 0, 3, 1, 6, 4, 5, 6, 5, 7};
+    editMeshGeometry(mesh).vertices.push_back(meshGeometry(mesh).vertices[2]); editMeshGeometry(mesh).vertices.push_back(meshGeometry(mesh).vertices[3]);
+    editMeshGeometry(mesh).indices = {0, 2, 3, 0, 3, 1, 6, 4, 5, 6, 5, 7};
     const auto geometry = fixture.geometry();
     CHECK(std::none_of(geometry.segments.begin(), geometry.segments.end(), [](const auto& s) { return s.endTriangle.has_value(); }));
 }
@@ -1683,7 +1683,7 @@ TEST_CASE("annotation placement honors target and opaque occlusion")
 {
     Fixture fixture;
     auto front = surface();
-    for (auto& vertex : front.vertices) { vertex.position[2] = .1f; }
+    for (auto& vertex : editMeshGeometry(front).vertices) { vertex.position[2] = .1f; }
     fixture.state.files.push_back(createUiFileState(fixture.root / "front.obj", front, 1));
     appendDefaultSceneNodesForFiles(fixture.state, 1);
     const auto projection = fixture.projection();
@@ -1828,7 +1828,7 @@ TEST_CASE("changed source geometry leaves annotation unresolved on open and hist
     fixture.add();
     const auto document = createSceneDocument(fixture.state);
     auto changedFiles = fixture.state.files;
-    changedFiles[0].mesh.vertices[0].position[0] -= .1f;
+    editMeshGeometry(changedFiles[0].mesh).vertices[0].position[0] -= .1f;
     const auto restored = prepareSceneReplacement(fixture.state, changedFiles, document);
     REQUIRE(restored.annotations.size() == 1);
     CHECK_FALSE(restored.annotations[0].targetValid);
@@ -1870,7 +1870,7 @@ TEST_CASE("annotations remain selectable as scene items and render depth control
     appendAnnotationPickParts(parts, fixture.state, storage);
     CHECK(pickSceneObject(parts, view(), {100,100}) == id);
     CHECK(findSceneObject(fixture.state, id)->kind == SceneObjectKind::annotation);
-    auto geometry = surface(); for (auto& v : geometry.vertices) { v.position[2] = .1f; }
+    auto geometry = surface(); for (auto& v : editMeshGeometry(geometry).vertices) { v.position[2] = .1f; }
     fixture.state.files.push_back(createUiFileState(fixture.root / "blocker.obj", geometry, 1));
     appendDefaultSceneNodesForFiles(fixture.state, 1);
     parts = scenePickParts(fixture.state); appendAnnotationPickParts(parts, fixture.state, storage);
@@ -1917,7 +1917,7 @@ TEST_CASE("surface annotation projection handles perspective and near clipping")
             CHECK((std::abs(std::abs(x)-.25f) < 1e-5f || std::abs(std::abs(y)-.2f) < 1e-5f));
         }
     }
-    fixture.state.files[0].mesh.vertices[0].position[2] = -.5f;
+    editMeshGeometry(fixture.state.files[0].mesh).vertices[0].position[2] = -.5f;
     const auto clipped = fixture.projection();
     CHECK(pickAnnotationSurface(clipped, {-.95f,-.95f}) == 0);
     CHECK_NOTHROW((void)projectAnnotation(clipped, AnnotationShape::line, {.1f,-.5f}, {.8f,.5f}));
@@ -1932,17 +1932,17 @@ TEST_CASE("surface annotation previews on a tessellated model")
         for (uint32_t x = 0; x <= n; ++x) {
             Vertex vertex;
             const float u = static_cast<float>(x) / n * 2 - 1, v = static_cast<float>(y) / n * 2 - 1;
-            vertex.position = {u, v, .2f + .5f * u * u}; mesh.vertices.push_back(vertex);
+            vertex.position = {u, v, .2f + .5f * u * u}; editMeshGeometry(mesh).vertices.push_back(vertex);
         }
     }
     for (uint32_t y = 0; y < n; ++y) {
         for (uint32_t x = 0; x < n; ++x) {
             const uint32_t a = y * (n+1) + x, b = a + 1, c = a+n+1, d = c+1;
-            mesh.indices.insert(mesh.indices.end(), {a,b,d,a,d,c});
+            editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {a,b,d,a,d,c});
         }
     }
-    mesh.nodes = {{"surface",0,static_cast<uint32_t>(mesh.indices.size())}};
-    mesh.bounds = calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).nodes = {{"surface",0,static_cast<uint32_t>(meshGeometry(mesh).indices.size())}};
+    mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
     fixture.state.files[0].mesh = std::move(mesh);
     const auto begin = std::chrono::steady_clock::now();
     const auto projection = fixture.projection();
@@ -1999,7 +1999,7 @@ TEST_CASE("surface annotation large mesh benchmark" * doctest::skip())
         std::sort(rectangleTimes.begin(), rectangleTimes.end());
         std::sort(gestureTimes.begin(), gestureTimes.end());
         std::sort(previewTimes.begin(), previewTimes.end());
-        std::cout << "Annotation benchmark: triangles=" << fixture.state.files[0].mesh.indices.size() / 3
+        std::cout << "Annotation benchmark: triangles=" << meshGeometry(fixture.state.files[0].mesh).indices.size() / 3
             << " layers=" << layers << " setup_ms=" << setupTimes[1] << " rectangle_ms=" << rectangleTimes[1]
             << " unselected_gesture_ms=" << gestureTimes[1] << " drag_ms=" << previewTimes[1]
             << " cache_bytes=" << cacheBytes << " segments_checksum=" << segments << '\n';
@@ -2025,13 +2025,13 @@ TEST_CASE("surface annotation external model benchmark" * doctest::skip())
     fixture.state.files.push_back(createUiFileState(modelPath, loadObjMesh(modelPath), 0));
     appendDefaultSceneNodesForFiles(fixture.state, 0);
     const auto& mesh = fixture.state.files[0].mesh;
-    const auto largest = std::max_element(mesh.nodes.begin(), mesh.nodes.end(),
+    const auto largest = std::max_element(meshGeometry(mesh).nodes.begin(), meshGeometry(mesh).nodes.end(),
         [](const auto& a, const auto& b) { return a.indexCount < b.indexCount; });
-    REQUIRE(largest != mesh.nodes.end());
-    const auto target = fixture.state.files[0].groupSettings[static_cast<size_t>(largest - mesh.nodes.begin())].objectId;
+    REQUIRE(largest != meshGeometry(mesh).nodes.end());
+    const auto target = fixture.state.files[0].groupSettings[static_cast<size_t>(largest - meshGeometry(mesh).nodes.begin())].objectId;
     const auto camera = cameraWithView(frameCameraBounds(mesh.bounds, SceneUpAxis::y), CameraView::top);
     const auto modelView = scenePickView(camera, SceneUpAxis::y, mesh.bounds, 1920, 1080, false, 1);
-    std::cout << "External model: triangles=" << mesh.indices.size() / 3 << " groups=" << mesh.nodes.size()
+    std::cout << "External model: triangles=" << meshGeometry(mesh).indices.size() / 3 << " groups=" << meshGeometry(mesh).nodes.size()
         << " largest=" << largest->name << " bounds=" << mesh.bounds.min[0] << ',' << mesh.bounds.min[1]
         << ',' << mesh.bounds.min[2] << " to " << mesh.bounds.max[0] << ',' << mesh.bounds.max[1]
         << ',' << mesh.bounds.max[2] << std::endl;
@@ -2090,7 +2090,7 @@ TEST_CASE("surface annotation external model benchmark" * doctest::skip())
     for (auto* times : {&setupTimes, &dragTimes, &firstDragTimes, &steadyDragTimes, &exactTimes, &commitTimes}) {
         std::sort(times->begin(), times->end());
     }
-    std::cout << "External annotation benchmark: triangles=" << mesh.indices.size() / 3 << " groups=" << mesh.nodes.size()
+    std::cout << "External annotation benchmark: triangles=" << meshGeometry(mesh).indices.size() / 3 << " groups=" << meshGeometry(mesh).nodes.size()
         << " projected_faces=" << faces << " target=" << largest->name << " start=" << start[0] << ',' << start[1]
         << " end=" << end[0] << ',' << end[1] << " setup_ms=" << setupTimes[1] << " drag_ms=" << dragTimes[1]
         << " first_drag_ms=" << firstDragTimes[1] << " steady_drag_ms=" << steadyDragTimes[1]
@@ -2101,12 +2101,12 @@ TEST_CASE("surface annotations handle thousands of coincident faces without an o
 {
     Fixture fixture;
     const auto originalProjection = fixture.projection();
-    const auto original = fixture.state.files[0].mesh.indices;
+    const auto original = meshGeometry(fixture.state.files[0].mesh).indices;
     auto& mesh = fixture.state.files[0].mesh;
     for (size_t i = 1; i < 2500; ++i) {
-        mesh.indices.insert(mesh.indices.end(), original.begin(), original.end());
+        editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), original.begin(), original.end());
     }
-    mesh.nodes[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
+    editMeshGeometry(mesh).nodes[0].indexCount = static_cast<uint32_t>(meshGeometry(mesh).indices.size());
     const auto projection = fixture.projection();
     for (const auto shape : {AnnotationShape::line, AnnotationShape::rectangle}) {
         const auto geometry = projectAnnotation(projection, shape, {-.8f,-.4f}, {.8f,.4f});
@@ -2123,19 +2123,19 @@ TEST_CASE("surface annotation visibility ignores hidden crossings and detects na
 {
     Fixture fixture;
     auto& mesh = fixture.state.files[0].mesh;
-    for (auto& vertex : mesh.vertices) { vertex.position[2] = .1f; }
+    for (auto& vertex : editMeshGeometry(mesh).vertices) { vertex.position[2] = .1f; }
     const auto originalProjection = fixture.projection();
     for (size_t layer = 0; layer < 80; ++layer) {
         auto rear = surface();
         const float slope = static_cast<float>(layer) / 100;
-        const auto offset = static_cast<uint32_t>(mesh.vertices.size());
-        for (auto& vertex : rear.vertices) {
+        const auto offset = static_cast<uint32_t>(meshGeometry(mesh).vertices.size());
+        for (auto& vertex : editMeshGeometry(rear).vertices) {
             vertex.position[2] = .55f + slope * .4f * vertex.position[0];
-            mesh.vertices.push_back(vertex);
+            editMeshGeometry(mesh).vertices.push_back(vertex);
         }
-        for (auto index : rear.indices) { mesh.indices.push_back(offset + index); }
+        for (auto index : meshGeometry(rear).indices) { editMeshGeometry(mesh).indices.push_back(offset + index); }
     }
-    mesh.nodes[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
+    editMeshGeometry(mesh).nodes[0].indexCount = static_cast<uint32_t>(meshGeometry(mesh).indices.size());
     SUBCASE("hidden surface intersections do not split the frontmost outline") {
         const auto geometry = fixture.geometry();
         const auto expected = projectAnnotation(originalProjection, AnnotationShape::line, {-.8f,-.4f}, {.8f,.4f});
@@ -2148,16 +2148,16 @@ TEST_CASE("surface annotation visibility ignores hidden crossings and detects na
     }
     SUBCASE("a narrow foreground interval still rejects the complete outline") {
         auto front = surface();
-        for (auto& vertex : front.vertices) { vertex.position[0] = .123f + vertex.position[0] * .00001f; vertex.position[2] = .01f; }
-        front.bounds = calculateBounds(front.vertices);
+        for (auto& vertex : editMeshGeometry(front).vertices) { vertex.position[0] = .123f + vertex.position[0] * .00001f; vertex.position[2] = .01f; }
+        front.bounds = calculateBounds(meshGeometry(front).vertices);
         fixture.state.files.push_back(createUiFileState(fixture.root / "occluder.obj", std::move(front), 1));
         appendDefaultSceneNodesForFiles(fixture.state, 1);
         CHECK_THROWS_WITH(fixture.geometry(), "Keep the outline clear of other objects.");
     }
     SUBCASE("a depth crossing can make a different object become frontmost") {
         auto crossing = surface();
-        for (auto& vertex : crossing.vertices) { vertex.position[2] = .12f - vertex.position[0] * .1f; }
-        crossing.bounds = calculateBounds(crossing.vertices);
+        for (auto& vertex : editMeshGeometry(crossing).vertices) { vertex.position[2] = .12f - vertex.position[0] * .1f; }
+        crossing.bounds = calculateBounds(meshGeometry(crossing).vertices);
         fixture.state.files.push_back(createUiFileState(fixture.root / "crossing.obj", std::move(crossing), 1));
         appendDefaultSceneNodesForFiles(fixture.state, 1);
         CHECK_THROWS_WITH(fixture.geometry(), "Keep every endpoint or corner on the target surface.");
@@ -2168,7 +2168,7 @@ TEST_CASE("annotation projection keeps shared mesh groups in their own transform
 {
     const auto mesh = surface();
     ScenePickPart first;
-    first.mesh = &mesh; first.objectId = 1; first.indexCount = mesh.indices.size(); first.solid = true;
+    first.mesh = &mesh; first.objectId = 1; first.indexCount = meshGeometry(mesh).indices.size(); first.solid = true;
     woby::identityMatrix(first.model.data());
     auto second = first;
     second.objectId = 2;
@@ -2189,7 +2189,7 @@ TEST_CASE("annotation projection shares vertices and owns them after the source 
 {
     Fixture fixture;
     const auto projection = fixture.projection();
-    REQUIRE(projection.vertices.size() == fixture.state.files[0].mesh.vertices.size());
+    REQUIRE(projection.vertices.size() == meshGeometry(fixture.state.files[0].mesh).vertices.size());
     CHECK(projection.clippedTriangles.empty());
     CHECK(sizeof(AnnotationProjectionFace) < sizeof(AnnotationProjectedTriangle));
     const auto expected = projectAnnotation(projection, AnnotationShape::rectangle, {-.8f,-.4f}, {.8f,.4f});
@@ -2201,7 +2201,7 @@ TEST_CASE("annotation discovery cache can select a target without reprojecting i
 {
     Fixture fixture;
     auto front = surface();
-    for (auto& vertex : front.vertices) { vertex.position[2] = .1f; }
+    for (auto& vertex : editMeshGeometry(front).vertices) { vertex.position[2] = .1f; }
     fixture.state.files.push_back(createUiFileState(fixture.root / "transparent.obj", std::move(front), 1));
     appendDefaultSceneNodesForFiles(fixture.state, 1);
     setFileOpacity(fixture.state.files[1].fileSettings, .5f);
@@ -2241,9 +2241,9 @@ TEST_CASE("annotation point traversal agrees with a full scan including depth ti
     Fixture fixture;
     fixture.state.files[0].mesh = tessellatedSurface(12, 3);
     auto& mesh = fixture.state.files[0].mesh;
-    const auto original = mesh.indices;
-    mesh.indices.insert(mesh.indices.end(), original.begin(), original.end());
-    mesh.nodes[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
+    const auto original = meshGeometry(mesh).indices;
+    editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), original.begin(), original.end());
+    editMeshGeometry(mesh).nodes[0].indexCount = static_cast<uint32_t>(meshGeometry(mesh).indices.size());
     const auto projection = fixture.projection();
     auto scanned = projection;
     scanned.nodes.resize(1);
@@ -2307,11 +2307,11 @@ TEST_CASE("sampled annotation gestures cannot commit narrow occluders missed by 
     fixture.state.files[0].mesh = tessellatedSurface(160);
     prepareAnnotationMeshCache(fixture.state.files[0].mesh);
     auto front = surface();
-    for (auto& vertex : front.vertices) {
+    for (auto& vertex : editMeshGeometry(front).vertices) {
         vertex.position[0] = .12345f + vertex.position[0] * .00001f;
         vertex.position[2] = .01f;
     }
-    front.bounds = calculateBounds(front.vertices);
+    front.bounds = calculateBounds(meshGeometry(front).vertices);
     fixture.state.files.push_back(createUiFileState(fixture.root / "thin.obj", std::move(front), 1));
     appendDefaultSceneNodesForFiles(fixture.state, 1);
     AnnotationInteraction interaction;
@@ -2476,7 +2476,7 @@ TEST_CASE("group annotations still reject unrelated foreground objects")
     Fixture fixture;
     siblingSurface(fixture, 0, .2f);
     auto blocker = surface();
-    for (auto& vertex : blocker.vertices) { vertex.position[0] *= .1f; vertex.position[2] = .1f; }
+    for (auto& vertex : editMeshGeometry(blocker).vertices) { vertex.position[0] *= .1f; vertex.position[2] = .1f; }
     fixture.state.files.push_back(createUiFileState(fixture.root / "blocker.obj", blocker, 1));
     appendDefaultSceneNodesForFiles(fixture.state, 1);
     const auto projection = annotationProjection(scenePickParts(fixture.state), view(), fixture.target(),
@@ -2524,7 +2524,7 @@ TEST_CASE("multi source annotation editing save load and undo preserve attachmen
     REQUIRE(before.size() == after.size());
     for (size_t i = 0; i < before.size(); ++i) { nearPoint(before[i].a, after[i].a); nearPoint(before[i].b, after[i].b); }
     auto changed = restored;
-    changed.files[0].mesh.vertices[4].position[2] += .1f;
+    editMeshGeometry(changed.files[0].mesh).vertices[4].position[2] += .1f;
     validateAnnotationTargets(changed);
     CHECK_FALSE(changed.annotations[0].targetValid);
     CHECK(annotationWorldLines(changed.annotations[0], scenePickParts(changed)).empty());
@@ -2565,7 +2565,7 @@ TEST_CASE("annotation scope follows a selected parent without combining unrelate
     Fixture fixture; siblingSurface(fixture);
     auto left = fixture.state.files[0].mesh;
     auto right = left;
-    left.nodes = {{"left",0,6}}; right.nodes = {{"right",6,6}};
+    editMeshGeometry(left).nodes = {{"left",0,6}}; editMeshGeometry(right).nodes = {{"right",6,6}};
     fixture.state = {};
     fixture.state.files.push_back(createUiFileState(fixture.root / "left.obj", left, 0));
     fixture.state.files.push_back(createUiFileState(fixture.root / "right.obj", right, 1));

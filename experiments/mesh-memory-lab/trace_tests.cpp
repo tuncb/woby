@@ -43,16 +43,16 @@ TEST_CASE("UV seam preserves source identity while splitting render tuples")
     const auto trace = sample("uv-seam.obj");
     CHECK(trace.positions.size() == 4);
     CHECK(trace.triangles.size() == 2);
-    CHECK(trace.mesh.vertices.size() == 6);
+    CHECK(meshGeometry(trace.mesh).vertices.size() == 6);
     CHECK(trace.splitPositions == 2);
     CHECK(trace.positionVertices[0] == std::vector<uint32_t>{0, 3});
     CHECK(trace.vertexKeys[0].position == trace.vertexKeys[3].position);
     CHECK(trace.vertexKeys[0].texcoord != trace.vertexKeys[3].texcoord);
-    CHECK(trace.mesh.vertices[0].texcoord[1] == 1.0f);
+    CHECK(meshGeometry(trace.mesh).vertices[0].texcoord[1] == 1.0f);
     CHECK_FALSE(trace.generatedNormals);
     for (size_t t = 0; t < trace.triangles.size(); ++t) {
         for (size_t c = 0; c < 3; ++c) {
-            CHECK(trace.vertexKeys[trace.mesh.indices[t*3+c]] == trace.triangles[t].corners[c]);
+            CHECK(trace.vertexKeys[meshGeometry(trace.mesh).indices[t*3+c]] == trace.triangles[t].corners[c]);
         }
         CHECK(mesh_lab::lineRelated(trace, trace.faces[trace.triangles[t].face].line, t));
     }
@@ -65,16 +65,16 @@ TEST_CASE("Quad triangulation retains polygon lineage and generates normals")
     CHECK(trace.faces[0].triangleCount == 2);
     CHECK(trace.triangles[0].face == 0);
     CHECK(trace.triangles[1].face == 0);
-    CHECK(trace.mesh.vertices.size() == 4);
-    CHECK(trace.mesh.indices.size() == 6);
+    CHECK(meshGeometry(trace.mesh).vertices.size() == 4);
+    CHECK(meshGeometry(trace.mesh).indices.size() == 6);
     CHECK(trace.generatedNormals);
-    for (const auto& v : trace.mesh.vertices) { CHECK(v.normal[2] == doctest::Approx(1.0f)); }
+    for (const auto& v : meshGeometry(trace.mesh).vertices) { CHECK(v.normal[2] == doctest::Approx(1.0f)); }
 }
 TEST_CASE("Hard normal seams split eight positions into twenty-four vertices")
 {
     const auto trace = sample("hard-cube.obj");
     CHECK(trace.positions.size() == 8);
-    CHECK(trace.mesh.vertices.size() == 24);
+    CHECK(meshGeometry(trace.mesh).vertices.size() == 24);
     CHECK(trace.triangles.size() == 12);
     CHECK(trace.splitPositions == 8);
     for (const auto& ids : trace.positionVertices) { CHECK(ids.size() == 3); }
@@ -84,12 +84,12 @@ TEST_CASE("Large coordinates retain double precision before float localization")
 {
     const auto trace = sample("large-coordinates.obj");
     CHECK(trace.mesh.origin[0] == doctest::Approx(1000000000.003));
-    CHECK(trace.mesh.vertices.size() == 4);
+    CHECK(meshGeometry(trace.mesh).vertices.size() == 4);
     CHECK(trace.triangles.size() == 2);
-    for (size_t v = 0; v < trace.mesh.vertices.size(); ++v) {
+    for (size_t v = 0; v < meshGeometry(trace.mesh).vertices.size(); ++v) {
         const auto p = static_cast<size_t>(trace.vertexKeys[v].position);
-        CHECK(trace.mesh.precisePositions[v] == woby::relativePosition(trace.positions[p], trace.mesh.origin));
-        CHECK(std::abs(trace.mesh.vertices[v].position[0]) < 0.003f);
+        CHECK(meshGeometry(trace.mesh).precisePositions[v] == woby::relativePosition(trace.positions[p], trace.mesh.origin));
+        CHECK(std::abs(meshGeometry(trace.mesh).vertices[v].position[0]) < 0.003f);
     }
     CHECK(trace.mesh.bounds.radius > 0.002f);
 }
@@ -99,9 +99,9 @@ TEST_CASE("Concave triangulation preserves area and face provenance")
     REQUIRE(trace.triangles.size() == 3);
     double area = 0;
     for (size_t t = 0; t < 3; ++t) {
-        const auto& a = trace.mesh.vertices[trace.mesh.indices[t*3]].position;
-        const auto& b = trace.mesh.vertices[trace.mesh.indices[t*3+1]].position;
-        const auto& c = trace.mesh.vertices[trace.mesh.indices[t*3+2]].position;
+        const auto& a = meshGeometry(trace.mesh).vertices[meshGeometry(trace.mesh).indices[t*3]].position;
+        const auto& b = meshGeometry(trace.mesh).vertices[meshGeometry(trace.mesh).indices[t*3+1]].position;
+        const auto& c = meshGeometry(trace.mesh).vertices[meshGeometry(trace.mesh).indices[t*3+2]].position;
         area += ((b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0])) * 0.5;
         CHECK(trace.triangles[t].face == 0);
     }
@@ -116,10 +116,10 @@ TEST_CASE("Byte views expose the exact native vertex and index representations")
     CHECK(mesh_lab::vertexOffset(3, 6) == 120);
     float u = 0;
     std::memcpy(&u, vertices.data() + mesh_lab::vertexOffset(3, 6), sizeof(u));
-    CHECK(u == trace.mesh.vertices[3].texcoord[0]);
+    CHECK(u == meshGeometry(trace.mesh).vertices[3].texcoord[0]);
     uint32_t id = 0;
     std::memcpy(&id, indices.data() + 12, sizeof(id));
-    CHECK(id == trace.mesh.indices[3]);
+    CHECK(id == meshGeometry(trace.mesh).indices[3]);
     CHECK_THROWS_AS((void)mesh_lab::vertexOffset(0, 8), std::out_of_range);
     CHECK_THROWS_AS((void)mesh_lab::vertexOffset(std::numeric_limits<size_t>::max(), 0), std::out_of_range);
 }
@@ -163,7 +163,7 @@ TEST_CASE("Multiple shapes and CRLF keep correct source byte and face offsets")
     CHECK(trace.triangles[1].face == 1);
     CHECK(trace.faces[0].line == 4);
     CHECK(trace.faces[1].line == 6);
-    CHECK(trace.mesh.nodes.size() == 2);
+    CHECK(meshGeometry(trace.mesh).nodes.size() == 2);
 }
 
 TEST_CASE("The internal example exposes rebasing triangulation and seam identity")
@@ -173,7 +173,7 @@ TEST_CASE("The internal example exposes rebasing triangulation and seam identity
     CHECK(trace.faces.size() == 2);
     CHECK(trace.originalCorners == 8);
     CHECK(trace.triangles.size() == 4);
-    CHECK(trace.mesh.vertices.size() == 8);
+    CHECK(meshGeometry(trace.mesh).vertices.size() == 8);
     CHECK(trace.splitPositions == 2);
     CHECK_FALSE(trace.generatedNormals);
     CHECK(trace.mesh.origin[0] > 1.0e9);
@@ -188,11 +188,11 @@ TEST_CASE("The internal example exposes rebasing triangulation and seam identity
 TEST_CASE("Intern events reconstruct actual first-use IDs and reuse decisions")
 {
     const auto trace = mesh_lab::internalExample();
-    std::vector<bool> seen(trace.mesh.vertices.size()); size_t inserts = 0, reused = 0;
-    REQUIRE(trace.vertexEvents.size() == trace.mesh.indices.size());
+    std::vector<bool> seen(meshGeometry(trace.mesh).vertices.size()); size_t inserts = 0, reused = 0;
+    REQUIRE(trace.vertexEvents.size() == meshGeometry(trace.mesh).indices.size());
     for (size_t i = 0; i < trace.vertexEvents.size(); ++i) {
         const auto event = trace.vertexEvents[i];
-        CHECK(event.vertex == trace.mesh.indices[i]);
+        CHECK(event.vertex == meshGeometry(trace.mesh).indices[i]);
         CHECK(event.created == !seen[event.vertex]);
         if (event.created) { CHECK(event.vertex == inserts); ++inserts; }
         else { ++reused; }
@@ -235,11 +235,11 @@ TEST_CASE("In-memory OBJ construction matches production file import")
     const auto source = mesh_lab::internalObjSource();
     const auto memory = woby::loadObjMeshText(source);
     const auto file = woby::loadObjMesh(fixture.write(std::string(source)));
-    CHECK(memory.indices == file.indices);
-    CHECK(memory.precisePositions == file.precisePositions);
+    CHECK(meshGeometry(memory).indices == meshGeometry(file).indices);
+    CHECK(meshGeometry(memory).precisePositions == meshGeometry(file).precisePositions);
     CHECK(memory.origin == file.origin);
-    REQUIRE(memory.vertices.size() == file.vertices.size());
-    CHECK(std::memcmp(memory.vertices.data(),file.vertices.data(),memory.vertices.size()*sizeof(woby::Vertex)) == 0);
+    REQUIRE(meshGeometry(memory).vertices.size() == meshGeometry(file).vertices.size());
+    CHECK(std::memcmp(meshGeometry(memory).vertices.data(),meshGeometry(file).vertices.data(),meshGeometry(memory).vertices.size()*sizeof(woby::Vertex)) == 0);
     CHECK_THROWS((void)woby::loadObjMeshText("v 0 0 0\nf 1 2 3\n"));
     CHECK_THROWS((void)woby::loadObjMeshText("# empty\n"));
 }

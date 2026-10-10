@@ -58,8 +58,8 @@ bool setUvProbe(UiState& state, SceneObjectId analysisId, SceneObjectId partId,
     bool validTriangle = false;
     for (const auto& file : state.files) {
         for (size_t i=0;i<file.groupSettings.size();++i) {
-            if (file.groupSettings[i].objectId == partId && i < file.mesh.nodes.size()) {
-                validTriangle = triangle <= file.mesh.nodes[i].indexCount/3;
+            if (file.groupSettings[i].objectId == partId && i < meshGeometry(file.mesh).nodes.size()) {
+                validTriangle = triangle <= meshGeometry(file.mesh).nodes[i].indexCount/3;
             }
         }
     }
@@ -90,10 +90,10 @@ const UiComparison* selectedComparison(const UiState& state)
 namespace {
 bool comparablePart(const UiFileState& file, size_t index)
 {
-    if (index >= file.mesh.nodes.size() || index >= file.groupSettings.size()) { return false; }
-    const auto& node = file.mesh.nodes[index];
+    if (index >= meshGeometry(file.mesh).nodes.size() || index >= file.groupSettings.size()) { return false; }
+    const auto& node = meshGeometry(file.mesh).nodes[index];
     return node.indexCount >= 3 && node.indexCount % 3 == 0
-        && static_cast<size_t>(node.indexOffset) + node.indexCount <= file.mesh.indices.size();
+        && static_cast<size_t>(node.indexOffset) + node.indexCount <= meshGeometry(file.mesh).indices.size();
 }
 
 std::array<float, 3> initialComparisonTranslation(const UiState& state,
@@ -206,7 +206,7 @@ std::vector<SceneObjectId> comparableScenePartIds(const UiState& state)
 
 bool fileHasComparableParts(const UiFileState& file)
 {
-    for (size_t i = 0; i < std::min(file.groupSettings.size(), file.mesh.nodes.size()); ++i) {
+    for (size_t i = 0; i < std::min(file.groupSettings.size(), meshGeometry(file.mesh).nodes.size()); ++i) {
         if (file.groupSettings[i].objectId != invalidSceneObjectId && comparablePart(file, i)) { return true; }
     }
     return false;
@@ -1945,7 +1945,7 @@ UiState prepareSceneReplacement(const UiState& current,
                     const auto g = static_cast<size_t>(reference.groupIndex);
                     const auto& file = prepared.files[f];
                     if (comparablePart(file, g) && f < document.files.size() && g < document.files[f].groups.size()
-                        && file.mesh.nodes[g].name == document.files[f].groups[g].name) {
+                        && meshGeometry(file.mesh).nodes[g].name == document.files[f].groups[g].name) {
                         part.objectId = file.groupSettings[g].objectId;
                     }
                 }

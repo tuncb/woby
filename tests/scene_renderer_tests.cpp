@@ -25,13 +25,13 @@ struct RendererFixture {
 TEST_CASE("Scene upload preparation is owned worker data with cancellable validation and range building")
 {
     woby::Mesh mesh;
-    mesh.vertices.resize(8);
-    mesh.indices = {6, 1, 6, 1, 3, 6, 3, 1, 7};
-    mesh.nodes = {{"first", 0, 6}, {"shared", 6, 3}, {"overlap", 0, 3}};
+    editMeshGeometry(mesh).vertices.resize(8);
+    editMeshGeometry(mesh).indices = {6, 1, 6, 1, 3, 6, 3, 1, 7};
+    editMeshGeometry(mesh).nodes = {{"first", 0, 6}, {"shared", 6, 3}, {"overlap", 0, 3}};
     auto worker = std::async(std::launch::async, [source = mesh] {
         return woby::prepareSceneMesh(source, woby::gpuMeshEdges | woby::gpuMeshPoints);
     });
-    mesh.indices.clear(); // The result does not borrow this source or the worker snapshot.
+    editMeshGeometry(mesh).indices.clear(); // The result does not borrow this source or the worker snapshot.
     const auto prepared = worker.get();
     REQUIRE(prepared);
     CHECK(prepared->pointVertexIndices == std::vector<uint32_t>{6, 1, 3, 3, 1, 7, 6, 1});
@@ -40,8 +40,8 @@ TEST_CASE("Scene upload preparation is owned worker data with cancellable valida
     CHECK(prepared->nodeRanges[2].pointIndexOffset == 6);
     CHECK(prepared->nodeRanges[2].pointIndexCount == 2);
 
-    mesh.indices.assign(300000, 0);
-    mesh.nodes = {{"large", 0, 300000}};
+    editMeshGeometry(mesh).indices.assign(300000, 0);
+    editMeshGeometry(mesh).nodes = {{"large", 0, 300000}};
     // Cancel in initial validation, range preparation, and optional edge generation.
     for (const size_t stop : {1u, 4u, 9u, 14u}) {
         size_t polls = 0;
@@ -59,13 +59,13 @@ TEST_CASE("Staged mesh uploads bound bytes and complete every primitive buffer b
     fixture.initialized = woby::graphics::init(init);
     REQUIRE(fixture.initialized);
     woby::Mesh mesh;
-    mesh.vertices.resize(8);
-    mesh.indices = {6, 1, 3, 3, 1, 7};
-    mesh.lineIndices = {0, 2};
-    mesh.pointIndices = {5, 4, 5};
-    mesh.nodes = {{"triangles", 0, 6}, {"lines"}, {"points"}};
-    mesh.nodes[1].lineIndexCount = 2;
-    mesh.nodes[2].pointIndexCount = 3;
+    editMeshGeometry(mesh).vertices.resize(8);
+    editMeshGeometry(mesh).indices = {6, 1, 3, 3, 1, 7};
+    editMeshGeometry(mesh).lineIndices = {0, 2};
+    editMeshGeometry(mesh).pointIndices = {5, 4, 5};
+    editMeshGeometry(mesh).nodes = {{"triangles", 0, 6}, {"lines"}, {"points"}};
+    editMeshGeometry(mesh).nodes[1].lineIndexCount = 2;
+    editMeshGeometry(mesh).nodes[2].pointIndexCount = 3;
     auto prepared = woby::prepareSceneMesh(mesh, woby::gpuMeshEdges | woby::gpuMeshPoints);
     REQUIRE(prepared);
     auto upload = woby::beginGpuMeshUpload(std::move(*prepared));
@@ -101,9 +101,9 @@ TEST_CASE("Canceling a partial mesh upload destroys its buffers and allows a fre
     fixture.initialized = woby::graphics::init(init);
     REQUIRE(fixture.initialized);
     woby::Mesh mesh;
-    mesh.vertices.resize(3);
-    mesh.indices = {0, 1, 2};
-    mesh.nodes = {{"triangle", 0, 3}};
+    editMeshGeometry(mesh).vertices.resize(3);
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes = {{"triangle", 0, 3}};
     auto upload = woby::beginGpuMeshUpload(*woby::prepareSceneMesh(mesh));
     CHECK_FALSE(woby::stepGpuMeshUpload(upload, mesh, woby::meshVertexLayout(), 32));
     const auto canceledBuffer = upload.mesh.vertexBuffer;
@@ -131,9 +131,9 @@ TEST_CASE("GPU point ranges preserve first occurrence order independently for ea
     REQUIRE(fixture.initialized);
 
     woby::Mesh mesh;
-    mesh.vertices.resize(8);
-    mesh.indices = {6, 1, 6, 1, 3, 6, 3, 1, 7, 7, 1, 3};
-    mesh.nodes = {{"first", 0, 6}, {"empty", 6, 0}, {"shared", 6, 6}, {"overlap", 0, 3}};
+    editMeshGeometry(mesh).vertices.resize(8);
+    editMeshGeometry(mesh).indices = {6, 1, 6, 1, 3, 6, 3, 1, 7, 7, 1, 3};
+    editMeshGeometry(mesh).nodes = {{"first", 0, 6}, {"empty", 6, 0}, {"shared", 6, 6}, {"overlap", 0, 3}};
 
     for (int iteration = 0; iteration < 2; ++iteration) {
         fixture.mesh = woby::createGpuMesh(mesh, woby::meshVertexLayout());
@@ -151,14 +151,14 @@ TEST_CASE("GPU point ranges preserve first occurrence order independently for ea
         REQUIRE(fixture.mesh.nodeRanges.size() == 4u);
         const std::array<uint32_t, 4> offsets = {0, 3, 3, 6};
         const std::array<uint32_t, 4> counts = {3, 0, 3, 2};
-        for (size_t i = 0; i < mesh.nodes.size(); ++i) {
+        for (size_t i = 0; i < meshGeometry(mesh).nodes.size(); ++i) {
             const auto& range = fixture.mesh.nodeRanges[i];
             CHECK(range.pointIndexOffset == offsets[i]);
             CHECK(range.pointIndexCount == counts[i]);
-            CHECK(range.triangleIndexOffset == mesh.nodes[i].indexOffset);
-            CHECK(range.triangleIndexCount == mesh.nodes[i].indexCount);
-            CHECK(range.lineIndexOffset == mesh.nodes[i].indexOffset * 2u);
-            CHECK(range.lineIndexCount == mesh.nodes[i].indexCount * 2u);
+            CHECK(range.triangleIndexOffset == meshGeometry(mesh).nodes[i].indexOffset);
+            CHECK(range.triangleIndexCount == meshGeometry(mesh).nodes[i].indexCount);
+            CHECK(range.lineIndexOffset == meshGeometry(mesh).nodes[i].indexOffset * 2u);
+            CHECK(range.lineIndexCount == meshGeometry(mesh).nodes[i].indexCount * 2u);
         }
         const auto points = fixture.mesh.pointIdBuffer.idx;
         woby::prepareGpuMeshFeatures(fixture.mesh, mesh,
@@ -258,30 +258,30 @@ TEST_CASE("GPU display demand follows visible file and part settings")
 TEST_CASE("GPU uploads reject invalid indices and ranges before allocating")
 {
     woby::Mesh mesh;
-    mesh.vertices.resize(3);
-    mesh.indices = {0, 1, 99};
-    mesh.nodes = {{"part", 0, 3}};
+    editMeshGeometry(mesh).vertices.resize(3);
+    editMeshGeometry(mesh).indices = {0, 1, 99};
+    editMeshGeometry(mesh).nodes = {{"part", 0, 3}};
     CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
         "Scene contains an invalid vertex index.");
-    mesh.indices[2] = 2;
-    mesh.nodes[0].indexCount = 6;
+    editMeshGeometry(mesh).indices[2] = 2;
+    editMeshGeometry(mesh).nodes[0].indexCount = 6;
     CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
         "Scene contains an invalid primitive range.");
-    mesh.indices.clear();
-    mesh.nodes[0].indexCount = 0;
-    mesh.nodes[0].lineIndexCount = 2;
-    mesh.lineIndices = {0, 99};
+    editMeshGeometry(mesh).indices.clear();
+    editMeshGeometry(mesh).nodes[0].indexCount = 0;
+    editMeshGeometry(mesh).nodes[0].lineIndexCount = 2;
+    editMeshGeometry(mesh).lineIndices = {0, 99};
     CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
         "Scene contains an invalid line vertex index.");
-    mesh.lineIndices[1] = 1;
-    mesh.nodes[0].lineIndexOffset = 1;
+    editMeshGeometry(mesh).lineIndices[1] = 1;
+    editMeshGeometry(mesh).nodes[0].lineIndexOffset = 1;
     CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
         "Scene contains an invalid primitive range.");
-    mesh.nodes[0].lineIndexOffset = 0;
-    mesh.nodes[0].lineIndexCount = 1;
+    editMeshGeometry(mesh).nodes[0].lineIndexOffset = 0;
+    editMeshGeometry(mesh).nodes[0].lineIndexCount = 1;
     CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
         "Scene contains an invalid primitive range.");
-    mesh.lineIndices.push_back(2);
+    editMeshGeometry(mesh).lineIndices.push_back(2);
     CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
         "Scene needs valid triangles, line segments or points.");
 }
@@ -294,11 +294,11 @@ TEST_CASE("GPU standalone points use point buffers without triangle or line buff
     init.resolution.width = init.resolution.height = 1;
     fixture.initialized = woby::graphics::init(init);
     REQUIRE(fixture.initialized);
-    woby::Mesh mesh; mesh.vertices.resize(3);
-    mesh.pointIndices = {2,0,2,1};
+    woby::Mesh mesh; editMeshGeometry(mesh).vertices.resize(3);
+    editMeshGeometry(mesh).pointIndices = {2,0,2,1};
     woby::MeshNode first; first.name = "first"; first.pointIndexCount = 3;
     woby::MeshNode second; second.name = "second"; second.pointIndexOffset = 3; second.pointIndexCount = 1;
-    mesh.nodes = {first, second};
+    editMeshGeometry(mesh).nodes = {first, second};
     SUBCASE("valid point geometry") {
         fixture.mesh = woby::createGpuMesh(mesh, woby::meshVertexLayout(), woby::gpuMeshPoints);
         CHECK(woby::graphics::isValid(fixture.mesh.pointIdBuffer));
@@ -311,10 +311,10 @@ TEST_CASE("GPU standalone points use point buffers without triangle or line buff
         CHECK(fixture.mesh.nodeRanges[1].pointIndexCount == 1);
         return;
     }
-    SUBCASE("invalid vertex") { mesh.pointIndices[0] = 3; }
-    SUBCASE("invalid range") { mesh.nodes[1].pointIndexCount = 2; }
+    SUBCASE("invalid vertex") { editMeshGeometry(mesh).pointIndices[0] = 3; }
+    SUBCASE("invalid range") { editMeshGeometry(mesh).nodes[1].pointIndexCount = 2; }
     SUBCASE("mixed primitives in one node") {
-        mesh.lineIndices = {0,1}; mesh.nodes[0].lineIndexCount = 2;
+        editMeshGeometry(mesh).lineIndices = {0,1}; editMeshGeometry(mesh).nodes[0].lineIndexCount = 2;
     }
     CHECK_THROWS_AS((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()), std::runtime_error);
 }

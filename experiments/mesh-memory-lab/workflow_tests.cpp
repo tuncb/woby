@@ -402,9 +402,9 @@ TEST_CASE("Packaged workflow inputs load with live data and independent diagram 
     for (const auto& entry : library.entries) { INFO(entry.error); REQUIRE(entry.document.has_value()); }
     REQUIRE(library.entries[0].trace);
     REQUIRE(library.entries[2].trace);
-    CHECK(library.entries[0].trace->mesh.vertices.size() == 8);
-    CHECK(library.entries[2].trace->mesh.vertices.size() == 4);
-    CHECK(library.entries[2].trace->mesh.indices.size() == 6);
+    CHECK(meshGeometry(library.entries[0].trace->mesh).vertices.size() == 8);
+    CHECK(meshGeometry(library.entries[2].trace->mesh).vertices.size() == 4);
+    CHECK(meshGeometry(library.entries[2].trace->mesh).indices.size() == 6);
     CHECK_FALSE(library.entries[1].trace);
     CHECK(library.entries[1].document->nodes.size() != mesh_lab::pipeline.size());
 }

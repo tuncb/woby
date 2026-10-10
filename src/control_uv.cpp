@@ -110,11 +110,11 @@ nlohmann::json controlUvProbe(UiState& state, const MeshComparison* result, uint
     }
     info["displayPosition"] = nullptr;
     const auto& mesh = result->original.source;
-    for (const auto& node : mesh.nodes) {
+    for (const auto& node : meshGeometry(mesh).nodes) {
         if (node.sourceObjectId != probe.partId || probe.triangle > node.indexCount / 3) { continue; }
         std::array<Coordinate, 3> points;
         for (size_t k = 0; k < 3; ++k) {
-            points[k] = meshPosition(mesh, mesh.indices.at(node.indexOffset + (probe.triangle - 1) * 3 + k));
+            points[k] = meshPosition(mesh, meshGeometry(mesh).indices.at(node.indexOffset + (probe.triangle - 1) * 3 + k));
         }
         auto display = interpolate(points, probe.barycentric);
         for (size_t k = 0; k < 3; ++k) { display[k] += comparison->translation[k]; }

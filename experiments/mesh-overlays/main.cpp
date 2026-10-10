@@ -95,7 +95,7 @@ int main(int argc,char** argv) {
         const auto mesh=fixture?o::fixtureMesh():woby::loadObjMesh(std::filesystem::absolute(model));
         const double loadMs=std::chrono::duration<double,std::milli>(Clock::now()-loadStart).count();
         o::Renderer renderer; o::initialize(renderer,options);
-        std::cerr << "Uploading " << mesh.vertices.size() << " vertices, " << mesh.indices.size()/3 << " triangles" << std::endl;
+        std::cerr << "Uploading " << meshGeometry(mesh).vertices.size() << " vertices, " << meshGeometry(mesh).indices.size()/3 << " triangles" << std::endl;
         const auto uploadStart=Clock::now(); o::upload(renderer,mesh);
         const double uploadMs=std::chrono::duration<double,std::milli>(Clock::now()-uploadStart).count();
         std::array<float,16> projection{};
@@ -135,7 +135,7 @@ int main(int argc,char** argv) {
             {"camera_matrix",projection},{"orthographic",orthographic},{"zoom",zoom},
             {"vertices",renderer.scene.vertexCount},{"triangles",renderer.scene.triangleCount},
             {"markers",renderer.scene.markerCount},{"groups",renderer.scene.groups.size()},
-            {"retained_geometry_bytes",renderer.scene.bytes},{"edge_index_bytes",mesh.indices.size()*8},
+            {"retained_geometry_bytes",renderer.scene.bytes},{"edge_index_bytes",meshGeometry(mesh).indices.size()*8},
             {"load_ms",loadMs},{"prepare_and_upload_ms",uploadMs},{"rounds",rounds},
             {"warmup_seconds",warmup},{"measurement_seconds",seconds},
             {"notes","Headless fixed-size rendering; production shaders and preparation; scene GPU only, no UI/presentation. All methods retain control edge buffers. Legacy draws X-ray lines in group order. Ordered and barycentric use visible-surface semantics. Shader edge coverage differs. CPU submission excludes fence wait. Captures excluded from timings."},

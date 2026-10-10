@@ -27,10 +27,10 @@ woby::DuplicateInput inputFor(const woby::Mesh& mesh)
     woby::DuplicateInput input;
     woby::DuplicateSource source;
     source.fileId = 1; source.name = "shared.wpoint"; source.data = mesh.sourceData; source.wholeFile = true;
-    for (size_t i = 0; i < mesh.nodes.size(); ++i) {
+    for (size_t i = 0; i < meshGeometry(mesh).nodes.size(); ++i) {
         woby::SourcePartInstance part;
         part.partId = i + 1;
-        part.firstIndex = mesh.nodes[i].indexOffset; part.indexCount = mesh.nodes[i].indexCount;
+        part.firstIndex = meshGeometry(mesh).nodes[i].indexOffset; part.indexCount = meshGeometry(mesh).nodes[i].indexCount;
         part.transform = source.unusedPointTransform;
         source.parts.push_back(part);
     }
@@ -45,11 +45,11 @@ TEST_CASE("Importer point IDs suppress shared contacts while preserving closed v
     const auto mesh = f.mesh();
     REQUIRE(mesh.sourceData);
     CHECK(mesh.sourceData->originalPointIds == std::vector<uint64_t>{0,UINT64_MAX,42,99,0,UINT64_MAX,42,100});
-    REQUIRE(mesh.vertices.size() == 8);
-    CHECK(mesh.sourceData->indices == mesh.indices);
-    CHECK(mesh.vertices[0].normal == std::array<float,3>{0,0,-1});
-    CHECK(mesh.vertices[4].normal == std::array<float,3>{0,0,1});
-    CHECK(mesh.vertices[4].texcoord == std::array<float,2>{1,1});
+    REQUIRE(meshGeometry(mesh).vertices.size() == 8);
+    CHECK(mesh.sourceData->indices == meshGeometry(mesh).indices);
+    CHECK(meshGeometry(mesh).vertices[0].normal == std::array<float,3>{0,0,-1});
+    CHECK(meshGeometry(mesh).vertices[4].normal == std::array<float,3>{0,0,1});
+    CHECK(meshGeometry(mesh).vertices[4].texcoord == std::array<float,2>{1,1});
     auto input = inputFor(mesh);
     const auto duplicates = woby::inspectDuplicates(input);
     CHECK(duplicates.points.duplicateCount == 0);
@@ -150,7 +150,7 @@ TEST_CASE("Importer point IDs cover line vertices and validate the combined byte
     WobyImportLines lines{sizeof(WobyImportLines),indices,4,nullptr,0};
     WobyImportPointIds pointIds{sizeof(WobyImportPointIds),ids,3};
     const auto mesh = woby::copyImportedMesh(result, nullptr, &lines, &pointIds);
-    CHECK(mesh.lineIndices == std::vector<uint32_t>{0,1,1,2});
+    CHECK(meshGeometry(mesh).lineIndices == std::vector<uint32_t>{0,1,1,2});
     CHECK(mesh.sourceData->originalPointIds == std::vector<uint64_t>{7,8,7});
     // Vertex bytes alone fit in 4 GiB; adding one uint64 per vertex exceeds it.
     result.vertex_count = static_cast<uint32_t>((4ull * 1024 * 1024 * 1024 - sizeof(indices)) / sizeof(WobyImportVertex));

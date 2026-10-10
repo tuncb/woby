@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-10",
+  "baseline_commit": "1d9fe69e1f7f74e4c000b7d60d16cfc45ff322e3",
+  "production_diff_sha256": "311918f43f7169b76abc9812a7fcac856b0c7181272cb4a83a92834108cbc349",
+  "compiler": "MSVC 14.51.36231, Visual Studio 2026, x64 Release",
+  "cpu": "AMD Ryzen 7 5800H, 8 cores / 16 threads",
+  "physical_memory_bytes": 68564348928,
+  "os": "Windows 11 Home 10.0.26300",
+  "sample_interval_ms": 10,
+  "processes": [
+    {
+      "variant": "before",
+      "run": 1,
+      "sampled_peak_private_bytes": 363937792,
+      "peak_working_set_bytes": 372097024,
+      "executable_sha256": "731DACEEC7131B13C8E9F83EF4ABE34A6BE28594E71D004E88A0219BF87E59BB"
+    },
+    {
+      "variant": "after",
+      "run": 1,
+      "sampled_peak_private_bytes": 203415552,
+      "peak_working_set_bytes": 211832832,
+      "executable_sha256": "B57A42EBA1027A84FDC388C526ABF33242331EFDFD8942D9F4EBBBD48A9982E2"
+    },
+    {
+      "variant": "after",
+      "run": 2,
+      "sampled_peak_private_bytes": 203419648,
+      "peak_working_set_bytes": 211828736,
+      "executable_sha256": "B57A42EBA1027A84FDC388C526ABF33242331EFDFD8942D9F4EBBBD48A9982E2"
+    },
+    {
+      "variant": "before",
+      "run": 2,
+      "sampled_peak_private_bytes": 363917312,
+      "peak_working_set_bytes": 371671040,
+      "executable_sha256": "731DACEEC7131B13C8E9F83EF4ABE34A6BE28594E71D004E88A0219BF87E59BB"
+    },
+    {
+      "variant": "before",
+      "run": 3,
+      "sampled_peak_private_bytes": 363921408,
+      "peak_working_set_bytes": 371666944,
+      "executable_sha256": "731DACEEC7131B13C8E9F83EF4ABE34A6BE28594E71D004E88A0219BF87E59BB"
+    },
+    {
+      "variant": "after",
+      "run": 3,
+      "sampled_peak_private_bytes": 203423744,
+      "peak_working_set_bytes": 211836928,
+      "executable_sha256": "B57A42EBA1027A84FDC388C526ABF33242331EFDFD8942D9F4EBBBD48A9982E2"
+    }
+  ],
+  "after_benchmark_source_sha256": "e8f5b6bc4a35669e59f8fe013279215eecc7d7b4b6b506404faab1397f33a338",
+  "cmake_preset": "vs2026-vcpkg",
+  "configuration": "Release",
+  "cmake_options": {
+    "WOBY_TEST_HEADLESS": true,
+    "WOBY_BUILD_BENCHMARKS": true,
+    "WOBY_BUILD_HASH_BENCHMARKS": true,
+    "WOBY_BUILD_MESH_MEMORY_LAB": true
+  }
+}

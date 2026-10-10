@@ -13,7 +13,7 @@ using Json = nlohmann::json;
 MeshComparison data()
 {
     MeshComparison r;
-    r.original.source.indices = {0, 1, 2};
+    editMeshGeometry(r.original.source).indices = {0, 1, 2};
     for (auto& status : r.detectors) { status.phase = IntersectionPhase::complete; }
     auto& duplicates = r.original.duplicates.points;
     duplicates.availableSources = 1;

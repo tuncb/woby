@@ -10,13 +10,13 @@ namespace {
 std::array<float,16> identity() { std::array<float,16> result{}; woby::identityMatrix(result.data()); return result; }
 void addPoints(woby::Mesh& mesh,const std::vector<std::array<float,3>>& positions) {
     woby::MeshNode node; node.name="culling markers";
-    node.pointIndexOffset=static_cast<uint32_t>(mesh.pointIndices.size());
+    node.pointIndexOffset=static_cast<uint32_t>(meshGeometry(mesh).pointIndices.size());
     node.pointIndexCount=static_cast<uint32_t>(positions.size());
     for (const auto& p:positions) {
         woby::Vertex vertex; vertex.position=p; vertex.normal={0,0,1};
-        mesh.pointIndices.push_back(static_cast<uint32_t>(mesh.vertices.size())); mesh.vertices.push_back(vertex);
+        editMeshGeometry(mesh).pointIndices.push_back(static_cast<uint32_t>(meshGeometry(mesh).vertices.size())); editMeshGeometry(mesh).vertices.push_back(vertex);
     }
-    mesh.nodes.push_back(node);
+    editMeshGeometry(mesh).nodes.push_back(node);
 }
 void verify(o::Renderer& r,const woby::Mesh& mesh,o::Display d,const std::array<float,16>& projection) {
     o::Capture baseline; (void)o::render(r,d,projection,&baseline);

@@ -16,11 +16,11 @@ woby::UiState dimensionScene()
     for (const auto& point : {std::array<float, 3>{0, 0, 0}, {4, 0, 0}, {0, 3, 0}, {900, 800, 700}}) {
         woby::Vertex vertex;
         vertex.position = point;
-        mesh.vertices.push_back(vertex);
+        editMeshGeometry(mesh).vertices.push_back(vertex);
     }
-    mesh.indices = {0, 1, 2};
-    mesh.nodes = {{"triangle", 0, 3}};
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes = {{"triangle", 0, 3}};
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     woby::UiState state;
     state.files.push_back(woby::createUiFileState("triangle.obj", mesh, 0));
     woby::appendDefaultSceneNodesForFiles(state, 0);
@@ -104,11 +104,11 @@ TEST_CASE("dimension cache refreshes for transform selection replacement and geo
     woby::setSelectedObjectProperty(state, woby::UiObjectProperty::scale, 2);
     REQUIRE(update());
     CHECK(cache.dimensions->lengths[0] == doctest::Approx(8));
-    state.files[0].mesh.vertices[1].position[0] = 7;
+    editMeshGeometry(state.files[0].mesh).vertices[1].position[0] = 7;
     woby::notifySceneEdit(state);
     REQUIRE(update());
     CHECK(cache.dimensions->lengths[0] == doctest::Approx(14));
-    state.files[0].mesh.vertices[1].position[0] = 5;
+    editMeshGeometry(state.files[0].mesh).vertices[1].position[0] = 5;
     ++state.sceneGeneration;
     REQUIRE(update());
     CHECK(cache.dimensions->lengths[0] == doctest::Approx(10));
@@ -140,7 +140,7 @@ TEST_CASE("dimensions reject unusable geometry and nonfinite transforms")
     auto parts = woby::scenePickParts(state);
     SUBCASE("out of range index interval") { parts[0].indexOffset = 1000; }
     SUBCASE("empty interval") { parts[0].indexCount = 0; }
-    SUBCASE("invalid vertex references") { state.files[0].mesh.indices = {99, 99, 99}; }
+    SUBCASE("invalid vertex references") { editMeshGeometry(state.files[0].mesh).indices = {99, 99, 99}; }
     SUBCASE("invalid transform") { parts[0].model[0] = std::numeric_limits<float>::infinity(); }
     CHECK_FALSE(woby::sceneDimensions(parts));
 }

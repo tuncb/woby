@@ -25,11 +25,11 @@ struct InspectorFixture {
     explicit InspectorFixture(size_t groups = 2) {
         std::filesystem::create_directory(root);
         Mesh mesh;
-        mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-        mesh.bounds = calculateBounds(mesh.vertices);
+        editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+        mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
         for (size_t i = 0; i < groups; ++i) {
-            mesh.nodes.push_back({"part" + std::to_string(i), static_cast<uint32_t>(mesh.indices.size()), 3});
-            mesh.indices.insert(mesh.indices.end(), {0, 1, 2});
+            editMeshGeometry(mesh).nodes.push_back({"part" + std::to_string(i), static_cast<uint32_t>(meshGeometry(mesh).indices.size()), 3});
+            editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {0, 1, 2});
         }
         state.files.push_back(createUiFileState(root / "source.obj", std::move(mesh), 0));
         appendFolderTreeSceneNode(state, root, 0, 1);
@@ -167,9 +167,9 @@ TEST_CASE("analysis inspector invalidates membership transforms names geometry a
         CHECK(f.queries().signature == signature);
     }
     SUBCASE("equal sized replacement geometry") {
-        auto replacement = f.state.files[0].mesh.vertices;
+        auto replacement = meshGeometry(f.state.files[0].mesh).vertices;
         replacement[0].position[0] = 3;
-        f.state.files[0].mesh.vertices = std::move(replacement);
+        editMeshGeometry(f.state.files[0].mesh).vertices = std::move(replacement);
         renewMeshContentRevision(f.state.files[0].mesh);
         notifySceneEdit(f.state);
         CHECK(f.queries().signature != signature);

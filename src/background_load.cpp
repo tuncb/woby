@@ -179,8 +179,8 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
             spdlog::info(
                 "perf model_cpu_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} total_ms={}",
                 modelPath.string(),
-                file.mesh.vertices.size(),
-                file.mesh.indices.size() / 3u,
+                meshGeometry(file.mesh).vertices.size(),
+                meshGeometry(file.mesh).indices.size() / 3u,
                 file.groupSettings.size(),
                 parsed.parseMilliseconds,
                 millisecondsBetween(totalStart, PerformanceClock::now()));
@@ -268,8 +268,8 @@ SceneCpuLoadResult loadSceneCpu(
             "perf scene_model_cpu_load scene=\"{}\" path=\"{}\" vertices={} triangles={} groups={} duration_ms={}",
             scenePath.string(),
             modelPath.string(),
-            file.mesh.vertices.size(),
-            file.mesh.indices.size() / 3u,
+            meshGeometry(file.mesh).vertices.size(),
+            meshGeometry(file.mesh).indices.size() / 3u,
             file.groupSettings.size(),
             millisecondsBetween(loadStart, PerformanceClock::now()));
         result.files.push_back(std::move(file));

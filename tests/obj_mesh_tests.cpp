@@ -51,7 +51,7 @@ void writeText(const std::filesystem::path& path, const char* text)
 
 bool containsTexcoord(const woby::Mesh& mesh, float u, float v)
 {
-    return std::any_of(mesh.vertices.begin(), mesh.vertices.end(), [u, v](const woby::Vertex& vertex) {
+    return std::any_of(meshGeometry(mesh).vertices.begin(), meshGeometry(mesh).vertices.end(), [u, v](const woby::Vertex& vertex) {
         return vertex.texcoord[0] == doctest::Approx(u)
             && vertex.texcoord[1] == doctest::Approx(v);
     });
@@ -155,7 +155,7 @@ TEST_CASE("OBJ loading can cancel after parsing before coordinate and mesh expan
     CHECK(loaded.canceled);
     CHECK(woby::empty(loaded.mesh));
     CHECK(stages == std::vector<woby::ModelLoadStage>{woby::ModelLoadStage::reading});
-    CHECK(woby::loadModel(path).mesh.vertices.size() == 3);
+    CHECK(meshGeometry(woby::loadModel(path).mesh).vertices.size() == 3);
 }
 
 TEST_CASE("OBJ cloud preflight counts position rows without retaining coordinates")
@@ -264,22 +264,22 @@ TEST_CASE("OBJ text import shares polygon construction with file import")
     writeText(path, text);
     const auto fileMesh = woby::loadObjMesh(path);
     const auto memoryMesh = woby::loadObjMeshText(text);
-    REQUIRE(memoryMesh.vertices.size() == 4);
-    REQUIRE(memoryMesh.indices.size() == 6);
-    CHECK(memoryMesh.indices == fileMesh.indices);
+    REQUIRE(meshGeometry(memoryMesh).vertices.size() == 4);
+    REQUIRE(meshGeometry(memoryMesh).indices.size() == 6);
+    CHECK(meshGeometry(memoryMesh).indices == meshGeometry(fileMesh).indices);
     CHECK(memoryMesh.origin == fileMesh.origin);
     CHECK(memoryMesh.origin[0] == 1000000001.0);
-    CHECK(memoryMesh.precisePositions == fileMesh.precisePositions);
+    CHECK(meshGeometry(memoryMesh).precisePositions == meshGeometry(fileMesh).precisePositions);
     REQUIRE(memoryMesh.sourceData);
     CHECK(memoryMesh.sourceData->points == fileMesh.sourceData->points);
     CHECK(memoryMesh.sourceData->indices == fileMesh.sourceData->indices);
-    REQUIRE(memoryMesh.nodes.size() == 1);
-    CHECK(memoryMesh.nodes[0].name == "rebased_quad");
-    for (size_t i = 0; i < memoryMesh.vertices.size(); ++i) {
-        CHECK(memoryMesh.vertices[i].position == fileMesh.vertices[i].position);
-        CHECK(memoryMesh.vertices[i].normal == fileMesh.vertices[i].normal);
-        CHECK(memoryMesh.vertices[i].texcoord == fileMesh.vertices[i].texcoord);
-        CHECK(woby::validNormal(memoryMesh.vertices[i].normal));
+    REQUIRE(meshGeometry(memoryMesh).nodes.size() == 1);
+    CHECK(meshGeometry(memoryMesh).nodes[0].name == "rebased_quad");
+    for (size_t i = 0; i < meshGeometry(memoryMesh).vertices.size(); ++i) {
+        CHECK(meshGeometry(memoryMesh).vertices[i].position == meshGeometry(fileMesh).vertices[i].position);
+        CHECK(meshGeometry(memoryMesh).vertices[i].normal == meshGeometry(fileMesh).vertices[i].normal);
+        CHECK(meshGeometry(memoryMesh).vertices[i].texcoord == meshGeometry(fileMesh).vertices[i].texcoord);
+        CHECK(woby::validNormal(meshGeometry(memoryMesh).vertices[i].normal));
     }
 }
 
@@ -300,8 +300,8 @@ TEST_CASE("large OBJ parser failures preserve subsequent valid imports")
     for (int repeat = 0; repeat < 3; ++repeat) {
         CHECK_THROWS_AS(loadObjAndDiscard(path), std::runtime_error);
         const auto mesh = woby::loadObjMesh(validPath);
-        CHECK(mesh.vertices.size() == 3);
-        CHECK(mesh.indices.size() == 3);
+        CHECK(meshGeometry(mesh).vertices.size() == 3);
+        CHECK(meshGeometry(mesh).indices.size() == 3);
     }
 }
 
@@ -332,17 +332,17 @@ TEST_CASE("OBJ loader creates one mesh node per shape")
 
     const woby::Mesh mesh = woby::loadObjMesh(path);
 
-    REQUIRE(mesh.nodes.size() == 2u);
-    CHECK(mesh.nodes[0].name == "base");
-    CHECK(mesh.nodes[0].indexOffset == 0u);
-    CHECK(mesh.nodes[0].indexCount == 3u);
-    CHECK(mesh.nodes[1].name == "raised");
-    CHECK(mesh.nodes[1].indexOffset == 3u);
-    CHECK(mesh.nodes[1].indexCount == 3u);
-    CHECK(mesh.indices.size() == 6u);
+    REQUIRE(meshGeometry(mesh).nodes.size() == 2u);
+    CHECK(meshGeometry(mesh).nodes[0].name == "base");
+    CHECK(meshGeometry(mesh).nodes[0].indexOffset == 0u);
+    CHECK(meshGeometry(mesh).nodes[0].indexCount == 3u);
+    CHECK(meshGeometry(mesh).nodes[1].name == "raised");
+    CHECK(meshGeometry(mesh).nodes[1].indexOffset == 3u);
+    CHECK(meshGeometry(mesh).nodes[1].indexCount == 3u);
+    CHECK(meshGeometry(mesh).indices.size() == 6u);
     CHECK(mesh.bounds.min[2] == doctest::Approx(0.0f));
     CHECK(mesh.bounds.max[2] == doctest::Approx(1.0f));
-    for (const auto& vertex : mesh.vertices) {
+    for (const auto& vertex : meshGeometry(mesh).vertices) {
         CHECK(woby::validNormal(vertex.normal));
     }
 
@@ -367,11 +367,11 @@ TEST_CASE("OBJ loader preserves texcoords with flipped V")
 
     const woby::Mesh mesh = woby::loadModelMesh(path);
 
-    REQUIRE(mesh.vertices.size() == 3u);
+    REQUIRE(meshGeometry(mesh).vertices.size() == 3u);
     CHECK(containsTexcoord(mesh, 0.25f, 0.75f));
     CHECK(containsTexcoord(mesh, 0.50f, 0.25f));
     CHECK(containsTexcoord(mesh, 1.00f, 1.00f));
-    for (const auto& vertex : mesh.vertices) {
+    for (const auto& vertex : meshGeometry(mesh).vertices) {
         CHECK(vertex.normal[2] == doctest::Approx(1.0f));
     }
 
@@ -391,11 +391,11 @@ TEST_CASE("OBJ loader accepts vertex-only point clouds")
 
     const auto mesh = woby::loadObjMesh(path);
     CHECK_FALSE(woby::empty(mesh));
-    CHECK(mesh.indices.empty());
-    CHECK(mesh.lineIndices.empty());
-    CHECK(mesh.pointIndices == std::vector<uint32_t>{0, 1, 2});
-    REQUIRE(mesh.nodes.size() == 1);
-    CHECK(mesh.nodes[0].pointIndexCount == 3);
+    CHECK(meshGeometry(mesh).indices.empty());
+    CHECK(meshGeometry(mesh).lineIndices.empty());
+    CHECK(meshGeometry(mesh).pointIndices == std::vector<uint32_t>{0, 1, 2});
+    REQUIRE(meshGeometry(mesh).nodes.size() == 1);
+    CHECK(meshGeometry(mesh).nodes[0].pointIndexCount == 3);
     CHECK(mesh.sourceData->indices.empty());
     CHECK(mesh.bounds.max == std::array<float, 3>{1, 1, 0});
 
@@ -409,11 +409,11 @@ TEST_CASE("OBJ UV availability distinguishes supplied zero coordinates from miss
         "g complete\nf 1/1 2/1 3/1\ng missing\nf 1 2 3\n"
         "g partial\nf 1/1 2/1 3\ng reused\nf 1/1 2/1 3/1\n");
     const auto mesh = woby::loadObjMesh(path);
-    REQUIRE(mesh.nodes.size() == 4);
-    CHECK(mesh.nodes[0].hasTexcoords);
-    CHECK_FALSE(mesh.nodes[1].hasTexcoords);
-    CHECK_FALSE(mesh.nodes[2].hasTexcoords);
-    CHECK(mesh.nodes[3].hasTexcoords);
+    REQUIRE(meshGeometry(mesh).nodes.size() == 4);
+    CHECK(meshGeometry(mesh).nodes[0].hasTexcoords);
+    CHECK_FALSE(meshGeometry(mesh).nodes[1].hasTexcoords);
+    CHECK_FALSE(meshGeometry(mesh).nodes[2].hasTexcoords);
+    CHECK(meshGeometry(mesh).nodes[3].hasTexcoords);
 }
 
 TEST_CASE("OBJ dense indexing grows across many seams without merging source identities")
@@ -434,16 +434,16 @@ TEST_CASE("OBJ dense indexing grows across many seams without merging source ide
         file << "o repeat\nf 1//1 2//1 3//1\n";
     }
     const auto loaded = woby::loadObjMesh(path);
-    REQUIRE(loaded.vertices.size() == 240);
-    REQUIRE(loaded.indices.size() == 243);
+    REQUIRE(meshGeometry(loaded).vertices.size() == 240);
+    REQUIRE(meshGeometry(loaded).indices.size() == 243);
     REQUIRE(loaded.sourceData);
     CHECK(loaded.sourceData->points.size() == (sparse ? 1003u : 3u));
-    REQUIRE(loaded.sourceData->indices.size() == loaded.indices.size());
-    for (size_t i = 0; i < loaded.indices.size(); ++i) {
+    REQUIRE(loaded.sourceData->indices.size() == meshGeometry(loaded).indices.size());
+    for (size_t i = 0; i < meshGeometry(loaded).indices.size(); ++i) {
         CHECK(loaded.sourceData->indices[i] == i % 3);
-        CHECK(loaded.vertices[loaded.indices[i]].normal[0] == static_cast<float>((i / 3) % 80));
+        CHECK(meshGeometry(loaded).vertices[meshGeometry(loaded).indices[i]].normal[0] == static_cast<float>((i / 3) % 80));
     }
-    CHECK(loaded.indices[0] == loaded.indices[240]);
+    CHECK(meshGeometry(loaded).indices[0] == meshGeometry(loaded).indices[240]);
 }
 
 TEST_CASE("OBJ capacity estimates preserve seam vertices and reuse references across shapes")
@@ -460,21 +460,21 @@ TEST_CASE("OBJ capacity estimates preserve seam vertices and reuse references ac
         "o repeated\nf 1/1/1 2/2/1 3/3/1\n");
 
     const auto mesh = woby::loadObjMesh(path);
-    REQUIRE(mesh.vertices.size() == 6u);
-    REQUIRE(mesh.indices.size() == 9u);
-    REQUIRE(mesh.nodes.size() == 3u);
-    CHECK(mesh.nodes[0].name == "front");
-    CHECK(mesh.nodes[1].name == "back");
-    CHECK(mesh.nodes[2].name == "repeated");
+    REQUIRE(meshGeometry(mesh).vertices.size() == 6u);
+    REQUIRE(meshGeometry(mesh).indices.size() == 9u);
+    REQUIRE(meshGeometry(mesh).nodes.size() == 3u);
+    CHECK(meshGeometry(mesh).nodes[0].name == "front");
+    CHECK(meshGeometry(mesh).nodes[1].name == "back");
+    CHECK(meshGeometry(mesh).nodes[2].name == "repeated");
     for (size_t i = 0; i < 3u; ++i) {
-        CHECK(mesh.nodes[i].indexOffset == i * 3u);
-        CHECK(mesh.nodes[i].indexCount == 3u);
-        CHECK(mesh.indices[i] == mesh.indices[i + 6u]);
-        CHECK(mesh.vertices[mesh.indices[i]].normal[2] == 1.0f);
-        CHECK(mesh.vertices[mesh.indices[i + 3u]].normal[2] == -1.0f);
+        CHECK(meshGeometry(mesh).nodes[i].indexOffset == i * 3u);
+        CHECK(meshGeometry(mesh).nodes[i].indexCount == 3u);
+        CHECK(meshGeometry(mesh).indices[i] == meshGeometry(mesh).indices[i + 6u]);
+        CHECK(meshGeometry(mesh).vertices[meshGeometry(mesh).indices[i]].normal[2] == 1.0f);
+        CHECK(meshGeometry(mesh).vertices[meshGeometry(mesh).indices[i + 3u]].normal[2] == -1.0f);
     }
-    const auto& front = mesh.vertices[mesh.indices[0]];
-    const auto& back = mesh.vertices[mesh.indices[3]];
+    const auto& front = meshGeometry(mesh).vertices[meshGeometry(mesh).indices[0]];
+    const auto& back = meshGeometry(mesh).vertices[meshGeometry(mesh).indices[3]];
     CHECK(front.position == back.position);
     CHECK(front.texcoord == std::array<float, 2>{0.0f, 1.0f});
     CHECK(back.texcoord == std::array<float, 2>{0.25f, 0.75f});
@@ -496,23 +496,23 @@ TEST_CASE("OBJ loader retains identical values with distinct source indices and 
 
     const auto mesh = woby::loadObjMesh(path);
 
-    REQUIRE(mesh.vertices.size() == 4u);
-    CHECK(mesh.indices == std::vector<uint32_t>{0, 1, 2, 3, 1, 2, 0, 1, 2});
-    CHECK(mesh.vertices[0].position == mesh.vertices[3].position);
-    CHECK(mesh.vertices[0].normal == mesh.vertices[3].normal);
-    CHECK(mesh.vertices[0].texcoord == mesh.vertices[3].texcoord);
-    CHECK(mesh.vertices[0].normal == std::array<float, 3>{0, 0, 1});
-    CHECK(mesh.vertices[0].texcoord == std::array<float, 2>{0, 1});
-    REQUIRE(mesh.nodes.size() == 3u);
-    CHECK(mesh.nodes[1].name == "duplicate");
-    CHECK(mesh.nodes[2].name == "repeated");
-    for (size_t i = 0; i < mesh.nodes.size(); ++i) {
-        CHECK(mesh.nodes[i].indexOffset == i * 3u);
-        CHECK(mesh.nodes[i].indexCount == 3u);
+    REQUIRE(meshGeometry(mesh).vertices.size() == 4u);
+    CHECK(meshGeometry(mesh).indices == std::vector<uint32_t>{0, 1, 2, 3, 1, 2, 0, 1, 2});
+    CHECK(meshGeometry(mesh).vertices[0].position == meshGeometry(mesh).vertices[3].position);
+    CHECK(meshGeometry(mesh).vertices[0].normal == meshGeometry(mesh).vertices[3].normal);
+    CHECK(meshGeometry(mesh).vertices[0].texcoord == meshGeometry(mesh).vertices[3].texcoord);
+    CHECK(meshGeometry(mesh).vertices[0].normal == std::array<float, 3>{0, 0, 1});
+    CHECK(meshGeometry(mesh).vertices[0].texcoord == std::array<float, 2>{0, 1});
+    REQUIRE(meshGeometry(mesh).nodes.size() == 3u);
+    CHECK(meshGeometry(mesh).nodes[1].name == "duplicate");
+    CHECK(meshGeometry(mesh).nodes[2].name == "repeated");
+    for (size_t i = 0; i < meshGeometry(mesh).nodes.size(); ++i) {
+        CHECK(meshGeometry(mesh).nodes[i].indexOffset == i * 3u);
+        CHECK(meshGeometry(mesh).nodes[i].indexCount == 3u);
     }
     REQUIRE(mesh.sourceData);
     CHECK(mesh.sourceData->points.size() == 4u);
-    CHECK(mesh.sourceData->indices == mesh.indices);
+    CHECK(mesh.sourceData->indices == meshGeometry(mesh).indices);
 }
 
 TEST_CASE("OBJ loader triangulates polygons while preserving area and winding")
@@ -547,15 +547,15 @@ TEST_CASE("OBJ loader triangulates polygons while preserving area and winding")
     writeText(path, text.c_str());
 
     const auto mesh = woby::loadObjMesh(path);
-    REQUIRE(mesh.indices.size() == 9u);
-    REQUIRE(mesh.nodes.size() == 1u);
-    CHECK(mesh.nodes[0].name == "concave");
-    CHECK(mesh.nodes[0].indexCount == 9u);
+    REQUIRE(meshGeometry(mesh).indices.size() == 9u);
+    REQUIRE(meshGeometry(mesh).nodes.size() == 1u);
+    CHECK(meshGeometry(mesh).nodes[0].name == "concave");
+    CHECK(meshGeometry(mesh).nodes[0].indexCount == 9u);
     float area = 0.0f;
-    for (size_t i = 0; i < mesh.indices.size(); i += 3u) {
-        const auto& a = mesh.vertices.at(mesh.indices[i]).position;
-        const auto& b = mesh.vertices.at(mesh.indices[i + 1u]).position;
-        const auto& c = mesh.vertices.at(mesh.indices[i + 2u]).position;
+    for (size_t i = 0; i < meshGeometry(mesh).indices.size(); i += 3u) {
+        const auto& a = meshGeometry(mesh).vertices.at(meshGeometry(mesh).indices[i]).position;
+        const auto& b = meshGeometry(mesh).vertices.at(meshGeometry(mesh).indices[i + 1u]).position;
+        const auto& c = meshGeometry(mesh).vertices.at(meshGeometry(mesh).indices[i + 2u]).position;
         const float signedArea = 0.5f * ((b[u] - a[u]) * (c[v] - a[v])
             - (b[v] - a[v]) * (c[u] - a[u]));
         CHECK(signedArea * winding > 0.0f);
@@ -575,15 +575,15 @@ TEST_CASE("OBJ loader resolves negative position normal and UV indices")
         "g relative\nf -3/-3/-1 -1/-1/-1 -2/-2/-1\n");
 
     const auto mesh = woby::loadObjMesh(path);
-    REQUIRE(mesh.vertices.size() == 3u);
-    REQUIRE(mesh.indices.size() == 3u);
-    REQUIRE(mesh.nodes.size() == 1u);
-    CHECK(mesh.nodes[0].name == "relative");
+    REQUIRE(meshGeometry(mesh).vertices.size() == 3u);
+    REQUIRE(meshGeometry(mesh).indices.size() == 3u);
+    REQUIRE(meshGeometry(mesh).nodes.size() == 1u);
+    CHECK(meshGeometry(mesh).nodes[0].name == "relative");
     CHECK(containsTexcoord(mesh, 0.25f, 0.25f));
     CHECK(containsTexcoord(mesh, 0.5f, 0.5f));
     CHECK(containsTexcoord(mesh, 1.0f, 1.0f));
     CHECK(mesh.bounds.max == std::array<float, 3>{2.0f, 2.0f, 0.0f});
-    for (const auto& vertex : mesh.vertices) {
+    for (const auto& vertex : meshGeometry(mesh).vertices) {
         CHECK(vertex.normal[2] == doctest::Approx(-1.0f));
     }
 }
@@ -597,10 +597,10 @@ TEST_CASE("OBJ loader imports geometry when a material library is missing")
         "v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nf 1 2 3 4\n");
 
     const auto mesh = woby::loadObjMesh(path);
-    CHECK(mesh.vertices.size() == 4u);
-    CHECK(mesh.indices.size() == 6u);
-    REQUIRE(mesh.nodes.size() == 1u);
-    CHECK(mesh.nodes[0].name == "shape 1");
+    CHECK(meshGeometry(mesh).vertices.size() == 4u);
+    CHECK(meshGeometry(mesh).indices.size() == 6u);
+    REQUIRE(meshGeometry(mesh).nodes.size() == 1u);
+    CHECK(meshGeometry(mesh).nodes[0].name == "shape 1");
 }
 
 TEST_CASE("OBJ loader rejects invalid face indices")
@@ -649,11 +649,11 @@ TEST_CASE("buffered OBJ reads preserve optional materials beside the model indep
     writeText(path, "mtllib local.mtl\nusemtl named\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
     SUBCASE("valid adjacent material") {
         writeText(folder / "local.mtl", "newmtl named\nKd 1 0 0\n");
-        CHECK(woby::loadObjMesh(path).indices.size() == 3);
+        CHECK(meshGeometry(woby::loadObjMesh(path)).indices.size() == 3);
     }
     SUBCASE("malformed optional material does not block geometry") {
         writeText(folder / "local.mtl", "newmtl named\nKd broken 0 0\n");
-        CHECK(woby::loadObjMesh(path).indices.size() == 3);
+        CHECK(meshGeometry(woby::loadObjMesh(path)).indices.size() == 3);
     }
 }
 
@@ -670,13 +670,13 @@ TEST_CASE("small buffered and large parallel OBJ reads preserve the same geometr
         for (int i = 0; i < 1100; ++i) { file << padding; }
     }
     const auto a = woby::loadObjMesh(small), b = woby::loadObjMesh(large);
-    REQUIRE(a.vertices.size() == b.vertices.size());
-    CHECK(a.indices == b.indices);
+    REQUIRE(meshGeometry(a).vertices.size() == meshGeometry(b).vertices.size());
+    CHECK(meshGeometry(a).indices == meshGeometry(b).indices);
     CHECK(a.sourceData->indices == b.sourceData->indices);
-    for (size_t i = 0; i < a.vertices.size(); ++i) {
-        CHECK(a.vertices[i].position == b.vertices[i].position);
-        CHECK(a.vertices[i].normal == b.vertices[i].normal);
-        CHECK(a.vertices[i].texcoord == b.vertices[i].texcoord);
+    for (size_t i = 0; i < meshGeometry(a).vertices.size(); ++i) {
+        CHECK(meshGeometry(a).vertices[i].position == meshGeometry(b).vertices[i].position);
+        CHECK(meshGeometry(a).vertices[i].normal == meshGeometry(b).vertices[i].normal);
+        CHECK(meshGeometry(a).vertices[i].texcoord == meshGeometry(b).vertices[i].texcoord);
     }
 }
 
@@ -686,7 +686,7 @@ TEST_CASE("OBJ loader supports Unicode filenames")
     const auto path = fixture.path / std::filesystem::path(u8"model_\u6a21\u578b.obj");
     writeText(path, "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
     const auto mesh = woby::loadObjMesh(path);
-    CHECK(mesh.indices.size() == 3u);
+    CHECK(meshGeometry(mesh).indices.size() == 3u);
 }
 
 TEST_CASE("OBJ position lookup preserves first use across shapes and unused positions")
@@ -714,14 +714,14 @@ TEST_CASE("OBJ position lookup preserves first use across shapes and unused posi
     CHECK(sizeof(mesh.sourceData->points[0]) == 3 * sizeof(double));
     CHECK(mesh.sourceData->points.size() == (sparse ? 104u : 4u));
     CHECK(mesh.sourceData->indices == std::vector<uint32_t>{3,1,2,2,1,3});
-    CHECK(mesh.indices == std::vector<uint32_t>{0,1,2,2,1,0});
-    REQUIRE(mesh.vertices.size() == 3);
-    CHECK(mesh.vertices[0].position == std::array<float,3>{0,0,0});
-    CHECK(mesh.vertices[1].position == std::array<float,3>{1,0,0});
-    CHECK(mesh.vertices[2].position == std::array<float,3>{0,1,0});
-    REQUIRE(mesh.nodes.size() == 2);
-    CHECK(mesh.nodes[1].indexOffset == 3);
-    CHECK(mesh.nodes[1].indexCount == 3);
+    CHECK(meshGeometry(mesh).indices == std::vector<uint32_t>{0,1,2,2,1,0});
+    REQUIRE(meshGeometry(mesh).vertices.size() == 3);
+    CHECK(meshGeometry(mesh).vertices[0].position == std::array<float,3>{0,0,0});
+    CHECK(meshGeometry(mesh).vertices[1].position == std::array<float,3>{1,0,0});
+    CHECK(meshGeometry(mesh).vertices[2].position == std::array<float,3>{0,1,0});
+    REQUIRE(meshGeometry(mesh).nodes.size() == 2);
+    CHECK(meshGeometry(mesh).nodes[1].indexOffset == 3);
+    CHECK(meshGeometry(mesh).nodes[1].indexCount == 3);
 }
 
 TEST_CASE("OBJ errors preserve Unicode filenames")
@@ -748,16 +748,16 @@ TEST_CASE("OBJ polylines preserve connectivity negative indices and separate gro
         "g boundary\nl 1/1 2/2 3/1\nl -1 -4\ng diagonal\nl 2 4\n");
     const auto mesh = woby::loadObjMesh(path);
     CHECK_FALSE(woby::empty(mesh));
-    CHECK(mesh.indices.empty());
-    CHECK(mesh.pointIndices.empty());
-    CHECK(mesh.lineIndices == std::vector<uint32_t>{0,1,1,2,3,0,1,3});
-    REQUIRE(mesh.nodes.size() == 2);
-    CHECK(mesh.nodes[0].name == "boundary");
-    CHECK(mesh.nodes[0].lineIndexCount == 6);
-    CHECK(mesh.nodes[1].name == "diagonal");
-    CHECK(mesh.nodes[1].lineIndexOffset == 6);
-    CHECK(mesh.nodes[1].lineIndexCount == 2);
-    CHECK_FALSE(mesh.nodes[0].hasTexcoords);
+    CHECK(meshGeometry(mesh).indices.empty());
+    CHECK(meshGeometry(mesh).pointIndices.empty());
+    CHECK(meshGeometry(mesh).lineIndices == std::vector<uint32_t>{0,1,1,2,3,0,1,3});
+    REQUIRE(meshGeometry(mesh).nodes.size() == 2);
+    CHECK(meshGeometry(mesh).nodes[0].name == "boundary");
+    CHECK(meshGeometry(mesh).nodes[0].lineIndexCount == 6);
+    CHECK(meshGeometry(mesh).nodes[1].name == "diagonal");
+    CHECK(meshGeometry(mesh).nodes[1].lineIndexOffset == 6);
+    CHECK(meshGeometry(mesh).nodes[1].lineIndexCount == 2);
+    CHECK_FALSE(meshGeometry(mesh).nodes[0].hasTexcoords);
     CHECK(mesh.sourceData->indices.empty());
     CHECK(woby::originalMeshBounds(mesh)[1] == woby::Coordinate{2,3,0});
 }
@@ -769,15 +769,15 @@ TEST_CASE("OBJ points select explicit vertices and preserve source coordinates")
     writeText(path, "v 1000000000 0 0\nv 1000000000.125 1 0\nv 1000000005 9 0\n"
         "g samples\np 2 -3\ng shared\np 1\n");
     const auto mesh = woby::loadObjMesh(path);
-    REQUIRE(mesh.nodes.size() == 2);
-    CHECK(mesh.nodes[0].name == "samples");
-    CHECK(mesh.nodes[0].pointIndexCount == 2);
-    CHECK(mesh.nodes[1].pointIndexOffset == 2);
-    CHECK(mesh.pointIndices == std::vector<uint32_t>{0,1,1});
-    CHECK(mesh.vertices.size() == 2);
+    REQUIRE(meshGeometry(mesh).nodes.size() == 2);
+    CHECK(meshGeometry(mesh).nodes[0].name == "samples");
+    CHECK(meshGeometry(mesh).nodes[0].pointIndexCount == 2);
+    CHECK(meshGeometry(mesh).nodes[1].pointIndexOffset == 2);
+    CHECK(meshGeometry(mesh).pointIndices == std::vector<uint32_t>{0,1,1});
+    CHECK(meshGeometry(mesh).vertices.size() == 2);
     CHECK(mesh.sourceData->points.size() == 3);
     CHECK(woby::originalMeshBounds(mesh)[1] == woby::Coordinate{1000000000.125,1,0});
-    CHECK(woby::originalMeshBounds(mesh, &mesh.nodes[1])[0] == woby::Coordinate{1000000000,0,0});
+    CHECK(woby::originalMeshBounds(mesh, &meshGeometry(mesh).nodes[1])[0] == woby::Coordinate{1000000000,0,0});
 }
 
 TEST_CASE("Mixed OBJ keeps face groups first and preserves normals and triangle provenance")
@@ -788,18 +788,18 @@ TEST_CASE("Mixed OBJ keeps face groups first and preserves normals and triangle 
         "vn 0 1 0\ng mixed\nf 1//1 2//1 3//1\nl 1 4\np 4\n"
         "g mixed (lines)\nf 1//1 2//1 3//1\n");
     const auto mesh = woby::loadObjMesh(path);
-    REQUIRE(mesh.nodes.size() == 4);
-    CHECK(mesh.nodes[0].name == "mixed");
-    CHECK(mesh.nodes[1].name == "mixed (lines)");
-    CHECK(mesh.nodes[2].name == "mixed (lines) (2)");
-    CHECK(mesh.nodes[3].name == "mixed (points)");
-    CHECK(mesh.indices.size() == 6);
-    CHECK(mesh.lineIndices.size() == 2);
-    CHECK(mesh.pointIndices.size() == 1);
-    CHECK(mesh.nodes[2].indexCount == 0);
-    CHECK(mesh.nodes[3].indexCount == 0);
+    REQUIRE(meshGeometry(mesh).nodes.size() == 4);
+    CHECK(meshGeometry(mesh).nodes[0].name == "mixed");
+    CHECK(meshGeometry(mesh).nodes[1].name == "mixed (lines)");
+    CHECK(meshGeometry(mesh).nodes[2].name == "mixed (lines) (2)");
+    CHECK(meshGeometry(mesh).nodes[3].name == "mixed (points)");
+    CHECK(meshGeometry(mesh).indices.size() == 6);
+    CHECK(meshGeometry(mesh).lineIndices.size() == 2);
+    CHECK(meshGeometry(mesh).pointIndices.size() == 1);
+    CHECK(meshGeometry(mesh).nodes[2].indexCount == 0);
+    CHECK(meshGeometry(mesh).nodes[3].indexCount == 0);
     CHECK(mesh.sourceData->indices == std::vector<uint32_t>{0,1,2,0,1,2});
-    for (const auto i : mesh.indices) { CHECK(mesh.vertices[i].normal == std::array<float,3>{0,1,0}); }
+    for (const auto i : meshGeometry(mesh).indices) { CHECK(meshGeometry(mesh).vertices[i].normal == std::array<float,3>{0,1,0}); }
     CHECK(mesh.bounds.max == std::array<float,3>{2,2,0});
 }
 

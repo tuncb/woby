@@ -14,10 +14,10 @@ woby::Mesh pointMesh(uint32_t count) {
     woby::Mesh mesh;
     for (uint32_t i=0;i<count;++i) {
         woby::Vertex vertex; vertex.position={float((i*37u)%101)/50-.98f,float((i*59u)%97)/48-.99f,float((i*11u)%83)/100+.1f};
-        mesh.vertices.push_back(vertex); mesh.pointIndices.push_back(i);
+        editMeshGeometry(mesh).vertices.push_back(vertex); editMeshGeometry(mesh).pointIndices.push_back(i);
     }
-    mesh.nodes.push_back({.name="points",.pointIndexCount=count});
-    if (count) mesh.bounds=woby::calculateBounds(mesh.vertices); return mesh;
+    editMeshGeometry(mesh).nodes.push_back({.name="points",.pointIndexCount=count});
+    if (count) mesh.bounds=woby::calculateBounds(meshGeometry(mesh).vertices); return mesh;
 }
 p::Pick brute(const p::Cloud& cloud,const p::Matrix& projection,uint32_t width,uint32_t height,float size,float x,float y) {
     p::Pick result;
@@ -37,18 +37,18 @@ p::Pick brute(const p::Cloud& cloud,const p::Matrix& projection,uint32_t width,u
 }
 }
 TEST_CASE("Compact cloud preserves every original ID and position across spatial order and groups") {
-    auto mesh=pointMesh(301); mesh.pointIndices.push_back(0); mesh.nodes[0].pointIndexCount=302;
-    mesh.pointIndices.push_back(0); mesh.nodes.push_back({.name="instance",.pointIndexOffset=302,.pointIndexCount=1});
+    auto mesh=pointMesh(301); editMeshGeometry(mesh).pointIndices.push_back(0); editMeshGeometry(mesh).nodes[0].pointIndexCount=302;
+    editMeshGeometry(mesh).pointIndices.push_back(0); editMeshGeometry(mesh).nodes.push_back({.name="instance",.pointIndexOffset=302,.pointIndexCount=1});
     const auto cloud=p::buildCloud(mesh,32,8);
     CHECK(cloud.points.size()==302); CHECK(cloud.roots.size()==2); CHECK(cloud.groups.size()==2);
     std::set<uint32_t> ids;
     for (const auto& point:cloud.points) {
         CHECK(ids.insert(point.id).second); REQUIRE(point.id>=1); REQUIRE(point.id<=cloud.sourceVertices.size());
-        CHECK(point.position==mesh.vertices[cloud.sourceVertices[point.id-1]].position);
+        CHECK(point.position==meshGeometry(mesh).vertices[cloud.sourceVertices[point.id-1]].position);
     }
-    for (const auto& point:cloud.proxies) CHECK(point.position==mesh.vertices[cloud.sourceVertices[point.id-1]].position);
+    for (const auto& point:cloud.proxies) CHECK(point.position==meshGeometry(mesh).vertices[cloud.sourceVertices[point.id-1]].position);
     for (const auto& node:cloud.nodes) if (!node.left) CHECK(node.count<=32);
-    mesh.vertices[0].position[0]=std::numeric_limits<float>::quiet_NaN(); CHECK_THROWS(p::buildCloud(mesh));
+    editMeshGeometry(mesh).vertices[0].position[0]=std::numeric_limits<float>::quiet_NaN(); CHECK_THROWS(p::buildCloud(mesh));
     CHECK_THROWS(p::buildCloud(pointMesh(5),1)); CHECK_THROWS(p::buildCloud(pointMesh(5),4,8));
     CHECK(p::buildCloud({}).points.empty());
 }
@@ -74,7 +74,7 @@ TEST_CASE("Point LOD is deterministic and bounded; progressive ranges visit ever
 }
 TEST_CASE("Hierarchical picking uses complete original footprints including fringe and stable equal-depth ties") {
     auto mesh=pointMesh(1400);
-    mesh.vertices[0].position={1.01f,0,.8f}; mesh.vertices[1].position=mesh.vertices[0].position;
+    editMeshGeometry(mesh).vertices[0].position={1.01f,0,.8f}; editMeshGeometry(mesh).vertices[1].position=meshGeometry(mesh).vertices[0].position;
     auto cloud=p::buildCloud(mesh,32,8);
     for (const float size:{1.0f,4.0f,8.0f,40.0f}) for (uint32_t i=0;i<100;++i) {
         const float x=float((i*43)%97)+.375f,y=float((i*19)%61)+.125f;
@@ -88,8 +88,8 @@ TEST_CASE("Hierarchical picking uses complete original footprints including frin
 }
 TEST_CASE("Point GPU full circle visibility matches independent source queries for every sample") {
     auto mesh=pointMesh(257);
-    mesh.vertices[0].position={1.015f,0,.91f}; mesh.vertices[1].position=mesh.vertices[0].position;
-    mesh.vertices[2].position={0,0,-.1f}; mesh.vertices[3].position={0,0,1.1f};
+    editMeshGeometry(mesh).vertices[0].position={1.015f,0,.91f}; editMeshGeometry(mesh).vertices[1].position=meshGeometry(mesh).vertices[0].position;
+    editMeshGeometry(mesh).vertices[2].position={0,0,-.1f}; editMeshGeometry(mesh).vertices[3].position={0,0,1.1f};
     const auto cloud=p::buildCloud(mesh,16,4); const auto full=p::allPoints(cloud);
     const std::array<std::array<float,2>,4> offsets{{{.375f,.125f},{.875f,.375f},{.125f,.625f},{.625f,.875f}}};
     for (const uint32_t samples:{1u,4u}) {
@@ -113,8 +113,8 @@ TEST_CASE("Point GPU full circle visibility matches independent source queries f
 }
 TEST_CASE("Point GPU refinement converges exactly and camera style and group changes invalidate accumulation") {
     auto mesh=o::fixtureMesh();
-    woby::Vertex rear; rear.position={.415f,0,.3f}; rear.normal={0,0,1}; mesh.vertices.push_back(rear); mesh.pointIndices={7};
-    mesh.nodes.push_back({.name="rear fringe",.pointIndexCount=1});
+    woby::Vertex rear; rear.position={.415f,0,.3f}; rear.normal={0,0,1}; editMeshGeometry(mesh).vertices.push_back(rear); editMeshGeometry(mesh).pointIndices={7};
+    editMeshGeometry(mesh).nodes.push_back({.name="rear fringe",.pointIndexCount=1});
     for (const uint32_t samples:{1u,4u}) {
         auto cloud=p::buildCloud(mesh,4,2); const auto full=p::allPoints(cloud);
         p::PointRenderer renderer; p::initialize(renderer,cloud,mesh,{97,61,samples,true},3);

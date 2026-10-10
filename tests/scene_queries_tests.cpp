@@ -23,12 +23,12 @@ struct QueryFixture {
     explicit QueryFixture(size_t count = 3) {
         std::filesystem::create_directory(root);
         Mesh mesh;
-        mesh.vertices = {{{-.8f,-.8f,.5f}, {}, {0,0}}, {{.8f,-.8f,.5f}, {}, {1,0}}, {{0,.8f,.5f}, {}, {.5f,1}}};
-        mesh.bounds = calculateBounds(mesh.vertices);
+        editMeshGeometry(mesh).vertices = {{{-.8f,-.8f,.5f}, {}, {0,0}}, {{.8f,-.8f,.5f}, {}, {1,0}}, {{0,.8f,.5f}, {}, {.5f,1}}};
+        mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
         for (size_t i = 0; i < count; ++i) {
-            mesh.nodes.push_back({"part" + std::to_string(i), static_cast<uint32_t>(mesh.indices.size()), 3});
-            mesh.nodes.back().hasTexcoords = true;
-            mesh.indices.insert(mesh.indices.end(), {0,1,2});
+            editMeshGeometry(mesh).nodes.push_back({"part" + std::to_string(i), static_cast<uint32_t>(meshGeometry(mesh).indices.size()), 3});
+            editMeshGeometry(mesh).nodes.back().hasTexcoords = true;
+            editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {0,1,2});
         }
         state.files.push_back(createUiFileState(root / "model.obj", std::move(mesh), 0));
         appendFolderTreeSceneNode(state, root, 0, 1);
@@ -198,9 +198,9 @@ TEST_CASE("scene parts preserve hidden sources and selection without recomposing
 TEST_CASE("cached parts retain imported lines points and inherited transforms") {
     QueryFixture f;
     auto& mesh = f.state.files[0].mesh;
-    mesh.lineIndices = {0, 1}; mesh.pointIndices = {2};
-    mesh.nodes[1].indexCount = 0; mesh.nodes[1].lineIndexCount = 2;
-    mesh.nodes[2].indexCount = 0; mesh.nodes[2].pointIndexCount = 1;
+    editMeshGeometry(mesh).lineIndices = {0, 1}; editMeshGeometry(mesh).pointIndices = {2};
+    editMeshGeometry(mesh).nodes[1].indexCount = 0; editMeshGeometry(mesh).nodes[1].lineIndexCount = 2;
+    editMeshGeometry(mesh).nodes[2].indexCount = 0; editMeshGeometry(mesh).nodes[2].pointIndexCount = 1;
     renewMeshContentRevision(mesh); notifySceneEdit(f.state, SceneChange::geometry);
     selectSceneObject(f.state, f.part(2));
     setSelectedObjectProperty(f.state, UiObjectProperty::vertices, 1);
@@ -255,12 +255,20 @@ TEST_CASE("scene query ownership covers replacement documents equal size meshes 
         f.checkSelection();
     }
     auto& mesh = f.state.files[0].mesh;
-    const auto* storage = mesh.vertices.data();
-    mesh.vertices[1].position[0] += 3;
+    const auto* storage = meshGeometry(mesh).vertices.data();
+    editMeshGeometry(mesh).vertices[1].position[0] += 3;
     renewMeshContentRevision(mesh);
     notifySceneEdit(f.state, SceneChange::geometry);
     f.checkSelection();
-    CHECK(mesh.vertices.data() == storage);
+    CHECK(meshGeometry(mesh).vertices.data() != storage);
+    publishMeshGeometry(mesh);
+    const auto* published = meshGeometry(mesh).vertices.data();
+    const auto dimensions = f.queries.selection.dimensionBuilds;
+    renewMeshContentRevision(mesh);
+    notifySceneEdit(f.state, SceneChange::geometry);
+    f.checkSelection();
+    CHECK(meshGeometry(mesh).vertices.data() == published);
+    CHECK(f.queries.selection.dimensionBuilds > dimensions);
     const auto oldId = f.part();
     const auto document = createSceneDocument(f.state);
     auto files = f.state.files;
@@ -336,7 +344,7 @@ TEST_CASE("dimensions refresh on live analysis result publication and GPU readin
     const auto dimensions = f.queries.selection.dimensionBuilds;
     updateSceneSelectionQueries(f.queries, f.state, &comparisons);
     CHECK(f.queries.selection.dimensionBuilds == dimensions);
-    runtime.results.value.original.source.vertices[1].position[0] += 3;
+    editMeshGeometry(runtime.results.value.original.source).vertices[1].position[0] += 3;
     renewMeshContentRevision(runtime.results.value.original.source);
     ++runtime.results.revision;
     updateSceneSelectionQueries(f.queries, f.state, &comparisons);
@@ -373,7 +381,7 @@ TEST_CASE("annotation world geometry is shared and unrelated edits keep workers 
     SUBCASE("target transform") { selectSceneObject(f.state, f.part()); setSelectedObjectProperty(f.state, UiObjectProperty::translationX, 3); }
     SUBCASE("visibility") { setAllAnnotationsVisible(f.state, false); }
     SUBCASE("lock") { settings.locked = true; setAnnotationSettings(f.state, id, settings); }
-    SUBCASE("in-place same-sized geometry") { f.state.files[0].mesh.vertices[0].position[0] += 1; renewMeshContentRevision(f.state.files[0].mesh); }
+    SUBCASE("in-place same-sized geometry") { editMeshGeometry(f.state.files[0].mesh).vertices[0].position[0] += 1; renewMeshContentRevision(f.state.files[0].mesh); }
     SUBCASE("document") { ++f.state.sceneGeneration; }
     CHECK_FALSE(annotationWorkCurrent(identity, f.state, true));
 }

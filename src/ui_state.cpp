@@ -162,8 +162,8 @@ Bounds nodeBounds(const Mesh& mesh, const MeshNode& node, const ModelLoadProgres
             reportModelLoadProgress(progress, ModelLoadStage::groups, completed + index, total);
         }
         const uint32_t vertexIndex = indices[index];
-        if (vertexIndex < mesh.vertices.size()) {
-            expandBounds(bounds, mesh.vertices[vertexIndex].position);
+        if (vertexIndex < meshGeometry(mesh).vertices.size()) {
+            expandBounds(bounds, meshGeometry(mesh).vertices[vertexIndex].position);
         }
     }
 
@@ -240,7 +240,7 @@ bool validGroupIndex(const std::vector<UiFileState>& files, size_t fileIndex, si
     return validFileIndex(files, fileIndex)
         && groupIndex != invalidSceneNodeIndex
         && groupIndex < files[fileIndex].groupSettings.size()
-        && groupIndex < files[fileIndex].mesh.nodes.size();
+        && groupIndex < meshGeometry(files[fileIndex].mesh).nodes.size();
 }
 
 bool refreshFolderVisibilityRecursive(const std::vector<UiFileState>& files, UiSceneNode& node)
@@ -319,7 +319,7 @@ void expandSceneNodeBounds(
         }
 
         const auto& file = files[node.fileIndex];
-        if (!file.fileSettings.visible || (selection && file.mesh.vertices.empty())) {
+        if (!file.fileSettings.visible || (selection && meshGeometry(file.mesh).vertices.empty())) {
             return;
         }
 
@@ -328,7 +328,7 @@ void expandSceneNodeBounds(
         fileTransformMatrix(file.fileSettings, fileModel);
         woby::multiplyMatrices(model, parentModel, fileModel);
         if (node.children.empty()) {
-            const size_t groupCount = std::min(file.groupSettings.size(), file.mesh.nodes.size());
+            const size_t groupCount = std::min(file.groupSettings.size(), meshGeometry(file.mesh).nodes.size());
             for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
                 if (!file.groupSettings[groupIndex].visible
                     || (!included && !selected(file.groupSettings[groupIndex].objectId))) {
@@ -340,7 +340,7 @@ void expandSceneNodeBounds(
                 woby::multiplyMatrices(groupWorld, model, groupModel);
                 const Bounds localBounds = file.groupSettings[groupIndex].localBoundsValid
                     ? file.groupSettings[groupIndex].localBounds
-                    : nodeBounds(file.mesh, file.mesh.nodes[groupIndex]);
+                    : nodeBounds(file.mesh, meshGeometry(file.mesh).nodes[groupIndex]);
                 expandTransformedBounds(bounds, localBounds, groupWorld);
             }
             return;
@@ -368,7 +368,7 @@ void expandSceneNodeBounds(
     woby::multiplyMatrices(model, parentModel, groupModel);
     const Bounds localBounds = group.localBoundsValid
         ? group.localBounds
-        : nodeBounds(file.mesh, file.mesh.nodes[node.groupIndex]);
+        : nodeBounds(file.mesh, meshGeometry(file.mesh).nodes[node.groupIndex]);
     expandTransformedBounds(bounds, localBounds, model);
 }
 
@@ -468,15 +468,15 @@ std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColo
     const ModelLoadProgressCallback& progress)
 {
     std::vector<UiGroupState> settings;
-    settings.reserve(mesh.nodes.size());
+    settings.reserve(meshGeometry(mesh).nodes.size());
     size_t completed = 0, total = 0;
-    for (const auto& node : mesh.nodes) { total += size_t(node.indexCount) + node.lineIndexCount + node.pointIndexCount; }
+    for (const auto& node : meshGeometry(mesh).nodes) { total += size_t(node.indexCount) + node.lineIndexCount + node.pointIndexCount; }
     reportModelLoadProgress(progress, ModelLoadStage::groups, 0, total);
 
-    for (size_t groupIndex = 0; groupIndex < mesh.nodes.size(); ++groupIndex) {
+    for (size_t groupIndex = 0; groupIndex < meshGeometry(mesh).nodes.size(); ++groupIndex) {
         UiGroupState group;
         group.color = defaultGroupColor(firstColorIndex + groupIndex);
-        const auto& node = mesh.nodes[groupIndex];
+        const auto& node = meshGeometry(mesh).nodes[groupIndex];
         if (node.pointIndexCount) { group.showSolidMesh = false; group.showVertices = true; }
         setGroupVisible(group, node.defaultVisible);
         if (node.defaultColor) {
@@ -484,9 +484,9 @@ std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColo
             setGroupColor(group, {color[0], color[1], color[2], 1.0f});
             setGroupOpacity(group, color[3]);
         }
-        group.localBounds = nodeBounds(mesh, mesh.nodes[groupIndex], progress, completed, total);
+        group.localBounds = nodeBounds(mesh, meshGeometry(mesh).nodes[groupIndex], progress, completed, total);
         group.localBoundsValid = true;
-        group.originalBounds = originalMeshBounds(mesh, &mesh.nodes[groupIndex]);
+        group.originalBounds = originalMeshBounds(mesh, &meshGeometry(mesh).nodes[groupIndex]);
         group.center = group.localBounds.center;
         completed += size_t(node.indexCount) + node.lineIndexCount + node.pointIndexCount;
         settings.push_back(group);
@@ -502,6 +502,7 @@ UiFileState createUiFileState(std::filesystem::path modelPath, Mesh mesh, size_t
     UiFileState file;
     file.path = std::move(modelPath);
     file.importerId = std::move(importerId);
+    publishMeshGeometry(mesh);
     file.mesh = std::move(mesh);
     file.groupSettings = createUiGroupStates(file.mesh, firstColorIndex, progress);
     if (!file.groupSettings.empty()) {
@@ -572,7 +573,7 @@ Bounds combineBounds(const std::vector<UiFileState>& files)
             continue;
         }
 
-        const size_t groupCount = std::min(file.groupSettings.size(), file.mesh.nodes.size());
+        const size_t groupCount = std::min(file.groupSettings.size(), meshGeometry(file.mesh).nodes.size());
         for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
             float groupModel[16];
             float model[16];
@@ -580,7 +581,7 @@ Bounds combineBounds(const std::vector<UiFileState>& files)
             woby::multiplyMatrices(model, fileModel, groupModel);
             const Bounds localBounds = file.groupSettings[groupIndex].localBoundsValid
                 ? file.groupSettings[groupIndex].localBounds
-                : nodeBounds(file.mesh, file.mesh.nodes[groupIndex]);
+                : nodeBounds(file.mesh, meshGeometry(file.mesh).nodes[groupIndex]);
             expandTransformedBounds(bounds, localBounds, model);
         }
     }
@@ -615,24 +616,24 @@ UiSceneNode createFileSceneNode(const UiFileState& file, size_t fileIndex)
     fileNode.fileIndex = fileIndex;
     fileNode.children.reserve(file.groupSettings.size());
 
-    const size_t groupCount = std::min(file.groupSettings.size(), file.mesh.nodes.size());
+    const size_t groupCount = std::min(file.groupSettings.size(), meshGeometry(file.mesh).nodes.size());
     const auto makeGroup = [&](size_t groupIndex) {
         UiSceneNode groupNode;
         groupNode.kind = UiSceneNodeKind::group;
         groupNode.objectId = file.groupSettings[groupIndex].objectId;
-        groupNode.name = meshNodeDisplayName(file.mesh.nodes[groupIndex]);
+        groupNode.name = meshNodeDisplayName(meshGeometry(file.mesh).nodes[groupIndex]);
         groupNode.fileIndex = fileIndex;
         groupNode.groupIndex = groupIndex;
         return groupNode;
     };
-    if (file.mesh.hierarchy.empty()) {
+    if (meshGeometry(file.mesh).hierarchy.empty()) {
         for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
             fileNode.children.push_back(makeGroup(groupIndex));
         }
     } else {
         // Import validation guarantees a forest, parent-before-child ordering,
         // bounded depth and exactly one occurrence of each group.
-        const auto& source = file.mesh.hierarchy;
+        const auto& source = meshGeometry(file.mesh).hierarchy;
         std::vector<std::vector<size_t>> children(source.size() + 1u);
         for (size_t i = 0; i < source.size(); ++i) {
             children[source[i].parentIndex == UINT32_MAX ? source.size() : source[i].parentIndex].push_back(i);
@@ -784,11 +785,11 @@ SceneDocument createSceneDocument(const UiState& state)
     boost::unordered_flat_map<SceneObjectId, std::pair<int, int>> partLocations;
     if (!state.comparisons.empty()) {
         size_t count = 0;
-        for (const auto& file : state.files) { count += std::min(file.groupSettings.size(), file.mesh.nodes.size()); }
+        for (const auto& file : state.files) { count += std::min(file.groupSettings.size(), meshGeometry(file.mesh).nodes.size()); }
         partLocations.reserve(count);
         for (size_t f = 0; f < state.files.size(); ++f) {
             const auto& file = state.files[f];
-            for (size_t g = 0; g < std::min(file.groupSettings.size(), file.mesh.nodes.size()); ++g) {
+            for (size_t g = 0; g < std::min(file.groupSettings.size(), meshGeometry(file.mesh).nodes.size()); ++g) {
                 const auto id = file.groupSettings[g].objectId;
                 if (id != invalidSceneObjectId) {
                     partLocations.insert_or_assign(id, std::pair{static_cast<int>(f), static_cast<int>(g)});
@@ -841,12 +842,12 @@ SceneDocument createSceneDocument(const UiState& state)
         fileRecord.vertexSizeScale = file.vertexSizeScale;
         fileRecord.groups.reserve(file.groupSettings.size());
 
-        const size_t groupCount = std::min(file.groupSettings.size(), file.mesh.nodes.size());
+        const size_t groupCount = std::min(file.groupSettings.size(), meshGeometry(file.mesh).nodes.size());
         for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
             SceneGroupRecord groupRecord;
-            groupRecord.name = file.mesh.nodes[groupIndex].name;
-            groupRecord.lineGroup = file.mesh.nodes[groupIndex].lineIndexCount != 0;
-            groupRecord.pointGroup = file.mesh.nodes[groupIndex].pointIndexCount != 0;
+            groupRecord.name = meshGeometry(file.mesh).nodes[groupIndex].name;
+            groupRecord.lineGroup = meshGeometry(file.mesh).nodes[groupIndex].lineIndexCount != 0;
+            groupRecord.pointGroup = meshGeometry(file.mesh).nodes[groupIndex].pointIndexCount != 0;
             groupRecord.settings = sceneGroupSettings(file.groupSettings[groupIndex]);
             fileRecord.groups.push_back(std::move(groupRecord));
         }
@@ -871,19 +872,20 @@ void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
 {
     if (record.coordinateOrigin && file.mesh.origin != *record.coordinateOrigin) {
         rebaseMesh(file.mesh, *record.coordinateOrigin);
+        publishMeshGeometry(file.mesh);
         file.groupSettings = createUiGroupStates(file.mesh, 0);
         file.fileSettings.center = file.mesh.bounds.center;
         file.fileSettings.coordinateOffset = file.mesh.origin;
     }
     if (!record.importerId.empty() || std::any_of(record.groups.begin(), record.groups.end(),
             [](const SceneGroupRecord& group) { return group.lineGroup || group.pointGroup; })) {
-        if (record.importerId != file.importerId || record.groups.size() != file.mesh.nodes.size()) {
+        if (record.importerId != file.importerId || record.groups.size() != meshGeometry(file.mesh).nodes.size()) {
             throw std::runtime_error("Saved importer or group layout does not match the imported file.");
         }
         for (size_t i = 0; i < record.groups.size(); ++i) {
-            if (record.groups[i].name != file.mesh.nodes[i].name
-                || record.groups[i].lineGroup != (file.mesh.nodes[i].lineIndexCount != 0)
-                || record.groups[i].pointGroup != (file.mesh.nodes[i].pointIndexCount != 0)) {
+            if (record.groups[i].name != meshGeometry(file.mesh).nodes[i].name
+                || record.groups[i].lineGroup != (meshGeometry(file.mesh).nodes[i].lineIndexCount != 0)
+                || record.groups[i].pointGroup != (meshGeometry(file.mesh).nodes[i].pointIndexCount != 0)) {
                 throw std::runtime_error("Importer group order changed; cannot restore saved group settings.");
             }
         }

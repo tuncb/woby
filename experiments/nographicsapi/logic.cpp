@@ -36,14 +36,14 @@ Fixture makeFixture(Scenario scenario)
         item.objectId = file + 1;
         item.path = file == 0 ? "rear.obj" : file == 1 ? "front.obj" : "occluder.obj";
         const float depth = file == 0 ? 0.7f : file == 1 ? 0.4f : 0.2f;
-        item.mesh.vertices = {
+        editMeshGeometry(item.mesh).vertices = {
             {{0.0f, 0.0f, depth}, {0,0,1}, {}},
             {{-0.63f, -0.55f, depth}, {0,0,1}, {}},
             {{0.67f, -0.48f, depth}, {0,0,1}, {}},
             {{0.13f, 0.68f, depth}, {0,0,1}, {}},
         };
-        item.mesh.indices = {1,2,3};
-        item.mesh.nodes = {{"fixture", 0, 3}};
+        editMeshGeometry(item.mesh).indices = {1,2,3};
+        editMeshGeometry(item.mesh).nodes = {{"fixture", 0, 3}};
         UiGroupState group;
         group.objectId = file + 10;
         group.showSolidMesh = file == 2;

@@ -243,11 +243,11 @@ void findHoveredGroupVertex(
     const auto candidates=hoverCandidates(gpuMesh,nodeIndex,groupWorld,view,projection,viewportWidth,viewportHeight,
         homogeneousDepth,mouse,hoverRadius,scratch);
     for (const auto vertexIndex:candidates) {
-        if (vertexIndex >= file.mesh.vertices.size()) {
+        if (vertexIndex >= meshGeometry(file.mesh).vertices.size()) {
             continue;
         }
 
-        const auto& localPosition = file.mesh.vertices[vertexIndex].position;
+        const auto& localPosition = meshGeometry(file.mesh).vertices[vertexIndex].position;
         const auto projected = projectPosition(
             localPosition,
             groupWorld,
@@ -421,8 +421,8 @@ uint64_t hoverPickSignature(
     for (size_t fileIndex = 0; fileIndex < fileCount; ++fileIndex) {
         const auto& file = files[fileIndex];
         const auto& gpuMesh = runtimes[fileIndex].gpuMesh;
-        hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.vertices.data()));
-        hashCombine(seed, file.mesh.vertices.size());
+        hashCombine(seed, reinterpret_cast<uintptr_t>(meshGeometry(file.mesh).vertices.data()));
+        hashCombine(seed, meshGeometry(file.mesh).vertices.size());
         hashCombine(seed, reinterpret_cast<uintptr_t>(meshPointVertexIndices(gpuMesh).data()));
         hashCombine(seed, meshPointVertexIndices(gpuMesh).size());
         hashCombine(seed, gpuMesh.nodeRanges.size());
@@ -457,8 +457,8 @@ std::optional<HoveredVertex> findHoveredVertex(const UiState& state, std::span<c
         const auto candidates = hoverCandidates(gpu, part.groupIndex, part.model.data(), view.view.data(), view.projection.data(),
             view.width, view.height, view.homogeneousDepth, mouse, radius, scratch);
         for (const auto index : candidates) {
-            if (index >= part.mesh->vertices.size()) { continue; }
-            const auto& local = part.mesh->vertices[index].position;
+            if (index >= meshGeometry(*part.mesh).vertices.size()) { continue; }
+            const auto& local = meshGeometry(*part.mesh).vertices[index].position;
             const auto projected = projectPosition(local, part.model.data(), view.view.data(), view.projection.data(),
                 view.width, view.height, view.homogeneousDepth);
             if (!projected.visible) { continue; }
@@ -534,11 +534,11 @@ std::optional<HoveredVertex> findHoveredVertex(
             const auto candidates=hoverCandidates(gpuMesh,nodeIndex,model,view,projection,viewportWidth,viewportHeight,
                 homogeneousDepth,mouse,hoverRadius,scratch);
             for (const auto vertexIndex:candidates) {
-                if (vertexIndex >= file.mesh.vertices.size()) {
+                if (vertexIndex >= meshGeometry(file.mesh).vertices.size()) {
                     continue;
                 }
 
-                const auto& localPosition = file.mesh.vertices[vertexIndex].position;
+                const auto& localPosition = meshGeometry(file.mesh).vertices[vertexIndex].position;
                 const auto projected = projectPosition(
                     localPosition,
                     model,

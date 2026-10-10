@@ -29,28 +29,28 @@ struct PrototypeFixture {
 
 void sameMesh(const woby::Mesh& a, const woby::Mesh& b) {
     CHECK(a.origin == b.origin);
-    CHECK(a.precisePositions == b.precisePositions);
-    CHECK(a.indices == b.indices); CHECK(a.lineIndices == b.lineIndices); CHECK(a.pointIndices == b.pointIndices);
-    REQUIRE(a.vertices.size() == b.vertices.size());
-    for (size_t i = 0; i < a.vertices.size(); ++i) {
-        CHECK(a.vertices[i].position == b.vertices[i].position);
-        CHECK(a.vertices[i].normal == b.vertices[i].normal);
-        CHECK(a.vertices[i].texcoord == b.vertices[i].texcoord);
+    CHECK(meshGeometry(a).precisePositions == meshGeometry(b).precisePositions);
+    CHECK(meshGeometry(a).indices == meshGeometry(b).indices); CHECK(meshGeometry(a).lineIndices == meshGeometry(b).lineIndices); CHECK(meshGeometry(a).pointIndices == meshGeometry(b).pointIndices);
+    REQUIRE(meshGeometry(a).vertices.size() == meshGeometry(b).vertices.size());
+    for (size_t i = 0; i < meshGeometry(a).vertices.size(); ++i) {
+        CHECK(meshGeometry(a).vertices[i].position == meshGeometry(b).vertices[i].position);
+        CHECK(meshGeometry(a).vertices[i].normal == meshGeometry(b).vertices[i].normal);
+        CHECK(meshGeometry(a).vertices[i].texcoord == meshGeometry(b).vertices[i].texcoord);
     }
     REQUIRE(a.sourceData); REQUIRE(b.sourceData);
     CHECK(a.sourceData->points == b.sourceData->points);
     CHECK(a.sourceData->indices == b.sourceData->indices);
     CHECK(a.sourceData->originalPointIds == b.sourceData->originalPointIds);
-    REQUIRE(a.nodes.size() == b.nodes.size());
-    for (size_t i = 0; i < a.nodes.size(); ++i) {
-        CHECK(a.nodes[i].name == b.nodes[i].name);
-        CHECK(a.nodes[i].indexOffset == b.nodes[i].indexOffset);
-        CHECK(a.nodes[i].indexCount == b.nodes[i].indexCount);
-        CHECK(a.nodes[i].lineIndexOffset == b.nodes[i].lineIndexOffset);
-        CHECK(a.nodes[i].lineIndexCount == b.nodes[i].lineIndexCount);
-        CHECK(a.nodes[i].pointIndexOffset == b.nodes[i].pointIndexOffset);
-        CHECK(a.nodes[i].pointIndexCount == b.nodes[i].pointIndexCount);
-        CHECK(a.nodes[i].hasTexcoords == b.nodes[i].hasTexcoords);
+    REQUIRE(meshGeometry(a).nodes.size() == meshGeometry(b).nodes.size());
+    for (size_t i = 0; i < meshGeometry(a).nodes.size(); ++i) {
+        CHECK(meshGeometry(a).nodes[i].name == meshGeometry(b).nodes[i].name);
+        CHECK(meshGeometry(a).nodes[i].indexOffset == meshGeometry(b).nodes[i].indexOffset);
+        CHECK(meshGeometry(a).nodes[i].indexCount == meshGeometry(b).nodes[i].indexCount);
+        CHECK(meshGeometry(a).nodes[i].lineIndexOffset == meshGeometry(b).nodes[i].lineIndexOffset);
+        CHECK(meshGeometry(a).nodes[i].lineIndexCount == meshGeometry(b).nodes[i].lineIndexCount);
+        CHECK(meshGeometry(a).nodes[i].pointIndexOffset == meshGeometry(b).nodes[i].pointIndexOffset);
+        CHECK(meshGeometry(a).nodes[i].pointIndexCount == meshGeometry(b).nodes[i].pointIndexCount);
+        CHECK(meshGeometry(a).nodes[i].hasTexcoords == meshGeometry(b).nodes[i].hasTexcoords);
     }
     CHECK(a.bounds.min == b.bounds.min); CHECK(a.bounds.max == b.bounds.max);
     REQUIRE(bool(a.freeform) == bool(b.freeform));
@@ -300,7 +300,7 @@ TEST_CASE("OBJ prototype accepts short UVs weighted positions and continued CRLF
     const auto reference = woby::loadObjMeshLegacy(fixture.write(text));
     sameMesh(reference, woby::loadObjMeshTextPrototype(text, {}, {21, 1, 3}));
     const auto triangle = woby::loadObjMeshTextPrototype("v 0 0 0 1\nv 1 0 0 1\nv 0 1 0 1\nvt .25\nf 1/1 2/1 3/1\n");
-    CHECK(triangle.vertices[0].texcoord == std::array<float, 2>{.25f, 1});
+    CHECK(meshGeometry(triangle).vertices[0].texcoord == std::array<float, 2>{.25f, 1});
 }
 
 TEST_CASE("OBJ prototype retains physical diagnostics independently of read and worker boundaries") {
@@ -434,8 +434,8 @@ TEST_CASE("OBJ prototype reports the earliest error at every raw block alignment
 TEST_CASE("OBJ prototype validates numeric token endings without a delimiter prescan") {
     const auto valid = woby::loadObjMeshTextPrototype("v +0 -0 0e0\nv +1.0 0 0\nv 0 +1E+0 0\n"
         "vt +.25 .5\nvn 0 0 +1\nf 1/1/1 2/1/1 3/1/1\n", {}, {23, 2, 3});
-    REQUIRE(valid.vertices.size() == 3);
-    CHECK(valid.vertices[0].texcoord == std::array<float, 2>{.25f, .5f});
+    REQUIRE(meshGeometry(valid).vertices.size() == 3);
+    CHECK(meshGeometry(valid).vertices[0].texcoord == std::array<float, 2>{.25f, .5f});
     for (const std::string line : {"v 1x 0 0", "v 1.0.1 0 0", "v 1e+ 0 0", "v nan 0 0",
             "v 1e309 0 0", "vt .5suffix", "vn 0 0 1x", "v + 0 0", "v 0 0 0 1 2"}) {
         CAPTURE(line);

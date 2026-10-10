@@ -97,9 +97,9 @@ void setAnnotationProjectionTarget(AnnotationProjection& projection,
     AnnotationShape shape, std::array<float, 2> start, std::array<float, 2> end);
 [[nodiscard]] std::string annotationFingerprint(const Mesh& mesh, size_t offset, size_t count);
 void prepareAnnotationMeshCache(Mesh& mesh);
-// Worker inputs borrow immutable geometry; the owner must retain it until completion/cancellation.
+// Worker input and output own immutable geometry. No live scene buffers are borrowed.
 [[nodiscard]] std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
-    std::span<const Vertex> vertices, std::span<const uint32_t> indices, std::span<const MeshNode> nodes,
+    Mesh mesh,
     const std::function<bool()>& canceled = {});
 [[nodiscard]] bool annotationMeshCacheReady(const Mesh& mesh);
 inline constexpr size_t annotationInlineSnapshotBytes = 4 * 1024 * 1024;

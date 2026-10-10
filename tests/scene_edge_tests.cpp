@@ -21,10 +21,10 @@ woby::UiState edgeScene(const std::filesystem::path& root)
     for (const auto& position : std::array<std::array<float,3>,7>{{
         {-.8f,0,.7f},{.8f,0,.7f},{0,.8f,.7f},
         {-.4f,-.4f,.3f},{.4f,-.4f,.3f},{.4f,.4f,.3f},{-.4f,.4f,.3f}}}) {
-        woby::Vertex vertex; vertex.position = position; vertex.normal = {0,0,1}; mesh.vertices.push_back(vertex);
+        woby::Vertex vertex; vertex.position = position; vertex.normal = {0,0,1}; editMeshGeometry(mesh).vertices.push_back(vertex);
     }
-    mesh.indices = {0,1,2,3,4,5,3,5,6}; mesh.nodes = {{"rear",0,3},{"front",3,6}};
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices = {0,1,2,3,4,5,3,5,6}; editMeshGeometry(mesh).nodes = {{"rear",0,3},{"front",3,6}};
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     woby::UiState state;
     state.files.push_back(woby::createUiFileState(root / "mesh.obj", std::move(mesh), 0));
     woby::appendDefaultSceneNodesForFiles(state, 0); woby::assignSceneObjectIds(state);

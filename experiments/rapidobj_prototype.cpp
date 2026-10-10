@@ -28,13 +28,13 @@ template <typename T> void hashBuffer(Fingerprint& out, const std::vector<T>& va
 uint64_t fingerprint(const woby::Mesh& mesh) {
     Fingerprint out;
     hash(out, mesh.origin);
-    hashBuffer(out, mesh.vertices); hashBuffer(out, mesh.precisePositions);
-    hashBuffer(out, mesh.indices); hashBuffer(out, mesh.lineIndices); hashBuffer(out, mesh.pointIndices);
+    hashBuffer(out, meshGeometry(mesh).vertices); hashBuffer(out, meshGeometry(mesh).precisePositions);
+    hashBuffer(out, meshGeometry(mesh).indices); hashBuffer(out, meshGeometry(mesh).lineIndices); hashBuffer(out, meshGeometry(mesh).pointIndices);
     if (mesh.sourceData) {
         hashBuffer(out, mesh.sourceData->points); hashBuffer(out, mesh.sourceData->indices);
         hashBuffer(out, mesh.sourceData->originalPointIds);
     }
-    for (const auto& node : mesh.nodes) {
+    for (const auto& node : meshGeometry(mesh).nodes) {
         hashText(out, node.name); hash(out, node.indexOffset); hash(out, node.indexCount);
         hash(out, node.lineIndexOffset); hash(out, node.lineIndexCount);
         hash(out, node.pointIndexOffset); hash(out, node.pointIndexCount); hash(out, node.hasTexcoords);
@@ -54,9 +54,9 @@ uint64_t fingerprint(const woby::Mesh& mesh) {
     return out.value;
 }
 size_t retainedBytes(const woby::Mesh& mesh) {
-    size_t bytes = mesh.vertices.capacity() * sizeof(woby::Vertex)
-        + mesh.precisePositions.capacity() * sizeof(woby::Coordinate)
-        + (mesh.indices.capacity() + mesh.lineIndices.capacity() + mesh.pointIndices.capacity()) * sizeof(uint32_t);
+    size_t bytes = meshGeometry(mesh).vertices.capacity() * sizeof(woby::Vertex)
+        + meshGeometry(mesh).precisePositions.capacity() * sizeof(woby::Coordinate)
+        + (meshGeometry(mesh).indices.capacity() + meshGeometry(mesh).lineIndices.capacity() + meshGeometry(mesh).pointIndices.capacity()) * sizeof(uint32_t);
     if (mesh.sourceData) {
         bytes += mesh.sourceData->points.capacity() * sizeof(woby::Coordinate)
             + mesh.sourceData->indices.capacity() * sizeof(uint32_t)
@@ -90,7 +90,7 @@ int run(bool prototype, const std::filesystem::path& path, size_t workers) {
         const double elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count();
         size_t vertices = 0, points = 0, indices = 0, retained = 0;
         for (const auto& mesh : meshes) {
-            vertices += mesh.vertices.size(); indices += mesh.indices.size(); retained += retainedBytes(mesh);
+            vertices += meshGeometry(mesh).vertices.size(); indices += meshGeometry(mesh).indices.size(); retained += retainedBytes(mesh);
             points += mesh.sourceData ? mesh.sourceData->points.size() : 0;
         }
         nlohmann::json result{{"mode", prototype ? "prototype" : "legacy"}, {"cpu_load_ms", elapsed}, {"files", paths.size()},

@@ -94,27 +94,27 @@ TEST_CASE("smooth normal generation fills missing vertex normals")
 TEST_CASE("mesh finalization retains duplicate vertices and triangle indices")
 {
     woby::Mesh mesh;
-    mesh.vertices = {
+    editMeshGeometry(mesh).vertices = {
         vertex(0.0f, 0.0f, 0.0f),
         vertex(1.0f, 0.0f, 0.0f),
         vertex(0.0f, 1.0f, 0.0f),
         vertex(0.0f, 0.0f, 0.0f),
     };
-    mesh.indices = {0u, 1u, 2u, 3u, 1u, 2u};
-    const auto positions = mesh.vertices;
+    editMeshGeometry(mesh).indices = {0u, 1u, 2u, 3u, 1u, 2u};
+    const auto positions = meshGeometry(mesh).vertices;
     bool generateNormals = false;
     SUBCASE("supplied normals") {
-        for (auto& item : mesh.vertices) { item.normal = {0, 0, 1}; }
+        for (auto& item : editMeshGeometry(mesh).vertices) { item.normal = {0, 0, 1}; }
     }
     SUBCASE("generated normals") { generateNormals = true; }
 
     woby::finalizeMesh(mesh, generateNormals);
 
-    REQUIRE(mesh.vertices.size() == 4u);
-    CHECK(mesh.indices == std::vector<uint32_t>{0u, 1u, 2u, 3u, 1u, 2u});
-    for (size_t i = 0; i < mesh.vertices.size(); ++i) {
-        CHECK(mesh.vertices[i].position == positions[i].position);
-        CHECK(mesh.vertices[i].normal == std::array<float, 3>{0, 0, 1});
+    REQUIRE(meshGeometry(mesh).vertices.size() == 4u);
+    CHECK(meshGeometry(mesh).indices == std::vector<uint32_t>{0u, 1u, 2u, 3u, 1u, 2u});
+    for (size_t i = 0; i < meshGeometry(mesh).vertices.size(); ++i) {
+        CHECK(meshGeometry(mesh).vertices[i].position == positions[i].position);
+        CHECK(meshGeometry(mesh).vertices[i].normal == std::array<float, 3>{0, 0, 1});
     }
 }
 
@@ -127,19 +127,19 @@ TEST_CASE("finalizing a mesh rejects empty input and fills derived data")
         std::runtime_error);
 
     woby::Mesh mesh;
-    mesh.vertices = {
+    editMeshGeometry(mesh).vertices = {
         vertex(0.0f, 0.0f, 0.0f),
         vertex(1.0f, 0.0f, 0.0f),
         vertex(0.0f, 1.0f, 0.0f),
     };
-    mesh.indices = {0u, 1u, 2u};
+    editMeshGeometry(mesh).indices = {0u, 1u, 2u};
 
     woby::finalizeMesh(mesh, true);
 
     CHECK(mesh.bounds.max[0] == doctest::Approx(1.0f));
     CHECK(mesh.bounds.max[1] == doctest::Approx(1.0f));
-    REQUIRE(mesh.vertices.size() == 3u);
-    for (const auto& item : mesh.vertices) {
+    REQUIRE(meshGeometry(mesh).vertices.size() == 3u);
+    for (const auto& item : meshGeometry(mesh).vertices) {
         CHECK(woby::validNormal(item.normal));
     }
 }
@@ -147,28 +147,28 @@ TEST_CASE("finalizing a mesh rejects empty input and fills derived data")
 TEST_CASE("mesh finalization retains sparse vertex IDs and unreferenced vertices")
 {
     woby::Mesh mesh;
-    mesh.vertices.resize(40);
-    mesh.vertices[30] = vertex(0, 1, 0);
-    mesh.vertices[25] = vertex(1, 0, 0);
-    mesh.vertices[15] = vertex(0, 0, 0);
-    mesh.vertices[39] = mesh.vertices[30];
-    mesh.vertices[0] = vertex(-2, -3, -4);
-    mesh.indices = {30, 25, 15, 39, 15, 25};
-    const auto source = mesh.vertices;
+    editMeshGeometry(mesh).vertices.resize(40);
+    editMeshGeometry(mesh).vertices[30] = vertex(0, 1, 0);
+    editMeshGeometry(mesh).vertices[25] = vertex(1, 0, 0);
+    editMeshGeometry(mesh).vertices[15] = vertex(0, 0, 0);
+    editMeshGeometry(mesh).vertices[39] = meshGeometry(mesh).vertices[30];
+    editMeshGeometry(mesh).vertices[0] = vertex(-2, -3, -4);
+    editMeshGeometry(mesh).indices = {30, 25, 15, 39, 15, 25};
+    const auto source = meshGeometry(mesh).vertices;
     woby::captureSourceMesh(mesh, woby::SourceProvenance::importerVertices);
     const auto provenance = mesh.sourceData;
 
     woby::finalizeMesh(mesh, false);
 
-    REQUIRE(mesh.vertices.size() == source.size());
-    CHECK(mesh.indices == std::vector<uint32_t>{30, 25, 15, 39, 15, 25});
+    REQUIRE(meshGeometry(mesh).vertices.size() == source.size());
+    CHECK(meshGeometry(mesh).indices == std::vector<uint32_t>{30, 25, 15, 39, 15, 25});
     CHECK(mesh.sourceData == provenance);
-    CHECK(mesh.sourceData->indices == mesh.indices);
+    CHECK(mesh.sourceData->indices == meshGeometry(mesh).indices);
     CHECK(mesh.bounds.min == std::array<float, 3>{-2, -3, -4});
-    for (size_t i = 0; i < mesh.vertices.size(); ++i) {
-        CHECK(mesh.vertices[i].position == source[i].position);
-        CHECK(mesh.vertices[i].normal == source[i].normal);
-        CHECK(mesh.vertices[i].texcoord == source[i].texcoord);
+    for (size_t i = 0; i < meshGeometry(mesh).vertices.size(); ++i) {
+        CHECK(meshGeometry(mesh).vertices[i].position == source[i].position);
+        CHECK(meshGeometry(mesh).vertices[i].normal == source[i].normal);
+        CHECK(meshGeometry(mesh).vertices[i].texcoord == source[i].texcoord);
     }
 }
 

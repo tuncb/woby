@@ -239,7 +239,7 @@ TEST_CASE("background model batch loader creates UI file states")
     CHECK(result.outcomes[2].state == "skipped");
     REQUIRE(result.files.size() == 2u);
     CHECK(result.files[0].path == objPath);
-    CHECK(result.files[0].mesh.vertices.size() == 3u);
+    CHECK(meshGeometry(result.files[0].mesh).vertices.size() == 3u);
     REQUIRE(result.files[0].groupSettings.size() == 1u);
     CHECK(result.files[0].groupSettings[0].color == woby::defaultGroupColor(5u));
     CHECK(result.files[1].path == secondPath);

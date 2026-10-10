@@ -38,7 +38,7 @@ std::optional<SceneDimensions> sceneDimensions(std::span<const ScenePickPart> pa
         single = &part;
         const auto& mesh = *part.mesh;
         for (const auto index : scenePartIndices(part)) {
-            if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) { continue; }
+            if (index >= meshGeometry(mesh).vertices.size() || !finitePosition(meshGeometry(mesh).vertices[index].position)) { continue; }
             DimensionPoint point = meshPosition(mesh, index);
             if (!local) { point = transformed(part.model, point); }
             if (!std::all_of(point.begin(), point.end(), [](double value) { return std::isfinite(value); })) { continue; }
@@ -77,7 +77,7 @@ const std::optional<SceneDimensions>& updateSceneDimensions(SceneDimensionsCache
     for (const auto& part : parts) {
         if (!measurable(part)) { continue; }
         const auto indices = scenePartIndices(part);
-        const DimensionPartKey key{part.mesh->vertices.data(), indices.data(), part.mesh->vertices.size(),
+        const DimensionPartKey key{meshGeometry(*part.mesh).vertices.data(), indices.data(), meshGeometry(*part.mesh).vertices.size(),
             indices.size(), 0, indices.size(), part.model, part.mesh->contentRevision};
         if (index == cache.keys.size()) { cache.keys.push_back(key); changed = true; }
         else if (cache.keys[index] != key) { cache.keys[index] = key; changed = true; }

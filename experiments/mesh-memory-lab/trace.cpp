@@ -114,11 +114,11 @@ static Trace captureSource(std::string source, woby::Mesh mesh, std::string name
         for (size_t axis = 0; axis < 3; ++axis) { parsed.attributes.positions[i*3+axis] = local[axis]; }
     }
     if (!rapidobj::Triangulate(parsed)) { throw std::runtime_error("RapidOBJ could not triangulate the source."); }
-    if (trace.mesh.indices.size() != triangleCount * 3 || !trace.mesh.lineIndices.empty() || !trace.mesh.pointIndices.empty()) {
+    if (meshGeometry(trace.mesh).indices.size() != triangleCount * 3 || !meshGeometry(trace.mesh).lineIndices.empty() || !meshGeometry(trace.mesh).pointIndices.empty()) {
         throw std::runtime_error("Production mesh and polygon trace disagree.");
     }
-    trace.vertexKeys.resize(trace.mesh.vertices.size());
-    std::vector<bool> seen(trace.mesh.vertices.size());
+    trace.vertexKeys.resize(meshGeometry(trace.mesh).vertices.size());
+    std::vector<bool> seen(meshGeometry(trace.mesh).vertices.size());
     size_t globalCorner = 0, faceIndex = 0;
     for (const auto& shape : parsed.shapes) {
         for (size_t i = 0; i < shape.mesh.indices.size(); i += 3) {
@@ -129,7 +129,7 @@ static Trace captureSource(std::string source, woby::Mesh mesh, std::string name
             for (size_t c = 0; c < 3; ++c, ++globalCorner) {
                 const auto key = corner(shape.mesh.indices[i+c]);
                 triangle.corners[c] = key;
-                const auto vertex = trace.mesh.indices[globalCorner];
+                const auto vertex = meshGeometry(trace.mesh).indices[globalCorner];
                 if (vertex >= trace.vertexKeys.size() || key.position < 0
                     || trace.mesh.sourceData->indices[globalCorner] != static_cast<uint32_t>(key.position)) {
                     throw std::runtime_error("Source-to-render index correspondence failed.");
@@ -139,7 +139,7 @@ static Trace captureSource(std::string source, woby::Mesh mesh, std::string name
                 seen[vertex] = true;
                 trace.vertexKeys[vertex] = key;
                 const auto local = woby::relativePosition(trace.positions[static_cast<size_t>(key.position)], origin);
-                if (local != trace.mesh.precisePositions[vertex]) { throw std::runtime_error("Position correspondence failed."); }
+                if (local != meshGeometry(trace.mesh).precisePositions[vertex]) { throw std::runtime_error("Position correspondence failed."); }
                 if (key.normal < 0 || !woby::validNormal(trace.normals[static_cast<size_t>(key.normal)])) { trace.generatedNormals = true; }
             }
             trace.triangles.push_back(triangle);
@@ -172,8 +172,8 @@ Trace traceObjSource(std::string_view source, std::string name)
     return captureSource(std::string(source), woby::loadObjMeshText(source), std::move(name));
 }
 
-std::vector<uint8_t> vertexBytes(const Trace& trace) { return bytes(trace.mesh.vertices); }
-std::vector<uint8_t> indexBytes(const Trace& trace) { return bytes(trace.mesh.indices); }
+std::vector<uint8_t> vertexBytes(const Trace& trace) { return bytes(meshGeometry(trace.mesh).vertices); }
+std::vector<uint8_t> indexBytes(const Trace& trace) { return bytes(meshGeometry(trace.mesh).indices); }
 size_t vertexOffset(size_t vertex, size_t component)
 {
     if (component >= 8 || vertex > (std::numeric_limits<size_t>::max() - 28) / sizeof(woby::Vertex)) {

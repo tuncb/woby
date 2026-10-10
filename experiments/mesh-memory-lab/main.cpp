@@ -204,7 +204,7 @@ int main(int argc, char** argv)
                     throw std::runtime_error("Simultaneous mesh viewports differ from isolated rendering.");
                 }
                 std::printf("PASS %s: %zu vertices, %zu triangles, %zu verified GPU bytes\n",
-                    entry.document->title.c_str(), trace.mesh.vertices.size(), trace.triangles.size(), capture.vertexReadback.size()+capture.indexReadback.size());
+                    entry.document->title.c_str(), meshGeometry(trace.mesh).vertices.size(), trace.triangles.size(), capture.vertexReadback.size()+capture.indexReadback.size());
             }
         } else {
             const auto currentTrace = [&](size_t pane) -> const mesh_lab::Trace* {

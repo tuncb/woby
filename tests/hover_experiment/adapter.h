@@ -50,7 +50,7 @@ inline void build(Runtime& r,const woby::UiState& ui,const std::vector<woby::Loa
         const auto& n=gpu.nodeRanges[i]; r.ranges.push_back({n.pointIndexOffset,n.pointIndexCount});
         if (n.pointIndexCount) { r.groupAtOffset.emplace(n.triangleIndexOffset,static_cast<uint32_t>(i)); }
     }
-    r.index=buildIndex(mesh.vertices,gpu.pointVertexIndices,r.ranges);
+    r.index=buildIndex(meshGeometry(mesh).vertices,gpu.pointVertexIndices,r.ranges);
     r.groups.resize(r.ranges.size()); r.built=true;
     r.metadata={{"build_ms",ms(start,Clock::now())},{"points",gpu.pointVertexIndices.size()},
         {"nodes",r.index.nodes.size()},{"clusters",r.index.clusters.size()},
@@ -141,7 +141,7 @@ inline void submit(Runtime& r,const woby::GpuMesh& mesh,const Query& q,bool cull
 inline std::optional<woby::HoveredVertex> overlayHit(const Hit& hit,const Runtime& r,
     const woby::Mesh& mesh,const woby::GpuMesh& gpu) {
     if (hit.rank==invalid) { return {}; }
-    const auto& p=mesh.vertices[gpu.pointVertexIndices[hit.rank]].position;
+    const auto& p=meshGeometry(mesh).vertices[gpu.pointVertexIndices[hit.rank]].position;
     const auto w=transform(r.groups[hit.group].model,{p[0],p[1],p[2],1});
     return woby::HoveredVertex{p,{w[0]/w[3],w[1]/w[3],w[2]/w[3]},hit.depth,hit.distance};
 }
@@ -162,12 +162,12 @@ inline std::optional<woby::HoveredVertex> update(Runtime& r,const woby::UiState&
     if (mode=="legacy") {
         r.last=woby::findHoveredVertex(ui.files,ui.sceneNodes,runtimes,mouse,ui.masterVertexPointSize,view.view.data(),view.projection.data(),view.width,view.height,view.homogeneousDepth);
     } else if (mode=="cpu") {
-        hit=queryIndex(r.index,mesh.vertices,gpu.pointVertexIndices,r.groups,q,counters);
+        hit=queryIndex(r.index,meshGeometry(mesh).vertices,gpu.pointVertexIndices,r.groups,q,counters);
         r.last=overlayHit(hit,r,mesh,gpu);
         event["rank"]=hit.rank;
         event["query_ms"]=ms(start,Clock::now());
         if (validation) {
-            const auto ref=queryLinear(mesh.vertices,gpu.pointVertexIndices,r.ranges,r.groups,q);
+            const auto ref=queryLinear(meshGeometry(mesh).vertices,gpu.pointVertexIndices,r.ranges,r.groups,q);
             event["reference_rank"]=ref.rank;
             if (hit.rank!=ref.rank) { throw std::runtime_error("CPU hierarchy disagrees with linear query"); }
             const auto legacy=woby::findHoveredVertex(ui.files,ui.sceneNodes,runtimes,mouse,ui.masterVertexPointSize,view.view.data(),view.projection.data(),view.width,view.height,view.homogeneousDepth);
@@ -182,7 +182,7 @@ inline std::optional<woby::HoveredVertex> update(Runtime& r,const woby::UiState&
         else {
             slot->scenario=capture.scenario; slot->measured=capture.measuring; slot->frame=r.frame;
             slot->validate=validation;
-            if (validation) { slot->expected=queryIndex(r.index,mesh.vertices,gpu.pointVertexIndices,r.groups,q,counters); }
+            if (validation) { slot->expected=queryIndex(r.index,meshGeometry(mesh).vertices,gpu.pointVertexIndices,r.groups,q,counters); }
             slot->issued=Clock::now();
             submit(r,gpu,q,mode!="gpu_flat",*slot,mode!="gpu_immediate",mode!="gpu_resident");
         }

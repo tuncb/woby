@@ -51,9 +51,9 @@ Mesh meshFor(const DuplicateSource& source)
 {
     Mesh mesh;
     for (const auto& p : source.data->points) {
-        Vertex v; for (size_t k = 0; k < 3; ++k) { v.position[k] = static_cast<float>(p[k]); } mesh.vertices.push_back(v);
+        Vertex v; for (size_t k = 0; k < 3; ++k) { v.position[k] = static_cast<float>(p[k]); } editMeshGeometry(mesh).vertices.push_back(v);
     }
-    mesh.indices = source.data->indices; mesh.bounds = calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices = source.data->indices; mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
     auto input = std::make_shared<DuplicateInput>(); input->sources.push_back(source); mesh.duplicateInput = input;
     return mesh;
 }

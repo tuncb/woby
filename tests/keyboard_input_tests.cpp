@@ -72,10 +72,10 @@ TEST_CASE("inspector axis inputs align across columns at different pane widths a
             const auto fieldColor = ImGui::GetColorU32(ImGuiCol_FrameBg);
             auto& state = fixture.state;
             woby::Mesh mesh;
-            mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-            mesh.indices = {0, 1, 2};
-            mesh.nodes = {{"triangle", 0, 3}};
-            mesh.bounds = woby::calculateBounds(mesh.vertices);
+            editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+            editMeshGeometry(mesh).indices = {0, 1, 2};
+            editMeshGeometry(mesh).nodes = {{"triangle", 0, 3}};
+            mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
             state.files.push_back(woby::createUiFileState("alignment.obj", std::move(mesh), 0));
             woby::appendDefaultSceneNodesForFiles(state, 0);
             woby::assignSceneObjectIds(state);
@@ -154,11 +154,11 @@ TEST_CASE("geometry inspector uses compact single rows and preserves tiny and la
             {2.4f, 0.0f, 0.4f}, {0.0f, 1.4f, 0.0f}}) {
         woby::Vertex vertex;
         for (size_t axis = 0; axis < 3; ++axis) { vertex.position[axis] = point[axis] * scale; }
-        mesh.vertices.push_back(vertex);
+        editMeshGeometry(mesh).vertices.push_back(vertex);
     }
-    mesh.indices = {0, 1, 2};
-    mesh.nodes = {{"triangle", 0, 3}};
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes = {{"triangle", 0, 3}};
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     auto& state = fixture.state;
     state.files.push_back(woby::createUiFileState("triangle.obj", mesh, 0));
     woby::appendDefaultSceneNodesForFiles(state, 0);
@@ -360,7 +360,7 @@ TEST_CASE("properties visibility icon sits before solid mesh and keeps hidden ta
         ImGui::GetStyle() = woby::scaledUiStyle(ImGui::GetStyle(), scale);
         auto& state = fixture.state;
         woby::Mesh mesh;
-        mesh.nodes = {{"first", 0u, 0u}, {"second", 0u, 0u}};
+        editMeshGeometry(mesh).nodes = {{"first", 0u, 0u}, {"second", 0u, 0u}};
         state.files.push_back(woby::createUiFileState("parts.obj", mesh, 0u));
         woby::appendDefaultSceneNodesForFiles(state, 0u);
         woby::selectSceneObject(state, state.files[0].groupSettings[0].objectId);
@@ -424,7 +424,7 @@ TEST_CASE("compact render mode fields align and apply mixed toggles only to sele
             ImGui::GetStyle() = woby::scaledUiStyle(ImGui::GetStyle(), scale);
             auto& state = fixture.state;
             woby::Mesh mesh;
-            for (int i = 0; i < 3; ++i) { mesh.nodes.push_back({"part", 0u, 0u}); }
+            for (int i = 0; i < 3; ++i) { editMeshGeometry(mesh).nodes.push_back({"part", 0u, 0u}); }
             state.files.push_back(woby::createUiFileState("parts.obj", mesh, 0u));
             woby::appendDefaultSceneNodesForFiles(state, 0u);
             auto& parts = state.files[0].groupSettings;

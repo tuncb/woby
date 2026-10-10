@@ -217,7 +217,7 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
     std::unordered_set<uint64_t> usedIds(source->originalPointIds.begin(), source->originalPointIds.end());
     uint64_t nextId = 0;
     std::unordered_set<std::string> names;
-    for (const auto& node : mesh.nodes) { names.insert(node.name); }
+    for (const auto& node : meshGeometry(mesh).nodes) { names.insert(node.name); }
     const auto checkedCount = [](size_t current, size_t added) {
         if (current > UINT32_MAX || added > UINT32_MAX - current) {
             throw std::runtime_error("Freeform geometry exceeds the supported index range.");
@@ -239,17 +239,17 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
         } else { lines = checkedCount(lines, (grid.u.size()-1)*2); }
         geometry->grids.push_back(std::move(grid));
     }
-    const auto vertexCount = checkedCount(mesh.vertices.size(), total);
+    const auto vertexCount = checkedCount(meshGeometry(mesh).vertices.size(), total);
     const auto sourceCount = checkedCount(source->points.size(), total);
-    const auto triangleCount = checkedCount(mesh.indices.size(), triangles);
+    const auto triangleCount = checkedCount(meshGeometry(mesh).indices.size(), triangles);
     const auto sourceIndexCount = checkedCount(source->indices.size(), triangles);
-    const auto lineCount = checkedCount(mesh.lineIndices.size(), lines);
-    const auto nodeCount = checkedCount(mesh.nodes.size(), geometry->patches.size());
+    const auto lineCount = checkedCount(meshGeometry(mesh).lineIndices.size(), lines);
+    const auto nodeCount = checkedCount(meshGeometry(mesh).nodes.size(), geometry->patches.size());
     reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, total);
     // Allocate once, without transient vector growth copies of a large model.
-    mesh.vertices.reserve(vertexCount); mesh.precisePositions.reserve(vertexCount);
+    editMeshGeometry(mesh).vertices.reserve(vertexCount); editMeshGeometry(mesh).precisePositions.reserve(vertexCount);
     source->points.reserve(sourceCount); source->indices.reserve(sourceIndexCount);
-    mesh.indices.reserve(triangleCount); mesh.lineIndices.reserve(lineCount); mesh.nodes.reserve(nodeCount);
+    editMeshGeometry(mesh).indices.reserve(triangleCount); editMeshGeometry(mesh).lineIndices.reserve(lineCount); editMeshGeometry(mesh).nodes.reserve(nodeCount);
     if (!usedIds.empty()) { source->originalPointIds.reserve(sourceCount); }
     size_t completed = 0;
     for (size_t p = 0; p < geometry->patches.size(); ++p) {
@@ -257,9 +257,9 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
         const auto baseName = patch.name.empty() ? (patch.surface ? "Surface" : "Curve") : patch.name;
         patch.name = baseName;
         for (size_t suffix = 2; !names.insert(patch.name).second; ++suffix) { patch.name = baseName + " (" + std::to_string(suffix) + ")"; }
-        grid.vertexOffset = static_cast<uint32_t>(mesh.vertices.size());
-        grid.groupIndex = static_cast<uint32_t>(mesh.nodes.size());
-        grid.indexOffset = static_cast<uint32_t>(patch.surface ? mesh.indices.size() : mesh.lineIndices.size());
+        grid.vertexOffset = static_cast<uint32_t>(meshGeometry(mesh).vertices.size());
+        grid.groupIndex = static_cast<uint32_t>(meshGeometry(mesh).nodes.size());
+        grid.indexOffset = static_cast<uint32_t>(patch.surface ? meshGeometry(mesh).indices.size() : meshGeometry(mesh).lineIndices.size());
         const auto sourceOffset = static_cast<uint32_t>(source->points.size());
         const auto appendVertex = [&](double u,double v) {
             if (completed % 1024 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, completed, total); }
@@ -267,7 +267,7 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
             const auto point = relativePosition(sample.position, mesh.origin);
             Vertex vertex{renderPosition(point), freeformNormal(patch,u,v), {}};
             if (!patch.texcoords.empty()) { vertex.texcoord = {static_cast<float>(sample.texcoord[0]), 1-static_cast<float>(sample.texcoord[1])}; }
-            mesh.vertices.push_back(vertex); mesh.precisePositions.push_back(point); source->points.push_back(point);
+            editMeshGeometry(mesh).vertices.push_back(vertex); editMeshGeometry(mesh).precisePositions.push_back(point); source->points.push_back(point);
             if (!usedIds.empty()) {
                 while (usedIds.contains(nextId)) { ++nextId; }
                 source->originalPointIds.push_back(nextId++);
@@ -276,7 +276,7 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
         };
         if (!grid.samples.empty()) {
             for (const auto& uv:grid.samples) { appendVertex(uv[0],uv[1]); }
-            for (auto index:grid.triangles) { mesh.indices.push_back(grid.vertexOffset+index); source->indices.push_back(sourceOffset+index); }
+            for (auto index:grid.triangles) { editMeshGeometry(mesh).indices.push_back(grid.vertexOffset+index); source->indices.push_back(sourceOffset+index); }
         } else {
             for (const double v:grid.v) for (const double u:grid.u) { appendVertex(u,v); }
         }
@@ -286,15 +286,15 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
                 const uint32_t a = y*nu + x;
                 if (patch.surface) {
                     for (const auto index : {a,a+1,a+nu,a+1,a+nu+1,a+nu}) {
-                        mesh.indices.push_back(grid.vertexOffset + index); source->indices.push_back(sourceOffset + index);
+                        editMeshGeometry(mesh).indices.push_back(grid.vertexOffset + index); source->indices.push_back(sourceOffset + index);
                     }
-                } else { mesh.lineIndices.push_back(grid.vertexOffset+a); mesh.lineIndices.push_back(grid.vertexOffset+a+1); }
+                } else { editMeshGeometry(mesh).lineIndices.push_back(grid.vertexOffset+a); editMeshGeometry(mesh).lineIndices.push_back(grid.vertexOffset+a+1); }
             }
         }
         MeshNode node; node.name = patch.name; node.hasTexcoords = !patch.texcoords.empty();
-        if (patch.surface) { node.indexOffset = grid.indexOffset; node.indexCount = static_cast<uint32_t>(mesh.indices.size()) - grid.indexOffset; }
-        else { node.lineIndexOffset = grid.indexOffset; node.lineIndexCount = static_cast<uint32_t>(mesh.lineIndices.size()) - grid.indexOffset; }
-        mesh.nodes.push_back(std::move(node));
+        if (patch.surface) { node.indexOffset = grid.indexOffset; node.indexCount = static_cast<uint32_t>(meshGeometry(mesh).indices.size()) - grid.indexOffset; }
+        else { node.lineIndexOffset = grid.indexOffset; node.lineIndexCount = static_cast<uint32_t>(meshGeometry(mesh).lineIndices.size()) - grid.indexOffset; }
+        editMeshGeometry(mesh).nodes.push_back(std::move(node));
     }
     mesh.sourceData = std::move(source); mesh.freeform = std::move(geometry);
     reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, total, total);

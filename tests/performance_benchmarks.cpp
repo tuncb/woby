@@ -39,8 +39,8 @@ int loadBenchmark(const std::filesystem::path& path, size_t repetitions)
             std::cout << run << ',' << woby::modelLoadStageName(key) << ',' << milliseconds << '\n';
         }
         std::cout << run << ",total," << std::chrono::duration<double, std::milli>(previous - start).count()
-                  << "\nvertices=" << mesh.vertices.size() << " triangles=" << mesh.indices.size() / 3
-                  << " groups=" << mesh.nodes.size() << std::endl;
+                  << "\nvertices=" << meshGeometry(mesh).vertices.size() << " triangles=" << meshGeometry(mesh).indices.size() / 3
+                  << " groups=" << meshGeometry(mesh).nodes.size() << std::endl;
     }
     return 0;
 }
@@ -48,24 +48,25 @@ int loadBenchmark(const std::filesystem::path& path, size_t repetitions)
 woby::Mesh grid(uint32_t width, float z)
 {
     woby::Mesh result;
-    result.vertices.reserve(size_t(width + 1) * (width + 1));
-    result.indices.reserve(size_t(width) * width * 6);
+    editMeshGeometry(result).vertices.reserve(size_t(width + 1) * (width + 1));
+    editMeshGeometry(result).indices.reserve(size_t(width) * width * 6);
     for (uint32_t y = 0; y <= width; ++y) {
         for (uint32_t x = 0; x <= width; ++x) {
             woby::Vertex vertex;
             vertex.position = {static_cast<float>(x), static_cast<float>(y), z};
             vertex.normal = {0, 0, 1};
-            result.vertices.push_back(vertex);
+            editMeshGeometry(result).vertices.push_back(vertex);
         }
     }
     for (uint32_t y = 0; y < width; ++y) {
         for (uint32_t x = 0; x < width; ++x) {
             const auto a = y * (width + 1) + x;
-            result.indices.insert(result.indices.end(), {a, a + 1, a + width + 2, a, a + width + 2, a + width + 1});
+            editMeshGeometry(result).indices.insert(meshGeometry(result).indices.end(), {a, a + 1, a + width + 2, a, a + width + 2, a + width + 1});
         }
     }
-    result.nodes.push_back({"grid", 0, static_cast<uint32_t>(result.indices.size())});
-    result.bounds = woby::calculateBounds(result.vertices);
+    editMeshGeometry(result).nodes.push_back({"grid", 0, static_cast<uint32_t>(meshGeometry(result).indices.size())});
+    result.bounds = woby::calculateBounds(meshGeometry(result).vertices);
+    woby::publishMeshGeometry(result);
     return result;
 }
 
@@ -95,8 +96,8 @@ int detectorBenchmark(const std::filesystem::path& path, size_t repetitions, boo
     source.name = path.filename().string();
     source.data = mesh.sourceData;
     source.wholeFile = true;
-    for (size_t i = 0; i < mesh.nodes.size(); ++i) {
-        const auto& node = mesh.nodes[i];
+    for (size_t i = 0; i < meshGeometry(mesh).nodes.size(); ++i) {
+        const auto& node = meshGeometry(mesh).nodes[i];
         source.parts.push_back({i + 1, node.indexOffset, node.indexCount, source.unusedPointTransform});
     }
     input->sources.push_back(std::move(source));
@@ -104,20 +105,21 @@ int detectorBenchmark(const std::filesystem::path& path, size_t repetitions, boo
     if (expanded) {
         // Retain the flat comparison snapshot workload alongside indexed meshes.
         // Remap both position buffers; source indices and part ranges stay intact.
-        const auto vertices = std::move(mesh.vertices);
+        const auto vertices = std::move(editMeshGeometry(mesh).vertices);
         std::vector<woby::Coordinate> positions;
-        positions.reserve(mesh.indices.size());
-        mesh.vertices.reserve(mesh.indices.size());
-        for (auto& index : mesh.indices) {
-            positions.push_back(mesh.precisePositions.at(index));
+        positions.reserve(meshGeometry(mesh).indices.size());
+        editMeshGeometry(mesh).vertices.reserve(meshGeometry(mesh).indices.size());
+        for (auto& index : editMeshGeometry(mesh).indices) {
+            positions.push_back(meshGeometry(mesh).precisePositions.at(index));
             woby::Vertex vertex;
             vertex.position = vertices[index].position;
             vertex.texcoord = vertices[index].texcoord;
-            index = static_cast<uint32_t>(mesh.vertices.size());
-            mesh.vertices.push_back(vertex);
+            index = static_cast<uint32_t>(meshGeometry(mesh).vertices.size());
+            editMeshGeometry(mesh).vertices.push_back(vertex);
         }
-        mesh.precisePositions = std::move(positions);
+        editMeshGeometry(mesh).precisePositions = std::move(positions);
     }
+    woby::publishMeshGeometry(mesh);
     if (intersections) {
         const auto topology = woby::buildMeshTopology(mesh.duplicateInput->sources);
         size_t faces = 0;
@@ -133,8 +135,8 @@ int detectorBenchmark(const std::filesystem::path& path, size_t repetitions, boo
         return 0;
     }
     const auto stages = woby::requestedComparisonStages({}, false);
-    std::cout << "triangles=" << mesh.indices.size() / 3 << " source_points=" << mesh.sourceData->points.size()
-              << " parts=" << mesh.nodes.size() << "\nrun,stage,milliseconds,counts\n";
+    std::cout << "triangles=" << meshGeometry(mesh).indices.size() / 3 << " source_points=" << mesh.sourceData->points.size()
+              << " parts=" << meshGeometry(mesh).nodes.size() << "\nrun,stage,milliseconds,counts\n";
     for (size_t run = 0; run < repetitions; ++run) {
         double total = 0;
         for (uint32_t remaining = stages; remaining;) {
@@ -195,13 +197,13 @@ int main(int argc, char** argv)
         const auto path = fixture.path / "grid.obj";
         if (workload == "obj") {
             std::ofstream file(path);
-            for (const auto& vertex : a.vertices) {
+            for (const auto& vertex : meshGeometry(a).vertices) {
                 const auto& p = vertex.position;
                 file << "v " << p[0] << ' ' << p[1] << ' ' << p[2] << '\n';
             }
             file << "vn 0 0 1\n";
-            for (size_t i = 0; i < a.indices.size(); i += 3) {
-                file << "f " << a.indices[i] + 1 << "//1 " << a.indices[i + 1] + 1 << "//1 " << a.indices[i + 2] + 1 << "//1\n";
+            for (size_t i = 0; i < meshGeometry(a).indices.size(); i += 3) {
+                file << "f " << meshGeometry(a).indices[i] + 1 << "//1 " << meshGeometry(a).indices[i + 1] + 1 << "//1 " << meshGeometry(a).indices[i + 2] + 1 << "//1\n";
             }
             if (!file) { throw std::runtime_error("Cannot write benchmark fixture."); }
         }
@@ -211,7 +213,7 @@ int main(int argc, char** argv)
             const auto start = Clock::now();
             if (workload == "obj") {
                 const auto loaded = woby::loadObjMesh(path);
-                checksum += static_cast<double>(loaded.vertices.size());
+                checksum += static_cast<double>(meshGeometry(loaded).vertices.size());
             } else if (workload == "distance") {
                 const auto result = woby::computeComparisonStages(a, b, woby::comparisonDistance);
                 checksum += result.original.mean + result.repaired.mean;
@@ -225,7 +227,7 @@ int main(int argc, char** argv)
         }
         std::sort(times.begin(), times.end());
         std::cout << "workload,width,triangles,repetitions,hardware_threads,min_ms,median_ms,max_ms,checksum\n"
-                  << workload << ',' << width << ',' << a.indices.size() / 3 << ',' << repetitions << ','
+                  << workload << ',' << width << ',' << meshGeometry(a).indices.size() / 3 << ',' << repetitions << ','
                   << std::thread::hardware_concurrency() << ',' << times.front() << ',' << times[times.size() / 2]
                   << ',' << times.back() << ',' << checksum << '\n';
     } catch (const std::exception& error) {

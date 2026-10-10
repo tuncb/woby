@@ -112,7 +112,7 @@ void renderViewport(const Viewport& view, const GpuCapture& gpu, const Trace& tr
         g::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_WRITE_Z | WOBY_GPU_STATE_DEPTH_TEST_LEQUAL);
         g::submit(viewId, view.program);
     };
-    submit(base, 0, static_cast<uint32_t>(trace.mesh.indices.size()));
+    submit(base, 0, static_cast<uint32_t>(meshGeometry(trace.mesh).indices.size()));
     submit(selected, static_cast<uint32_t>(state.triangle * 3), 3);
 }
 void destroy(Viewport& view)

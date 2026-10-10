@@ -79,7 +79,7 @@ std::vector<std::string> comparisonReportLines(
         size_t side = 0;
         for (const auto* surface : {&result.original, &result.repaired}) {
             const std::string label = side++ == 0 ? "A" : "B";
-            if (surface->source.indices.empty()) { continue; }
+            if (meshGeometry(surface->source).indices.empty()) { continue; }
             const auto append = [&](const char* name, const DuplicateResult& duplicates) {
                 if (!duplicates.enabled) { return; }
                 lines.push_back(label + " " + name + ": " + std::to_string(duplicates.duplicateCount) + " (" + duplicateStatus(duplicates) + ")");

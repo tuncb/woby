@@ -22,10 +22,10 @@ woby::UiState scene()
 {
     woby::UiState state;
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    mesh.indices = {0, 1, 2};
-    mesh.nodes = {{"triangle", 0, 3}};
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes = {{"triangle", 0, 3}};
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     state.files.push_back(woby::createUiFileState("triangle.obj", mesh, 0));
     woby::appendFolderTreeSceneNode(state, std::filesystem::current_path(), 0, 1);
     woby::recalculateSceneBounds(state);
@@ -54,10 +54,10 @@ struct IsolationFixture {
     {
         std::filesystem::create_directory(root);
         woby::Mesh mesh;
-        mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-        mesh.indices = {0, 1, 2, 0, 1, 2, 0, 1, 2};
-        mesh.nodes = {{"P", 0, 3}, {"Q", 3, 3}, {"Nonmember", 6, 3}};
-        mesh.bounds = woby::calculateBounds(mesh.vertices);
+        editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+        editMeshGeometry(mesh).indices = {0, 1, 2, 0, 1, 2, 0, 1, 2};
+        editMeshGeometry(mesh).nodes = {{"P", 0, 3}, {"Q", 3, 3}, {"Nonmember", 6, 3}};
+        mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
         state.files.push_back(woby::createUiFileState(root / "selected" / "mesh.obj", mesh, 0));
         state.files.push_back(woby::createUiFileState(root / "other" / "mesh.obj", std::move(mesh), 1));
         woby::appendFolderTreeSceneNode(state, root / "selected", 0, 1);
@@ -712,8 +712,8 @@ TEST_CASE("ctl mesh isolation scopes group file and folder inputs to existing me
             CHECK_FALSE(woby::comparisonContains(state, excluded, side, id));
             CHECK(woby::comparisonMemberIds(state, side, id, false).size() == 3);
             CHECK(woby::enabledComparisonPartCount(state, opposite, id) == 3);
-            CHECK(woby::comparisonWorldMesh(state, side, id).indices.size() == (input == p ? 3 : 6));
-            CHECK(woby::comparisonWorldMesh(state, opposite, id).indices.size() == 9);
+            CHECK(meshGeometry(woby::comparisonWorldMesh(state, side, id)).indices.size() == (input == p ? 3 : 6));
+            CHECK(meshGeometry(woby::comparisonWorldMesh(state, opposite, id)).indices.size() == 9);
             CHECK(woby::comparisonGeometrySignature(state, id) != signature);
             CHECK(woby::comparisonGeometrySignature(state, other) == otherSignature);
             CHECK(woby::createSceneDocument(state).files == clean.files);
@@ -1002,8 +1002,8 @@ TEST_CASE("ctl analysis numeric results describe both directions and tolerance w
     woby::setComparisonObjects(state, {file}, woby::ComparisonSide::a, true, id);
     const auto a = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id);
     auto b = a;
-    for (auto& vertex : b.vertices) { vertex.position[2] += 2; }
-    for (auto& point : b.precisePositions) { point[2] += 2; }
+    for (auto& vertex : editMeshGeometry(b).vertices) { vertex.position[2] += 2; }
+    for (auto& point : editMeshGeometry(b).precisePositions) { point[2] += 2; }
     const auto result = woby::compareMeshes(a, b);
     const auto json = woby::controlComparisonResults(result, 1);
     for (const auto* direction : {"aToB", "bToA"}) {
@@ -1017,8 +1017,8 @@ TEST_CASE("ctl analysis numeric results describe both directions and tolerance w
         CHECK(json[direction]["diagnostics"]["nonManifoldEdges"] == 0);
     }
     CHECK(woby::controlComparisonResults(result, 2)["aToB"]["percentAboveTolerance"] == 0);
-    CHECK(a.vertices[0].position[2] == 0);
-    CHECK(b.vertices[0].position[2] == 2);
+    CHECK(meshGeometry(a).vertices[0].position[2] == 0);
+    CHECK(meshGeometry(b).vertices[0].position[2] == 2);
 }
 
 TEST_CASE("saved view commands round trip and restore scene state")

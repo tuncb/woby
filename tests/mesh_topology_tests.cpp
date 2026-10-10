@@ -52,15 +52,15 @@ Mesh meshFor(const DuplicateSource& source)
     Mesh mesh;
     for (const auto& point : source.data->points) {
         Vertex v; for (size_t k = 0; k < 3; ++k) { v.position[k] = static_cast<float>(point[k]); }
-        mesh.vertices.push_back(v);
+        editMeshGeometry(mesh).vertices.push_back(v);
     }
-    mesh.indices = source.data->indices; mesh.bounds = calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices = source.data->indices; mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
     auto input = std::make_shared<DuplicateInput>(); input->sources.push_back(source); mesh.duplicateInput = input;
     return mesh;
 }
 nlohmann::json jsonFor(const MeshTopology& topology, const char* detector)
 {
-    MeshComparison result; result.original.source.indices = {0,1,2}; result.original.topology = topology;
+    MeshComparison result; editMeshGeometry(result.original.source).indices = {0,1,2}; result.original.topology = topology;
     for (auto& status : result.detectors) { status.phase = IntersectionPhase::complete; status.hasResult = true; }
     return controlComparisonResults(result, .05)["aToB"]["detectors"][detector];
 }
@@ -947,13 +947,13 @@ TEST_CASE("parent analysis batches existing child volumes without merging their 
             data->points.push_back(points[index]);
             Vertex v;
             for (size_t k = 0; k < 3; ++k) { v.position[k] = static_cast<float>(points[index][k]); }
-            mesh.vertices.push_back(v);
+            editMeshGeometry(mesh).vertices.push_back(v);
         }
-        mesh.nodes.push_back({"patch" + std::to_string(i), static_cast<uint32_t>(i * 3), 3});
+        editMeshGeometry(mesh).nodes.push_back({"patch" + std::to_string(i), static_cast<uint32_t>(i * 3), 3});
     }
-    mesh.indices = data->indices; mesh.sourceData = data; mesh.bounds = calculateBounds(mesh.vertices);
-    mesh.hierarchy = {{"Upper", UINT32_MAX, UINT32_MAX}, {"Lower", UINT32_MAX, UINT32_MAX}};
-    for (uint32_t i = 0; i < 8; ++i) { mesh.hierarchy.push_back({"patch", i / 4, i}); }
+    editMeshGeometry(mesh).indices = data->indices; mesh.sourceData = data; mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
+    editMeshGeometry(mesh).hierarchy = {{"Upper", UINT32_MAX, UINT32_MAX}, {"Lower", UINT32_MAX, UINT32_MAX}};
+    for (uint32_t i = 0; i < 8; ++i) { editMeshGeometry(mesh).hierarchy.push_back({"patch", i / 4, i}); }
     state.files.push_back(createUiFileState(fixture.root / "volumes.obj", std::move(mesh), 0));
     appendDefaultSceneNodesForFiles(state, 0);
     const auto tree = createSceneDocument(state).nodes;

@@ -29,11 +29,11 @@ woby::Mesh mesh(std::initializer_list<std::array<float, 3>> positions, std::vect
     {
         woby::Vertex v;
         v.position = p;
-        result.vertices.push_back(v);
+        editMeshGeometry(result).vertices.push_back(v);
     }
-    result.indices = std::move(indices);
-    result.nodes.push_back({"surface", 0, static_cast<uint32_t>(result.indices.size())});
-    result.bounds = woby::calculateBounds(result.vertices);
+    editMeshGeometry(result).indices = std::move(indices);
+    editMeshGeometry(result).nodes.push_back({"surface", 0, static_cast<uint32_t>(meshGeometry(result).indices.size())});
+    result.bounds = woby::calculateBounds(meshGeometry(result).vertices);
     return result;
 }
 woby::Mesh square(float z = 0)
@@ -48,16 +48,16 @@ woby::Mesh largeGrid(uint32_t width, float z = 0)
         {
             woby::Vertex vertex;
             vertex.position = {static_cast<float>(x), static_cast<float>(y), z};
-            result.vertices.push_back(vertex);
+            editMeshGeometry(result).vertices.push_back(vertex);
         }
     for (uint32_t y = 0; y < width; ++y)
         for (uint32_t x = 0; x < width; ++x)
         {
             const auto a = y * (width + 1) + x;
-            result.indices.insert(result.indices.end(), {a, a + 1, a + width + 2, a, a + width + 2, a + width + 1});
+            editMeshGeometry(result).indices.insert(meshGeometry(result).indices.end(), {a, a + 1, a + width + 2, a, a + width + 2, a + width + 1});
         }
-    result.nodes.push_back({"grid", 0, static_cast<uint32_t>(result.indices.size())});
-    result.bounds = woby::calculateBounds(result.vertices);
+    editMeshGeometry(result).nodes.push_back({"grid", 0, static_cast<uint32_t>(meshGeometry(result).indices.size())});
+    result.bounds = woby::calculateBounds(meshGeometry(result).vertices);
     return result;
 }
 woby::Mesh grid(bool hole)
@@ -68,7 +68,7 @@ woby::Mesh grid(bool hole)
         {
             woby::Vertex vertex;
             vertex.position = {static_cast<float>(i), static_cast<float>(j), 0};
-            result.vertices.push_back(vertex);
+            editMeshGeometry(result).vertices.push_back(vertex);
         }
     for (uint32_t j = 0; j < 3; ++j)
         for (uint32_t i = 0; i < 3; ++i)
@@ -76,10 +76,10 @@ woby::Mesh grid(bool hole)
             if (hole && i == 1 && j == 1)
                 continue;
             const uint32_t a = j * 4 + i;
-            result.indices.insert(result.indices.end(), {a, a + 1, a + 5, a, a + 5, a + 4});
+            editMeshGeometry(result).indices.insert(meshGeometry(result).indices.end(), {a, a + 1, a + 5, a, a + 5, a + 4});
         }
-    result.bounds = woby::calculateBounds(result.vertices);
-    result.nodes.push_back({"grid", 0, static_cast<uint32_t>(result.indices.size())});
+    result.bounds = woby::calculateBounds(meshGeometry(result).vertices);
+    editMeshGeometry(result).nodes.push_back({"grid", 0, static_cast<uint32_t>(meshGeometry(result).indices.size())});
     return result;
 }
 woby::UiState stateWithFiles(size_t count)
@@ -493,14 +493,14 @@ TEST_CASE("analysis input summaries identify sides sources and invalid reference
     CHECK(summary.sourceNames == "0.obj, 1.obj");
     CHECK(summary.issue.empty());
     woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, id);
-    state.files[1].mesh.nodes[0].indexCount = 1;
+    editMeshGeometry(state.files[1].mesh).nodes[0].indexCount = 1;
     const auto invalid = woby::comparisonInputSummary(state, woby::ComparisonSide::b, id);
     CHECK(invalid.partCount == 0);
     CHECK(invalid.issue.find("Input B has missing or invalid references: 1.obj / surface") != std::string::npos);
     CHECK(invalid.issue.find("remove missing references") != std::string::npos);
     woby::removeMissingComparisonParts(state, woby::ComparisonSide::b, id);
     CHECK(woby::comparisonInputSummary(state, woby::ComparisonSide::b, id).issue.find("Input B is empty") != std::string::npos);
-    state.files[1].mesh.nodes[0].indexCount = 6;
+    editMeshGeometry(state.files[1].mesh).nodes[0].indexCount = 6;
     REQUIRE(woby::removeFileFromState(state, 0));
     CHECK(woby::comparisonInputSummary(state, woby::ComparisonSide::a, id).issue.find("0.obj / surface") != std::string::npos);
 }
@@ -625,7 +625,7 @@ TEST_CASE("missing analysis inputs block partial results and survive save and re
     CHECK(woby::createSceneDocument(restored) == document);
     woby::removeMissingComparisonParts(restored, woby::ComparisonSide::a);
     CHECK(woby::canCompareGroups(restored));
-    CHECK(woby::comparisonWorldMesh(restored, woby::ComparisonSide::a).indices.size() == 6);
+    CHECK(meshGeometry(woby::comparisonWorldMesh(restored, woby::ComparisonSide::a)).indices.size() == 6);
 }
 
 TEST_CASE("analysis offsets affect framing but never measured source coordinates")
@@ -814,7 +814,7 @@ TEST_CASE("analysis load rejects malformed references and retains changed source
     const auto normalized = woby::readSceneDocument(path);
     CHECK(normalized.comparisons[0].a.size() == 1);
     CHECK(normalized.comparisons[0].translation == std::array<float, 3>{});
-    state.files[0].mesh.nodes[0].name = "replacement group";
+    editMeshGeometry(state.files[0].mesh).nodes[0].name = "replacement group";
     const auto restored = woby::prepareSceneReplacement(state, state.files, normalized);
     CHECK(woby::missingComparisonPartCount(restored) == 1);
     CHECK_FALSE(woby::canCompareGroups(restored));
@@ -852,7 +852,7 @@ TEST_CASE("analysis handles identical translated and retessellated surfaces")
     const auto unchanged = woby::compareMeshes(a, retriangulated);
     CHECK(unchanged.original.maximum < 1e-12);
     CHECK(unchanged.repaired.maximum < 1e-12);
-    CHECK(a.indices == std::vector<uint32_t>{0, 1, 2, 0, 2, 3});
+    CHECK(meshGeometry(a).indices == std::vector<uint32_t>{0, 1, 2, 0, 2, 3});
 }
 
 TEST_CASE("interior sampling detects a filled hole and reverse analysis detects removal")
@@ -873,9 +873,9 @@ TEST_CASE("BVH distances match exhaustive triangle queries")
     auto a = grid(false), b = grid(false);
     std::mt19937 random(912);
     std::uniform_real_distribution<float> elevation(-.6f, .6f);
-    for (auto &vertex : a.vertices)
+    for (auto &vertex : editMeshGeometry(a).vertices)
         vertex.position[2] = elevation(random);
-    for (auto &vertex : b.vertices)
+    for (auto &vertex : editMeshGeometry(b).vertices)
         vertex.position[2] = elevation(random);
     const auto result = woby::compareMeshes(a, b);
     for (size_t i = 0; i < result.original.distances.size(); ++i)
@@ -883,12 +883,12 @@ TEST_CASE("BVH distances match exhaustive triangle queries")
         std::array<float, 3> p{};
         for (size_t k = 0; k < 3; ++k)
             for (size_t v = 0; v < 3; ++v)
-                p[k] += result.original.sampled.vertices[i * 3 + v].position[k] / 3;
+                p[k] += meshGeometry(result.original.sampled).vertices[i * 3 + v].position[k] / 3;
         double expected = std::numeric_limits<double>::infinity();
-        for (size_t t = 0; t < b.indices.size(); t += 3)
-            expected = std::min(expected, woby::pointTriangleDistance(p, b.vertices[b.indices[t]].position,
-                                                                      b.vertices[b.indices[t + 1]].position,
-                                                                      b.vertices[b.indices[t + 2]].position));
+        for (size_t t = 0; t < meshGeometry(b).indices.size(); t += 3)
+            expected = std::min(expected, woby::pointTriangleDistance(p, meshGeometry(b).vertices[meshGeometry(b).indices[t]].position,
+                                                                      meshGeometry(b).vertices[meshGeometry(b).indices[t + 1]].position,
+                                                                      meshGeometry(b).vertices[meshGeometry(b).indices[t + 2]].position));
         CHECK(result.original.distances[i] == doctest::Approx(expected).epsilon(1e-5).scale(1));
     }
 }
@@ -896,30 +896,30 @@ TEST_CASE("BVH distances match exhaustive triangle queries")
 TEST_CASE("parallel wide BVH keeps sample order and matches irregular exhaustive queries")
 {
     auto a = largeGrid(46), b = largeGrid(48, .5f);
-    for (size_t i = 0; i < a.vertices.size(); ++i) {
-        a.vertices[i].position[2] = static_cast<float>((i * 17) % 31) / 8.0f;
+    for (size_t i = 0; i < meshGeometry(a).vertices.size(); ++i) {
+        editMeshGeometry(a).vertices[i].position[2] = static_cast<float>((i * 17) % 31) / 8.0f;
     }
-    for (size_t i = 0; i < b.vertices.size(); ++i) {
-        b.vertices[i].position[2] += static_cast<float>((i * 13) % 29) / 8.0f;
+    for (size_t i = 0; i < meshGeometry(b).vertices.size(); ++i) {
+        editMeshGeometry(b).vertices[i].position[2] += static_cast<float>((i * 13) % 29) / 8.0f;
     }
     // Include collapsed triangles, duplicated faces, and overlapping bounds.
-    b.indices.insert(b.indices.end(), {0, 0, 1, 0, 0, 0, 0, 1, 50});
-    const auto originalIndices = a.indices;
+    editMeshGeometry(b).indices.insert(meshGeometry(b).indices.end(), {0, 0, 1, 0, 0, 0, 0, 1, 50});
+    const auto originalIndices = meshGeometry(a).indices;
     const auto result = woby::computeComparisonStages(a, b, woby::comparisonDistance);
-    REQUIRE(result.original.distances.size() == a.indices.size() / 3 * 4);
+    REQUIRE(result.original.distances.size() == meshGeometry(a).indices.size() / 3 * 4);
     for (size_t i = 0; i < result.original.distances.size(); i += 257) {
         const auto face = i / 4;
-        CHECK(result.original.sampled.vertices[face * 12].position == a.vertices[a.indices[face * 3]].position);
+        CHECK(meshGeometry(result.original.sampled).vertices[face * 12].position == meshGeometry(a).vertices[meshGeometry(a).indices[face * 3]].position);
         std::array<float, 3> center{};
         for (size_t k = 0; k < 3; ++k) {
             double sum = 0;
-            for (size_t corner = 0; corner < 3; ++corner) { sum += result.original.sampled.vertices[i * 3 + corner].position[k]; }
+            for (size_t corner = 0; corner < 3; ++corner) { sum += meshGeometry(result.original.sampled).vertices[i * 3 + corner].position[k]; }
             center[k] = static_cast<float>(sum / 3);
         }
         double expected = std::numeric_limits<double>::infinity();
-        for (size_t t = 0; t < b.indices.size(); t += 3) {
-            expected = std::min(expected, woby::pointTriangleDistance(center, b.vertices[b.indices[t]].position,
-                b.vertices[b.indices[t + 1]].position, b.vertices[b.indices[t + 2]].position));
+        for (size_t t = 0; t < meshGeometry(b).indices.size(); t += 3) {
+            expected = std::min(expected, woby::pointTriangleDistance(center, meshGeometry(b).vertices[meshGeometry(b).indices[t]].position,
+                meshGeometry(b).vertices[meshGeometry(b).indices[t + 1]].position, meshGeometry(b).vertices[meshGeometry(b).indices[t + 2]].position));
         }
         CHECK(result.original.distances[i] == doctest::Approx(expected).epsilon(1e-5).scale(1));
     }
@@ -927,7 +927,7 @@ TEST_CASE("parallel wide BVH keeps sample order and matches irregular exhaustive
     CHECK(repeated.original.distances == result.original.distances);
     CHECK(repeated.original.mean == result.original.mean);
     CHECK(repeated.original.percentile95 == result.original.percentile95);
-    CHECK(a.indices == originalIndices);
+    CHECK(meshGeometry(a).indices == originalIndices);
 }
 
 TEST_CASE("bulk analysis membership scales across thousands of files and preserves missing references")
@@ -942,7 +942,7 @@ TEST_CASE("bulk analysis membership scales across thousands of files and preserv
     const auto signature = woby::comparisonGeometrySignature(state, id);
     REQUIRE(signature != 0);
     const auto world = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id);
-    CHECK(world.indices.size() == files.size() * 6);
+    CHECK(meshGeometry(world).indices.size() == files.size() * 6);
     REQUIRE(world.duplicateInput);
     CHECK(world.duplicateInput->sources.size() == files.size());
     // Overlapping and repeated membership stays canonical; bulk removals retain
@@ -979,11 +979,11 @@ TEST_CASE("file analysis availability only depends on its valid identified trian
     CHECK(woby::fileHasComparableParts(file));
     file.fileSettings.visible = false;
     CHECK(woby::fileHasComparableParts(file));
-    file.mesh.nodes[0].indexCount = 4;
+    editMeshGeometry(file.mesh).nodes[0].indexCount = 4;
     CHECK_FALSE(woby::fileHasComparableParts(file));
-    file.mesh.nodes[0].indexCount = 9;
+    editMeshGeometry(file.mesh).nodes[0].indexCount = 9;
     CHECK_FALSE(woby::fileHasComparableParts(file));
-    file.mesh.nodes[0].indexCount = 6;
+    editMeshGeometry(file.mesh).nodes[0].indexCount = 6;
     file.groupSettings[0].objectId = woby::invalidSceneObjectId;
     CHECK_FALSE(woby::fileHasComparableParts(file));
     file.groupSettings.clear();
@@ -996,14 +996,14 @@ TEST_CASE("diagnostics weld identical seam positions and distinguish edge defect
     CHECK(woby::inspectMesh(seams).boundaryEdges.size() == 4);
     CHECK(woby::inspectMesh(seams).inconsistentWindingEdges.empty());
     auto flipped = seams;
-    std::swap(flipped.indices[4], flipped.indices[5]);
+    std::swap(editMeshGeometry(flipped).indices[4], editMeshGeometry(flipped).indices[5]);
     CHECK(woby::inspectMesh(flipped).inconsistentWindingEdges.size() == 1);
     auto duplicate = square();
-    duplicate.indices.insert(duplicate.indices.end(), {0, 1, 2});
+    editMeshGeometry(duplicate).indices.insert(meshGeometry(duplicate).indices.end(), {0, 1, 2});
     const auto defects = woby::inspectMesh(duplicate);
     CHECK(defects.duplicateTriangles == 1);
     CHECK(defects.nonManifoldEdges.size() == 1);
-    duplicate.indices.insert(duplicate.indices.end(), {0, 0, 1});
+    editMeshGeometry(duplicate).indices.insert(meshGeometry(duplicate).indices.end(), {0, 0, 1});
     CHECK(woby::inspectMesh(duplicate).degenerateTriangles == 1);
 }
 
@@ -1015,7 +1015,7 @@ TEST_CASE("quality adjacency preserves geometric seams signed zero and manifold 
     // source points that were never submitted as triangle corners.
     woby::Vertex unused;
     unused.position[0] = std::numeric_limits<float>::quiet_NaN();
-    seams.vertices.push_back(unused);
+    editMeshGeometry(seams).vertices.push_back(unused);
     const auto seamed = woby::inspectSurfaceMeshQuality(seams);
     const auto indexed = woby::inspectSurfaceMeshQuality(square());
     REQUIRE(seamed.triangles.size() == indexed.triangles.size());
@@ -1023,7 +1023,7 @@ TEST_CASE("quality adjacency preserves geometric seams signed zero and manifold 
         CHECK(seamed.triangles[i].values == indexed.triangles[i].values);
         CHECK(seamed.triangles[i].values[3] == doctest::Approx(1));
     }
-    seams.indices.insert(seams.indices.end(), {0, 1, 2, 0, 0, 0});
+    editMeshGeometry(seams).indices.insert(meshGeometry(seams).indices.end(), {0, 1, 2, 0, 0, 0});
     const auto nonManifold = woby::inspectSurfaceMeshQuality(seams);
     CHECK(nonManifold.degenerateTriangles == 1);
     // The common diagonal now has three uses; the second face's remaining
@@ -1036,13 +1036,13 @@ TEST_CASE("analysis validates empty and invalid input")
     auto a = square();
     CHECK_THROWS((void)woby::compareMeshes({}, {}));
     auto invalid = a;
-    invalid.indices[0] = 99;
+    editMeshGeometry(invalid).indices[0] = 99;
     CHECK_THROWS((void)woby::compareMeshes(a, invalid));
     invalid = a;
-    invalid.vertices[0].position[0] = std::numeric_limits<float>::infinity();
+    editMeshGeometry(invalid).vertices[0].position[0] = std::numeric_limits<float>::infinity();
     CHECK_THROWS((void)woby::compareMeshes(a, invalid));
     invalid = a;
-    invalid.indices.push_back(0);
+    editMeshGeometry(invalid).indices.push_back(0);
     CHECK_THROWS((void)woby::compareMeshes(a, invalid));
     CHECK_THROWS((void)woby::surfacePercentAboveTolerance({}, -1));
 }
@@ -1061,7 +1061,7 @@ TEST_CASE("analysis accepts cancellation without modifying the meshes")
     std::stop_source stop;
     stop.request_stop();
     CHECK_THROWS_WITH((void)woby::compareMeshes(a, a, stop.get_token()), "Analysis canceled.");
-    CHECK(a.indices.size() == 6);
+    CHECK(meshGeometry(a).indices.size() == 6);
 }
 
 TEST_CASE("tree selection replaces toggles and preserves a pair on context click")
@@ -1137,9 +1137,9 @@ TEST_CASE("analysis groups assemble parts across files and compare combined surf
 {
     woby::UiState state;
     auto first = square(), second = square();
-    first.indices = {0, 1, 2};
-    second.indices = {0, 2, 3};
-    first.nodes[0].indexCount = second.nodes[0].indexCount = 3;
+    editMeshGeometry(first).indices = {0, 1, 2};
+    editMeshGeometry(second).indices = {0, 2, 3};
+    editMeshGeometry(first).nodes[0].indexCount = editMeshGeometry(second).nodes[0].indexCount = 3;
     state.files.push_back(woby::createUiFileState("first.obj", first, 0));
     state.files.push_back(woby::createUiFileState("second.obj", second, 0));
     state.files.push_back(woby::createUiFileState("whole.obj", square(), 0));
@@ -1149,8 +1149,8 @@ TEST_CASE("analysis groups assemble parts across files and compare combined surf
     REQUIRE(woby::canCompareGroups(state));
     const auto a = woby::comparisonWorldMesh(state, woby::ComparisonSide::a);
     const auto b = woby::comparisonWorldMesh(state, woby::ComparisonSide::b);
-    CHECK(a.indices.size() == 6);
-    CHECK(b.indices.size() == 6);
+    CHECK(meshGeometry(a).indices.size() == 6);
+    CHECK(meshGeometry(b).indices.size() == 6);
     const auto result = woby::compareMeshes(a, b);
     CHECK(result.original.maximum < 1e-12);
     CHECK(result.repaired.maximum < 1e-12);
@@ -1171,7 +1171,7 @@ TEST_CASE("folder and file analysis actions expand current parts without duplica
     woby::setComparisonObjects(state, objects, woby::ComparisonSide::a, true);
     woby::setComparisonObjects(state, objects, woby::ComparisonSide::a, true);
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 2);
-    CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 12);
+    CHECK(meshGeometry(woby::comparisonWorldMesh(state, woby::ComparisonSide::a)).indices.size() == 12);
     woby::setComparisonObjects(state, {partId}, woby::ComparisonSide::a, false);
     CHECK_FALSE(woby::comparisonContains(state, state.files[0].groupSettings[0].objectId, woby::ComparisonSide::a));
     CHECK(woby::comparisonContains(state, state.files[1].groupSettings[0].objectId, woby::ComparisonSide::a));
@@ -1187,7 +1187,7 @@ TEST_CASE("parts in one file can belong to either or both analysis groups")
 {
     woby::UiState state;
     auto model = square();
-    model.nodes = {{"first", 0, 3}, {"second", 3, 3}};
+    editMeshGeometry(model).nodes = {{"first", 0, 3}, {"second", 3, 3}};
     state.files.push_back(woby::createUiFileState("parts.obj", model, 0));
     woby::appendDefaultSceneNodesForFiles(state, 0);
     const auto first = state.files[0].groupSettings[0].objectId;
@@ -1195,8 +1195,8 @@ TEST_CASE("parts in one file can belong to either or both analysis groups")
     woby::setComparisonObjects(state, {first}, woby::ComparisonSide::a, true);
     woby::setComparisonObjects(state, {second}, woby::ComparisonSide::b, true);
     REQUIRE(woby::canCompareGroups(state));
-    CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 3);
-    CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::b).indices.size() == 3);
+    CHECK(meshGeometry(woby::comparisonWorldMesh(state, woby::ComparisonSide::a)).indices.size() == 3);
+    CHECK(meshGeometry(woby::comparisonWorldMesh(state, woby::ComparisonSide::b)).indices.size() == 3);
     woby::setComparisonObjects(state, {first}, woby::ComparisonSide::b, true);
     CHECK(woby::comparisonContains(state, state.files[0].groupSettings[0].objectId, woby::ComparisonSide::a));
     CHECK(woby::comparisonContains(state, state.files[0].groupSettings[0].objectId, woby::ComparisonSide::b));
@@ -1218,7 +1218,7 @@ TEST_CASE("parts in one file can belong to either or both analysis groups")
 TEST_CASE("analysis selection ignores stale IDs empty folders and objects without triangles")
 {
     auto state = stateWithFiles(2);
-    state.files[1].mesh.indices.clear();
+    editMeshGeometry(state.files[1].mesh).indices.clear();
     woby::UiSceneNode folder;
     state.sceneNodes.push_back(folder);
     woby::assignSceneObjectIds(state);
@@ -1252,8 +1252,8 @@ TEST_CASE("analysis snapshots follow hierarchy transforms and ignore ordinary vi
     woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true);
     state.files[0].fileSettings.visible = false;
     const auto transformed = woby::comparisonWorldMesh(state, woby::ComparisonSide::a);
-    CHECK(transformed.vertices[0].position[0] == doctest::Approx(6));
-    CHECK(state.files[0].mesh.vertices[0].position[0] == 0);
+    CHECK(meshGeometry(transformed).vertices[0].position[0] == doctest::Approx(6));
+    CHECK(meshGeometry(state.files[0].mesh).vertices[0].position[0] == 0);
     const auto signature = woby::comparisonGeometrySignature(state);
     state.files[0].groupSettings[0].color = {1, 1, 1, 1};
     state.files[0].groupSettings[0].opacity = .2f;
@@ -1282,33 +1282,33 @@ TEST_CASE("analysis supports implicit scene trees and deduplicates repeated part
     const auto signature = woby::comparisonGeometrySignature(state);
     state.sceneNodes[0].children.push_back(state.sceneNodes[0].children[0]);
     CHECK(woby::comparisonGeometrySignature(state) == signature);
-    CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 6);
+    CHECK(meshGeometry(woby::comparisonWorldMesh(state, woby::ComparisonSide::a)).indices.size() == 6);
     state.sceneNodes[0].children.clear();
     CHECK(woby::comparisonGeometrySignature(state) == signature);
-    CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 6);
+    CHECK(meshGeometry(woby::comparisonWorldMesh(state, woby::ComparisonSide::a)).indices.size() == 6);
     state.sceneNodes.clear();
     CHECK(woby::comparisonGeometrySignature(state) == signature);
     CHECK(woby::comparisonObjectParts(state, {state.files[0].objectId}).size() == 1);
-    CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 6);
+    CHECK(meshGeometry(woby::comparisonWorldMesh(state, woby::ComparisonSide::a)).indices.size() == 6);
 }
 
 TEST_CASE("analysis accepts more than 50000 selected triangles across the whole side")
 {
     auto state = stateWithFiles(2);
     for (auto& file : state.files) {
-        file.mesh.indices.resize(30000 * 3, 0);
-        file.mesh.nodes[0].indexCount = 30000 * 3;
+        editMeshGeometry(file.mesh).indices.resize(30000 * 3, 0);
+        editMeshGeometry(file.mesh).nodes[0].indexCount = 30000 * 3;
     }
     woby::setComparisonObjects(state, {state.files[0].objectId, state.files[1].objectId}, woby::ComparisonSide::a, true);
     const auto combined = woby::comparisonWorldMesh(state, woby::ComparisonSide::a);
-    CHECK(combined.indices.size() == 60000 * 3);
-    CHECK(combined.vertices.size() == 8);
+    CHECK(meshGeometry(combined).indices.size() == 60000 * 3);
+    CHECK(meshGeometry(combined).vertices.size() == 8);
     auto& file = state.files[0];
-    file.mesh.indices.resize(60000 * 3, 0);
-    file.mesh.nodes[0].indexCount = 3;
+    editMeshGeometry(file.mesh).indices.resize(60000 * 3, 0);
+    editMeshGeometry(file.mesh).nodes[0].indexCount = 3;
     woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::a, false);
-    CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 3);
-    file.mesh.vertices[0].position[0] = std::numeric_limits<float>::infinity();
+    CHECK(meshGeometry(woby::comparisonWorldMesh(state, woby::ComparisonSide::a)).indices.size() == 3);
+    editMeshGeometry(file.mesh).vertices[0].position[0] = std::numeric_limits<float>::infinity();
     CHECK_THROWS((void)woby::comparisonWorldMesh(state, woby::ComparisonSide::a));
 }
 
@@ -1316,7 +1316,7 @@ TEST_CASE("analysis measures both surfaces above the former triangle cap")
 {
     const auto a = largeGrid(160);
     const auto b = largeGrid(160, .25f);
-    REQUIRE(a.indices.size() / 3 > 50000);
+    REQUIRE(meshGeometry(a).indices.size() / 3 > 50000);
     const auto result = woby::compareMeshes(a, b);
     for (const auto* surface : {&result.original, &result.repaired})
     {
@@ -1324,19 +1324,19 @@ TEST_CASE("analysis measures both surfaces above the former triangle cap")
         CHECK(surface->mean == doctest::Approx(.25));
         CHECK(surface->percentile95 == doctest::Approx(.25));
         CHECK(surface->distances.size() == 4 * 51200);
-        CHECK(surface->sampled.vertices.size() == 12 * 51200);
-        CHECK(surface->sampled.indices.back() == surface->sampled.vertices.size() - 1);
+        CHECK(meshGeometry(surface->sampled).vertices.size() == 12 * 51200);
+        CHECK(meshGeometry(surface->sampled).indices.back() == meshGeometry(surface->sampled).vertices.size() - 1);
         CHECK(surface->diagnostics.boundaryEdges.size() == 640);
         CHECK(surface->diagnostics.nonManifoldEdges.empty());
         CHECK(woby::surfacePercentAboveTolerance(*surface, .2) == doctest::Approx(100));
-        const auto bounds = woby::calculateBounds(surface->sampled.vertices);
+        const auto bounds = woby::calculateBounds(meshGeometry(surface->sampled).vertices);
         CHECK(surface->sampled.bounds.min == bounds.min);
         CHECK(surface->sampled.bounds.max == bounds.max);
         CHECK(surface->sampled.bounds.center == bounds.center);
         CHECK(surface->sampled.bounds.radius == bounds.radius);
     }
-    CHECK(a.vertices.front().position[2] == 0);
-    CHECK(b.vertices.front().position[2] == .25f);
+    CHECK(meshGeometry(a).vertices.front().position[2] == 0);
+    CHECK(meshGeometry(b).vertices.front().position[2] == .25f);
 }
 
 TEST_CASE("analysis mesh limits are independent of distance and GPU buffer sizes")
@@ -1367,22 +1367,22 @@ TEST_CASE("analysis snapshots share indexed vertices within each transformed par
     auto input = square();
     // Coincident source vertices remain distinct, and unused vertices stay out
     // of the display mesh (source provenance still handles unused points).
-    input.vertices.push_back(input.vertices[0]);
-    input.vertices.push_back({{100, 100, 100}});
-    input.indices = {0, 1, 2, 4, 2, 3, 0, 1, 2, 0, 2, 3};
-    input.nodes = {{"first", 0, 6}, {"second", 6, 6}};
+    editMeshGeometry(input).vertices.push_back(meshGeometry(input).vertices[0]);
+    editMeshGeometry(input).vertices.push_back({{100, 100, 100}});
+    editMeshGeometry(input).indices = {0, 1, 2, 4, 2, 3, 0, 1, 2, 0, 2, 3};
+    editMeshGeometry(input).nodes = {{"first", 0, 6}, {"second", 6, 6}};
     woby::UiState state;
     state.files.push_back(woby::createUiFileState("indexed.obj", input, 0));
     woby::appendDefaultSceneNodesForFiles(state, 0);
     woby::setGroupTranslation(state.files[0].groupSettings[1], {10, 0, 0});
     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true);
     const auto world = woby::comparisonWorldMesh(state, woby::ComparisonSide::a);
-    REQUIRE(world.vertices.size() == 9);
-    CHECK(world.indices == std::vector<uint32_t>{0, 1, 2, 3, 2, 4, 5, 6, 7, 5, 7, 8});
-    for (size_t i = 0; i < input.indices.size(); ++i) {
-        auto expected = input.vertices[input.indices[i]].position;
+    REQUIRE(meshGeometry(world).vertices.size() == 9);
+    CHECK(meshGeometry(world).indices == std::vector<uint32_t>{0, 1, 2, 3, 2, 4, 5, 6, 7, 5, 7, 8});
+    for (size_t i = 0; i < meshGeometry(input).indices.size(); ++i) {
+        auto expected = meshGeometry(input).vertices[meshGeometry(input).indices[i]].position;
         if (i >= 6) { expected[0] += 10; }
-        CHECK(world.vertices[world.indices[i]].position == expected);
+        CHECK(meshGeometry(world).vertices[meshGeometry(world).indices[i]].position == expected);
     }
     CHECK(world.bounds.max == std::array<float, 3>{11, 1, 0});
     REQUIRE(world.duplicateInput);
@@ -1391,7 +1391,7 @@ TEST_CASE("analysis snapshots share indexed vertices within each transformed par
         CHECK_FALSE(batch.wholeFile);
         CHECK(batch.parts.size() == 1);
     }
-    CHECK(state.files[0].mesh.indices == input.indices);
+    CHECK(meshGeometry(state.files[0].mesh).indices == meshGeometry(input).indices);
 }
 
 TEST_CASE("detector snapshots and stages accept meshes beyond the distance heatmap limit")
@@ -1401,12 +1401,12 @@ TEST_CASE("detector snapshots and stages accept meshes beyond the distance heatm
     const size_t triangles = std::numeric_limits<uint32_t>::max() / (12 * sizeof(woby::Vertex)) + 1;
     auto state = stateWithFiles(1);
     auto& file = state.files[0];
-    file.mesh.indices.assign(triangles * 3, 0);
-    file.mesh.nodes[0].indexCount = static_cast<uint32_t>(file.mesh.indices.size());
+    editMeshGeometry(file.mesh).indices.assign(triangles * 3, 0);
+    editMeshGeometry(file.mesh).nodes[0].indexCount = static_cast<uint32_t>(meshGeometry(file.mesh).indices.size());
     woby::setComparisonObjects(state, {file.objectId}, woby::ComparisonSide::a, true);
     auto world = woby::comparisonWorldMesh(state, woby::ComparisonSide::a);
-    CHECK(world.vertices.size() == 1);
-    CHECK(world.indices.size() == triangles * 3);
+    CHECK(meshGeometry(world).vertices.size() == 1);
+    CHECK(meshGeometry(world).indices.size() == triangles * 3);
     // Provenance is unavailable here; the detector still has to get past mesh
     // validation and return its normal unavailable result, not a GPU error.
     world.duplicateInput.reset();
@@ -1481,14 +1481,14 @@ TEST_CASE("background analysis and diagnostics handle cancellation racing with c
             if (!diagnosticsOnly) {
                 for (const auto* surface : {&comparison.original, &comparison.repaired}) {
                     CHECK(surface->distances.size() == 8 * width * width);
-                    CHECK(surface->sampled.indices.size() == 24 * width * width);
+                    CHECK(meshGeometry(surface->sampled).indices.size() == 24 * width * width);
                     CHECK(surface->maximum == doctest::Approx(0));
                 }
             }
         }
     }
-    CHECK(input.indices.size() == width * width * 6);
-    CHECK(input.vertices.front().position == std::array<float, 3>{0, 0, 0});
+    CHECK(meshGeometry(input).indices.size() == width * width * 6);
+    CHECK(meshGeometry(input).vertices.front().position == std::array<float, 3>{0, 0, 0});
 }
 
 TEST_CASE("analysis settings clamp and memberships survive unrelated file removal")
@@ -1581,8 +1581,8 @@ TEST_CASE("sample loads with repairs and A B analysis membership")
     const auto root = std::filesystem::path(__FILE__).parent_path().parent_path() / "assets/samples/mesh-comparison";
     const auto original = woby::loadObjMesh(root / "original.obj");
     const auto repaired = woby::loadObjMesh(root / "repaired.obj");
-    CHECK(original.indices.size() / 3 == 153);
-    CHECK(repaired.indices.size() / 3 == 160);
+    CHECK(meshGeometry(original).indices.size() / 3 == 153);
+    CHECK(meshGeometry(repaired).indices.size() / 3 == 160);
     const auto result = woby::compareMeshes(original, repaired);
     CHECK(result.original.diagnostics.boundaryEdges.size() == 47);
     CHECK(result.repaired.diagnostics.boundaryEdges.size() == 36);
@@ -1594,8 +1594,8 @@ TEST_CASE("sample loads with repairs and A B analysis membership")
         woby::createUiFileState(root / "original.obj", original, 0),
         woby::createUiFileState(root / "repaired.obj", repaired, 0)}, scene);
     CHECK(woby::comparisonSettings(state).enabled);
-    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == original.nodes.size());
-    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::b) == repaired.nodes.size());
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == meshGeometry(original).nodes.size());
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::b) == meshGeometry(repaired).nodes.size());
     REQUIRE(scene.comparisons.size() == 1);
     CHECK(scene.comparisons[0].name == "Analysis 1");
     CHECK_FALSE(scene.comparisons[0].translation.has_value());
@@ -1675,7 +1675,7 @@ TEST_CASE("analysis trees show only included parts and retain hierarchy after sc
 {
     woby::UiState state;
     auto model = square();
-    model.nodes = {{"Part one", 0, 3}, {"Part two", 3, 3}};
+    editMeshGeometry(model).nodes = {{"Part one", 0, 3}, {"Part two", 3, 3}};
     state.files.push_back(woby::createUiFileState("assembly.obj", model, 0));
     woby::appendDefaultSceneNodesForFiles(state, 0);
     woby::UiSceneNode folder;
@@ -1838,18 +1838,18 @@ TEST_CASE("single input analysis follows membership changes and preserves the re
 TEST_CASE("single input analysis provides topology without distance samples or misleading metrics")
 {
     auto input = square();
-    input.indices.insert(input.indices.end(), {0, 1, 2, 0, 0, 1});
+    editMeshGeometry(input).indices.insert(meshGeometry(input).indices.end(), {0, 1, 2, 0, 0, 1});
     const auto expected = woby::inspectMesh(input);
     for (const bool useA : {true, false}) {
         const auto result = useA ? woby::compareMeshes(input, {}) : woby::compareMeshes({}, input);
         const auto& surface = useA ? result.original : result.repaired;
-        CHECK(surface.source.indices == input.indices);
+        CHECK(meshGeometry(surface.source).indices == meshGeometry(input).indices);
         CHECK(surface.diagnostics.boundaryEdges.size() == expected.boundaryEdges.size());
         CHECK(surface.diagnostics.nonManifoldEdges.size() == expected.nonManifoldEdges.size());
         CHECK(surface.diagnostics.inconsistentWindingEdges.size() == expected.inconsistentWindingEdges.size());
         CHECK(surface.diagnostics.duplicateTriangles == 1);
         CHECK(surface.diagnostics.degenerateTriangles == 1);
-        CHECK(surface.sampled.vertices.empty());
+        CHECK(meshGeometry(surface.sampled).vertices.empty());
         CHECK(surface.distances.empty());
         CHECK(surface.sampleAreas.empty());
         const auto json = woby::controlComparisonResults(result, .05);
@@ -1866,7 +1866,7 @@ TEST_CASE("single input analysis provides topology without distance samples or m
     stop.request_stop();
     CHECK_THROWS_WITH((void)woby::compareMeshes(input, {}, stop.get_token()), "Analysis canceled.");
     CHECK_THROWS_WITH((void)woby::compareMeshes({}, input, stop.get_token()), "Analysis canceled.");
-    input.indices[0] = 999;
+    editMeshGeometry(input).indices[0] = 999;
     CHECK_THROWS((void)woby::compareMeshes(input, {}));
     CHECK_THROWS((void)woby::compareMeshes({}, input));
 }
@@ -1984,7 +1984,7 @@ TEST_CASE("quick analysis leaves existing memberships and invalid selections unt
     CHECK(state.comparisons.size() == 2);
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a, existingId) == 1);
     state.selectedSceneObjects = {state.files[0].objectId, state.files[1].objectId};
-    state.files[1].mesh.indices.clear();
+    editMeshGeometry(state.files[1].mesh).indices.clear();
     unchanged();
 }
 
@@ -2038,7 +2038,7 @@ TEST_CASE("analysis membership menu is unavailable without any comparable parts"
     using Action = woby::ComparisonMembershipAction;
     CHECK(woby::comparisonMembershipAction(state, {}, woby::ComparisonSide::a) == Action::unavailable);
     CHECK(woby::comparisonMembershipAction(state, {0, state.nextObjectId}, woby::ComparisonSide::b) == Action::unavailable);
-    state.files[0].mesh.indices.clear();
+    editMeshGeometry(state.files[0].mesh).indices.clear();
     CHECK(woby::comparisonMembershipAction(state, {state.files[0].objectId}, woby::ComparisonSide::a) == Action::unavailable);
 }
 
@@ -2219,9 +2219,9 @@ TEST_CASE("disabled analysis items change geometry signatures bounds and effecti
         woby::setComparisonObjects(state, {state.files[0].objectId, state.files[1].objectId}, side, true, id);
     }
     const auto original = woby::comparisonGeometrySignature(state, id);
-    CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id).indices.size() == 12);
+    CHECK(meshGeometry(woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id)).indices.size() == 12);
     woby::setComparisonObjectsEnabled(state, {state.files[1].objectId}, woby::ComparisonSide::a, false, id);
-    CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id).indices.size() == 6);
+    CHECK(meshGeometry(woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id)).indices.size() == 6);
     CHECK(woby::comparisonGeometrySignature(state, id) != original);
     CHECK(woby::missingComparisonPartCount(state, id) == 0);
     woby::setComparisonObjectsEnabled(state, {}, woby::ComparisonSide::b, false, id);
@@ -2288,7 +2288,7 @@ TEST_CASE("disabled missing analysis references do not block enabled geometry")
     REQUIRE(woby::removeFileFromState(state, 1));
     CHECK(woby::missingComparisonPartCount(state, id) == 1);
     CHECK(woby::canInspectComparison(state, id));
-    CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id).indices.size() == 6);
+    CHECK(meshGeometry(woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id)).indices.size() == 6);
     woby::setComparisonObjectsEnabled(state, {}, woby::ComparisonSide::a, true, id);
     CHECK_FALSE(woby::canInspectComparison(state, id));
     CHECK_THROWS((void)woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id));
@@ -2302,7 +2302,7 @@ TEST_CASE("analysis file checkbox toggles every included mesh part in implicit a
     for (const bool explicitTree : {false, true}) {
         woby::UiState state;
         auto model = square();
-        model.nodes = {{"First", 0, 3}, {"Second", 3, 3}};
+        editMeshGeometry(model).nodes = {{"First", 0, 3}, {"Second", 3, 3}};
         state.files.push_back(woby::createUiFileState("parts.obj", model, 0));
         woby::appendDefaultSceneNodesForFiles(state, 0);
         if (!explicitTree) { state.sceneNodes.clear(); }
@@ -2311,7 +2311,7 @@ TEST_CASE("analysis file checkbox toggles every included mesh part in implicit a
         const auto id = woby::createComparison(state);
         woby::setComparisonObjects(state, {file}, woby::ComparisonSide::b, true, id);
         woby::setComparisonObjectsEnabled(state, {part}, woby::ComparisonSide::b, false, id);
-        CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::b, id).indices.size() == 3);
+        CHECK(meshGeometry(woby::comparisonWorldMesh(state, woby::ComparisonSide::b, id)).indices.size() == 3);
         auto tree = woby::comparisonTree(state, woby::ComparisonSide::b, id);
         REQUIRE(tree.size() == 1);
         CHECK(tree[0].children.size() == 2);
@@ -2319,7 +2319,7 @@ TEST_CASE("analysis file checkbox toggles every included mesh part in implicit a
         woby::setComparisonObjectsEnabled(state, {file}, woby::ComparisonSide::b, false, id);
         CHECK(woby::enabledComparisonPartCount(state, woby::ComparisonSide::b, id) == 0);
         woby::setComparisonObjectsEnabled(state, {file}, woby::ComparisonSide::b, true, id);
-        CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::b, id).indices.size() == 6);
+        CHECK(meshGeometry(woby::comparisonWorldMesh(state, woby::ComparisonSide::b, id)).indices.size() == 6);
         CHECK(woby::comparisonTree(state, woby::ComparisonSide::b, id)[0].enabledPartCount == 2);
     }
 }
@@ -2330,7 +2330,7 @@ TEST_CASE("surface mesh quality separates size from shape and handles scale extr
     const auto base = mesh({{0,0,0}, {1,0,0}, {.5f, std::sqrt(3.0f)/2, 0}}, {0,1,2});
     for (const float scale : {1e-20f, 1.0f, 1e20f}) {
         auto input = base;
-        for (auto& v : input.vertices) { for (auto& x : v.position) { x *= scale; } }
+        for (auto& v : editMeshGeometry(input).vertices) { for (auto& x : v.position) { x *= scale; } }
         const auto q = woby::inspectSurfaceMeshQuality(input);
         REQUIRE(q.triangles.size() == 1);
         CHECK(q.degenerateTriangles == 0);
@@ -2355,13 +2355,13 @@ TEST_CASE("surface mesh quality matches geometric seams and measures adjacent eq
     CHECK(q.triangles[0].values[3] == doctest::Approx(2));
     CHECK(q.triangles[1].values[3] == doctest::Approx(2));
     // Near but unequal positions are not welded.
-    input.vertices[3].position[2] = 1e-6f;
+    editMeshGeometry(input).vertices[3].position[2] = 1e-6f;
     q = woby::inspectSurfaceMeshQuality(input);
     CHECK(q.statistics[3].count == 0);
     // Three incident valid faces have no unique neighbor on the shared edge.
-    input.vertices[3].position[2] = 0;
-    input.vertices.push_back({{0,0,1}, {}, {}});
-    input.indices.insert(input.indices.end(), {0,1,6});
+    editMeshGeometry(input).vertices[3].position[2] = 0;
+    editMeshGeometry(input).vertices.push_back({{0,0,1}, {}, {}});
+    editMeshGeometry(input).indices.insert(meshGeometry(input).indices.end(), {0,1,6});
     q = woby::inspectSurfaceMeshQuality(input);
     CHECK(q.statistics[3].count == 0);
 }
@@ -2384,19 +2384,19 @@ TEST_CASE("surface mesh quality reports degenerate faces separately and validate
     std::stop_source stop;
     stop.request_stop();
     CHECK_THROWS((void)woby::inspectSurfaceMeshQuality(input, stop.get_token()));
-    input.indices[0] = 100;
+    editMeshGeometry(input).indices[0] = 100;
     CHECK_THROWS((void)woby::inspectSurfaceMeshQuality(input));
-    input.indices[0] = 0;
-    input.vertices[0].position[0] = std::numeric_limits<float>::infinity();
+    editMeshGeometry(input).indices[0] = 0;
+    editMeshGeometry(input).vertices[0].position[0] = std::numeric_limits<float>::infinity();
     CHECK_THROWS((void)woby::inspectSurfaceMeshQuality(input));
-    input.indices.pop_back();
+    editMeshGeometry(input).indices.pop_back();
     CHECK_THROWS((void)woby::inspectSurfaceMeshQuality(input));
 }
 
 TEST_CASE("surface mesh quality distributions share ranges and retain endpoint counts")
 {
     auto a = square(), b = square();
-    for (auto& vertex : b.vertices) { for (auto& x : vertex.position) { x *= 4; } }
+    for (auto& vertex : editMeshGeometry(b).vertices) { for (auto& x : vertex.position) { x *= 4; } }
     const auto result = woby::compareMeshes(a, b);
     const auto& d = result.qualityDistributions[0];
     CHECK(d.minimum == 0);
@@ -2410,7 +2410,7 @@ TEST_CASE("surface mesh quality distributions share ranges and retain endpoint c
     REQUIRE(va.size() == 6);
     CHECK(va[0].texcoord[0] == doctest::Approx(.25));
     CHECK(vb[0].texcoord[0] == doctest::Approx(1));
-    for (size_t i = 0; i < va.size(); ++i) { CHECK(va[i].position == a.vertices[a.indices[i]].position); }
+    for (size_t i = 0; i < va.size(); ++i) { CHECK(va[i].position == meshGeometry(a).vertices[meshGeometry(a).indices[i]].position); }
     CHECK(result.original.quality.triangles.size() == 2);
     CHECK(result.original.distances.size() == 8);
     CHECK(result.qualityDistributions[2].maximum == 1);
@@ -2421,13 +2421,13 @@ TEST_CASE("surface mesh quality distributions share ranges and retain endpoint c
 TEST_CASE("packed quality display preserves all metrics normals and shared ranges")
 {
     auto a = square(), b = square();
-    for (auto& v : b.vertices) { for (auto& x : v.position) { x *= 4; } }
+    for (auto& v : editMeshGeometry(b).vertices) { for (auto& x : v.position) { x *= 4; } }
     const auto result = woby::computeComparisonStages(a, b, woby::comparisonQuality);
     for (const auto side : {0u, 1u}) {
         const auto& input = side == 0 ? a : b;
         const auto& surface = side == 0 ? result.original : result.repaired;
         const auto& packed = surface.qualityVertices;
-        REQUIRE(packed.size() == input.indices.size());
+        REQUIRE(packed.size() == meshGeometry(input).indices.size());
         for (size_t metric = 0; metric < woby::surfaceQualityMetricCount; ++metric) {
             const auto reference = woby::surfaceQualityVertices(input, surface.quality,
                 static_cast<woby::SurfaceQualityMetric>(metric), result.qualityDistributions[metric]);
@@ -2764,9 +2764,9 @@ TEST_CASE("topology analysis does not compute distance or quality")
     const auto result = woby::computeComparisonStages(square(), square(2), woby::comparisonSource | woby::comparisonTopology);
     CHECK(result.original.diagnostics.boundaryEdges.size() == 4);
     CHECK(result.repaired.diagnostics.boundaryEdges.size() == 4);
-    CHECK(result.original.source.indices.size() == 6);
+    CHECK(meshGeometry(result.original.source).indices.size() == 6);
     CHECK(result.original.distances.empty());
-    CHECK(result.repaired.sampled.vertices.empty());
+    CHECK(meshGeometry(result.repaired.sampled).vertices.empty());
     CHECK(result.original.quality.triangles.empty());
     CHECK(result.repaired.quality.triangles.empty());
     CHECK(result.original.duplicates.points.unavailableSources == 0);
@@ -2781,14 +2781,14 @@ TEST_CASE("analysis stages retain unrelated allocations and match the full resul
     REQUIRE(resetComparisonCache(cache, 17));
     const uint32_t base = comparisonSource | comparisonTopology;
     REQUIRE(applyComparisonStages(result, cache, computeComparisonStages(a, b, base), 17, base));
-    const auto* vertices = result.original.source.vertices.data();
+    const auto* vertices = meshGeometry(result.original.source).vertices.data();
     const auto* boundaries = result.original.diagnostics.boundaryEdges.data();
     for (const auto stage : {comparisonDuplicatePoints, comparisonDuplicateTriangles, comparisonDegenerates, comparisonQuality, comparisonDistance}) {
         auto update = computeComparisonStages(a, b, stage);
-        CHECK(update.original.source.vertices.empty());
+        CHECK(meshGeometry(update.original.source).vertices.empty());
         CHECK(update.original.diagnostics.boundaryEdges.empty());
         REQUIRE(applyComparisonStages(result, cache, std::move(update), 17, stage));
-        CHECK(result.original.source.vertices.data() == vertices);
+        CHECK(meshGeometry(result.original.source).vertices.data() == vertices);
         CHECK(result.original.diagnostics.boundaryEdges.data() == boundaries);
     }
     CHECK(controlComparisonResults(result, .05) == controlComparisonResults(compareMeshes(a, b), .05));

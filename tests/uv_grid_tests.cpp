@@ -20,41 +20,41 @@
 TEST_CASE("UV quality distinguishes scale distortion collapse and mixed orientation")
 {
     woby::Mesh mesh;
-    mesh.vertices = {{{0,0,0},{},{0,0}},{{1,0,0},{},{2,0}},{{0,1,0},{},{0,2}}};
-    mesh.indices = {0,1,2};
-    mesh.nodes = {{"patch",0,3}};
-    mesh.nodes[0].hasTexcoords = true;
-    mesh.nodes[0].sourceObjectId = 42;
+    editMeshGeometry(mesh).vertices = {{{0,0,0},{},{0,0}},{{1,0,0},{},{2,0}},{{0,1,0},{},{0,2}}};
+    editMeshGeometry(mesh).indices = {0,1,2};
+    editMeshGeometry(mesh).nodes = {{"patch",0,3}};
+    editMeshGeometry(mesh).nodes[0].hasTexcoords = true;
+    editMeshGeometry(mesh).nodes[0].sourceObjectId = 42;
     auto q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
     CHECK(q.triangles[0].angleDegrees == doctest::Approx(0));
     CHECK(q.triangles[0].areaLog2 == doctest::Approx(0));
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::absolute,woby::UvQualityMetric::area);
     CHECK(q.triangles[0].areaLog2 == doctest::Approx(2));
-    mesh.vertices[1].texcoord[0] = -2;
+    editMeshGeometry(mesh).vertices[1].texcoord[0] = -2;
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
     CHECK(q.triangles[0].orientation == -1);
     CHECK(q.mixedOrientationPatches == 0);
     CHECK(q.triangles[0].angleDegrees == doctest::Approx(0));
-    mesh.vertices[1].texcoord[0] = 4;
+    editMeshGeometry(mesh).vertices[1].texcoord[0] = 4;
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
     CHECK(q.triangles[0].angleDegrees == doctest::Approx(18.4349488));
-    mesh.indices.insert(mesh.indices.end(),{0,2,1}); mesh.nodes[0].indexCount = 6;
+    editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(),{0,2,1}); editMeshGeometry(mesh).nodes[0].indexCount = 6;
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::orientation);
     CHECK(q.mixedOrientationPatches == 1);
     CHECK(q.triangles[0].mixedOrientation);
     CHECK(q.triangles[1].triangle == 2);
     CHECK(q.triangles[1].partId == 42);
     // Opposite orientation in independent patches is not a mixed-domain finding.
-    mesh.nodes[0].indexCount = 3;
-    mesh.nodes.push_back(mesh.nodes[0]); mesh.nodes[1].indexOffset = 3;
+    editMeshGeometry(mesh).nodes[0].indexCount = 3;
+    editMeshGeometry(mesh).nodes.push_back(meshGeometry(mesh).nodes[0]); editMeshGeometry(mesh).nodes[1].indexOffset = 3;
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
     CHECK(q.mixedOrientationPatches == 0);
-    mesh.vertices[2].texcoord = {0,0};
+    editMeshGeometry(mesh).vertices[2].texcoord = {0,0};
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
     CHECK(q.collapsed == 2);
     CHECK(std::isfinite(q.triangles[0].areaLog2));
-    mesh.nodes[1].hasTexcoords = false;
-    mesh.vertices[2].position = {0,0,0};
+    editMeshGeometry(mesh).nodes[1].hasTexcoords = false;
+    editMeshGeometry(mesh).vertices[2].position = {0,0,0};
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
     CHECK(q.missing == 1);
     CHECK(q.degenerateSurface == 1);
@@ -69,12 +69,12 @@ struct UvFixture {
     {
         std::filesystem::create_directory(root);
         woby::Mesh mesh;
-        mesh.vertices = {{{0, 0, 0}, {0, 0, 1}, {0, 0}},
+        editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {0, 0, 1}, {0, 0}},
             {{1, 0, 0}, {0, 0, 1}, {1, 0}}, {{0, 1, 0}, {0, 0, 1}, {0, 1}}};
-        mesh.indices = {0, 1, 2, 0, 1, 2, 0, 1, 2};
-        mesh.nodes = {{"UV A", 0, 3}, {"UV B", 3, 3}, {"No UV", 6, 3}};
-        mesh.nodes[0].hasTexcoords = mesh.nodes[1].hasTexcoords = true;
-        mesh.bounds = woby::calculateBounds(mesh.vertices);
+        editMeshGeometry(mesh).indices = {0, 1, 2, 0, 1, 2, 0, 1, 2};
+        editMeshGeometry(mesh).nodes = {{"UV A", 0, 3}, {"UV B", 3, 3}, {"No UV", 6, 3}};
+        editMeshGeometry(mesh).nodes[0].hasTexcoords = editMeshGeometry(mesh).nodes[1].hasTexcoords = true;
+        mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
         state.files.push_back(woby::createUiFileState(root / "mesh.obj", std::move(mesh), 0));
         woby::appendFolderTreeSceneNode(state, root, 0, 1);
         woby::clearSceneDirty(state);
@@ -182,8 +182,8 @@ TEST_CASE("UV bounds cache invalidates for source and layout changes without cha
     SUBCASE("folder transform") { state.sceneNodes[0].settings.rotationDegrees = {11, 43, 17}; }
     SUBCASE("geometry replacement") {
         auto replacement = state.files[0].mesh;
-        replacement.vertices[1].position = {2, 3, 4};
-        replacement.vertices[1].texcoord = {7, -3};
+        editMeshGeometry(replacement).vertices[1].position = {2, 3, 4};
+        editMeshGeometry(replacement).vertices[1].texcoord = {7, -3};
         woby::renewMeshContentRevision(replacement);
         state.files[0].mesh = std::move(replacement);
     }
@@ -205,12 +205,12 @@ TEST_CASE("Separated UV bounds match irregular patches including missing and con
     UvFixture f;
     auto& state = f.state;
     auto& mesh = state.files[0].mesh;
-    mesh.vertices.insert(mesh.vertices.end(), {{{3, -4, 7}, {}, {-2, 5}}, {{9, 2, 1}, {}, {8, 5}}, {{-2, 5, 6}, {}, {-2, 11}}});
-    mesh.indices.insert(mesh.indices.end(), {3, 4, 5});
-    mesh.nodes.push_back({"Irregular UV", 9, 3});
-    mesh.nodes.back().hasTexcoords = true;
+    editMeshGeometry(mesh).vertices.insert(meshGeometry(mesh).vertices.end(), {{{3, -4, 7}, {}, {-2, 5}}, {{9, 2, 1}, {}, {8, 5}}, {{-2, 5, 6}, {}, {-2, 11}}});
+    editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {3, 4, 5});
+    editMeshGeometry(mesh).nodes.push_back({"Irregular UV", 9, 3});
+    editMeshGeometry(mesh).nodes.back().hasTexcoords = true;
     SUBCASE("unequal extents") {}
-    SUBCASE("constant coordinates") { for (auto& vertex : mesh.vertices) { vertex.texcoord = {2, -3}; } }
+    SUBCASE("constant coordinates") { for (auto& vertex : editMeshGeometry(mesh).vertices) { vertex.texcoord = {2, -3}; } }
     state.files[0] = woby::createUiFileState(f.root / "patches.obj", std::move(mesh), 0);
     state.sceneNodes.clear();
     woby::appendDefaultSceneNodesForFiles(state, 0);
@@ -271,16 +271,16 @@ TEST_CASE("UV worker snapshot owns inputs and prepares matching geometry quality
     CHECK_FALSE(actual.uvQuality);
     REQUIRE(prepared.buffers[0].uvQuality);
     CHECK(prepared.buffers[0].uvQuality->missing == expected.uvQuality->missing);
-    CHECK(actual.indices == expected.indices);
-    CHECK(actual.precisePositions == expected.precisePositions);
+    CHECK(meshGeometry(actual).indices == meshGeometry(expected).indices);
+    CHECK(meshGeometry(actual).precisePositions == meshGeometry(expected).precisePositions);
     CHECK(actual.bounds.min == expected.bounds.min);
     CHECK(actual.bounds.max == expected.bounds.max);
-    auto smooth = expected.vertices;
-    woby::generateSmoothNormals(smooth, expected.indices);
-    REQUIRE(actual.vertices.size() == smooth.size());
+    auto smooth = meshGeometry(expected).vertices;
+    woby::generateSmoothNormals(smooth, meshGeometry(expected).indices);
+    REQUIRE(meshGeometry(actual).vertices.size() == smooth.size());
     for (size_t i = 0; i < smooth.size(); ++i) {
-        CHECK(actual.vertices[i].normal == smooth[i].normal);
-        CHECK(actual.vertices[i].position == smooth[i].position);
+        CHECK(meshGeometry(actual).vertices[i].normal == smooth[i].normal);
+        CHECK(meshGeometry(actual).vertices[i].position == smooth[i].position);
     }
     const auto quality = woby::uvQualityVertices(expected);
     REQUIRE(prepared.buffers[0].quality.size() == quality.size());
@@ -291,7 +291,7 @@ TEST_CASE("UV worker snapshot owns inputs and prepares matching geometry quality
     }
     const std::vector<uint32_t> expectedLines{0,1,1,2,2,0,3,4,4,5,5,3};
     CHECK(prepared.buffers[0].lines == expectedLines);
-    CHECK((*prepared.meshes)[1].indices.empty());
+    CHECK(meshGeometry((*prepared.meshes)[1]).indices.empty());
     std::stop_source stop;
     stop.request_stop();
     CHECK_THROWS((void)woby::prepareUvComparisonInputs(snapshot, stop.get_token()));
@@ -348,7 +348,7 @@ TEST_CASE("UV runtime prepares asynchronously retains warm buffers and refreshes
     CHECK_FALSE((*runtime.sources.inputs)[0].uvQuality);
     CHECK_FALSE(runtime.sources.prepared); // Upload staging memory is released after copying to the GPU.
     const auto inputs = runtime.sources.inputs;
-    const auto* vertices = runtime.results.value.original.source.vertices.data();
+    const auto* vertices = meshGeometry(runtime.results.value.original.source).vertices.data();
     const auto gpuVertices = runtime.gpu.original.vertices;
     const auto gpuTriangles = runtime.gpu.original.triangles;
     const auto gpuLines = runtime.gpu.original.lines;
@@ -368,7 +368,7 @@ TEST_CASE("UV runtime prepares asynchronously retains warm buffers and refreshes
     woby::setComparisonSettings(state, settings, f.id);
     REQUIRE(f.ready());
     CHECK(runtime.sources.inputs == inputs);
-    CHECK(runtime.results.value.original.source.vertices.data() == vertices);
+    CHECK(meshGeometry(runtime.results.value.original.source).vertices.data() == vertices);
     CHECK(runtime.gpu.original.vertices.idx == gpuVertices.idx);
     CHECK(runtime.gpu.original.triangles.idx == gpuTriangles.idx);
     CHECK(runtime.gpu.original.lines.idx == gpuLines.idx);
@@ -401,7 +401,7 @@ TEST_CASE("UV preparation identity excludes quality settings but tracks source a
     SUBCASE("view") { settings.uvView = woby::UvView::surface; woby::setComparisonSettings(f.state, settings, id); }
     SUBCASE("transform") { f.state.files[0].groupSettings[0].translation[0] = 2; }
     SUBCASE("source revision") { f.state.files[0].mesh.contentRevision = woby::nextMeshContentRevision(); }
-    SUBCASE("UV availability") { f.state.files[0].mesh.nodes[0].hasTexcoords = false; }
+    SUBCASE("UV availability") { editMeshGeometry(f.state.files[0].mesh).nodes[0].hasTexcoords = false; }
     SUBCASE("membership") { woby::setComparisonObjects(f.state, {f.state.files[0].groupSettings[0].objectId}, woby::ComparisonSide::a, false, id); }
     CHECK(woby::comparisonPreparationSignature(f.state, id) != signature);
 }
@@ -424,7 +424,7 @@ TEST_CASE("UV runtime rejects stale preparation results and survives removal dur
     CHECK(runtime.sources.prepared != stale);
     REQUIRE(f.ready());
     CHECK(runtime.results.signature == woby::comparisonGeometrySignature(state, f.id));
-    CHECK(runtime.results.value.original.source.vertices[0].position[0] == 7);
+    CHECK(meshGeometry(runtime.results.value.original.source).vertices[0].position[0] == 7);
     auto settings = woby::comparisonSettings(state, f.id);
     settings.uvMetric = woby::UvQualityMetric::orientation;
     woby::setComparisonSettings(state, settings, f.id);
@@ -463,7 +463,7 @@ TEST_CASE("UV runtime discards stale setting refreshes and rebuilds changed sour
         REQUIRE(f.ready());
         CHECK(runtime.sources.inputs != inputs);
         const auto fresh = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, f.id);
-        CHECK(runtime.results.value.original.source.precisePositions == fresh.precisePositions);
+        CHECK(meshGeometry(runtime.results.value.original.source).precisePositions == meshGeometry(fresh).precisePositions);
         CHECK(runtime.results.value.original.source.uvQuality->triangles[0].angleDegrees
             == fresh.uvQuality->triangles[0].angleDegrees);
     }
@@ -561,7 +561,7 @@ TEST_CASE("UV runtime releases cached results on allocation failure and retries 
     if (!canceled) {
         CHECK_FALSE(runtime.sources.inputs);
         CHECK_FALSE(runtime.sources.prepared);
-        CHECK(runtime.results.value.original.source.vertices.empty());
+        CHECK(meshGeometry(runtime.results.value.original.source).vertices.empty());
         CHECK(runtime.gpu.uploadedStages == 0);
         CHECK_FALSE(woby::graphics::isValid(runtime.gpu.original.vertices));
         CHECK(runtime.jobs.error.find("Memory allocation failed") != std::string::npos);
@@ -575,7 +575,7 @@ TEST_CASE("UV runtime releases cached results on allocation failure and retries 
     REQUIRE(f.ready());
     CHECK_FALSE(runtime.jobs.allocationFailed);
     CHECK(runtime.jobs.error.empty());
-    CHECK(runtime.results.value.original.source.vertices[0].position[0] == 7);
+    CHECK(meshGeometry(runtime.results.value.original.source).vertices[0].position[0] == 7);
 }
 
 TEST_CASE("UV runtime reports preparation failure once and recovers after geometry replacement")
@@ -584,7 +584,7 @@ TEST_CASE("UV runtime reports preparation failure once and recovers after geomet
     REQUIRE(f.initialized);
     auto& state = f.fixture.state;
     auto valid = state.files[0].mesh;
-    state.files[0].mesh.indices[0] = UINT32_MAX;
+    editMeshGeometry(state.files[0].mesh).indices[0] = UINT32_MAX;
     woby::renewMeshContentRevision(state.files[0].mesh);
     woby::notifySceneEdit(state, woby::SceneChange::geometry);
     woby::updateComparisonRuntimes(f.runtimes, state);
@@ -715,33 +715,33 @@ TEST_CASE("UV layout preserves seams tile offsets and proportions while omitting
 {
     UvFixture f;
     auto source = f.state.files[0].mesh;
-    source.vertices[0].texcoord = {-1, 0};
-    source.vertices[1].texcoord = {3, 0};
-    source.vertices[2].texcoord = {-1, 2};
+    editMeshGeometry(source).vertices[0].texcoord = {-1, 0};
+    editMeshGeometry(source).vertices[1].texcoord = {3, 0};
+    editMeshGeometry(source).vertices[2].texcoord = {-1, 2};
     // A seam has coincident source positions but a distinct UV coordinate.
-    source.vertices.push_back(source.vertices[0]);
-    source.vertices.back().texcoord = {1, 1};
-    source.indices[3] = 3;
+    editMeshGeometry(source).vertices.push_back(meshGeometry(source).vertices[0]);
+    editMeshGeometry(source).vertices.back().texcoord = {1, 1};
+    editMeshGeometry(source).indices[3] = 3;
     const auto result = woby::uvLayoutMesh(source);
-    REQUIRE(result.nodes.size() == 2);
-    REQUIRE(result.indices.size() == 6);
-    REQUIRE(result.vertices.size() == 4);
-    CHECK(result.nodes[1].indexOffset == 3);
-    CHECK(result.nodes[0].hasTexcoords);
-    CHECK(result.vertices[0].texcoord == std::array<float, 2>{-1, 0});
-    CHECK(result.vertices[0].position != result.vertices[3].position);
-    CHECK(result.vertices[0].position[2] > result.vertices[2].position[2]);
+    REQUIRE(meshGeometry(result).nodes.size() == 2);
+    REQUIRE(meshGeometry(result).indices.size() == 6);
+    REQUIRE(meshGeometry(result).vertices.size() == 4);
+    CHECK(meshGeometry(result).nodes[1].indexOffset == 3);
+    CHECK(meshGeometry(result).nodes[0].hasTexcoords);
+    CHECK(meshGeometry(result).vertices[0].texcoord == std::array<float, 2>{-1, 0});
+    CHECK(meshGeometry(result).vertices[0].position != meshGeometry(result).vertices[3].position);
+    CHECK(meshGeometry(result).vertices[0].position[2] > meshGeometry(result).vertices[2].position[2]);
     CHECK(result.bounds.max[0] - result.bounds.min[0] == doctest::Approx(1));
     CHECK(result.bounds.max[2] - result.bounds.min[2] == doctest::Approx(.5));
     CHECK(result.bounds.min[1] == result.bounds.max[1]);
-    CHECK(source.vertices[0].position == source.vertices[3].position);
-    CHECK(result.precisePositions.size() == result.vertices.size());
-    for (auto& node : source.nodes) { node.hasTexcoords = false; }
-    CHECK(woby::uvLayoutMesh(source).indices.empty());
-    source.nodes[0].hasTexcoords = true;
-    for (auto& vertex : source.vertices) { vertex.texcoord = {0, 0}; }
+    CHECK(meshGeometry(source).vertices[0].position == meshGeometry(source).vertices[3].position);
+    CHECK(meshGeometry(result).precisePositions.size() == meshGeometry(result).vertices.size());
+    for (auto& node : editMeshGeometry(source).nodes) { node.hasTexcoords = false; }
+    CHECK(meshGeometry(woby::uvLayoutMesh(source)).indices.empty());
+    editMeshGeometry(source).nodes[0].hasTexcoords = true;
+    for (auto& vertex : editMeshGeometry(source).vertices) { vertex.texcoord = {0, 0}; }
     const auto constant = woby::uvLayoutMesh(source);
-    REQUIRE(constant.indices.size() == 3);
+    REQUIRE(meshGeometry(constant).indices.size() == 3);
     CHECK(woby::finitePosition(constant.bounds.min));
     CHECK(woby::finitePosition(constant.bounds.max));
 }
@@ -765,7 +765,7 @@ TEST_CASE("UV analyses keep source appearance independent and use only source co
         CHECK_FALSE(woby::diagnosticAutoUpdate(settings, static_cast<woby::DiagnosticCategory>(i)));
     }
     const auto layout = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id);
-    REQUIRE(layout.nodes.size() == 2);
+    REQUIRE(meshGeometry(layout).nodes.size() == 2);
     const auto bounds = woby::comparisonDisplayBounds(state, id);
     REQUIRE(bounds);
     for (size_t k = 0; k < 3; ++k) {
@@ -782,10 +782,10 @@ TEST_CASE("UV analyses keep source appearance independent and use only source co
     woby::setComparisonSettings(state, settings, id);
     CHECK(woby::comparisonGeometrySignature(state, id) != signature);
     const auto surface = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id);
-    REQUIRE(surface.nodes.size() == 3);
-    CHECK(surface.nodes[0].hasTexcoords);
-    CHECK_FALSE(surface.nodes[2].hasTexcoords);
-    CHECK(surface.vertices[1].texcoord == state.files[0].mesh.vertices[1].texcoord);
+    REQUIRE(meshGeometry(surface).nodes.size() == 3);
+    CHECK(meshGeometry(surface).nodes[0].hasTexcoords);
+    CHECK_FALSE(meshGeometry(surface).nodes[2].hasTexcoords);
+    CHECK(meshGeometry(surface).vertices[1].texcoord == meshGeometry(state.files[0].mesh).vertices[1].texcoord);
     woby::setComparisonObjects(state, {fileId}, woby::ComparisonSide::b, true, id);
     woby::swapComparisonGroups(state, id);
     CHECK(state.comparisons.back().b.empty());
@@ -896,24 +896,24 @@ TEST_CASE("Separated UV patches preserve source identities scale and UVs for lin
     settings.uvView = woby::UvView::layout; settings.uvSeparated = true;
     woby::setComparisonSettings(state,settings,id);
     const auto mesh = woby::comparisonWorldMesh(state,woby::ComparisonSide::a,id);
-    REQUIRE(mesh.nodes.size() == 2);
-    REQUIRE(mesh.vertices.size() == 6);
-    CHECK(mesh.vertices[0].position != mesh.vertices[3].position);
-    CHECK(mesh.vertices[0].texcoord == mesh.vertices[3].texcoord);
-    CHECK(mesh.vertices[1].position[0]-mesh.vertices[0].position[0] == doctest::Approx(mesh.vertices[4].position[0]-mesh.vertices[3].position[0]));
-    CHECK(mesh.nodes[0].sourceObjectId == state.files[0].groupSettings[0].objectId);
+    REQUIRE(meshGeometry(mesh).nodes.size() == 2);
+    REQUIRE(meshGeometry(mesh).vertices.size() == 6);
+    CHECK(meshGeometry(mesh).vertices[0].position != meshGeometry(mesh).vertices[3].position);
+    CHECK(meshGeometry(mesh).vertices[0].texcoord == meshGeometry(mesh).vertices[3].texcoord);
+    CHECK(meshGeometry(mesh).vertices[1].position[0]-meshGeometry(mesh).vertices[0].position[0] == doctest::Approx(meshGeometry(mesh).vertices[4].position[0]-meshGeometry(mesh).vertices[3].position[0]));
+    CHECK(meshGeometry(mesh).nodes[0].sourceObjectId == state.files[0].groupSettings[0].objectId);
     const auto result = woby::computeComparisonStages(mesh,{},woby::comparisonSource);
     REQUIRE(result.original.source.uvQuality);
     CHECK(result.original.source.uvQuality->missing == 1);
-    CHECK(woby::uvQualityVertices(result.original.source).size() == mesh.indices.size());
+    CHECK(woby::uvQualityVertices(result.original.source).size() == meshGeometry(mesh).indices.size());
     const auto report = woby::controlComparisonResults(result,.01,false);
     CHECK(report["uvQuality"]["validTriangles"] == 2);
     CHECK(report["uvQuality"]["missingUvTriangles"] == 1);
     std::vector<woby::ScenePickPart> parts;
     woby::appendComparisonPickParts(parts,state.comparisons[0],settings,result,false);
     REQUIRE(parts.size() == 2);
-    CHECK(parts[0].objectId == mesh.nodes[0].sourceObjectId);
-    CHECK(parts[1].objectId == mesh.nodes[1].sourceObjectId);
+    CHECK(parts[0].objectId == meshGeometry(mesh).nodes[0].sourceObjectId);
+    CHECK(parts[1].objectId == meshGeometry(mesh).nodes[1].sourceObjectId);
     CHECK(parts[1].indexOffset == 3);
     settings.uvLinkedSelection = false; parts.clear();
     woby::appendComparisonPickParts(parts,state.comparisons[0],settings,result,false);
@@ -923,8 +923,8 @@ TEST_CASE("Separated UV patches preserve source identities scale and UVs for lin
     settings.uvMetric = woby::UvQualityMetric::area; woby::setComparisonSettings(state,settings,id);
     CHECK(woby::comparisonGeometrySignature(state,id) != signature);
     const auto source = woby::createSceneDocument(state).files;
-    woby::isolateUvObjects(state,{mesh.nodes[0].sourceObjectId},id);
-    CHECK(woby::comparisonWorldMesh(state,woby::ComparisonSide::a,id).nodes.size() == 1);
+    woby::isolateUvObjects(state,{meshGeometry(mesh).nodes[0].sourceObjectId},id);
+    CHECK(meshGeometry(woby::comparisonWorldMesh(state,woby::ComparisonSide::a,id)).nodes.size() == 1);
     CHECK(woby::createSceneDocument(state).files == source);
     woby::isolateUvObjects(state,{},id);
     CHECK(woby::comparisonMemberIds(state,woby::ComparisonSide::a,id).size() == 3);
@@ -987,13 +987,13 @@ TEST_CASE("UV layouts keep world geometry and framing bounds when the scene up a
         CHECK(state.sceneBounds.max == refreshed.sceneBounds.max);
         const auto layout = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, layoutId);
         const std::array<std::array<float, 3>, 3> positions = {{{3, 4.5f, 5.5f}, {4, 4.5f, 5.5f}, {3, 4.5f, 4.5f}}};
-        REQUIRE(layout.vertices.size() == 6);
-        for (size_t i = 0; i < layout.vertices.size(); ++i) {
-            CHECK(layout.vertices[i].position == positions[i % 3]);
-            CHECK(layout.vertices[i].normal == std::array<float, 3>{0, -1, 0});
-            CHECK(layout.vertices[i].texcoord == state.files[0].mesh.vertices[i % 3].texcoord);
+        REQUIRE(meshGeometry(layout).vertices.size() == 6);
+        for (size_t i = 0; i < meshGeometry(layout).vertices.size(); ++i) {
+            CHECK(meshGeometry(layout).vertices[i].position == positions[i % 3]);
+            CHECK(meshGeometry(layout).vertices[i].normal == std::array<float, 3>{0, -1, 0});
+            CHECK(meshGeometry(layout).vertices[i].texcoord == meshGeometry(state.files[0].mesh).vertices[i % 3].texcoord);
             for (size_t k = 0; k < 3; ++k) {
-                CHECK(layout.precisePositions[i][k] == layout.vertices[i].position[k]);
+                CHECK(meshGeometry(layout).precisePositions[i][k] == meshGeometry(layout).vertices[i].position[k]);
             }
         }
         const auto display = woby::comparisonDisplayBounds(state, layoutId);
@@ -1032,9 +1032,9 @@ TEST_CASE("Every UV visualization follows the selected up axis without changing 
                     // Nonzero distortion/stretch and opposite patch winding make
                     // every quality color meaningful in the axis comparison.
                     auto& source = state.files[0].mesh;
-                    source.vertices[1].texcoord = {2, 0};
-                    source.vertices[2].texcoord = {0, .25f};
-                    std::swap(source.indices[4], source.indices[5]);
+                    editMeshGeometry(source).vertices[1].texcoord = {2, 0};
+                    editMeshGeometry(source).vertices[2].texcoord = {0, .25f};
+                    std::swap(editMeshGeometry(source).indices[4], editMeshGeometry(source).indices[5]);
                     woby::setFileTranslation(state.files[0].fileSettings, {3, 4, 5});
                     const auto id = woby::createComparison(state, type);
                     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
@@ -1056,17 +1056,17 @@ TEST_CASE("Every UV visualization follows the selected up axis without changing 
                         CHECK(nextSignature == signature);
                         signature = nextSignature;
                         const auto mesh = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id);
-                        REQUIRE(mesh.vertices.size() == yMesh.vertices.size());
-                        CHECK(mesh.indices == yMesh.indices);
-                        for (size_t i = 0; i < mesh.vertices.size(); ++i) {
-                            CHECK(mesh.vertices[i].position == yMesh.vertices[i].position);
-                            CHECK(mesh.vertices[i].normal == yMesh.vertices[i].normal);
-                            CHECK(mesh.vertices[i].texcoord == yMesh.vertices[i].texcoord);
+                        REQUIRE(meshGeometry(mesh).vertices.size() == meshGeometry(yMesh).vertices.size());
+                        CHECK(meshGeometry(mesh).indices == meshGeometry(yMesh).indices);
+                        for (size_t i = 0; i < meshGeometry(mesh).vertices.size(); ++i) {
+                            CHECK(meshGeometry(mesh).vertices[i].position == meshGeometry(yMesh).vertices[i].position);
+                            CHECK(meshGeometry(mesh).vertices[i].normal == meshGeometry(yMesh).vertices[i].normal);
+                            CHECK(meshGeometry(mesh).vertices[i].texcoord == meshGeometry(yMesh).vertices[i].texcoord);
                         }
                         const auto colors = woby::uvQualityVertices(mesh);
                         REQUIRE(colors.size() == yColors.size());
                         for (size_t i = 0; i < colors.size(); ++i) {
-                            CHECK(colors[i].position == mesh.vertices[mesh.indices[i]].position);
+                            CHECK(colors[i].position == meshGeometry(mesh).vertices[meshGeometry(mesh).indices[i]].position);
                             CHECK(colors[i].texcoord == yColors[i].texcoord);
                         }
                         const auto bounds = woby::comparisonDisplayBounds(state, id);
@@ -1080,7 +1080,7 @@ TEST_CASE("Every UV visualization follows the selected up axis without changing 
                         const auto result = woby::computeComparisonStages(mesh, {}, woby::comparisonSource);
                         std::vector<woby::ScenePickPart> parts;
                         woby::appendComparisonPickParts(parts, *comparison, settings, result, true);
-                        REQUIRE(parts.size() == mesh.nodes.size());
+                        REQUIRE(parts.size() == meshGeometry(mesh).nodes.size());
                         const auto outlines = woby::sceneSelectionLines(parts);
                         REQUIRE_FALSE(outlines.empty());
                         for (const auto& point : outlines) {
@@ -1100,13 +1100,13 @@ TEST_CASE("Separated UV patch rows stay in the world XZ plane")
 {
     UvFixture f;
     auto source = f.state.files[0].mesh;
-    const auto patch = source.nodes[0];
-    source.nodes.assign(5, patch);
+    const auto patch = meshGeometry(source).nodes[0];
+    editMeshGeometry(source).nodes.assign(5, patch);
     const auto layout = woby::uvLayoutMesh(source, true);
-    REQUIRE(layout.nodes.size() == 5);
-    const auto& first = layout.vertices[layout.indices[layout.nodes[0].indexOffset]].position;
-    const auto& nextColumn = layout.vertices[layout.indices[layout.nodes[1].indexOffset]].position;
-    const auto& nextRow = layout.vertices[layout.indices[layout.nodes[3].indexOffset]].position;
+    REQUIRE(meshGeometry(layout).nodes.size() == 5);
+    const auto& first = meshGeometry(layout).vertices[meshGeometry(layout).indices[meshGeometry(layout).nodes[0].indexOffset]].position;
+    const auto& nextColumn = meshGeometry(layout).vertices[meshGeometry(layout).indices[meshGeometry(layout).nodes[1].indexOffset]].position;
+    const auto& nextRow = meshGeometry(layout).vertices[meshGeometry(layout).indices[meshGeometry(layout).nodes[3].indexOffset]].position;
     CHECK(nextColumn[0] > first[0]);
     CHECK(nextColumn[2] == first[2]);
     CHECK(nextRow[0] == first[0]);
@@ -1117,14 +1117,14 @@ TEST_CASE("Separated UV patch rows stay in the world XZ plane")
 TEST_CASE("UV rectangles turn with their source instead of staying upright when Y becomes up")
 {
     woby::Mesh source;
-    source.vertices = {{{5, 3, 8}, {}, {0, 1}}, {{7, 3, 8}, {}, {.5f, 1}},
+    editMeshGeometry(source).vertices = {{{5, 3, 8}, {}, {0, 1}}, {{7, 3, 8}, {}, {.5f, 1}},
         {{7, 3, 12}, {}, {.5f, 0}}, {{5, 3, 12}, {}, {0, 0}}};
-    source.indices = {0, 1, 2, 0, 2, 3};
-    source.nodes = {{"rectangle", 0, 6}};
-    source.nodes[0].hasTexcoords = true;
-    source.bounds = woby::calculateBounds(source.vertices);
+    editMeshGeometry(source).indices = {0, 1, 2, 0, 2, 3};
+    editMeshGeometry(source).nodes = {{"rectangle", 0, 6}};
+    editMeshGeometry(source).nodes[0].hasTexcoords = true;
+    source.bounds = woby::calculateBounds(meshGeometry(source).vertices);
     const auto layout = woby::uvLayoutMesh(source);
-    REQUIRE(layout.vertices.size() == source.vertices.size());
+    REQUIRE(meshGeometry(layout).vertices.size() == meshGeometry(source).vertices.size());
     for (const auto up : {woby::SceneUpAxis::z, woby::SceneUpAxis::y}) {
         for (const auto direction : {woby::CameraView::front, woby::CameraView::top, woby::CameraView::isometric}) {
             const auto camera = woby::cameraWithView(woby::frameCameraBounds(source.bounds, up), direction);
@@ -1136,15 +1136,15 @@ TEST_CASE("UV rectangles turn with their source instead of staying upright when 
                 woby::transformVector4(clip, eye, view.projection.data());
                 return std::array<float, 2>{clip[0] / clip[3], clip[1] / clip[3]};
             };
-            for (size_t i = 0; i < source.vertices.size(); ++i) {
-                const auto original = project(source.vertices[i].position);
-                const auto flattened = project(layout.vertices[i].position);
+            for (size_t i = 0; i < meshGeometry(source).vertices.size(); ++i) {
+                const auto original = project(meshGeometry(source).vertices[i].position);
+                const auto flattened = project(meshGeometry(layout).vertices[i].position);
                 CHECK(flattened[0] == doctest::Approx(original[0]));
                 CHECK(flattened[1] == doctest::Approx(original[1]));
             }
             if (direction == woby::CameraView::front) {
-                const auto bottom = project(layout.vertices[0].position);
-                const auto top = project(layout.vertices[3].position);
+                const auto bottom = project(meshGeometry(layout).vertices[0].position);
+                const auto top = project(meshGeometry(layout).vertices[3].position);
                 if (up == woby::SceneUpAxis::y) {
                     CHECK(top[1] == doctest::Approx(bottom[1]));
                 } else {
@@ -1191,7 +1191,7 @@ TEST_CASE("UV layout orientation survives scene reload saved views and undo redo
             const auto mesh = woby::comparisonWorldMesh(current, woby::ComparisonSide::a, currentId);
             CHECK(mesh.bounds.max[2] - mesh.bounds.min[2] == doctest::Approx(1));
             CHECK(mesh.bounds.max[1] == mesh.bounds.min[1]);
-            CHECK(mesh.vertices[0].position[2] > mesh.vertices[2].position[2]);
+            CHECK(meshGeometry(mesh).vertices[0].position[2] > meshGeometry(mesh).vertices[2].position[2]);
         };
         checkLayout(state, id);
         checkLayout(restored, restored.activeComparisonId);
@@ -1230,13 +1230,13 @@ TEST_CASE("UV findings include every affected triangle and retain source identit
     UvFixture f;
     auto& mesh = f.state.files[0].mesh;
     // More than the old UI limit, including missing UVs and collapsed coordinates.
-    mesh.indices.clear();
-    for (size_t i = 0; i < 125; ++i) { mesh.indices.insert(mesh.indices.end(), {0, 1, 2}); }
-    mesh.nodes = {{"missing", 0, 180}, {"collapsed", 180, 195}};
-    mesh.nodes[0].sourceObjectId = 41;
-    mesh.nodes[1].sourceObjectId = 42; mesh.nodes[1].hasTexcoords = true;
-    for (auto& vertex : mesh.vertices) { vertex.texcoord = {0, 0}; }
-    mesh.nodes[1].uvQualityOffset = 60;
+    editMeshGeometry(mesh).indices.clear();
+    for (size_t i = 0; i < 125; ++i) { editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {0, 1, 2}); }
+    editMeshGeometry(mesh).nodes = {{"missing", 0, 180}, {"collapsed", 180, 195}};
+    editMeshGeometry(mesh).nodes[0].sourceObjectId = 41;
+    editMeshGeometry(mesh).nodes[1].sourceObjectId = 42; editMeshGeometry(mesh).nodes[1].hasTexcoords = true;
+    for (auto& vertex : editMeshGeometry(mesh).vertices) { vertex.texcoord = {0, 0}; }
+    editMeshGeometry(mesh).nodes[1].uvQualityOffset = 60;
     mesh.uvQuality = std::make_shared<const woby::UvQuality>(woby::analyzeUvQuality(mesh,
         woby::UvAreaNormalization::perPatch, woby::UvQualityMetric::angle));
     const auto& quality = *mesh.uvQuality;
@@ -1250,7 +1250,7 @@ TEST_CASE("UV findings include every affected triangle and retain source identit
     const auto layout = woby::uvLayoutMesh(mesh, true);
     CHECK_FALSE(woby::uvFindingGeometry(layout, 0));
     REQUIRE(woby::uvFindingGeometry(layout, 124));
-    CHECK((*woby::uvFindingGeometry(layout, 124))[0] == layout.vertices[layout.indices[0]].position);
+    CHECK((*woby::uvFindingGeometry(layout, 124))[0] == meshGeometry(layout).vertices[meshGeometry(layout).indices[0]].position);
 }
 
 TEST_CASE("UV navigation opens missing UVs in 3D without leaving the analysis inspector")
@@ -1306,8 +1306,8 @@ TEST_CASE("UV finding navigation wraps through the complete list beyond one hund
 {
     UvFixture f;
     auto& mesh = f.state.files[0].mesh;
-    mesh.nodes[2].indexCount = 375;
-    for (size_t i = 1; i < 125; ++i) { mesh.indices.insert(mesh.indices.end(), {0, 1, 2}); }
+    editMeshGeometry(mesh).nodes[2].indexCount = 375;
+    for (size_t i = 1; i < 125; ++i) { editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {0, 1, 2}); }
     const auto id = woby::createComparison(f.state, woby::AnalysisType::uvQuality);
     woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, id);
     const auto display = woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, id);
@@ -1450,7 +1450,7 @@ TEST_CASE("UV triangle probes link barycentric points on source and separated la
     std::array<double,3> point{};
     const std::array<double,3> weights{.5,.2,.3};
     for (size_t k=0;k<3;++k) {
-        const auto p = woby::meshPosition(layout,layout.indices[k]);
+        const auto p = woby::meshPosition(layout,meshGeometry(layout).indices[k]);
         for (size_t j=0;j<3;++j) { point[j] += p[j]*weights[k]; }
     }
     CHECK(woby::pickSceneObject(parts,view,{static_cast<float>(50+50*point[0]),static_cast<float>(50-50*point[2])},&hit) == sourceId);

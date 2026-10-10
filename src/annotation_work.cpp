@@ -52,8 +52,8 @@ AnnotationPartsSnapshot snapshotAnnotationParts(std::span<const ScenePickPart> p
     for (const auto& part : parts) {
         if (!part.mesh || std::find(originals.begin(), originals.end(), part.mesh) != originals.end()) { continue; }
         originals.push_back(part.mesh);
-        if (!annotationMeshSnapshotReady(*part.mesh)) {
-            copyBytes += part.mesh->vertices.size() * sizeof(Vertex) + part.mesh->indices.size() * sizeof(uint32_t);
+        if (part.mesh->draft) {
+            copyBytes += meshGeometry(*part.mesh).vertices.size() * sizeof(Vertex) + meshGeometry(*part.mesh).indices.size() * sizeof(uint32_t);
             if (copyBytes > annotationInlineSnapshotBytes) { throw std::runtime_error("Annotation geometry is still being prepared."); }
         }
     }
@@ -64,14 +64,25 @@ AnnotationPartsSnapshot snapshotAnnotationParts(std::span<const ScenePickPart> p
         size_t index = static_cast<size_t>(found - originals.begin());
         if (found == originals.end()) {
             const auto& mesh = *part.mesh;
-            std::shared_ptr<const Mesh> owner;
-            if (annotationMeshSnapshotReady(mesh)) { owner = mesh.annotationCache->snapshot; }
-            if (!owner) {
-                if (mesh.indices.size() >= 50000 * 3) { throw std::runtime_error("Annotation geometry is still being prepared."); }
-                auto small = std::make_shared<Mesh>();
-                small->vertices = mesh.vertices; small->indices = mesh.indices; small->nodes = mesh.nodes;
-                owner = std::move(small);
+            if (mesh.draft && meshGeometry(mesh).indices.size() >= 50000 * 3) {
+                throw std::runtime_error("Annotation geometry is still being prepared.");
             }
+            auto owner = std::make_shared<Mesh>();
+            if (mesh.draft) {
+                // Keep the bounded fallback for small, unfinished test/tool
+                // meshes. Published scene meshes always take the shared path.
+                auto& geometry = editMeshGeometry(*owner);
+                geometry.vertices = meshGeometry(mesh).vertices;
+                geometry.indices = meshGeometry(mesh).indices;
+                geometry.nodes = meshGeometry(mesh).nodes;
+            } else {
+                *owner = mesh;
+            }
+            publishMeshGeometry(*owner);
+            owner->sourceData.reset();
+            owner->duplicateInput.reset();
+            owner->uvQuality.reset();
+            owner->freeform.reset();
             originals.push_back(part.mesh); result.owners.push_back(std::move(owner));
         }
         part.mesh = result.owners[index].get();
@@ -89,7 +100,7 @@ AnnotationWorkIdentity annotationWorkIdentity(const UiState& state)
     result.camera = state.camera; result.bounds = state.sceneBounds; result.selection = state.selectedSceneObjects;
     for (const auto& file : state.files) {
         const auto& mesh = file.mesh;
-        result.sources.push_back({mesh.contentRevision, file.objectId, mesh.vertices.data(), mesh.indices.data(), mesh.vertices.size(), mesh.indices.size(), mesh.annotationCache});
+        result.sources.push_back({mesh.contentRevision, file.objectId, meshGeometry(mesh).vertices.data(), meshGeometry(mesh).indices.data(), meshGeometry(mesh).vertices.size(), meshGeometry(mesh).indices.size(), mesh.annotationCache});
     }
     return result;
 }
@@ -105,8 +116,8 @@ bool annotationWorkCurrent(const AnnotationWorkIdentity& identity, const UiState
     for (size_t i = 0; i < identity.sources.size(); ++i) {
         const auto& source = identity.sources[i]; const auto& mesh = state.files[i].mesh;
         if (source.contentRevision != mesh.contentRevision || source.fileId != state.files[i].objectId
-            || source.vertices != mesh.vertices.data() || source.indices != mesh.indices.data()
-            || source.vertexCount != mesh.vertices.size() || source.indexCount != mesh.indices.size()
+            || source.vertices != meshGeometry(mesh).vertices.data() || source.indices != meshGeometry(mesh).indices.data()
+            || source.vertexCount != meshGeometry(mesh).vertices.size() || source.indexCount != meshGeometry(mesh).indices.size()
             // Publishing the first cache does not change a small owned snapshot.
             // Replacing/invalidating an existing cache still rejects old work.
             || (source.cache && source.cache != mesh.annotationCache)) { return false; }

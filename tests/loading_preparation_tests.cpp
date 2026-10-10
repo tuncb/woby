@@ -17,9 +17,9 @@ namespace {
 woby::Mesh preparationMesh()
 {
     woby::Mesh mesh;
-    mesh.vertices = {{{-2, -1, 0}, {0, 0, 1}, {}}, {{4, -1, 0}, {0, 0, 1}, {}}, {{0, 3, 0}, {0, 0, 1}, {}}};
-    for (size_t i = 0; i < 50000; ++i) { mesh.indices.insert(mesh.indices.end(), {0, 1, 2}); }
-    mesh.nodes = {{"surface", 0, static_cast<uint32_t>(mesh.indices.size())}};
+    editMeshGeometry(mesh).vertices = {{{-2, -1, 0}, {0, 0, 1}, {}}, {{4, -1, 0}, {0, 0, 1}, {}}, {{0, 3, 0}, {0, 0, 1}, {}}};
+    for (size_t i = 0; i < 50000; ++i) { editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {0, 1, 2}); }
+    editMeshGeometry(mesh).nodes = {{"surface", 0, static_cast<uint32_t>(meshGeometry(mesh).indices.size())}};
     woby::finalizeMesh(mesh, false);
     return mesh;
 }
@@ -77,18 +77,18 @@ TEST_CASE("loading reports ordered stages and measured within-stage progress")
     callbacks.canceled = [&] { return cancel; };
     callbacks.stageProgress = [&](const auto& update) { cancel |= update.stage == woby::ModelLoadStage::buildingMesh; };
     const auto canceled = woby::loadModel(path, {}, callbacks);
-    CHECK(canceled.canceled); CHECK(canceled.mesh.vertices.empty());
+    CHECK(canceled.canceled); CHECK(meshGeometry(canceled.mesh).vertices.empty());
 }
 
 TEST_CASE("group centers reuse bounds for populated empty and invalid ranges")
 {
     auto mesh = preparationMesh();
-    mesh.nodes = {{"a", 0, 3}, {"b", 3, 3}, {"empty", 0, 0}, {"past end", 150000, 0}};
+    editMeshGeometry(mesh).nodes = {{"a", 0, 3}, {"b", 3, 3}, {"empty", 0, 0}, {"past end", 150000, 0}};
     const auto groups = woby::createUiGroupStates(mesh, 2);
     REQUIRE(groups.size() == 4);
     for (size_t i = 0; i < groups.size(); ++i) {
         CHECK(groups[i].center == groups[i].localBounds.center);
-        CHECK(groups[i].center == woby::nodeCenter(mesh, mesh.nodes[i]));
+        CHECK(groups[i].center == woby::nodeCenter(mesh, meshGeometry(mesh).nodes[i]));
         CHECK(groups[i].color == woby::defaultGroupColor(i + 2));
     }
 }
@@ -98,8 +98,8 @@ TEST_CASE("annotation cache preparation publishes only completed immutable resul
     auto state = preparationScene();
     auto& mesh = state.files[0].mesh;
     REQUIRE_FALSE(mesh.annotationCache);
-    const auto fingerprint = woby::annotationFingerprint(mesh, 0, mesh.indices.size());
-    const auto* vertices = mesh.vertices.data();
+    const auto fingerprint = woby::annotationFingerprint(mesh, 0, meshGeometry(mesh).indices.size());
+    const auto* vertices = meshGeometry(mesh).vertices.data();
     woby::AnnotationPreparationRuntime runtime;
     woby::updateAnnotationPreparation(runtime, state);
     REQUIRE(runtime.job);
@@ -112,12 +112,14 @@ TEST_CASE("annotation cache preparation publishes only completed immutable resul
     CHECK(state.files[0].mesh.annotationCache->fingerprints[0] == fingerprint);
     CHECK(woby::annotationPreparationReady(state));
     CHECK_FALSE(runtime.job);
-    // Copying geometry invalidates pointer-bound caches; it must be prepared anew.
+    // A published copy shares the buffers, so its immutable cache remains valid.
     const auto copy = state.files[0].mesh;
-    CHECK_FALSE(woby::annotationMeshCacheReady(copy));
+    CHECK(woby::annotationMeshCacheReady(copy));
+    CHECK(copy.storage == state.files[0].mesh.storage);
+    CHECK(copy.annotationCache == state.files[0].mesh.annotationCache);
 }
 
-TEST_CASE("annotation cache preparation cancellation releases borrowed geometry safely")
+TEST_CASE("annotation cache preparation cancellation releases owned geometry safely")
 {
     auto state = preparationScene();
     woby::AnnotationPreparationRuntime runtime;
@@ -134,7 +136,7 @@ TEST_CASE("annotation cache preparation cancellation releases borrowed geometry 
     CHECK(woby::annotationPreparationReady(state));
     size_t checks = 0;
     const auto& mesh = state.files[0].mesh;
-    CHECK_FALSE(woby::buildAnnotationMeshCache(mesh.vertices, mesh.indices, mesh.nodes, [&] { return ++checks >= 3; }));
+    CHECK_FALSE(woby::buildAnnotationMeshCache(mesh, [&] { return ++checks >= 3; }));
     CHECK(checks == 3);
 }
 
@@ -146,19 +148,22 @@ TEST_CASE("annotation preparation rejects late results for reused storage and do
     woby::AnnotationPreparationRuntime runtime;
     woby::updateAnnotationPreparation(runtime, state);
     REQUIRE(runtime.job);
-    runtime.job->worker.join(); // End borrowed access before simulating replacement.
+    runtime.job->worker.join(); // Hold the completed result while replacing its input.
     const auto stale = runtime.job->result;
     REQUIRE(stale);
-    const auto* storage = state.files[0].mesh.vertices.data();
-    SUBCASE("same-sized in-place mesh") {
-        state.files[0].mesh.vertices[0].position[0] += 1;
+    const auto* storage = meshGeometry(state.files[0].mesh).vertices.data();
+    bool edited = false;
+    SUBCASE("same-sized replacement mesh") {
+        edited = true;
+        editMeshGeometry(state.files[0].mesh).vertices[0].position[0] += 1;
         woby::renewMeshContentRevision(state.files[0].mesh);
     }
     SUBCASE("new document with reused identifiers") { ++state.sceneGeneration; }
     SUBCASE("reused storage for another file") { ++state.files[0].objectId; }
+    SUBCASE("new revision with the same buffers") { woby::renewMeshContentRevision(state.files[0].mesh); }
     woby::updateAnnotationPreparation(runtime, state);
     CHECK_FALSE(state.files[0].mesh.annotationCache);
-    CHECK(state.files[0].mesh.vertices.data() == storage);
+    CHECK((meshGeometry(state.files[0].mesh).vertices.data() == storage) == !edited);
     REQUIRE(runtime.job);
     runtime.job->worker.join();
     woby::updateAnnotationPreparation(runtime, state);
@@ -172,7 +177,7 @@ TEST_CASE("saved annotation target validation waits for background fingerprints"
     auto state = preparationScene();
     woby::UiAnnotation item;
     item.targetId = state.files[0].groupSettings[0].objectId;
-    item.geometry.fingerprint = woby::annotationFingerprint(state.files[0].mesh, 0, state.files[0].mesh.indices.size());
+    item.geometry.fingerprint = woby::annotationFingerprint(state.files[0].mesh, 0, meshGeometry(state.files[0].mesh).indices.size());
     state.annotations.push_back(item);
     woby::validateAnnotationTargets(state);
     CHECK(state.annotations[0].targetPending); CHECK_FALSE(state.annotations[0].targetValid);

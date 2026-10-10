@@ -14,7 +14,7 @@ static SceneDrawPlan buildSceneDrawPlan(const UiState& state, SceneQueryRuntime*
     for (const auto& part : parts) {
         const auto& file = state.files[part.fileIndex];
         const auto& group = file.groupSettings[part.groupIndex];
-        const auto& node = file.mesh.nodes[part.groupIndex];
+        const auto& node = meshGeometry(file.mesh).nodes[part.groupIndex];
         SceneDrawItem item;
         item.fileIndex = part.fileIndex; item.groupIndex = part.groupIndex;
         item.fileId = file.objectId; item.model = part.model;

@@ -45,7 +45,7 @@ TEST_CASE("shared properties pane follows selection without changing scene conte
 {
     woby::UiState state;
     woby::Mesh mesh;
-    mesh.nodes.push_back({"part", 0u, 0u});
+    editMeshGeometry(mesh).nodes.push_back({"part", 0u, 0u});
     state.files.push_back(woby::createUiFileState("a.obj", mesh, 0u));
     woby::appendFolderTreeSceneNode(state, std::filesystem::current_path(), 0u, 1u);
     const auto firstComparison = woby::createComparison(state);
@@ -151,7 +151,7 @@ TEST_CASE("inspector resets only the named group with parent appearance includin
     using G = woby::UiPropertyGroup;
     woby::UiState state;
     woby::Mesh mesh;
-    mesh.nodes.push_back({"part", 0u, 0u});
+    editMeshGeometry(mesh).nodes.push_back({"part", 0u, 0u});
     state.files.push_back(woby::createUiFileState("a.obj", mesh, 0u));
     woby::appendFolderTreeSceneNode(state, std::filesystem::current_path(), 0u, 1u);
     const auto folderId = state.sceneNodes[0].objectId;
@@ -223,7 +223,7 @@ woby::UiState parentAppearanceScene()
     woby::UiState state;
     woby::Mesh mesh;
     // Parts without triangle data still support appearance controls.
-    mesh.nodes = {{"first", 0u, 0u}, {"second", 0u, 0u}};
+    editMeshGeometry(mesh).nodes = {{"first", 0u, 0u}, {"second", 0u, 0u}};
     for (const char* name : {"a.obj", "b.obj", "outside.obj"}) {
         state.files.push_back(woby::createUiFileState(std::filesystem::current_path() / name,
             mesh, state.files.size() * 2u));
@@ -306,7 +306,7 @@ TEST_CASE("large property selections preserve first target values and reject mis
     using P = woby::UiObjectProperty;
     woby::UiState state;
     woby::Mesh mesh;
-    for (size_t i = 0; i < 40; ++i) { mesh.nodes.push_back({"part", 0, 0}); }
+    for (size_t i = 0; i < 40; ++i) { editMeshGeometry(mesh).nodes.push_back({"part", 0, 0}); }
     // This test never saves or loads paths.
     state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
     woby::appendDefaultSceneNodesForFiles(state, 0);
@@ -472,7 +472,7 @@ TEST_CASE("inspector visibility includes selected subtrees and preserves selecti
 {
     woby::UiState state;
     woby::Mesh mesh;
-    mesh.nodes = {{"first", 0u, 0u}, {"second", 0u, 0u}};
+    editMeshGeometry(mesh).nodes = {{"first", 0u, 0u}, {"second", 0u, 0u}};
     state.files.push_back(woby::createUiFileState("selected.obj", mesh, 0u));
     state.files.push_back(woby::createUiFileState("other.obj", mesh, 2u));
     woby::appendFolderTreeSceneNode(state, std::filesystem::current_path(), 0u, 1u);
@@ -517,7 +517,7 @@ TEST_CASE("inspector visibility rejects stale unsupported and empty selections w
 {
     woby::UiState state;
     woby::Mesh mesh;
-    mesh.nodes.push_back({"part", 0u, 0u});
+    editMeshGeometry(mesh).nodes.push_back({"part", 0u, 0u});
     state.files.push_back(woby::createUiFileState("a.obj", mesh, 0u));
     woby::appendDefaultSceneNodesForFiles(state, 0u);
     const auto comparison = woby::createComparison(state);
@@ -543,7 +543,7 @@ TEST_CASE("inspector edits retain the existing scene save load mapping")
     using P = woby::UiObjectProperty;
     woby::UiState state;
     woby::Mesh mesh;
-    mesh.nodes.push_back({"part", 0u, 0u});
+    editMeshGeometry(mesh).nodes.push_back({"part", 0u, 0u});
     const auto testDirectory = std::filesystem::temp_directory_path();
     const auto modelPath = testDirectory / "inspector.obj";
     state.files.push_back(woby::createUiFileState(modelPath, mesh, 0));
@@ -606,13 +606,13 @@ woby::Bounds makeBounds(float minX, float maxX)
 woby::Mesh makeMesh(const char* groupName, float minX, float maxX)
 {
     woby::Mesh mesh;
-    mesh.vertices = {
+    editMeshGeometry(mesh).vertices = {
         {{minX, 0.0f, 0.0f}, {}, {}},
         {{maxX, 0.0f, 0.0f}, {}, {}},
         {{minX, 1.0f, 0.0f}, {}, {}},
     };
-    mesh.indices = {0u, 1u, 2u};
-    mesh.nodes.push_back({groupName, 0u, 3u});
+    editMeshGeometry(mesh).indices = {0u, 1u, 2u};
+    editMeshGeometry(mesh).nodes.push_back({groupName, 0u, 3u});
     mesh.bounds = makeBounds(minX, maxX);
     return mesh;
 }
@@ -732,7 +732,7 @@ TEST_CASE("scene object IDs distinguish duplicate names and survive removal and 
 {
     woby::UiState state;
     state.files.push_back(makeFile("same.obj", "same", 0.0f, 1.0f, 0u));
-    state.files[0].mesh.nodes.push_back(state.files[0].mesh.nodes[0]);
+    editMeshGeometry(state.files[0].mesh).nodes.push_back(meshGeometry(state.files[0].mesh).nodes[0]);
     state.files[0].groupSettings.push_back(state.files[0].groupSettings[0]);
     state.files.push_back(makeFile("same.obj", "same", 2.0f, 3.0f, 1u));
     woby::appendDefaultSceneNodesForFiles(state, 0u);
@@ -761,7 +761,7 @@ TEST_CASE("scene object IDs distinguish duplicate names and survive removal and 
 
     woby::setFileTranslation(state.files[0].fileSettings, {2.0f, 3.0f, 4.0f});
     woby::setGroupVisible(state, state.files[0], state.files[0].groupSettings[0], false);
-    state.files[0].mesh.nodes[0].name = "renamed";
+    editMeshGeometry(state.files[0].mesh).nodes[0].name = "renamed";
     REQUIRE(woby::findSceneObject(state, survivingGroupId));
     CHECK(woby::findSceneObject(state, survivingGroupId)->name == "renamed");
     CHECK(woby::findSceneObject(state, survivingGroupId)->fileId == survivingId);
@@ -896,7 +896,7 @@ TEST_CASE("visibility master operations update descendant groups")
     woby::UiState state;
     state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
     state.files.push_back(makeFile("b.obj", "b", 2.0f, 3.0f, 1u));
-    state.files[0].mesh.nodes.push_back({"a-extra", 0u, 3u});
+    editMeshGeometry(state.files[0].mesh).nodes.push_back({"a-extra", 0u, 3u});
     state.files[0].groupSettings.push_back(woby::UiGroupState{});
 
     CHECK(woby::totalGroupCount(state) == 3u);
@@ -940,7 +940,7 @@ TEST_CASE("showing a child under a hidden folder restores mixed folder visibilit
 {
     woby::UiState state;
     state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
-    state.files[0].mesh.nodes.push_back({"a-extra", 0u, 3u});
+    editMeshGeometry(state.files[0].mesh).nodes.push_back({"a-extra", 0u, 3u});
     state.files[0].groupSettings.push_back(woby::UiGroupState{});
 
     woby::UiSceneNode folder;
@@ -1131,7 +1131,7 @@ TEST_CASE("scene bounds reuse cached group local bounds")
     CHECK(group.localBounds.min[0] == doctest::Approx(0.0f));
     CHECK(group.localBounds.max[0] == doctest::Approx(1.0f));
 
-    file.mesh.vertices[1].position[0] = 1000.0f;
+    editMeshGeometry(file.mesh).vertices[1].position[0] = 1000.0f;
     woby::recalculateSceneBounds(state);
 
     CHECK(state.sceneBounds.min[0] == doctest::Approx(0.0f));
@@ -1576,9 +1576,9 @@ TEST_CASE("generated ui operations preserve clamping and visibility invariants")
     state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
     state.files.push_back(makeFile("b.obj", "b", 2.0f, 4.0f, 1u));
     state.files.push_back(makeFile("c.obj", "c", 5.0f, 9.0f, 2u));
-    state.files[1].mesh.nodes.push_back({"b-extra", 0u, 3u});
+    editMeshGeometry(state.files[1].mesh).nodes.push_back({"b-extra", 0u, 3u});
     state.files[1].groupSettings.push_back(woby::UiGroupState{});
-    state.files[2].mesh.nodes.push_back({"c-extra", 0u, 3u});
+    editMeshGeometry(state.files[2].mesh).nodes.push_back({"c-extra", 0u, 3u});
     state.files[2].groupSettings.push_back(woby::UiGroupState{});
 
     std::mt19937 random(0x0b70f5u);
@@ -1662,7 +1662,7 @@ TEST_CASE("generated persisted scene records clamp values and synchronize visibi
 
     for (size_t iteration = 0; iteration < 128u; ++iteration) {
         woby::UiFileState file = makeFile("generated.obj", "generated", 0.0f, 1.0f, 0u);
-        file.mesh.nodes.push_back({"generated-extra", 0u, 3u});
+        editMeshGeometry(file.mesh).nodes.push_back({"generated-extra", 0u, 3u});
         file.groupSettings.push_back(woby::UiGroupState{});
 
         woby::SceneFileRecord record;
@@ -1893,7 +1893,7 @@ TEST_CASE("Fit selection supports implicit trees empty objects and analysis disp
     woby::findComparison(state, comparison)->settings.enabled = false;
     CHECK_FALSE(woby::selectedSceneBounds(state));
     woby::selectSceneObject(state, state.files[0].objectId);
-    state.files[0].mesh.vertices.clear();
+    editMeshGeometry(state.files[0].mesh).vertices.clear();
     CHECK_FALSE(woby::selectedSceneBounds(state));
 }
 

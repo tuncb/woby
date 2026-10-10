@@ -154,13 +154,13 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
             : (loaded != reloaded.end() ? &*loaded : nullptr);
         if (!source) { throw std::runtime_error("Model must be reloaded: " + file.path.string()); }
         const auto& groups = target.document.files[index].groups;
-        if (source->mesh.nodes.size() != groups.size() || source->groupSettings.size() != groups.size()) {
+        if (meshGeometry(source->mesh).nodes.size() != groups.size() || source->groupSettings.size() != groups.size()) {
             throw std::runtime_error("Source model parts changed; cannot restore references: " + file.path.string());
         }
         for (size_t group = 0; group < groups.size(); ++group) {
-            if (source->mesh.nodes[group].name != groups[group].name
-                || (source->mesh.nodes[group].lineIndexCount != 0) != groups[group].lineGroup
-                || (source->mesh.nodes[group].pointIndexCount != 0) != groups[group].pointGroup) {
+            if (meshGeometry(source->mesh).nodes[group].name != groups[group].name
+                || (meshGeometry(source->mesh).nodes[group].lineIndexCount != 0) != groups[group].lineGroup
+                || (meshGeometry(source->mesh).nodes[group].pointIndexCount != 0) != groups[group].pointGroup) {
                 throw std::runtime_error("Source model parts changed; cannot restore references: " + file.path.string());
             }
             // Geometry may have changed since removal. Keep historical appearance,

@@ -11,24 +11,24 @@ namespace {
 woby::Mesh mappedTriangle(float u = 1, float v = 1)
 {
     woby::Mesh mesh;
-    mesh.vertices = {{{0,0,0},{},{0,0}},{{1,0,0},{},{u,0}},{{0,1,0},{},{0,v}}};
-    mesh.indices = {0,1,2}; mesh.nodes = {{"patch",0,3}};
-    mesh.nodes[0].hasTexcoords = true; mesh.nodes[0].sourceObjectId = 7;
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0,0,0},{},{0,0}},{{1,0,0},{},{u,0}},{{0,1,0},{},{0,v}}};
+    editMeshGeometry(mesh).indices = {0,1,2}; editMeshGeometry(mesh).nodes = {{"patch",0,3}};
+    editMeshGeometry(mesh).nodes[0].hasTexcoords = true; editMeshGeometry(mesh).nodes[0].sourceObjectId = 7;
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     return mesh;
 }
 void appendUvTriangle(woby::Mesh& mesh, const std::array<woby::UvPoint,3>& uv, bool separate = false)
 {
-    const auto base = static_cast<uint32_t>(mesh.vertices.size());
+    const auto base = static_cast<uint32_t>(meshGeometry(mesh).vertices.size());
     for (size_t i=0;i<3;++i) {
-        auto vertex = mesh.vertices[i];
+        auto vertex = meshGeometry(mesh).vertices[i];
         vertex.texcoord = {static_cast<float>(uv[i][0]),static_cast<float>(uv[i][1])};
-        mesh.vertices.push_back(vertex); mesh.indices.push_back(base+static_cast<uint32_t>(i));
+        editMeshGeometry(mesh).vertices.push_back(vertex); editMeshGeometry(mesh).indices.push_back(base+static_cast<uint32_t>(i));
     }
     if (separate) {
-        mesh.nodes.push_back({"other patch",static_cast<uint32_t>(mesh.indices.size()-3),3});
-        mesh.nodes.back().hasTexcoords = true; mesh.nodes.back().sourceObjectId = 8;
-    } else { mesh.nodes.back().indexCount += 3; }
+        editMeshGeometry(mesh).nodes.push_back({"other patch",static_cast<uint32_t>(meshGeometry(mesh).indices.size()-3),3});
+        editMeshGeometry(mesh).nodes.back().hasTexcoords = true; editMeshGeometry(mesh).nodes.back().sourceObjectId = 8;
+    } else { editMeshGeometry(mesh).nodes.back().indexCount += 3; }
 }
 woby::UvQuality overlaps(const woby::Mesh& mesh, woby::UvOverlapScope scope = woby::UvOverlapScope::perPatch)
 {
@@ -54,11 +54,11 @@ TEST_CASE("UV singular values follow surface to UV convention and patch normaliz
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::minStretch);
     CHECK(q.triangles[0].minStretch == doctest::Approx(1));
     CHECK(q.triangles[0].anisotropy == doctest::Approx(1));
-    mesh.vertices[1].texcoord[0] = -4;
+    editMeshGeometry(mesh).vertices[1].texcoord[0] = -4;
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::absolute,woby::UvQualityMetric::minStretch);
     CHECK(q.triangles[0].orientation == -1);
     CHECK(q.triangles[0].minStretch == doctest::Approx(4));
-    for (auto& vertex : mesh.vertices) {
+    for (auto& vertex : editMeshGeometry(mesh).vertices) {
         const auto p = vertex.position;
         vertex.position = {100+2*p[1],200,300-2*p[0]};
     }
@@ -70,7 +70,7 @@ TEST_CASE("UV singular values follow surface to UV convention and patch normaliz
 
 TEST_CASE("UV singular values handle shear near collapse and tiny scales")
 {
-    auto mesh = mappedTriangle(); mesh.vertices[2].texcoord = {1,1};
+    auto mesh = mappedTriangle(); editMeshGeometry(mesh).vertices[2].texcoord = {1,1};
     auto q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::absolute,woby::UvQualityMetric::anisotropy);
     CHECK(q.triangles[0].maxStretch == doctest::Approx((1+std::sqrt(5.0))/2));
     CHECK(q.triangles[0].minStretch == doctest::Approx((std::sqrt(5.0)-1)/2));
@@ -85,7 +85,7 @@ TEST_CASE("UV singular values handle shear near collapse and tiny scales")
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::minStretch);
     CHECK(q.triangles[0].minStretch == doctest::Approx(1));
     CHECK_FALSE(q.triangles[0].collapsed);
-    mesh.vertices[2].texcoord = {0,0};
+    editMeshGeometry(mesh).vertices[2].texcoord = {0,0};
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::absolute,woby::UvQualityMetric::minStretch);
     CHECK(q.collapsed == 1); CHECK(q.statistics.count == 0);
 }
@@ -95,7 +95,7 @@ TEST_CASE("Signed UV area colors distinguish compression expansion and invalid t
     auto mesh = mappedTriangle(.5f,.5f);
     mesh.uvQuality = std::make_shared<woby::UvQuality>(woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::absolute,woby::UvQualityMetric::area));
     const auto compressed = woby::uvQualityVertices(mesh)[0].texcoord[0];
-    mesh.vertices[1].texcoord = {2,0}; mesh.vertices[2].texcoord = {0,2};
+    editMeshGeometry(mesh).vertices[1].texcoord = {2,0}; editMeshGeometry(mesh).vertices[2].texcoord = {0,2};
     mesh.uvQuality = std::make_shared<woby::UvQuality>(woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::absolute,woby::UvQualityMetric::area));
     const auto expanded = woby::uvQualityVertices(mesh)[0].texcoord[0];
     CHECK(compressed < .5f); CHECK(expanded > .5f);
@@ -111,7 +111,7 @@ TEST_CASE("UV statistics distinguish face percentiles from surface area percenta
 {
     auto mesh = mappedTriangle();
     appendUvTriangle(mesh,{{{0,0},{6,0},{0,3}}});
-    mesh.vertices[4].position = {3,0,0}; mesh.vertices[5].position = {0,3,0};
+    editMeshGeometry(mesh).vertices[4].position = {3,0,0}; editMeshGeometry(mesh).vertices[5].position = {0,3,0};
     woby::ComparisonSettings settings; settings.uvMetric = woby::UvQualityMetric::anisotropy;
     settings.uvThreshold = 1.5f; settings.uvThresholdEnabled = true;
     auto q = woby::analyzeUvQuality(mesh,settings);
@@ -133,7 +133,7 @@ TEST_CASE("UV statistics distinguish face percentiles from surface area percenta
     settings.uvMetric = woby::UvQualityMetric::minStretch; settings.uvNormalization = woby::UvAreaNormalization::absolute;
     settings.uvThreshold = 1.1f; q = woby::analyzeUvQuality(mesh,settings);
     CHECK(q.statistics.thresholdCount == 2);
-    mesh.nodes[0].hasTexcoords = false;
+    editMeshGeometry(mesh).nodes[0].hasTexcoords = false;
     q = woby::analyzeUvQuality(mesh,settings);
     CHECK(q.statistics.count == 0); CHECK(q.statistics.thresholdAreaPercent == 0);
     CHECK(q.statistics.highlightedCount == 0); CHECK(q.statistics.highlightedAreaPercent == 0);
@@ -153,7 +153,7 @@ TEST_CASE("UV overlap detection excludes boundary contact and detects containmen
     mesh = mappedTriangle();
     appendUvTriangle(mesh,{{{0,0},{0,1},{1,0}}}); // Mirrored coincident triangle.
     CHECK(overlaps(mesh).overlaps.size() == 1);
-    mesh.vertices[5].texcoord = {0,0}; // Collapsed UV excluded.
+    editMeshGeometry(mesh).vertices[5].texcoord = {0,0}; // Collapsed UV excluded.
     CHECK(overlaps(mesh).overlaps.empty());
 }
 

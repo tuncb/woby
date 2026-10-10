@@ -83,9 +83,9 @@ void uploadDuplicateOverlays(ComparisonGpuSurface& gpu, const SurfaceComparison&
 void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, uint32_t stages,
     const PreparedComparisonSource* prepared)
 {
-    if (surface.source.indices.empty()) { return; }
+    if (meshGeometry(surface.source).indices.empty()) { return; }
     if (stages & comparisonQuality) {
-        if (surface.qualityVertices.size() != surface.source.indices.size()) {
+        if (surface.qualityVertices.size() != meshGeometry(surface.source).indices.size()) {
             throw std::runtime_error("Surface quality display does not match its source triangles.");
         }
         const auto bytes = comparisonBufferBytes(surface.qualityVertices.size(), sizeof(Vertex));
@@ -96,11 +96,11 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
         if (!woby::graphics::isValid(gpu.quality)) { throw std::runtime_error("Cannot allocate surface mesh quality buffer."); }
     }
     if (stages & comparisonSource) {
-        const auto vertexBytes = comparisonBufferBytes(surface.source.vertices.size(), sizeof(Vertex));
-        const auto indexBytes = comparisonBufferBytes(surface.source.indices.size(), sizeof(uint32_t));
-        const auto lineBytes = comparisonBufferBytes(surface.source.indices.size(), 2 * sizeof(uint32_t));
+        const auto vertexBytes = comparisonBufferBytes(meshGeometry(surface.source).vertices.size(), sizeof(Vertex));
+        const auto indexBytes = comparisonBufferBytes(meshGeometry(surface.source).indices.size(), sizeof(uint32_t));
+        const auto lineBytes = comparisonBufferBytes(meshGeometry(surface.source).indices.size(), 2 * sizeof(uint32_t));
         if (surface.source.uvQuality && (!prepared || prepared->updateQuality)) {
-            const auto qualityBytes = comparisonBufferBytes(surface.source.indices.size(),sizeof(Vertex));
+            const auto qualityBytes = comparisonBufferBytes(meshGeometry(surface.source).indices.size(),sizeof(Vertex));
             const auto values = prepared ? std::vector<Vertex>{} : uvQualityVertices(surface.source);
             const auto handle = woby::graphics::createVertexBuffer(woby::graphics::copy(prepared ? prepared->quality.data() : values.data(), qualityBytes),meshVertexLayout());
             if (!woby::graphics::isValid(handle)) { throw std::runtime_error("Cannot allocate UV quality buffer."); }
@@ -108,10 +108,10 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
             gpu.quality = handle;
         }
         if (prepared && prepared->qualityOnly) { return; }
-        auto vertices = prepared ? std::vector<Vertex>{} : surface.source.vertices;
-        if (!prepared) { generateSmoothNormals(vertices, surface.source.indices); }
-        gpu.vertices = woby::graphics::createVertexBuffer(woby::graphics::copy(prepared ? surface.source.vertices.data() : vertices.data(), vertexBytes), meshVertexLayout());
-        const auto& indices = surface.source.indices;
+        auto vertices = prepared ? std::vector<Vertex>{} : meshGeometry(surface.source).vertices;
+        if (!prepared) { generateSmoothNormals(vertices, meshGeometry(surface.source).indices); }
+        gpu.vertices = woby::graphics::createVertexBuffer(woby::graphics::copy(prepared ? meshGeometry(surface.source).vertices.data() : vertices.data(), vertexBytes), meshVertexLayout());
+        const auto& indices = meshGeometry(surface.source).indices;
         gpu.triangles = woby::graphics::createIndexBuffer(woby::graphics::copy(indices.data(), indexBytes), WOBY_GPU_BUFFER_INDEX32);
         std::vector<uint32_t> lines;
         if (!prepared) { lines.reserve(indices.size() * 2); }
@@ -126,8 +126,8 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
             throw std::runtime_error("Cannot allocate analysis surface buffers.");
         }
     }
-    if ((stages & comparisonDistance) && !surface.sampled.vertices.empty()) {
-        const auto& samples = surface.sampled.vertices;
+    if ((stages & comparisonDistance) && !meshGeometry(surface.sampled).vertices.empty()) {
+        const auto& samples = meshGeometry(surface.sampled).vertices;
         gpu.samples = woby::graphics::createVertexBuffer(woby::graphics::copy(samples.data(), comparisonBufferBytes(samples.size(), sizeof(Vertex))), meshVertexLayout());
         if (!woby::graphics::isValid(gpu.samples)) { throw std::runtime_error("Cannot allocate analysis distance buffer."); }
     }

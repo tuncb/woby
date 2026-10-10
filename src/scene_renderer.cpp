@@ -241,18 +241,18 @@ bool stepGpuMeshUpload(GpuMeshUpload& upload, const Mesh& source,
         uint16_t flags = WOBY_GPU_BUFFER_INDEX32;
         switch (upload.bufferIndex) {
         case 0:
-            data = source.vertices.data();
-            bytes = upload.mesh.compactOnly ? 0 : sceneBufferBytes(source.vertices.size(), sizeof(Vertex));
+            data = meshGeometry(source).vertices.data();
+            bytes = upload.mesh.compactOnly ? 0 : sceneBufferBytes(meshGeometry(source).vertices.size(), sizeof(Vertex));
             break;
         case 1:
-            data = source.indices.data();
-            bytes = sceneBufferBytes(source.indices.size(), sizeof(uint32_t));
+            data = meshGeometry(source).indices.data();
+            bytes = sceneBufferBytes(meshGeometry(source).indices.size(), sizeof(uint32_t));
             indexBuffer = &upload.mesh.triangleIndexBuffer;
             flags |= WOBY_GPU_BUFFER_COMPUTE_READ;
             break;
         case 2:
-            data = source.lineIndices.data();
-            bytes = sceneBufferBytes(source.lineIndices.size(), sizeof(uint32_t));
+            data = meshGeometry(source).lineIndices.data();
+            bytes = sceneBufferBytes(meshGeometry(source).lineIndices.size(), sizeof(uint32_t));
             indexBuffer = &upload.mesh.importedLineBuffer;
             flags |= WOBY_GPU_BUFFER_COMPUTE_READ;
             break;
@@ -313,10 +313,10 @@ void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
     uint8_t features)
 {
     gpuMesh.resourceRevision = nextMeshContentRevision();
-    if ((features & gpuMeshEdges) && !mesh.indices.empty() && !woby::graphics::isValid(gpuMesh.lineIndexBuffer)) {
-        (void)sceneBufferBytes(mesh.indices.size(), 2 * sizeof(uint32_t));
+    if ((features & gpuMeshEdges) && !meshGeometry(mesh).indices.empty() && !woby::graphics::isValid(gpuMesh.lineIndexBuffer)) {
+        (void)sceneBufferBytes(meshGeometry(mesh).indices.size(), 2 * sizeof(uint32_t));
         gpuMesh.lineIndexBuffer = woby::graphics::createIndexBuffer(
-            ownedBuffer(buildLineIndices(mesh.indices)),
+            ownedBuffer(buildLineIndices(meshGeometry(mesh).indices)),
             WOBY_GPU_BUFFER_INDEX32);
         if (!woby::graphics::isValid(gpuMesh.lineIndexBuffer)) { throw std::runtime_error("Failed to allocate scene edge buffer."); }
     }

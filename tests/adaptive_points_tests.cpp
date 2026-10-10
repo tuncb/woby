@@ -14,10 +14,10 @@ struct PointDirectory {
     ~PointDirectory() { std::error_code error; std::filesystem::remove_all(path,error); }
 };
 woby::Mesh cloudMesh(uint32_t count) {
-    woby::Mesh mesh; mesh.vertices.resize(count); mesh.pointIndices.resize(count);
-    std::iota(mesh.pointIndices.begin(),mesh.pointIndices.end(),0u);
-    for (uint32_t i=0;i<count;++i) mesh.vertices[i].position={float(i%257)*.007f-.9f,float((i/257)%257)*.007f-.9f,.2f+float(i%17)*.03f};
-    mesh.nodes={{"points"}}; mesh.nodes[0].pointIndexCount=count; mesh.bounds=woby::calculateBounds(mesh.vertices);
+    woby::Mesh mesh; editMeshGeometry(mesh).vertices.resize(count); editMeshGeometry(mesh).pointIndices.resize(count);
+    std::iota(editMeshGeometry(mesh).pointIndices.begin(),editMeshGeometry(mesh).pointIndices.end(),0u);
+    for (uint32_t i=0;i<count;++i) editMeshGeometry(mesh).vertices[i].position={float(i%257)*.007f-.9f,float((i/257)%257)*.007f-.9f,.2f+float(i%17)*.03f};
+    editMeshGeometry(mesh).nodes={{"points"}}; editMeshGeometry(mesh).nodes[0].pointIndexCount=count; mesh.bounds=woby::calculateBounds(meshGeometry(mesh).vertices);
     return mesh;
 }
 }
@@ -78,10 +78,10 @@ TEST_CASE("Large point preparation shares original IDs and supports cancellation
     auto mesh=cloudMesh(65536);
     auto prepared=woby::prepareSceneMesh(mesh,woby::gpuMeshPoints);
     REQUIRE(prepared); REQUIRE(prepared->pointCloud); CHECK(prepared->pointVertexIndices.empty()); CHECK(prepared->compactOnly);
-    const auto& cloud=*prepared->pointCloud; CHECK(cloud.points.size()==mesh.pointIndices.size());
+    const auto& cloud=*prepared->pointCloud; CHECK(cloud.points.size()==meshGeometry(mesh).pointIndices.size());
     for (const auto& p:cloud.points) {
         REQUIRE(p.id>0); REQUIRE(p.id<=cloud.sourceVertices.size());
-        CHECK(p.position==mesh.vertices[cloud.sourceVertices[p.id-1]].position);
+        CHECK(p.position==meshGeometry(mesh).vertices[cloud.sourceVertices[p.id-1]].position);
     }
     CHECK(prepared->uploadBytes==(cloud.points.size()+cloud.proxies.size())*sizeof(woby::points::Point));
     uint32_t calls=0;
@@ -115,7 +115,7 @@ TEST_CASE("Full-source point picking remains independent of navigation proxies")
     woby::identityMatrix(view.view.data()); woby::identityMatrix(view.projection.data());
     woby::identityMatrix(view.renderProjection.data()); view.renderProjection[10]=-1; view.renderProjection[14]=1;
     woby::ScenePickPart part; part.mesh=&mesh; part.objectId=7; part.sourceMesh=true; part.vertices=true;
-    part.pointIndexCount=static_cast<uint32_t>(mesh.pointIndices.size()); part.pointSize=4;
+    part.pointIndexCount=static_cast<uint32_t>(meshGeometry(mesh).pointIndices.size()); part.pointSize=4;
     woby::identityMatrix(part.model.data()); part.model[0]=.83f; part.model[13]=.07f;
     for (uint32_t i=0;i<32;++i) {
         const woby::PickPoint query{float((i*71+19)%803),float((i*43+29)%607)};
@@ -125,8 +125,8 @@ TEST_CASE("Full-source point picking remains independent of navigation proxies")
 }
 TEST_CASE("Navigation allocates each group's budget without charging for other groups") {
     auto mesh=cloudMesh(20000);
-    mesh.nodes[0].pointIndexCount=10000;
-    mesh.nodes.push_back({"second"}); mesh.nodes[1].pointIndexOffset=10000; mesh.nodes[1].pointIndexCount=10000;
+    editMeshGeometry(mesh).nodes[0].pointIndexCount=10000;
+    editMeshGeometry(mesh).nodes.push_back({"second"}); editMeshGeometry(mesh).nodes[1].pointIndexOffset=10000; editMeshGeometry(mesh).nodes[1].pointIndexCount=10000;
     const auto cloud=woby::points::buildCloud(mesh,256,32);
     for (uint32_t group=0;group<2;++group) {
         const auto cut=woby::points::navigationDetail(cloud,1024,group);
@@ -148,9 +148,9 @@ TEST_CASE("Navigation allocates each group's budget without charging for other g
 }
 TEST_CASE("Prepared navigation cuts retain sparse geometry beside a dense cluster") {
     auto mesh=cloudMesh(20000);
-    for (uint32_t i=0;i<19500;++i) mesh.vertices[i].position={0,0,.5f};
+    for (uint32_t i=0;i<19500;++i) editMeshGeometry(mesh).vertices[i].position={0,0,.5f};
     for (uint32_t i=19500;i<20000;++i)
-        mesh.vertices[i].position={float(i%25)*.075f-.91f,float((i-19500)/25)*.09f-.91f,.5f};
+        editMeshGeometry(mesh).vertices[i].position={float(i%25)*.075f-.91f,float((i-19500)/25)*.09f-.91f,.5f};
     const auto cloud=woby::points::buildCloud(mesh,128,8);
     const auto cut=woby::points::navigationDetail(cloud,4096);
     CHECK(cut.points<=4096);

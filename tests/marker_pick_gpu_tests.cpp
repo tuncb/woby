@@ -45,12 +45,12 @@ woby::UiFileState markerFile(float z, uint64_t id)
 {
     woby::UiFileState file;
     file.objectId = id;
-    file.mesh.vertices.resize(3);
-    file.mesh.vertices[0].position = {0, 0, z};
-    file.mesh.vertices[1].position = {-1, -1, z};
-    file.mesh.vertices[2].position = {1, -1, z};
-    file.mesh.indices = {0, 1, 2};
-    file.mesh.nodes = {{"triangle", 0, 3}};
+    editMeshGeometry(file.mesh).vertices.resize(3);
+    editMeshGeometry(file.mesh).vertices[0].position = {0, 0, z};
+    editMeshGeometry(file.mesh).vertices[1].position = {-1, -1, z};
+    editMeshGeometry(file.mesh).vertices[2].position = {1, -1, z};
+    editMeshGeometry(file.mesh).indices = {0, 1, 2};
+    editMeshGeometry(file.mesh).nodes = {{"triangle", 0, 3}};
     file.groupSettings.resize(1);
     auto& group = file.groupSettings[0];
     group.showSolidMesh = false; group.showVertices = true;
@@ -179,9 +179,9 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     auto& front = state.files[1];
     front.fileSettings.visible = true; front.fileSettings.opacity = 1;
     front.groupSettings[0].showSolidMesh = true;
-    front.mesh.vertices[0].position = {-1, -1, 1};
-    front.mesh.vertices[1].position = {1, -1, 1};
-    front.mesh.vertices[2].position = {0, 1, 1};
+    editMeshGeometry(front.mesh).vertices[0].position = {-1, -1, 1};
+    editMeshGeometry(front.mesh).vertices[1].position = {1, -1, 1};
+    editMeshGeometry(front.mesh).vertices[2].position = {0, 1, 1};
     woby::destroyGpuMesh(fixture.runtimes[1].gpuMesh);
     fixture.runtimes[1].gpuMesh = woby::createGpuMesh(front.mesh, woby::meshVertexLayout(), woby::gpuMeshPoints);
     woby::notifySceneEdit(state);
@@ -196,10 +196,10 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     // scene whose geometry lies beyond the old target-based far plane.
     front.fileSettings.visible = false;
     auto& rear = state.files[0];
-    for (auto& vertex : rear.mesh.vertices) {
+    for (auto& vertex : editMeshGeometry(rear.mesh).vertices) {
         vertex.position[0] *= 100000; vertex.position[1] *= 100000;
     }
-    rear.mesh.bounds = woby::calculateBounds(rear.mesh.vertices);
+    rear.mesh.bounds = woby::calculateBounds(meshGeometry(rear.mesh).vertices);
     woby::destroyGpuMesh(fixture.runtimes[0].gpuMesh);
     fixture.runtimes[0].gpuMesh = woby::createGpuMesh(rear.mesh, woby::meshVertexLayout(), woby::gpuMeshPoints);
     woby::recalculateSceneBounds(state);

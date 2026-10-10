@@ -94,12 +94,12 @@ void frameSubmitted(bool hasFiles) {
     mark("first_scene_frame_submitted");
 }
 Json meshInfo(const Mesh& mesh) {
-    Json result{{"vertices", mesh.vertices.size()}, {"triangle_indices", mesh.indices.size()},
-        {"line_indices", mesh.lineIndices.size()}, {"point_indices", mesh.pointIndices.size()},
-        {"groups", mesh.nodes.size()}, {"freeform", bool(mesh.freeform)},
-        {"render_vertex_bytes", capacityBytes(mesh.vertices)}, {"precise_position_bytes", capacityBytes(mesh.precisePositions)},
-        {"triangle_index_bytes", capacityBytes(mesh.indices)}, {"line_index_bytes", capacityBytes(mesh.lineIndices)},
-        {"point_index_bytes", capacityBytes(mesh.pointIndices)}};
+    Json result{{"vertices", meshGeometry(mesh).vertices.size()}, {"triangle_indices", meshGeometry(mesh).indices.size()},
+        {"line_indices", meshGeometry(mesh).lineIndices.size()}, {"point_indices", meshGeometry(mesh).pointIndices.size()},
+        {"groups", meshGeometry(mesh).nodes.size()}, {"freeform", bool(mesh.freeform)},
+        {"render_vertex_bytes", capacityBytes(meshGeometry(mesh).vertices)}, {"precise_position_bytes", capacityBytes(meshGeometry(mesh).precisePositions)},
+        {"triangle_index_bytes", capacityBytes(meshGeometry(mesh).indices)}, {"line_index_bytes", capacityBytes(meshGeometry(mesh).lineIndices)},
+        {"point_index_bytes", capacityBytes(meshGeometry(mesh).pointIndices)}};
     if (mesh.sourceData) {
         result.update({{"source_positions", mesh.sourceData->points.size()},
             {"source_position_bytes", capacityBytes(mesh.sourceData->points)},

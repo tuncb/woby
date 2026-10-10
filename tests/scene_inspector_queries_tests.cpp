@@ -20,12 +20,12 @@ struct PropertiesFixture {
     explicit PropertiesFixture(size_t groups = 4) {
         std::filesystem::create_directory(root);
         Mesh mesh;
-        mesh.vertices = {{{0,0,0}, {}, {}}, {{2,0,0}, {}, {}}, {{0,3,0}, {}, {}}};
-        mesh.bounds = calculateBounds(mesh.vertices);
+        editMeshGeometry(mesh).vertices = {{{0,0,0}, {}, {}}, {{2,0,0}, {}, {}}, {{0,3,0}, {}, {}}};
+        mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
         for (size_t i = 0; i < groups; ++i) {
-            mesh.nodes.push_back({"part" + std::to_string(i), static_cast<uint32_t>(mesh.indices.size()), 3});
-            mesh.nodes.back().hasTexcoords = (i % 2 == 0);
-            mesh.indices.insert(mesh.indices.end(), {0,1,2});
+            editMeshGeometry(mesh).nodes.push_back({"part" + std::to_string(i), static_cast<uint32_t>(meshGeometry(mesh).indices.size()), 3});
+            editMeshGeometry(mesh).nodes.back().hasTexcoords = (i % 2 == 0);
+            editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {0,1,2});
         }
         state.files.push_back(createUiFileState(root / "source.obj", std::move(mesh), 0));
         appendFolderTreeSceneNode(state, root, 0, 1);
@@ -79,8 +79,8 @@ TEST_CASE("properties snapshot matches queries for overlapping mixed and unsuppo
 TEST_CASE("point cloud opacity is disabled for parts files and folders without disabling other properties") {
     PropertiesFixture f(1);
     auto& file = f.state.files[0];
-    file.mesh.indices.clear(); file.mesh.pointIndices = {0,1,2};
-    file.mesh.nodes[0].indexCount = 0; file.mesh.nodes[0].pointIndexCount = 3;
+    editMeshGeometry(file.mesh).indices.clear(); editMeshGeometry(file.mesh).pointIndices = {0,1,2};
+    editMeshGeometry(file.mesh).nodes[0].indexCount = 0; editMeshGeometry(file.mesh).nodes[0].pointIndexCount = 3;
     file.groupSettings[0].showVertices = true;
     file.fileSettings.opacity = 0; file.groupSettings[0].opacity = .2f;
     notifySceneEdit(f.state, SceneChange::geometry);
@@ -109,8 +109,8 @@ TEST_CASE("mixed point cloud and surface opacity edits affect only eligible sele
     PropertiesFixture f(1);
     auto surface = f.state.files[0];
     auto& cloud = f.state.files[0];
-    cloud.mesh.indices.clear(); cloud.mesh.pointIndices = {0,1,2};
-    cloud.mesh.nodes[0].indexCount = 0; cloud.mesh.nodes[0].pointIndexCount = 3;
+    editMeshGeometry(cloud.mesh).indices.clear(); editMeshGeometry(cloud.mesh).pointIndices = {0,1,2};
+    editMeshGeometry(cloud.mesh).nodes[0].indexCount = 0; editMeshGeometry(cloud.mesh).nodes[0].pointIndexCount = 3;
     cloud.groupSettings[0].showVertices = true;
     cloud.fileSettings.opacity = .2f;
     surface.path = f.root / "surface.obj"; surface.objectId = 0;
@@ -234,14 +234,22 @@ TEST_CASE("analysis input queries ignore appearance and refresh their exact depe
     CHECK(cache.signature == comparisonGeometrySignature(f.state, id));
     const auto transformed = cache.signature;
     auto& mesh = f.state.files[0].mesh;
-    const auto* buffer = mesh.vertices.data();
-    mesh.vertices[1].position[0] += 1;
+    const auto* buffer = meshGeometry(mesh).vertices.data();
+    editMeshGeometry(mesh).vertices[1].position[0] += 1;
     renewMeshContentRevision(mesh);
     notifySceneEdit(f.state, SceneChange::geometry);
     updateComparisonInspectorCache(cache, f.state, id);
-    CHECK(mesh.vertices.data() == buffer);
+    CHECK(meshGeometry(mesh).vertices.data() != buffer);
     CHECK(cache.signature != transformed);
     CHECK(cache.signature == comparisonGeometrySignature(f.state, id));
+    publishMeshGeometry(mesh);
+    const auto* published = meshGeometry(mesh).vertices.data();
+    const auto previous = cache.signature;
+    renewMeshContentRevision(mesh);
+    notifySceneEdit(f.state, SceneChange::geometry);
+    updateComparisonInspectorCache(cache, f.state, id);
+    CHECK(meshGeometry(mesh).vertices.data() == published);
+    CHECK(cache.signature != previous);
     clearComparisonGroup(f.state, ComparisonSide::a, id);
     updateComparisonInspectorCache(cache, f.state, id);
     CHECK(cache.inputs[0].summary.enabledPartCount == 0);

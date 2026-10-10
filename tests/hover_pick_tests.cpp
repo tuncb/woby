@@ -27,14 +27,14 @@ woby::Vertex vertex(float x, float y, float z)
 woby::Mesh pointMesh()
 {
     woby::Mesh mesh;
-    mesh.vertices = {
+    editMeshGeometry(mesh).vertices = {
         vertex(0.0f, 0.0f, 0.2f),
         vertex(0.0f, 0.0f, -0.4f),
         vertex(0.6f, 0.6f, 0.0f),
     };
-    mesh.indices = {0u, 1u, 2u};
-    mesh.nodes.push_back({"points", 0u, 3u});
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices = {0u, 1u, 2u};
+    editMeshGeometry(mesh).nodes.push_back({"points", 0u, 3u});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     return mesh;
 }
 
@@ -178,7 +178,7 @@ TEST_CASE("hover picking returns no hit outside radius frustum or matched runtim
 
     CHECK_FALSE(pick(files, runtimes, 90.0f, 90.0f).has_value());
 
-    files[0].mesh.vertices[0].position = {2.0f, 0.0f, 0.0f};
+    editMeshGeometry(files[0].mesh).vertices[0].position = {2.0f, 0.0f, 0.0f};
     CHECK_FALSE(pick(files, runtimes, 50.0f, 50.0f).has_value());
 
     files = {pointFile()};

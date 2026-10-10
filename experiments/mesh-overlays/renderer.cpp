@@ -179,7 +179,7 @@ void upload(Renderer& r,const Mesh& mesh,uint8_t features) {
     require(r.scene.vertices.owner==nullptr,"One immutable scene per experiment renderer");
     auto prepared=prepareSceneMesh(mesh,features,{},false);
     require(prepared.has_value(),"Overlay mesh preparation canceled");
-    r.scene.vertexCount=mesh.vertices.size(); r.scene.triangleCount=mesh.indices.size()/3;
+    r.scene.vertexCount=meshGeometry(mesh).vertices.size(); r.scene.triangleCount=meshGeometry(mesh).indices.size()/3;
     r.scene.markerCount=prepared->pointVertexIndices.size();
     for (size_t i=0;i<prepared->nodeRanges.size();++i) {
         Group group; group.range=prepared->nodeRanges[i];
@@ -187,8 +187,8 @@ void upload(Renderer& r,const Mesh& mesh,uint8_t features) {
         group.color={.22f+float((i*37)%53)/100,.28f+float((i*19)%47)/100,.3f+float((i*31)%43)/100,1};
         r.scene.groups.push_back(group);
     }
-    uploadBytes(r,r.scene.vertices,mesh.vertices.data(),mesh.vertices.size()*sizeof(Vertex));
-    uploadBytes(r,r.scene.triangles,mesh.indices.data(),mesh.indices.size()*sizeof(uint32_t));
+    uploadBytes(r,r.scene.vertices,meshGeometry(mesh).vertices.data(),meshGeometry(mesh).vertices.size()*sizeof(Vertex));
+    uploadBytes(r,r.scene.triangles,meshGeometry(mesh).indices.data(),meshGeometry(mesh).indices.size()*sizeof(uint32_t));
     uploadBytes(r,r.scene.points,prepared->pointVertexIndices.data(),prepared->pointVertexIndices.size()*sizeof(uint32_t));
     uploadBytes(r,r.scene.edges,prepared->edgeIndices.data(),prepared->edgeIndices.size()*sizeof(uint32_t));
     r.uploads->wait();
@@ -423,10 +423,10 @@ Mesh fixtureMesh() {
     Mesh mesh;
     for (const auto& p:std::array<std::array<float,3>,7>{{{-.85f,-.7f,.3f},{.85f,-.7f,.3f},{0,.85f,.3f},
             {-.42f,-.35f,.6f},{.42f,-.35f,.6f},{.42f,.4f,.6f},{-.42f,.4f,.6f}}}) {
-        Vertex vertex; vertex.position=p; vertex.normal={0,0,1}; mesh.vertices.push_back(vertex);
+        Vertex vertex; vertex.position=p; vertex.normal={0,0,1}; editMeshGeometry(mesh).vertices.push_back(vertex);
     }
-    mesh.indices={0,1,2,3,4,5,3,5,6};
-    mesh.nodes={{"rear",0,3},{"front",3,6}}; mesh.bounds=calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices={0,1,2,3,4,5,3,5,6};
+    editMeshGeometry(mesh).nodes={{"rear",0,3},{"front",3,6}}; mesh.bounds=calculateBounds(meshGeometry(mesh).vertices);
     return mesh;
 }
 } // namespace woby::overlay

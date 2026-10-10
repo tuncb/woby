@@ -552,17 +552,18 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
         throw std::runtime_error("Importer exceeds combined group size limits.");
     }
     Mesh mesh;
-    mesh.vertices.resize(result.vertex_count);
-    mesh.precisePositions.resize(result.vertex_count);
-    for (size_t i = 0; i < mesh.vertices.size(); ++i) {
+    auto& buffers = editMeshGeometry(mesh);
+    buffers.vertices.resize(result.vertex_count);
+    buffers.precisePositions.resize(result.vertex_count);
+    for (size_t i = 0; i < buffers.vertices.size(); ++i) {
         if (i % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, i, result.vertex_count); }
         const auto& source = result.vertices[i];
-        auto& vertex = mesh.vertices[i];
+        auto& vertex = buffers.vertices[i];
         for (size_t axis = 0; axis < 3u; ++axis) {
             if (!std::isfinite(source.position[axis]) || std::abs(source.position[axis]) > 1.0e9f) {
                 throw std::runtime_error("Invalid importer vertex position.");
             }
-            mesh.precisePositions[i][axis] = source.position[axis];
+            buffers.precisePositions[i][axis] = source.position[axis];
             if ((result.flags & WOBY_IMPORT_HAS_NORMALS) != 0u) {
                 vertex.normal[axis] = source.normal[axis];
             }
@@ -590,13 +591,13 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
         for (size_t i = 0; i < result.vertex_count; ++i) {
             const auto identity = analysisIndex(identities, std::array<uint64_t, 1>{pointIds->ids[i]});
             if (identity == representatives.size()) { representatives.push_back(i); }
-            else if (mesh.precisePositions[i] != mesh.precisePositions[representatives[identity]]) {
+            else if (buffers.precisePositions[i] != buffers.precisePositions[representatives[identity]]) {
                 throw std::runtime_error("Importer vertices sharing a point ID must have identical positions.");
             }
         }
     }
-    if (result.index_count) { mesh.indices.assign(result.indices, result.indices + result.index_count); }
-    for (uint32_t index : mesh.indices) {
+    if (result.index_count) { buffers.indices.assign(result.indices, result.indices + result.index_count); }
+    for (uint32_t index : buffers.indices) {
         if (index >= result.vertex_count) {
             throw std::runtime_error("Importer index is outside the vertex buffer.");
         }
@@ -615,7 +616,7 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
             if (primitiveSize == 3) { node.indexOffset = nextIndex; node.indexCount = group.index_count; }
             else if (primitiveSize == 2) { node.lineIndexOffset = nextIndex; node.lineIndexCount = group.index_count; }
             else { node.pointIndexOffset = nextIndex; node.pointIndexCount = group.index_count; }
-            mesh.nodes.push_back(std::move(node));
+            buffers.nodes.push_back(std::move(node));
             nextIndex += group.index_count;
         }
         if (count == 0u && indexCount != 0u) {
@@ -624,22 +625,22 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
             if (primitiveSize == 3) { node.indexCount = indexCount; }
             else if (primitiveSize == 2) { node.lineIndexCount = indexCount; }
             else { node.pointIndexCount = indexCount; }
-            mesh.nodes.push_back(std::move(node));
+            buffers.nodes.push_back(std::move(node));
         } else if (nextIndex != indexCount) {
             throw std::runtime_error("Importer groups do not cover all primitives.");
         }
     };
     appendGroups(result.groups, result.group_count, result.index_count, 3);
     if (lines) {
-        if (lines->index_count) { mesh.lineIndices.assign(lines->indices, lines->indices + lines->index_count); }
-        for (const auto index : mesh.lineIndices) {
+        if (lines->index_count) { buffers.lineIndices.assign(lines->indices, lines->indices + lines->index_count); }
+        for (const auto index : buffers.lineIndices) {
             if (index >= result.vertex_count) { throw std::runtime_error("Importer line index is outside the vertex buffer."); }
         }
         appendGroups(lines->groups, lines->group_count, lines->index_count, 2);
     }
     if (points) {
-        if (points->index_count) { mesh.pointIndices.assign(points->indices, points->indices + points->index_count); }
-        for (const auto index : mesh.pointIndices) {
+        if (points->index_count) { buffers.pointIndices.assign(points->indices, points->indices + points->index_count); }
+        for (const auto index : buffers.pointIndices) {
             if (index >= result.vertex_count) { throw std::runtime_error("Importer point index is outside the vertex buffer."); }
         }
         appendGroups(points->groups, points->group_count, points->index_count, 1);
@@ -652,21 +653,21 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
         if (extent.empty()) { extent = {p,p}; }
         for (size_t k = 0; k < 3; ++k) { extent[0][k] = std::min(extent[0][k],p[k]); extent[1][k] = std::max(extent[1][k],p[k]); }
     };
-    for (const auto& p : mesh.precisePositions) { extend(p); }
+    for (const auto& p : buffers.precisePositions) { extend(p); }
     for (const auto& patch : patches) for (const auto& p : patch.controls) { extend({p[0],p[1],p[2]}); }
     // Finish ordinary geometry before appending patches, preserving authored spline normals/UVs.
     localizeMesh(mesh);
     rebaseMesh(mesh, coordinateOrigin(extent));
-    for (auto& node : mesh.nodes) { node.hasTexcoords = node.indexCount != 0u && (result.flags & WOBY_IMPORT_HAS_TEXCOORDS) != 0u; }
+    for (auto& node : buffers.nodes) { node.hasTexcoords = node.indexCount != 0u && (result.flags & WOBY_IMPORT_HAS_TEXCOORDS) != 0u; }
     captureSourceMesh(mesh, SourceProvenance::importerVertices,
         pointIds ? std::span<const uint64_t>{pointIds->ids, pointIds->vertex_count} : std::span<const uint64_t>{});
-    if ((result.flags & WOBY_IMPORT_HAS_NORMALS) == 0u) { generateSmoothNormals(mesh.vertices, mesh.indices, progress); }
+    if ((result.flags & WOBY_IMPORT_HAS_NORMALS) == 0u) { generateSmoothNormals(buffers.vertices, buffers.indices, progress); }
     if (freeform) {
-        const size_t first = mesh.nodes.size();
+        const size_t first = buffers.nodes.size();
         appendFreeformGeometry(mesh, std::move(patches), progress);
         for (size_t i = 0; i < patchGroups.size(); ++i) {
-            mesh.nodes[first+i].defaultColor = patchGroups[i].defaultColor;
-            mesh.nodes[first+i].defaultVisible = patchGroups[i].defaultVisible;
+            buffers.nodes[first+i].defaultColor = patchGroups[i].defaultColor;
+            buffers.nodes[first+i].defaultVisible = patchGroups[i].defaultVisible;
         }
     }
     if (hierarchy != nullptr) {
@@ -675,9 +676,9 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
             throw std::runtime_error("Invalid importer hierarchy buffers or size limits.");
         }
         std::vector<uint32_t> depths;
-        std::vector<bool> seen(mesh.nodes.size(), false);
+        std::vector<bool> seen(buffers.nodes.size(), false);
         size_t hierarchyNameBytes = 0;
-        mesh.hierarchy.reserve(hierarchy->node_count);
+        buffers.hierarchy.reserve(hierarchy->node_count);
         depths.reserve(hierarchy->node_count);
         for (uint32_t i = 0; i < hierarchy->node_count; ++i) {
             const auto& source = hierarchy->nodes[i];
@@ -689,7 +690,7 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
             uint32_t depth = 1u;
             if (source.parent_index != WOBY_IMPORT_NO_PARENT) {
                 if (source.parent_index >= i
-                    || mesh.hierarchy[source.parent_index].groupIndex != WOBY_IMPORT_NO_GROUP) {
+                    || buffers.hierarchy[source.parent_index].groupIndex != WOBY_IMPORT_NO_GROUP) {
                     throw std::runtime_error("Importer hierarchy parents must be preceding container nodes.");
                 }
                 depth = depths[source.parent_index] + 1u;
@@ -702,9 +703,9 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
                     throw std::runtime_error("Importer hierarchy must reference each mesh group exactly once.");
                 }
                 seen[source.group_index] = true;
-                mesh.nodes[source.group_index].displayName = name;
+                buffers.nodes[source.group_index].displayName = name;
             }
-            mesh.hierarchy.push_back({std::move(name), source.parent_index, source.group_index});
+            buffers.hierarchy.push_back({std::move(name), source.parent_index, source.group_index});
             depths.push_back(depth);
         }
         if (std::find(seen.begin(), seen.end(), false) != seen.end()) {
@@ -712,6 +713,7 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
         }
     }
     finalizeMesh(mesh, false, progress);
+    publishMeshGeometry(mesh);
     return mesh;
 }
 

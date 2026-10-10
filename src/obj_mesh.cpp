@@ -221,6 +221,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     };
 
     Mesh mesh;
+    auto& meshData = editMeshGeometry(mesh);
     auto source = std::make_shared<SourceMeshData>();
     source->provenance = SourceProvenance::objPositions;
     mesh.origin = origin;
@@ -241,12 +242,12 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     // Position count is only an estimate: normal/UV seams can split vertices.
     const size_t vertexCapacity = std::min({source->points.size(), totalIndices,
         size_t(std::numeric_limits<SceneBufferSize>::max() / sizeof(Vertex))});
-    mesh.indices.reserve(indexCount);
-    mesh.lineIndices.reserve(lineIndexCount);
-    mesh.pointIndices.reserve(pointIndexCount);
-    mesh.vertices.reserve(vertexCapacity);
-    mesh.precisePositions.reserve(vertexCapacity);
-    mesh.nodes.reserve(shapes.size());
+    meshData.indices.reserve(indexCount);
+    meshData.lineIndices.reserve(lineIndexCount);
+    meshData.pointIndices.reserve(pointIndexCount);
+    meshData.vertices.reserve(vertexCapacity);
+    meshData.precisePositions.reserve(vertexCapacity);
+    meshData.nodes.reserve(shapes.size());
     source->indices.reserve(indexCount);
     reserveIndexTable(vertexMap, source->points.size(), vertexCapacity,
         Prototype ? buffers->normals.empty() && buffers->texcoords.empty() : attrib.normals.empty() && attrib.texcoords.empty());
@@ -254,7 +255,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
 
     for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
         const auto& shape = shapes[shapeIndex];
-        const uint32_t nodeIndexOffset = static_cast<uint32_t>(mesh.indices.size());
+        const uint32_t nodeIndexOffset = static_cast<uint32_t>(meshData.indices.size());
         bool hasTexcoords = true;
 
         for (const auto& index : shape.mesh.indices) {
@@ -263,15 +264,15 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
                 const auto uv = static_cast<size_t>(index.texcoord_index) * 2u;
                 hasTexcoords = hasTexcoords && std::isfinite(uvValue(uv)) && std::isfinite(uvValue(uv + 1u));
             }
-            if (mesh.indices.size() % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, mesh.indices.size(), totalIndices); }
+            if (meshData.indices.size() % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, meshData.indices.size(), totalIndices); }
             if (index.position_index < 0 || static_cast<size_t>(index.position_index) >= source->points.size()) {
                 throw std::runtime_error("OBJ contains an invalid source position index.");
             }
             source->indices.push_back(static_cast<uint32_t>(index.position_index));
             const IndexKey key{index.position_index, index.normal_index, index.texcoord_index};
             const auto mappedIndex = vertexIndex(vertexMap, key);
-            if (mappedIndex < mesh.vertices.size()) {
-                mesh.indices.push_back(mappedIndex);
+            if (mappedIndex < meshData.vertices.size()) {
+                meshData.indices.push_back(mappedIndex);
                 continue;
             }
 
@@ -281,7 +282,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
 
             Vertex vertex{};
             const auto& point = source->points[static_cast<size_t>(index.position_index)];
-            mesh.precisePositions.push_back(point);
+            meshData.precisePositions.push_back(point);
             vertex.position = renderPosition(point);
 
             if (index.normal_index >= 0) {
@@ -301,26 +302,26 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
                 };
             }
 
-            const uint32_t newIndex = static_cast<uint32_t>(mesh.vertices.size());
-            mesh.vertices.push_back(vertex);
-            mesh.indices.push_back(newIndex);
+            const uint32_t newIndex = static_cast<uint32_t>(meshData.vertices.size());
+            meshData.vertices.push_back(vertex);
+            meshData.indices.push_back(newIndex);
         }
 
-        const uint32_t nodeIndexCount = static_cast<uint32_t>(mesh.indices.size()) - nodeIndexOffset;
+        const uint32_t nodeIndexCount = static_cast<uint32_t>(meshData.indices.size()) - nodeIndexOffset;
         if (nodeIndexCount > 0) {
             MeshNode node;
             node.hasTexcoords = hasTexcoords;
             node.name = shape.name.empty() ? "shape " + std::to_string(shapeIndex + 1u) : shape.name;
             node.indexOffset = nodeIndexOffset;
             node.indexCount = nodeIndexCount;
-            mesh.nodes.push_back(std::move(node));
+            meshData.nodes.push_back(std::move(node));
         }
     }
 
     // Append new primitive groups after all face groups, preserving existing
     // face group indexes and saved appearance in older mixed-geometry scenes.
     std::unordered_set<std::string> names;
-    for (const auto& node : mesh.nodes) { names.insert(node.name); }
+    for (const auto& node : meshData.nodes) { names.insert(node.name); }
     const auto groupName = [&](const std::string& base) {
         std::string name = base;
         for (size_t suffix = 2; !names.insert(name).second; ++suffix) { name = base + " (" + std::to_string(suffix) + ")"; }
@@ -332,14 +333,14 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
             throw std::runtime_error("OBJ contains an invalid source position index.");
         }
         const auto mapped = vertexIndex(vertexMap, {positionIndex, -1, -1});
-        if (mapped == mesh.vertices.size()) {
+        if (mapped == meshData.vertices.size()) {
             const auto& point = source->points[static_cast<size_t>(positionIndex)];
-            mesh.precisePositions.push_back(point);
+            meshData.precisePositions.push_back(point);
             // Unlit primitives do not need normals. A valid placeholder avoids
             // triggering regeneration of authored face normals in mixed files.
-            mesh.vertices.push_back({renderPosition(point), {0, 0, 1}, {}});
+            meshData.vertices.push_back({renderPosition(point), {0, 0, 1}, {}});
         }
-        const size_t completed = mesh.indices.size() + mesh.lineIndices.size() + mesh.pointIndices.size();
+        const size_t completed = meshData.indices.size() + meshData.lineIndices.size() + meshData.pointIndices.size();
         if (primitiveVisits++ % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, completed, totalIndices); }
         return mapped;
     };
@@ -349,36 +350,36 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
         if (!shape.lines.indices.empty()) {
             MeshNode node;
             node.name = groupName(base + (shape.mesh.indices.empty() ? "" : " (lines)"));
-            node.lineIndexOffset = static_cast<uint32_t>(mesh.lineIndices.size());
+            node.lineIndexOffset = static_cast<uint32_t>(meshData.lineIndices.size());
             size_t begin = 0;
             for (const auto count : shape.lines.num_line_vertices) {
                 auto previous = primitiveVertex(shape.lines.indices[begin].position_index);
                 for (size_t i = 1; i < static_cast<size_t>(count); ++i) {
                     const auto next = primitiveVertex(shape.lines.indices[begin + i].position_index);
-                    mesh.lineIndices.push_back(previous);
-                    mesh.lineIndices.push_back(next);
+                    meshData.lineIndices.push_back(previous);
+                    meshData.lineIndices.push_back(next);
                     previous = next;
                 }
                 begin += static_cast<size_t>(count);
             }
-            node.lineIndexCount = static_cast<uint32_t>(mesh.lineIndices.size()) - node.lineIndexOffset;
-            mesh.nodes.push_back(std::move(node));
+            node.lineIndexCount = static_cast<uint32_t>(meshData.lineIndices.size()) - node.lineIndexOffset;
+            meshData.nodes.push_back(std::move(node));
         }
         if (!shape.points.indices.empty()) {
             MeshNode node;
             node.name = groupName(base + (shape.mesh.indices.empty() && shape.lines.indices.empty() ? "" : " (points)"));
-            node.pointIndexOffset = static_cast<uint32_t>(mesh.pointIndices.size());
-            for (const auto& index : shape.points.indices) { mesh.pointIndices.push_back(primitiveVertex(index.position_index)); }
-            node.pointIndexCount = static_cast<uint32_t>(mesh.pointIndices.size()) - node.pointIndexOffset;
-            mesh.nodes.push_back(std::move(node));
+            node.pointIndexOffset = static_cast<uint32_t>(meshData.pointIndices.size());
+            for (const auto& index : shape.points.indices) { meshData.pointIndices.push_back(primitiveVertex(index.position_index)); }
+            node.pointIndexCount = static_cast<uint32_t>(meshData.pointIndices.size()) - node.pointIndexOffset;
+            meshData.nodes.push_back(std::move(node));
         }
     }
     if (counts.vertexCloud && !source->points.empty()) {
         MeshNode node;
         node.name = "Points";
-        for (size_t i = 0; i < source->points.size(); ++i) { mesh.pointIndices.push_back(primitiveVertex(static_cast<int>(i))); }
-        node.pointIndexCount = static_cast<uint32_t>(mesh.pointIndices.size());
-        mesh.nodes.push_back(std::move(node));
+        for (size_t i = 0; i < source->points.size(); ++i) { meshData.pointIndices.push_back(primitiveVertex(static_cast<int>(i))); }
+        node.pointIndexCount = static_cast<uint32_t>(meshData.pointIndices.size());
+        meshData.nodes.push_back(std::move(node));
     }
     if (empty(mesh) && freeformPatches.empty()) { throw std::runtime_error("OBJ did not contain renderable geometry: " + pathToUtf8(path)); }
 
@@ -389,6 +390,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
         appendFreeformGeometry(mesh, std::move(freeformPatches), progress);
         finalizeMesh(mesh, false, progress);
     }
+    publishMeshGeometry(mesh);
     return mesh;
 }
 
@@ -596,6 +598,7 @@ Mesh buildObjPrototype(Parse parse, const std::filesystem::path& path,
     parsed.statements = decltype(parsed.statements){}; parsed.weights = decltype(parsed.weights){};
     auto mesh = buildObjMesh<true>(std::move(parsed.polygons), std::move(patches), path, progress, &buffers);
     if (metrics) { metrics->prepareMs = std::chrono::duration<double, std::milli>(Clock::now() - resolvedAt).count(); }
+    publishMeshGeometry(mesh);
     return mesh;
 }
 } // namespace

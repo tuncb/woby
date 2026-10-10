@@ -77,13 +77,13 @@ void initialize(PointRenderer& r,const Cloud& cloud,const Mesh& mesh,overlay::Op
             upload(g,buffers.back(),input.data()+i,count*sizeof(Point)); r.geometryBytes+=count*sizeof(Point);
         }
     }
-    if (!mesh.indices.empty()) {
-        upload(g,g.scene.vertices,mesh.vertices.data(),mesh.vertices.size()*sizeof(Vertex));
-        upload(g,g.scene.triangles,mesh.indices.data(),mesh.indices.size()*4);
-        r.geometryBytes+=mesh.vertices.size()*sizeof(Vertex)+mesh.indices.size()*4;
+    if (!meshGeometry(mesh).indices.empty()) {
+        upload(g,g.scene.vertices,meshGeometry(mesh).vertices.data(),meshGeometry(mesh).vertices.size()*sizeof(Vertex));
+        upload(g,g.scene.triangles,meshGeometry(mesh).indices.data(),meshGeometry(mesh).indices.size()*4);
+        r.geometryBytes+=meshGeometry(mesh).vertices.size()*sizeof(Vertex)+meshGeometry(mesh).indices.size()*4;
     }
-    for (size_t i=0;i<mesh.nodes.size();++i) {
-        overlay::Group group; group.range.triangleIndexOffset=mesh.nodes[i].indexOffset; group.range.triangleIndexCount=mesh.nodes[i].indexCount;
+    for (size_t i=0;i<meshGeometry(mesh).nodes.size();++i) {
+        overlay::Group group; group.range.triangleIndexOffset=meshGeometry(mesh).nodes[i].indexOffset; group.range.triangleIndexCount=meshGeometry(mesh).nodes[i].indexCount;
         group.color={.22f+float((i*37)%53)/100,.28f+float((i*19)%47)/100,.3f+float((i*31)%43)/100,1}; g.scene.groups.push_back(group);
     }
     r.visibilityBytes=uint64_t(options.width)*options.height*options.samples*8;

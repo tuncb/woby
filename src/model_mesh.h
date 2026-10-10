@@ -74,6 +74,7 @@ struct MeshAnnotationIndex {
 };
 
 struct Mesh;
+struct MeshGeometry;
 
 struct MeshAnnotationCache {
     size_t vertexCount = 0, indexCount = 0;
@@ -82,9 +83,8 @@ struct MeshAnnotationCache {
     std::vector<MeshAnnotationBlock> blocks;
     std::vector<std::string> fingerprints;
     std::shared_ptr<const MeshAnnotationIndex> spatial;
-    // Built during preparation, never copied when a gesture/command starts.
-    // Only positions, triangle indices, nodes and the derived index are retained.
-    std::shared_ptr<const Mesh> snapshot;
+    // The cache owns its input. Geometry never owns a cache.
+    std::shared_ptr<const MeshGeometry> geometry;
 };
 
 using Coordinate = std::array<double, 3>;
@@ -95,27 +95,54 @@ void coordinateMultiply(double* result, const double* a, const double* b);
 
 // Process-unique geometry version. Copies preserve it; writers renew it after changing content.
 [[nodiscard]] uint64_t nextMeshContentRevision();
-struct Mesh {
+// Mutable construction buffers. Published meshes share a const owner of these
+// arrays. Caches and per-use analysis settings stay outside the owner.
+struct MeshGeometry {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     std::vector<MeshNode> nodes;
+    std::vector<Coordinate> precisePositions; // CPU positions, in the same local frame as vertices.
+    std::vector<MeshHierarchyNode> hierarchy; // Validated source defaults; editable tree lives in UiState.
+    std::vector<uint32_t> lineIndices; // Independent pairs; never fed to triangle analysis.
+    std::vector<uint32_t> pointIndices; // Explicit point geometry, separate from mesh vertex overlays.
+    std::vector<uint32_t> analysisVertexBatches;
+};
+
+struct Mesh {
+    std::shared_ptr<const MeshGeometry> storage;
+    std::unique_ptr<MeshGeometry> draft;
+    Mesh() = default;
+    Mesh(const Mesh& other);
+    Mesh& operator=(const Mesh& other);
+    Mesh(Mesh&&) noexcept = default;
+    Mesh& operator=(Mesh&&) noexcept = default;
     Bounds bounds;
     std::optional<std::array<Coordinate, 2>> originalBounds;
     Coordinate origin{}; // Original file coordinates of the local zero.
-    std::vector<Coordinate> precisePositions; // CPU positions, in the same local frame as vertices.
     std::shared_ptr<const SourceMeshData> sourceData;
     std::shared_ptr<const DuplicateInput> duplicateInput;
     // Immutable derived geometry index, published by the runtime after preparation.
     std::shared_ptr<const MeshAnnotationCache> annotationCache;
-    std::vector<MeshHierarchyNode> hierarchy; // Validated source defaults; editable tree lives in UiState.
-    std::vector<uint32_t> lineIndices; // Independent pairs; never fed to triangle analysis.
     std::shared_ptr<const UvQuality> uvQuality;
-    std::vector<uint32_t> pointIndices; // Explicit point geometry, separate from mesh vertex overlays.
     std::shared_ptr<const FreeformGeometry> freeform;
     uint64_t contentRevision = nextMeshContentRevision();
-    // Prepared analysis geometry only: source batch per vertex. Empty means one batch.
-    std::vector<uint32_t> analysisVertexBatches;
 };
+
+[[nodiscard]] inline const MeshGeometry& meshGeometry(const Mesh& mesh) noexcept
+{
+    if (mesh.draft) { return *mesh.draft; }
+    if (mesh.storage) { return *mesh.storage; }
+    static const MeshGeometry emptyGeometry;
+    return emptyGeometry;
+}
+// Copy the owner before editing. Mutable borrows must not survive publication.
+// A copy of a mesh with an unfinished draft gets its own mutable buffers.
+[[nodiscard]] MeshGeometry& editMeshGeometry(Mesh& mesh);
+
+// Finish construction before passing a mesh to scene state, workers, or results.
+// Transfers the buffers without copying them. Empty meshes need no owner.
+void publishMeshGeometry(Mesh& mesh);
+
 
 // After editing published geometry, renew this identity and notify the owning UiState.
 void renewMeshContentRevision(Mesh& mesh);

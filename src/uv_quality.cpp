@@ -34,9 +34,9 @@ UvQuality analyzeUvQuality(const Mesh& mesh, const ComparisonSettings& settings,
     result.settings = normalizedComparisonSettings(settings);
     result.normalization = result.settings.uvNormalization;
     result.metric = result.settings.uvMetric;
-    result.triangles.resize(mesh.indices.size()/3);
+    result.triangles.resize(meshGeometry(mesh).indices.size()/3);
     size_t patch = 0;
-    for (const auto& node : mesh.nodes) {
+    for (const auto& node : meshGeometry(mesh).nodes) {
         const size_t begin = node.indexOffset/3, end = begin + node.indexCount/3;
         double worldArea = 0, uvArea = 0;
         bool positive = false, negative = false;
@@ -47,9 +47,9 @@ UvQuality analyzeUvQuality(const Mesh& mesh, const ComparisonSettings& settings,
             if (!node.hasTexcoords) { q.missing = true; ++result.missing; continue; }
             std::array<Coordinate,3> p{}, uv{};
             for (size_t k = 0; k < 3; ++k) {
-                const auto index = mesh.indices.at(t*3+k);
+                const auto index = meshGeometry(mesh).indices.at(t*3+k);
                 p[k] = meshPosition(mesh,index);
-                const auto& tex = mesh.vertices.at(index).texcoord;
+                const auto& tex = meshGeometry(mesh).vertices.at(index).texcoord;
                 uv[k] = {tex[0],tex[1],0};
                 q.uv[k] = {tex[0],tex[1]};
             }
@@ -281,11 +281,11 @@ std::optional<std::array<std::array<float, 3>, 3>> uvFindingGeometry(const Mesh&
 {
     if (!display.uvQuality || finding >= display.uvQuality->findings.size()) { return {}; }
     const auto& triangle = display.uvQuality->triangles.at(display.uvQuality->findings[finding]);
-    for (const auto& node : display.nodes) {
+    for (const auto& node : meshGeometry(display).nodes) {
         if (node.sourceObjectId != triangle.partId || !triangle.triangle || triangle.triangle > node.indexCount / 3) { continue; }
         std::array<std::array<float, 3>, 3> result;
         for (size_t k = 0; k < 3; ++k) {
-            result[k] = display.vertices.at(display.indices.at(node.indexOffset + (triangle.triangle - 1) * 3 + k)).position;
+            result[k] = meshGeometry(display).vertices.at(meshGeometry(display).indices.at(node.indexOffset + (triangle.triangle - 1) * 3 + k)).position;
         }
         return result;
     }
@@ -302,8 +302,8 @@ std::vector<Vertex> uvQualityVertices(const Mesh& display, const UvQuality& qual
 {
     if (stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
     std::vector<Vertex> result;
-    result.reserve(display.indices.size());
-    for (const auto& node : display.nodes) {
+    result.reserve(meshGeometry(display).indices.size());
+    for (const auto& node : meshGeometry(display).nodes) {
         for (size_t i = 0; i < node.indexCount; i += 3) {
             if (i % 12288 == 0 && stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
             const auto& q = quality.triangles.at(node.uvQualityOffset+i/3);
@@ -317,7 +317,7 @@ std::vector<Vertex> uvQualityVertices(const Mesh& display, const UvQuality& qual
             if (q.collapsed) { value = -1; }
             if (q.missing || q.degenerateSurface) { value = -2; }
             for (size_t k = 0; k < 3; ++k) {
-                auto vertex = display.vertices.at(display.indices.at(node.indexOffset+i+k));
+                auto vertex = meshGeometry(display).vertices.at(meshGeometry(display).indices.at(node.indexOffset+i+k));
                 vertex.texcoord = {value, uvQualityHighlighted(q,quality.settings) ? 1.0f : 0.0f};
                 result.push_back(vertex);
             }

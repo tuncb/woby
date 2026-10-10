@@ -160,7 +160,7 @@ void uploadFixture(Renderer& r, const Fixture& fixture)
     std::vector<byte> data(heapBytes,byte{0x5a});
     uint64_t offset = 0;
     for (size_t i = 0; i < 3; ++i) {
-        const auto& vertices = fixture.state.files[i].mesh.vertices;
+        const auto& vertices = meshGeometry(fixture.state.files[i].mesh).vertices;
         const uint64_t bytes = vertices.size()*sizeof(Vertex);
         std::memcpy(data.data()+offset,vertices.data(),static_cast<size_t>(bytes));
         r.vertices[i] = reinterpret_cast<MeshVertex*>(r.geometry.range.gpu+offset);

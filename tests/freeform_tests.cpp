@@ -59,11 +59,11 @@ TEST_CASE("OBJ freeform surfaces tessellate in u-major control order with analyt
     const Fixture f;
     const auto mesh=woby::loadObjMesh(f.write(plane));
     REQUIRE(mesh.freeform);
-    REQUIRE(mesh.vertices.size()==33*33);
-    CHECK(std::vector<uint32_t>(mesh.indices.begin(),mesh.indices.begin()+6) == std::vector<uint32_t>{0,1,33,1,34,33});
-    CHECK(mesh.pointIndices.empty());
-    CHECK(mesh.nodes.size()==1);
-    for (const auto& v:mesh.vertices) { CHECK(v.normal == std::array<float,3>{0,0,1}); }
+    REQUIRE(meshGeometry(mesh).vertices.size()==33*33);
+    CHECK(std::vector<uint32_t>(meshGeometry(mesh).indices.begin(),meshGeometry(mesh).indices.begin()+6) == std::vector<uint32_t>{0,1,33,1,34,33});
+    CHECK(meshGeometry(mesh).pointIndices.empty());
+    CHECK(meshGeometry(mesh).nodes.size()==1);
+    for (const auto& v : meshGeometry(mesh).vertices) { CHECK(v.normal == std::array<float,3>{0,0,1}); }
     const auto s=woby::evaluateFreeform(mesh.freeform->patches[0],.25,.5);
     CHECK(s.position == woby::Coordinate{.5,1.5,0});
     REQUIRE(mesh.sourceData);
@@ -75,11 +75,11 @@ TEST_CASE("OBJ freeform supports rational curves negative indexes and continuati
     const auto mesh=woby::loadObjMesh(f.write("v 1 0 0 1\nv 1 1 0 .7071067811865476\nv 0 1 0 1\n"
         "g arc\ncstype rat bspline\ndeg 2\ncurv 0 1 -3 \\\n -2 -1\nparm u 0 0 0 1 1 1\nend\n"));
     REQUIRE(mesh.freeform);
-    CHECK(mesh.vertices.size()==33);
-    CHECK(mesh.lineIndices.size()==64);
-    CHECK(mesh.indices.empty()); CHECK(mesh.pointIndices.empty());
-    CHECK(mesh.nodes[0].name=="arc");
-    const auto& middle=mesh.precisePositions[16];
+    CHECK(meshGeometry(mesh).vertices.size()==33);
+    CHECK(meshGeometry(mesh).lineIndices.size()==64);
+    CHECK(meshGeometry(mesh).indices.empty()); CHECK(meshGeometry(mesh).pointIndices.empty());
+    CHECK(meshGeometry(mesh).nodes[0].name=="arc");
+    const auto& middle=meshGeometry(mesh).precisePositions[16];
     CHECK(middle[0]+mesh.origin[0] == doctest::Approx(std::sqrt(.5)));
 }
 
@@ -99,8 +99,8 @@ TEST_CASE("large native OBJ falls back safely after asynchronous polygon parsing
         const auto mesh = woby::loadObjMesh(path);
         REQUIRE(mesh.freeform);
         CHECK(mesh.freeform->patches.size() == 1);
-        CHECK(mesh.vertices.size() == 33 * 33);
-        CHECK(mesh.indices.size() == 32 * 32 * 6);
+        CHECK(meshGeometry(mesh).vertices.size() == 33 * 33);
+        CHECK(meshGeometry(mesh).indices.size() == 32 * 32 * 6);
     }
 }
 
@@ -110,9 +110,9 @@ TEST_CASE("OBJ freeform mixes ordinary primitives without changing authored norm
         "g face\nf 1//1 2//1 3//1\ng line\nl 1 2\ng dot\np 3\ng curve\n"
         "cstype bezier\ndeg 2\ncurv 0 1 1 2 3\nparm u 0 1\nend\n"));
     REQUIRE(mesh.freeform);
-    CHECK(mesh.nodes.size()==4); CHECK(mesh.indices.size()==3);
-    CHECK(mesh.lineIndices.size()==66); CHECK(mesh.pointIndices.size()==1);
-    CHECK(mesh.vertices[0].normal[2]==-1);
+    CHECK(meshGeometry(mesh).nodes.size()==4); CHECK(meshGeometry(mesh).indices.size()==3);
+    CHECK(meshGeometry(mesh).lineIndices.size()==66); CHECK(meshGeometry(mesh).pointIndices.size()==1);
+    CHECK(meshGeometry(mesh).vertices[0].normal[2]==-1);
 }
 
 TEST_CASE("OBJ freeform interpolates authored UVs and normals") {
@@ -121,11 +121,11 @@ TEST_CASE("OBJ freeform interpolates authored UVs and normals") {
         "vt 0 0\nvt 1 0\nvt 0 1\nvt 1 1\nvn 0 0 -1\n"
         "cstype bezier\ndeg 1 1\nsurf 0 1 0 1 1/1/1 2/2/1 3/3/1 4/4/1\nparm u 0 1\nparm v 0 1\nend\n"));
     REQUIRE(mesh.freeform);
-    CHECK(mesh.nodes[0].hasTexcoords);
+    CHECK(meshGeometry(mesh).nodes[0].hasTexcoords);
     const auto& p=mesh.freeform->patches[0];
     CHECK(woby::evaluateFreeform(p,.25,.5).texcoord==std::array<double,2>{.25,.5});
     CHECK(woby::freeformNormal(p,.25,.5)==std::array<float,3>{0,0,-1});
-    CHECK(mesh.vertices[0].texcoord==std::array<float,2>{0,1});
+    CHECK(meshGeometry(mesh).vertices[0].texcoord==std::array<float,2>{0,1});
 }
 
 TEST_CASE("OBJ piecewise Bezier and partial spline domains include knot boundaries") {
@@ -217,7 +217,7 @@ TEST_CASE("Freeform tessellation supports large grids and cancellation within in
             throw Canceled{};
         }),Canceled);
         CHECK(planned == 3169u * 3169u);
-        CHECK(mesh.vertices.empty());
+        CHECK(meshGeometry(mesh).vertices.empty());
     }
     SUBCASE("32-bit index format cannot address the generated triangles") {
         woby::FreeformPatch p;
@@ -227,7 +227,7 @@ TEST_CASE("Freeform tessellation supports large grids and cancellation within in
         for (int i=0;i<1000;++i) { p.knotsU.push_back(i); }
         p.knotsU.push_back(999); p.knotsV=p.knotsU;
         CHECK_THROWS_WITH(woby::appendFreeformGeometry(mesh,{p}),"Freeform geometry exceeds the supported index range.");
-        CHECK(mesh.vertices.empty());
+        CHECK(meshGeometry(mesh).vertices.empty());
     }
     SUBCASE("cancellation") {
         struct Canceled {};

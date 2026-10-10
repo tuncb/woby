@@ -32,34 +32,34 @@ TEST_CASE("Staged native GPU uploads preserve complete geometry across frames an
     fixture.initialized = g::init({});
     REQUIRE(fixture.initialized);
     woby::Mesh source;
-    source.vertices.resize(7);
-    for (size_t i = 0; i < source.vertices.size(); ++i) {
-        source.vertices[i].position = {static_cast<float>(i), -2.0f, 3.0f};
+    editMeshGeometry(source).vertices.resize(7);
+    for (size_t i = 0; i < meshGeometry(source).vertices.size(); ++i) {
+        editMeshGeometry(source).vertices[i].position = {static_cast<float>(i), -2.0f, 3.0f};
     }
-    source.indices = {2, 0, 1, 1, 3, 2};
-    source.lineIndices = {4, 6};
-    source.pointIndices = {5, 5, 6};
-    source.nodes = {{"triangles", 0, 6}, {"lines"}, {"points"}};
-    source.nodes[1].lineIndexCount = 2;
-    source.nodes[2].pointIndexCount = 3;
+    editMeshGeometry(source).indices = {2, 0, 1, 1, 3, 2};
+    editMeshGeometry(source).lineIndices = {4, 6};
+    editMeshGeometry(source).pointIndices = {5, 5, 6};
+    editMeshGeometry(source).nodes = {{"triangles", 0, 6}, {"lines"}, {"points"}};
+    editMeshGeometry(source).nodes[1].lineIndexCount = 2;
+    editMeshGeometry(source).nodes[2].pointIndexCount = 3;
     const auto expected = source;
     auto upload = woby::beginGpuMeshUpload(*woby::prepareSceneMesh(source, woby::gpuMeshEdges | woby::gpuMeshPoints));
     while (!woby::stepGpuMeshUpload(upload, source, woby::meshVertexLayout(), 64)) { g::frame(); }
     fixture.mesh = std::move(upload.mesh);
     source = {}; // Including the last chunk, staging must own bytes before frame().
     upload = {};
-    std::vector<woby::Vertex> vertices(expected.vertices.size());
-    std::vector<uint32_t> triangles(expected.indices.size()), lines(expected.lineIndices.size());
-    std::vector<uint32_t> edges(expected.indices.size() * 2), points(fixture.mesh.pointVertexIndices.size());
+    std::vector<woby::Vertex> vertices(meshGeometry(expected).vertices.size());
+    std::vector<uint32_t> triangles(meshGeometry(expected).indices.size()), lines(meshGeometry(expected).lineIndices.size());
+    std::vector<uint32_t> edges(meshGeometry(expected).indices.size() * 2), points(fixture.mesh.pointVertexIndices.size());
     g::readBuffer(fixture.mesh.vertexBuffer, vertices.data());
     g::readBuffer(fixture.mesh.triangleIndexBuffer, triangles.data());
     g::readBuffer(fixture.mesh.importedLineBuffer, lines.data());
     g::readBuffer(fixture.mesh.lineIndexBuffer, edges.data());
     const auto ready = g::readBuffer(fixture.mesh.pointIdBuffer, points.data());
     while (g::frame() < ready) {}
-    CHECK(std::memcmp(vertices.data(), expected.vertices.data(), vertices.size() * sizeof(woby::Vertex)) == 0);
-    CHECK(triangles == expected.indices);
-    CHECK(lines == expected.lineIndices);
+    CHECK(std::memcmp(vertices.data(), meshGeometry(expected).vertices.data(), vertices.size() * sizeof(woby::Vertex)) == 0);
+    CHECK(triangles == meshGeometry(expected).indices);
+    CHECK(lines == meshGeometry(expected).lineIndices);
     CHECK(edges == std::vector<uint32_t>{2, 0, 0, 1, 1, 2, 1, 3, 3, 2, 2, 1});
     CHECK(points == fixture.mesh.pointVertexIndices);
 
@@ -121,12 +121,12 @@ void initializeTransparency(TransparencyFixture& f, bool msaa)
         {-.95f,-.9f,.15f},{.95f,-.9f,.85f},{0,.95f,.5f},
         {-.95f,-.9f,.85f},{.95f,-.9f,.15f},{0,.95f,.5f},{0,0,.95f}}}) {
         woby::Vertex v; v.position = p; v.normal = {0,0,1};
-        if (source.vertices.size() >= 3 && source.vertices.size() < 6) { v.normal = {0,0,-1}; }
-        v.texcoord = {p[0]+.5f,p[1]+.5f}; source.vertices.push_back(v);
+        if (meshGeometry(source).vertices.size() >= 3 && meshGeometry(source).vertices.size() < 6) { v.normal = {0,0,-1}; }
+        v.texcoord = {p[0]+.5f,p[1]+.5f}; editMeshGeometry(source).vertices.push_back(v);
     }
-    source.indices = {0,1,2,3,4,5}; source.pointIndices = {6};
-    source.nodes = {{"red",0,3},{"blue",3,3},{"point"}};
-    source.nodes[2].pointIndexCount = 1;
+    editMeshGeometry(source).indices = {0,1,2,3,4,5}; editMeshGeometry(source).pointIndices = {6};
+    editMeshGeometry(source).nodes = {{"red",0,3},{"blue",3,3},{"point"}};
+    editMeshGeometry(source).nodes[2].pointIndexCount = 1;
     f.models.push_back({woby::createGpuMesh(source, woby::meshVertexLayout(), woby::gpuMeshPoints)});
     for (size_t i = 0; i < 2; ++i) {
         woby::SceneDrawItem item;

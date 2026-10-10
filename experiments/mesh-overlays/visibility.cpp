@@ -61,7 +61,7 @@ VisibilityAudit inspectVisibility(const Mesh& mesh,const Scene& scene,
         std::array<float,16> matrix{}; woby::multiplyMatrices(matrix.data(),group.model.data(),viewProjection.data());
         for (uint32_t i=0;i<group.range.pointIndexCount;++i) {
             const auto marker=group.range.pointIndexOffset+i;
-            const auto& p=mesh.vertices.at(scene.markerVertices.at(marker)).position;
+            const auto& p=meshGeometry(mesh).vertices.at(scene.markerVertices.at(marker)).position;
             std::array<float,4> clip{};
             for (size_t row=0;row<4;++row)
                 clip[row]=matrix[row]*p[0]+matrix[4+row]*p[1]+matrix[8+row]*p[2]+matrix[12+row];

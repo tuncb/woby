@@ -105,9 +105,9 @@ void selectCorner(UiState& state, size_t corner) { state.corner = std::min(corne
 void selectComponent(UiState& state, size_t component) { state.component = std::min(component, size_t{7}); }
 void selectVertex(UiState& state, const Trace& trace, size_t vertex)
 {
-    const auto found = std::find(trace.mesh.indices.begin(), trace.mesh.indices.end(), vertex);
-    if (found != trace.mesh.indices.end()) {
-        const auto index = static_cast<size_t>(found - trace.mesh.indices.begin());
+    const auto found = std::find(meshGeometry(trace.mesh).indices.begin(), meshGeometry(trace.mesh).indices.end(), vertex);
+    if (found != meshGeometry(trace.mesh).indices.end()) {
+        const auto index = static_cast<size_t>(found - meshGeometry(trace.mesh).indices.begin());
         selectTriangle(state, trace, index / 3);
         selectCorner(state, index % 3);
     }
@@ -147,6 +147,6 @@ void orbit(UiState& state, float yawDelta, float pitchDelta, float zoomFactor)
 }
 uint32_t selectedVertex(const UiState& state, const Trace& trace)
 {
-    return trace.mesh.indices.at(state.triangle * 3 + state.corner);
+    return meshGeometry(trace.mesh).indices.at(state.triangle * 3 + state.corner);
 }
 } // namespace mesh_lab

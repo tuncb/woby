@@ -47,10 +47,10 @@ Mesh meshFor(const DuplicateSource& source)
     Mesh mesh;
     for (const auto& point : source.data->points) {
         Vertex v; for (size_t k = 0; k < 3; ++k) { v.position[k] = static_cast<float>(point[k]); }
-        mesh.vertices.push_back(v);
+        editMeshGeometry(mesh).vertices.push_back(v);
     }
-    mesh.indices = source.data->indices;
-    mesh.bounds = calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices = source.data->indices;
+    mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
     auto input = std::make_shared<DuplicateInput>(); input->sources.push_back(source); mesh.duplicateInput = input;
     return mesh;
 }
@@ -340,7 +340,7 @@ TEST_CASE("degenerate scene migration and bounded JSON retain exact totals")
     source.data = data; source.parts[0].indexCount = data->indices.size();
     MeshComparison result;
     result.detectors[static_cast<size_t>(DiagnosticCategory::degenerateTriangles)].phase = IntersectionPhase::complete;
-    result.original.source.indices = {0,1,2};
+    editMeshGeometry(result.original.source).indices = {0,1,2};
     result.original.degenerates = inspectDegenerates({source}, {});
     auto json = controlComparisonResults(result, .05)["aToB"]["detectors"]["degenerate_tris"];
     CHECK(json["count"] == 120); CHECK(json["findings"].size() == 100);

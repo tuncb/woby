@@ -73,10 +73,10 @@ void visitObjects(const UiState& state, const Visitor& visitor, SceneObjectId fi
             if (visitor(SceneObjectInfo{file.objectId, SceneObjectKind::file,
                     std::string(filename.begin(), filename.end()), file.path, invalidSceneObjectId})) { return; }
         }
-        for (size_t index = 0; index < file.groupSettings.size() && index < file.mesh.nodes.size(); ++index) {
+        for (size_t index = 0; index < file.groupSettings.size() && index < meshGeometry(file.mesh).nodes.size(); ++index) {
             const auto id = file.groupSettings[index].objectId;
             if (wanted(id)
-                && visitor(SceneObjectInfo{id, SceneObjectKind::group, meshNodeDisplayName(file.mesh.nodes[index]), {}, file.objectId})) {
+                && visitor(SceneObjectInfo{id, SceneObjectKind::group, meshNodeDisplayName(meshGeometry(file.mesh).nodes[index]), {}, file.objectId})) {
                 return;
             }
         }

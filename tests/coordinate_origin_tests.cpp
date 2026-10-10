@@ -60,11 +60,11 @@ TEST_CASE("coordinate origin preserves small OBJ features before float conversio
     CHECK(mesh.bounds.radius < 1);
     REQUIRE(mesh.sourceData->points.size() == 5);
     CHECK(mesh.sourceData->points[4][0] - mesh.sourceData->points[0][0] == doctest::Approx(.01).epsilon(1e-7));
-    CHECK(mesh.vertices[0].position != mesh.vertices[1].position);
+    CHECK(meshGeometry(mesh).vertices[0].position != meshGeometry(mesh).vertices[1].position);
     const auto bounds = woby::originalMeshBounds(mesh);
     CHECK(bounds[0][0] == 8000000);
     CHECK(bounds[1][0] == 8000000.125);
-    CHECK(mesh.precisePositions.size() == mesh.vertices.size());
+    CHECK(meshGeometry(mesh).precisePositions.size() == meshGeometry(mesh).vertices.size());
 }
 
 TEST_CASE("coordinate origin makes detectors and measurements translation invariant")
@@ -143,7 +143,7 @@ TEST_CASE("coordinate origin preserves double importer positions")
     input.indices = indices; input.index_count = 3;
     const auto imported = woby::copyImportedMesh(input);
     CHECK(imported.bounds.radius < .02);
-    CHECK(imported.precisePositions[1][0]-imported.precisePositions[0][0] == doctest::Approx(.01).epsilon(1e-7));
+    CHECK(meshGeometry(imported).precisePositions[1][0]-meshGeometry(imported).precisePositions[0][0] == doctest::Approx(.01).epsilon(1e-7));
 }
 
 TEST_CASE("coordinate origin aligns independently loaded meshes for direct comparisons")
@@ -165,7 +165,7 @@ TEST_CASE("coordinate origin triangulates small distant concave polygons")
     std::ofstream(path) << "v 8000000 8000000 0\nv 8000000.02 8000000 0\nv 8000000.02 8000000.02 0\n"
         "v 8000000.01 8000000.01 0\nv 8000000 8000000.02 0\nf 1 2 3 4 5\n";
     const auto mesh = woby::loadObjMesh(path);
-    CHECK(mesh.indices.size() == 9);
+    CHECK(meshGeometry(mesh).indices.size() == 9);
     const auto quality = woby::inspectSurfaceMeshQuality(mesh);
     CHECK(quality.degenerateTriangles == 0);
     double area = 0;
@@ -182,8 +182,8 @@ TEST_CASE("coordinate origin preserves annotation attachments and original verte
     woby::AnnotationGeometry geometry;
     woby::coordinateIdentity(geometry.projector.data());
     geometry.fingerprint = woby::annotationFingerprint(mesh,0,3);
-    geometry.start = {mesh.vertices[0].position[0],mesh.vertices[0].position[1]};
-    geometry.end = {mesh.vertices[1].position[0],mesh.vertices[1].position[1]};
+    geometry.start = {meshGeometry(mesh).vertices[0].position[0],meshGeometry(mesh).vertices[0].position[1]};
+    geometry.end = {meshGeometry(mesh).vertices[1].position[0],meshGeometry(mesh).vertices[1].position[1]};
     woby::AnnotationSegment segment;
     segment.a = {1,0,0}; segment.b = {0,1,0}; geometry.segments.push_back(segment);
     const auto id = woby::createAnnotation(state,state.files[0].groupSettings[0].objectId,geometry);

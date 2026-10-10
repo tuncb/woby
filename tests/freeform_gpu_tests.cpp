@@ -40,16 +40,16 @@ TEST_CASE("Native freeform compute matches CPU rational surfaces curves and topo
         curve.controls.resize(3); curve.normals.clear(); curve.texcoords.clear(); curve.knotsV.clear();
         woby::Mesh mesh;
         // Existing polygon data must survive compute writes at nonzero offsets.
-        mesh.vertices={{{9,8,7},{0,0,1},{0,0}},{{8,7,6},{0,0,1},{0,0}},{{7,6,5},{0,0,1},{0,0}}};
-        mesh.precisePositions={{9,8,7},{8,7,6},{7,6,5}};
-        mesh.indices={0,1,2}; mesh.lineIndices={0,1};
+        editMeshGeometry(mesh).vertices={{{9,8,7},{0,0,1},{0,0}},{{8,7,6},{0,0,1},{0,0}},{{7,6,5},{0,0,1},{0,0}}};
+        editMeshGeometry(mesh).precisePositions={{9,8,7},{8,7,6},{7,6,5}};
+        editMeshGeometry(mesh).indices={0,1,2}; editMeshGeometry(mesh).lineIndices={0,1};
         woby::appendFreeformGeometry(mesh,{surface,curve});
         woby::rebaseMesh(mesh,{.25,-.75,1.5});
-        auto initial=mesh.vertices;
+        auto initial=meshGeometry(mesh).vertices;
         for (size_t i=3;i<initial.size();++i) { initial[i].position={-99,-99,-99}; initial[i].texcoord={0,0}; }
         for (size_t i=3;i<mesh.freeform->grids[1].vertexOffset;++i) { initial[i].normal={0,0,0}; }
         const auto vb=g::createVertexBuffer(g::copy(initial.data(),static_cast<uint32_t>(initial.size()*sizeof(woby::Vertex))),{32});
-        auto triangleInput=mesh.indices, lineInput=mesh.lineIndices;
+        auto triangleInput=meshGeometry(mesh).indices, lineInput=meshGeometry(mesh).lineIndices;
         if (!trimmed) { std::fill(triangleInput.begin()+3,triangleInput.end(),0); }
         std::fill(lineInput.begin()+2,lineInput.end(),0);
         const auto ib=g::createIndexBuffer(g::copy(triangleInput.data(),static_cast<uint32_t>(triangleInput.size()*4)),WOBY_GPU_BUFFER_INDEX32);
@@ -60,14 +60,14 @@ TEST_CASE("Native freeform compute matches CPU rational surfaces curves and topo
         g::readBuffer(vb,output.data()); g::readBuffer(ib,triangles.data());
         const auto ready=g::readBuffer(lb,lines.data());
         while (g::frame()<ready) {}
-        CHECK(triangles==mesh.indices); CHECK(lines==mesh.lineIndices);
+        CHECK(triangles==meshGeometry(mesh).indices); CHECK(lines==meshGeometry(mesh).lineIndices);
         for (size_t i=0;i<output.size();++i) {
             CAPTURE(i); CAPTURE(authored); CAPTURE(trimmed);
             for (size_t k=0;k<3;++k) {
-                CHECK(output[i].position[k]==doctest::Approx(mesh.vertices[i].position[k]).epsilon(2e-5));
-                CHECK(output[i].normal[k]==doctest::Approx(mesh.vertices[i].normal[k]).epsilon(2e-5));
+                CHECK(output[i].position[k]==doctest::Approx(meshGeometry(mesh).vertices[i].position[k]).epsilon(2e-5));
+                CHECK(output[i].normal[k]==doctest::Approx(meshGeometry(mesh).vertices[i].normal[k]).epsilon(2e-5));
             }
-            for (size_t k=0;k<2;++k) { CHECK(output[i].texcoord[k]==doctest::Approx(mesh.vertices[i].texcoord[k]).epsilon(2e-5)); }
+            for (size_t k=0;k<2;++k) { CHECK(output[i].texcoord[k]==doctest::Approx(meshGeometry(mesh).vertices[i].texcoord[k]).epsilon(2e-5)); }
         }
         g::destroy(vb); g::destroy(ib); g::destroy(lb);
     }

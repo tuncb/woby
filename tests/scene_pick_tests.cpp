@@ -19,11 +19,11 @@ woby::Mesh triangle(float z = .4f)
     for (const auto p : {std::array<float, 3>{-.8f, -.8f, z}, {.8f, -.8f, z}, {0, .8f, z}}) {
         woby::Vertex vertex;
         vertex.position = p;
-        mesh.vertices.push_back(vertex);
+        editMeshGeometry(mesh).vertices.push_back(vertex);
     }
-    mesh.indices = {0, 1, 2};
-    mesh.nodes = {{"part", 0, 3}};
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes = {{"part", 0, 3}};
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     return mesh;
 }
 woby::UiState scene()
@@ -178,8 +178,8 @@ TEST_CASE("automatic clipping keeps close surfaces pickable across scales axes a
 {
     for (const float scale : {.01f, 1.0f, 1000000.0f}) {
         auto mesh = triangle(0);
-        for (auto& vertex : mesh.vertices) { for (auto& value : vertex.position) { value *= scale; } }
-        mesh.bounds = woby::calculateBounds(mesh.vertices);
+        for (auto& vertex : editMeshGeometry(mesh).vertices) { for (auto& value : vertex.position) { value *= scale; } }
+        mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
         woby::UiState state;
         state.files.push_back(woby::createUiFileState("close.obj", std::move(mesh), 0));
         woby::appendDefaultSceneNodesForFiles(state, 0);
@@ -249,11 +249,11 @@ TEST_CASE("scene projection retains all bounding corners across scales axes and 
 TEST_CASE("scene picking reaches distant geometry beyond a nearby camera target and still works close up")
 {
     auto mesh = triangle(0);
-    for (auto& vertex : mesh.vertices) {
+    for (auto& vertex : editMeshGeometry(mesh).vertices) {
         vertex.position[0] *= 100000;
         vertex.position[1] *= 100000;
     }
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     woby::UiState state;
     state.files.push_back(woby::createUiFileState("pick.obj", std::move(mesh), 0));
     woby::appendDefaultSceneNodesForFiles(state, 0);
@@ -362,16 +362,16 @@ TEST_CASE("canvas picker handles clipping reversed winding and malformed triangl
 {
     auto state = scene();
     SUBCASE("back face") {
-        std::reverse(state.files[0].mesh.indices.begin(), state.files[0].mesh.indices.end());
+        std::reverse(editMeshGeometry(state.files[0].mesh).indices.begin(), editMeshGeometry(state.files[0].mesh).indices.end());
         CHECK(pick(state) != woby::invalidSceneObjectId);
         return;
     }
     SUBCASE("before near plane") { state.files[0].groupSettings[0].translation[2] = -1; }
     SUBCASE("past far plane") { state.files[0].groupSettings[0].translation[2] = 1; }
-    SUBCASE("bad index") { state.files[0].mesh.indices[0] = 99; }
-    SUBCASE("non finite position") { state.files[0].mesh.vertices[0].position[0] = std::numeric_limits<float>::infinity(); }
-    SUBCASE("degenerate triangle") { state.files[0].mesh.indices = {0, 0, 0}; }
-    SUBCASE("out of range node") { state.files[0].mesh.nodes[0].indexOffset = 99; }
+    SUBCASE("bad index") { editMeshGeometry(state.files[0].mesh).indices[0] = 99; }
+    SUBCASE("non finite position") { editMeshGeometry(state.files[0].mesh).vertices[0].position[0] = std::numeric_limits<float>::infinity(); }
+    SUBCASE("degenerate triangle") { editMeshGeometry(state.files[0].mesh).indices = {0, 0, 0}; }
+    SUBCASE("out of range node") { editMeshGeometry(state.files[0].mesh).nodes[0].indexOffset = 99; }
     CHECK(pick(state) == woby::invalidSceneObjectId);
 }
 
@@ -383,8 +383,8 @@ TEST_CASE("opaque vertices survive zero group file and folder opacity in cached 
         state.files[0].groupSettings[0].showVertices = true;
         if (cloud) {
             auto& mesh = state.files[0].mesh;
-            mesh.indices.clear(); mesh.pointIndices = {0, 1, 2};
-            mesh.nodes[0].indexCount = 0; mesh.nodes[0].pointIndexCount = 3;
+            editMeshGeometry(mesh).indices.clear(); editMeshGeometry(mesh).pointIndices = {0, 1, 2};
+            editMeshGeometry(mesh).nodes[0].indexCount = 0; editMeshGeometry(mesh).nodes[0].pointIndexCount = 3;
         }
         if (level == 2) {
             woby::UiSceneNode folder; folder.children = std::move(state.sceneNodes);
@@ -463,8 +463,8 @@ TEST_CASE("xray edges pick through surfaces while hidden vertices do not")
     auto state = scene();
     // The rear triangle's top vertex and its base edge both fall inside the front surface.
     auto rear = triangle(.8f);
-    for (auto& vertex : rear.vertices) { vertex.position[0] *= .3f; vertex.position[1] *= .3f; }
-    rear.bounds = woby::calculateBounds(rear.vertices);
+    for (auto& vertex : editMeshGeometry(rear).vertices) { vertex.position[0] *= .3f; vertex.position[1] *= .3f; }
+    rear.bounds = woby::calculateBounds(meshGeometry(rear).vertices);
     state.files.push_back(woby::createUiFileState("rear.obj", rear, 1));
     woby::appendDefaultSceneNodesForFiles(state, 1);
     woby::assignSceneObjectIds(state);
@@ -485,9 +485,9 @@ TEST_CASE("edge picking clips segments crossing the near plane")
     auto& file = state.files[0];
     file.groupSettings[0].showSolidMesh = false;
     file.groupSettings[0].showTriangles = true;
-    file.mesh.vertices[0].position = {-.8f, 0, -.4f};
-    file.mesh.vertices[1].position = {.8f, 0, .4f};
-    file.mesh.vertices[2].position = {.8f, .8f, .4f};
+    editMeshGeometry(file.mesh).vertices[0].position = {-.8f, 0, -.4f};
+    editMeshGeometry(file.mesh).vertices[1].position = {.8f, 0, .4f};
+    editMeshGeometry(file.mesh).vertices[2].position = {.8f, .8f, .4f};
     CHECK(pick(state, {70, 50}) == file.groupSettings[0].objectId);
     CHECK(pick(state, {20, 50}) == woby::invalidSceneObjectId);
 }
@@ -555,15 +555,15 @@ TEST_CASE("canvas selection reveals only the selected part ancestor path")
 TEST_CASE("canvas picking resolves separate part index ranges within one mesh")
 {
     auto mesh = triangle();
-    for (auto& vertex : mesh.vertices) { vertex.position[0] = vertex.position[0] * .3f - .5f; }
+    for (auto& vertex : editMeshGeometry(mesh).vertices) { vertex.position[0] = vertex.position[0] * .3f - .5f; }
     const auto other = triangle();
-    for (auto vertex : other.vertices) {
+    for (auto vertex : meshGeometry(other).vertices) {
         vertex.position[0] = vertex.position[0] * .3f + .5f;
-        mesh.vertices.push_back(vertex);
+        editMeshGeometry(mesh).vertices.push_back(vertex);
     }
-    mesh.indices = {0, 1, 2, 3, 4, 5};
-    mesh.nodes.push_back({"right", 3, 3});
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices = {0, 1, 2, 3, 4, 5};
+    editMeshGeometry(mesh).nodes.push_back({"right", 3, 3});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     woby::UiState state;
     state.files.push_back(woby::createUiFileState("two.obj", mesh, 0));
     woby::appendDefaultSceneNodesForFiles(state, 0);
@@ -615,8 +615,8 @@ TEST_CASE("analysis picks select result identity and honor mode translation and 
     woby::MeshComparison result;
     result.original.source = triangle(.2f);
     result.repaired.source = triangle(.6f);
-    for (auto& vertex : result.original.source.vertices) { vertex.position[0] += 3; }
-    result.original.source.bounds = woby::calculateBounds(result.original.source.vertices);
+    for (auto& vertex : editMeshGeometry(result.original.source).vertices) { vertex.position[0] += 3; }
+    result.original.source.bounds = woby::calculateBounds(meshGeometry(result.original.source).vertices);
     std::vector<woby::ScenePickPart> parts;
     for (const auto mode : {woby::ComparisonMode::distance, woby::ComparisonMode::original,
             woby::ComparisonMode::repaired, woby::ComparisonMode::overlay}) {
@@ -733,7 +733,7 @@ TEST_CASE("render scratch reuses selection storage and replaces stale scene part
 TEST_CASE("scene object queries only materialize matching metadata")
 {
     auto state = scene();
-    state.files[0].mesh.nodes[0].name = std::string(200, 'p');
+    editMeshGeometry(state.files[0].mesh).nodes[0].name = std::string(200, 'p');
     woby::UiSceneNode folder;
     folder.kind = woby::UiSceneNodeKind::folder;
     folder.name = std::string(200, 'f');

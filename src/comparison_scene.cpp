@@ -26,53 +26,53 @@ struct WorldVertexRemap {
 
 void appendGroup(Mesh &result, WorldVertexRemap& remap, const UiFileState &file, size_t groupIndex, const double *parent, std::stop_token stop)
 {
-    if (groupIndex >= file.mesh.nodes.size() || groupIndex >= file.groupSettings.size())
+    if (groupIndex >= meshGeometry(file.mesh).nodes.size() || groupIndex >= file.groupSettings.size())
     {
         throw std::runtime_error("Analysis encountered an invalid mesh group.");
     }
     double local[16], model[16];
     groupTransformMatrix(file.groupSettings[groupIndex], local);
     coordinateMultiply(model, parent, local);
-    const auto &group = file.mesh.nodes[groupIndex];
+    const auto &group = meshGeometry(file.mesh).nodes[groupIndex];
     const size_t end = static_cast<size_t>(group.indexOffset) + group.indexCount;
-    if (end > file.mesh.indices.size() || group.indexCount % 3 != 0)
+    if (end > meshGeometry(file.mesh).indices.size() || group.indexCount % 3 != 0)
     {
         throw std::runtime_error("Analysis encountered an invalid triangle range.");
     }
-    validateComparisonMeshSize(result.vertices.size(),
-        (result.indices.size() + group.indexCount) / 3);
+    validateComparisonMeshSize(meshGeometry(result).vertices.size(),
+        (meshGeometry(result).indices.size() + group.indexCount) / 3);
     constexpr auto missing = std::numeric_limits<uint32_t>::max();
     if (remap.mesh != &file.mesh) {
         remap.mesh = &file.mesh;
-        remap.vertices.assign(file.mesh.vertices.size(), missing);
+        remap.vertices.assign(meshGeometry(file.mesh).vertices.size(), missing);
     }
     // Reuse vertices within a part, preserving source splits and triangle order.
     // A new part gets its own vertices because its transform can differ. Earlier
     // mappings precede this offset, so no whole-file clear is needed per part.
-    const auto firstVertex = result.vertices.size();
+    const auto firstVertex = meshGeometry(result).vertices.size();
     auto node = group;
-    node.indexOffset = static_cast<uint32_t>(result.indices.size());
+    node.indexOffset = static_cast<uint32_t>(meshGeometry(result).indices.size());
     node.sourceObjectId = file.groupSettings[groupIndex].objectId;
-    node.uvQualityOffset = result.indices.size()/3;
-    result.nodes.push_back(std::move(node));
+    node.uvQualityOffset = meshGeometry(result).indices.size()/3;
+    editMeshGeometry(result).nodes.push_back(std::move(node));
     for (size_t i = group.indexOffset; i < end; ++i)
     {
         if (i % 16384 == 0 && stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
-        const auto sourceIndex = file.mesh.indices[i];
+        const auto sourceIndex = meshGeometry(file.mesh).indices[i];
         auto& mapped = remap.vertices.at(sourceIndex);
         if (mapped != missing && mapped >= firstVertex) {
-            result.indices.push_back(mapped);
+            editMeshGeometry(result).indices.push_back(mapped);
             continue;
         }
         const auto point = transformCoordinate(model, meshPosition(file.mesh, sourceIndex));
         Vertex vertex;
         vertex.position = renderPosition(point);
-        vertex.texcoord = file.mesh.vertices[sourceIndex].texcoord;
-        result.precisePositions.push_back(point);
-        validateComparisonMeshSize(result.vertices.size() + 1, 0);
-        mapped = static_cast<uint32_t>(result.vertices.size());
-        result.indices.push_back(mapped);
-        result.vertices.push_back(vertex);
+        vertex.texcoord = meshGeometry(file.mesh).vertices[sourceIndex].texcoord;
+        editMeshGeometry(result).precisePositions.push_back(point);
+        validateComparisonMeshSize(meshGeometry(result).vertices.size() + 1, 0);
+        mapped = static_cast<uint32_t>(meshGeometry(result).vertices.size());
+        editMeshGeometry(result).indices.push_back(mapped);
+        editMeshGeometry(result).vertices.push_back(vertex);
     }
 }
 // One traversal supplies both geometry snapshots and their cache signatures.
@@ -87,9 +87,9 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
     const auto part = [&](size_t fileIndex, size_t groupIndex, const double* parent) {
         if (fileIndex >= state.files.size()) { return; }
         const auto& file = state.files[fileIndex];
-        if (groupIndex >= file.groupSettings.size() || groupIndex >= file.mesh.nodes.size()) { return; }
+        if (groupIndex >= file.groupSettings.size() || groupIndex >= meshGeometry(file.mesh).nodes.size()) { return; }
         if (!std::binary_search(members.begin(), members.end(), file.groupSettings[groupIndex].objectId)
-            || file.mesh.nodes[groupIndex].indexCount == 0
+            || meshGeometry(file.mesh).nodes[groupIndex].indexCount == 0
             || !visited.emplace(fileIndex, groupIndex).second) { return; }
         visitor(file, groupIndex, parent);
     };
@@ -133,7 +133,7 @@ std::optional<std::array<Coordinate, 3>> comparisonSourceTriangle(
     std::optional<std::array<Coordinate, 3>> result;
     visitParts(state, ComparisonSide::a, analysisId, [&](const UiFileState& file, size_t groupIndex, const double* parent) {
         if (file.groupSettings[groupIndex].objectId != partId) { return; }
-        const auto& node = file.mesh.nodes[groupIndex];
+        const auto& node = meshGeometry(file.mesh).nodes[groupIndex];
         if (triangle == 0 || triangle > node.indexCount / 3) { return; }
         double local[16], model[16];
         groupTransformMatrix(file.groupSettings[groupIndex], local);
@@ -141,22 +141,22 @@ std::optional<std::array<Coordinate, 3>> comparisonSourceTriangle(
         std::array<Coordinate, 3> points;
         for (size_t k = 0; k < 3; ++k) {
             points[k] = transformCoordinate(model, meshPosition(file.mesh,
-                file.mesh.indices.at(node.indexOffset + (triangle - 1) * 3 + k)));
+                meshGeometry(file.mesh).indices.at(node.indexOffset + (triangle - 1) * 3 + k)));
         }
         result = points;
     });
     return result;
 }
 
-Mesh uvLayoutMesh(const Mesh& source, bool separated, std::stop_token stop)
+static Mesh buildUvLayoutMesh(const Mesh& source, bool separated, std::stop_token stop, bool publish)
 {
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
     UvExtent extent;
-    for (const auto& node : source.nodes) {
+    for (const auto& node : meshGeometry(source).nodes) {
         if (!node.hasTexcoords) { continue; }
         for (size_t i = node.indexOffset; i < size_t{node.indexOffset} + node.indexCount; ++i) {
             if (i % 16384 == 0 && stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
-            includeUv(extent, source.vertices[source.indices[i]].texcoord);
+            includeUv(extent, meshGeometry(source).vertices[meshGeometry(source).indices[i]].texcoord);
         }
     }
     Mesh result;
@@ -165,41 +165,47 @@ Mesh uvLayoutMesh(const Mesh& source, bool separated, std::stop_token stop)
     if (extent.min[0] > extent.max[0]) { return result; }
     const auto frame = uvLayoutFrame(source.bounds, extent);
     constexpr auto missing = std::numeric_limits<uint32_t>::max();
-    std::vector<uint32_t> remap(source.vertices.size(), missing);
+    std::vector<uint32_t> remap(meshGeometry(source).vertices.size(), missing);
     size_t patch = 0;
-    const auto patchCount = std::count_if(source.nodes.begin(), source.nodes.end(), [](const auto& n) { return n.hasTexcoords; });
-    for (const auto& node : source.nodes) {
+    const auto patchCount = std::count_if(meshGeometry(source).nodes.begin(), meshGeometry(source).nodes.end(), [](const auto& n) { return n.hasTexcoords; });
+    for (const auto& node : meshGeometry(source).nodes) {
         if (!node.hasTexcoords) { continue; }
         UvExtent local;
         for (size_t i = node.indexOffset; i < size_t{node.indexOffset}+node.indexCount; ++i) {
             if (i % 16384 == 0 && stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
-            includeUv(local, source.vertices[source.indices[i]].texcoord);
+            includeUv(local, meshGeometry(source).vertices[meshGeometry(source).indices[i]].texcoord);
         }
         const auto placement = uvPatchLayout(frame, extent, local, patch++, static_cast<size_t>(patchCount), separated);
         // Patches can share source vertices; display separation requires independent copies.
-        const auto firstVertex = result.vertices.size();
+        const auto firstVertex = meshGeometry(result).vertices.size();
         auto flattened = node;
-        flattened.indexOffset = static_cast<uint32_t>(result.indices.size());
-        result.nodes.push_back(std::move(flattened));
+        flattened.indexOffset = static_cast<uint32_t>(meshGeometry(result).indices.size());
+        editMeshGeometry(result).nodes.push_back(std::move(flattened));
         for (size_t i = node.indexOffset; i < size_t{node.indexOffset} + node.indexCount; ++i) {
             if (i % 16384 == 0 && stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
-            const auto sourceIndex = source.indices[i];
+            const auto sourceIndex = meshGeometry(source).indices[i];
             auto& mapped = remap[sourceIndex];
             if (mapped == missing || (separated && mapped < firstVertex)) {
-                auto vertex = source.vertices[sourceIndex];
+                auto vertex = meshGeometry(source).vertices[sourceIndex];
                 vertex.position = uvPatchPosition(placement, vertex.texcoord);
                 vertex.normal = {0, -1, 0};
-                mapped = static_cast<uint32_t>(result.vertices.size());
-                result.vertices.push_back(vertex);
-                result.precisePositions.push_back({vertex.position[0], vertex.position[1], vertex.position[2]});
+                mapped = static_cast<uint32_t>(meshGeometry(result).vertices.size());
+                editMeshGeometry(result).vertices.push_back(vertex);
+                editMeshGeometry(result).precisePositions.push_back({vertex.position[0], vertex.position[1], vertex.position[2]});
             }
-            result.indices.push_back(mapped);
+            editMeshGeometry(result).indices.push_back(mapped);
         }
     }
-    result.bounds = calculateBounds(result.vertices, [&](const ModelLoadProgress&) {
+    result.bounds = calculateBounds(meshGeometry(result).vertices, [&](const ModelLoadProgress&) {
         if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
     });
+    if (publish) { publishMeshGeometry(result); }
     return result;
+}
+
+Mesh uvLayoutMesh(const Mesh& source, bool separated, std::stop_token stop)
+{
+    return buildUvLayoutMesh(source, separated, stop, true);
 }
 
 std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonSide side, SceneObjectId id)
@@ -216,13 +222,13 @@ std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonS
         if (source.kind == UiSceneNodeKind::group) {
             if (source.fileIndex >= state.files.size()) { return result; }
             const auto& file = state.files[source.fileIndex];
-            if (source.groupIndex >= file.groupSettings.size() || source.groupIndex >= file.mesh.nodes.size()) {
+            if (source.groupIndex >= file.groupSettings.size() || source.groupIndex >= meshGeometry(file.mesh).nodes.size()) {
                 return result;
             }
             const auto& part = file.groupSettings[source.groupIndex];
-            const auto& meshNode = file.mesh.nodes[source.groupIndex];
+            const auto& meshNode = meshGeometry(file.mesh).nodes[source.groupIndex];
             if (!std::binary_search(members.begin(), members.end(), part.objectId) || meshNode.indexCount < 3 || meshNode.indexCount % 3 != 0
-                || static_cast<size_t>(meshNode.indexOffset) + meshNode.indexCount > file.mesh.indices.size()
+                || static_cast<size_t>(meshNode.indexOffset) + meshNode.indexCount > meshGeometry(file.mesh).indices.size()
                 || !visited.emplace(source.fileIndex, source.groupIndex).second) { return result; }
             result.objectId = part.objectId;
             result.partCount = 1;
@@ -378,14 +384,14 @@ struct AnalysisBatch {
 // importer geometry is edited. Children of an imported container stay together.
 static std::vector<AnalysisBatch> modelAnalysisBatches(const UiFileState& file, AnalysisMode mode)
 {
-    std::vector<AnalysisBatch> batches(file.mesh.nodes.size());
+    std::vector<AnalysisBatch> batches(meshGeometry(file.mesh).nodes.size());
     const bool separate = mode == AnalysisMode::perVolume
         || (mode == AnalysisMode::model && file.fileSettings.analysisMode == AnalysisMode::perVolume);
     if (!separate) { return batches; }
     for (size_t i = 0; i < batches.size(); ++i) {
-        batches[i] = {file.groupSettings.at(i).objectId, meshNodeDisplayName(file.mesh.nodes[i])};
+        batches[i] = {file.groupSettings.at(i).objectId, meshNodeDisplayName(meshGeometry(file.mesh).nodes[i])};
     }
-    const auto& hierarchy = file.mesh.hierarchy;
+    const auto& hierarchy = meshGeometry(file.mesh).hierarchy;
     std::vector<size_t> roots(hierarchy.size());
     std::vector<SceneObjectId> representatives(hierarchy.size());
     for (size_t i = 0; i < hierarchy.size(); ++i) {
@@ -401,7 +407,7 @@ static std::vector<AnalysisBatch> modelAnalysisBatches(const UiFileState& file, 
 
 template <typename Visit>
 static Mesh buildComparisonWorldMesh(const Visit& visit, const ComparisonSettings& settings,
-    const Coordinate& origin, std::stop_token stop)
+    const Coordinate& origin, std::stop_token stop, bool publish = true)
 {
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
     Mesh result;
@@ -409,14 +415,14 @@ static Mesh buildComparisonWorldMesh(const Visit& visit, const ComparisonSetting
     // world-space copy for every triangle corner.
     size_t triangleCount = 0, vertexCapacity = 0;
     visit([&](const UiFileState& file, size_t index, const double*) {
-        triangleCount += file.mesh.nodes[index].indexCount / 3;
+        triangleCount += meshGeometry(file.mesh).nodes[index].indexCount / 3;
         validateComparisonMeshSize(0, triangleCount);
-        vertexCapacity += std::min(file.mesh.vertices.size(), size_t{file.mesh.nodes[index].indexCount});
+        vertexCapacity += std::min(meshGeometry(file.mesh).vertices.size(), size_t{meshGeometry(file.mesh).nodes[index].indexCount});
     });
-    result.vertices.reserve(vertexCapacity);
-    result.precisePositions.reserve(vertexCapacity);
+    editMeshGeometry(result).vertices.reserve(vertexCapacity);
+    editMeshGeometry(result).precisePositions.reserve(vertexCapacity);
     result.origin = origin;
-    result.indices.reserve(triangleCount * 3);
+    editMeshGeometry(result).indices.reserve(triangleCount * 3);
     WorldVertexRemap remap;
     auto duplicateInput = std::make_shared<DuplicateInput>();
     boost::unordered_flat_map<std::pair<SceneObjectId, SceneObjectId>, size_t> sourceIndices;
@@ -428,7 +434,7 @@ static Mesh buildComparisonWorldMesh(const Visit& visit, const ComparisonSetting
         const auto& batch = batchEntry->second.at(index);
         const auto [entry, inserted] = sourceIndices.try_emplace(std::pair{file.objectId, batch.id}, duplicateInput->sources.size());
         appendGroup(result, remap, file, index, parent, stop);
-        result.analysisVertexBatches.resize(result.vertices.size(), static_cast<uint32_t>(entry->second));
+        editMeshGeometry(result).analysisVertexBatches.resize(meshGeometry(result).vertices.size(), static_cast<uint32_t>(entry->second));
         if (inserted) {
             DuplicateSource source;
             source.fileId = file.objectId;
@@ -442,27 +448,28 @@ static Mesh buildComparisonWorldMesh(const Visit& visit, const ComparisonSetting
         auto& source = duplicateInput->sources[entry->second];
         SourcePartInstance part;
         part.partId = file.groupSettings[index].objectId;
-        part.firstIndex = file.mesh.nodes[index].indexOffset;
-        part.indexCount = file.mesh.nodes[index].indexCount;
+        part.firstIndex = meshGeometry(file.mesh).nodes[index].indexOffset;
+        part.indexCount = meshGeometry(file.mesh).nodes[index].indexCount;
         double local[16];
         groupTransformMatrix(file.groupSettings[index], local);
         coordinateMultiply(part.transform.data(), parent, local);
         source.parts.push_back(part);
-        source.wholeFile = source.parts.size() == file.mesh.nodes.size();
+        source.wholeFile = source.parts.size() == meshGeometry(file.mesh).nodes.size();
     });
     result.duplicateInput = std::move(duplicateInput);
-    if (result.indices.empty()) {
+    if (meshGeometry(result).indices.empty()) {
         throw std::runtime_error("Each analysis group needs at least one mesh part with triangles.");
     }
-    result.bounds = calculateBounds(result.vertices, [&](const ModelLoadProgress&) {
+    result.bounds = calculateBounds(meshGeometry(result).vertices, [&](const ModelLoadProgress&) {
         if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
     });
     if (settings.type == AnalysisType::uvQuality) {
         result.uvQuality = std::make_shared<UvQuality>(analyzeUvQuality(result, settings, stop));
     }
     if (isUvAnalysis(settings.type) && settings.uvView == UvView::layout) {
-        return uvLayoutMesh(result, settings.uvSeparated, stop);
+        return buildUvLayoutMesh(result, settings.uvSeparated, stop, publish);
     }
+    if (publish) { publishMeshGeometry(result); }
     return result;
 }
 
@@ -516,7 +523,14 @@ PreparedComparisonInputs prepareUvComparisonInputs(const ComparisonInputSnapshot
     for (size_t side = 0; side < 2; ++side) {
         auto& mesh = (*meshes)[side];
         auto& buffers = result.buffers[side];
-        mesh = comparisonWorldMesh(snapshot, side == 0 ? ComparisonSide::a : ComparisonSide::b, stop);
+        const auto& parts = snapshot.parts[side];
+        if (!parts.empty()) {
+            mesh = buildComparisonWorldMesh([&](const auto& visitor) {
+                for (const auto& part : parts) {
+                    visitor(snapshot.files.at(part.fileIndex), part.groupIndex, part.parent.data());
+                }
+            }, snapshot.settings, snapshot.origin, stop, false);
+        }
         if (mesh.uvQuality) {
             auto quality = std::make_shared<UvQuality>(*mesh.uvQuality);
             inspectUvOverlaps(*quality, stop);
@@ -524,21 +538,22 @@ PreparedComparisonInputs prepareUvComparisonInputs(const ComparisonInputSnapshot
         }
         buffers.uvQuality = mesh.uvQuality;
         mesh.uvQuality.reset(); // The long-lived geometry cache must not pin obsolete quality results.
-        if (mesh.indices.empty()) { continue; }
+        if (meshGeometry(mesh).indices.empty()) { continue; }
         // Match the previous upload path: quality uses the original normals,
         // while the indexed surface uses generated smooth normals.
         if (buffers.uvQuality) { buffers.quality = uvQualityVertices(mesh, *buffers.uvQuality, stop); }
-        generateSmoothNormals(mesh.vertices, mesh.indices, [&](const ModelLoadProgress&) { check(); });
-        buffers.lines.reserve(mesh.indices.size() * 2);
-        for (size_t i = 0; i < mesh.indices.size(); i += 3) {
+        generateSmoothNormals(editMeshGeometry(mesh).vertices, meshGeometry(mesh).indices, [&](const ModelLoadProgress&) { check(); });
+        buffers.lines.reserve(meshGeometry(mesh).indices.size() * 2);
+        for (size_t i = 0; i < meshGeometry(mesh).indices.size(); i += 3) {
             if (i % 12288 == 0) { check(); }
             for (size_t k = 0; k < 3; ++k) {
-                buffers.lines.push_back(mesh.indices[i + k]);
-                buffers.lines.push_back(mesh.indices[i + (k + 1) % 3]);
+                buffers.lines.push_back(meshGeometry(mesh).indices[i + k]);
+                buffers.lines.push_back(meshGeometry(mesh).indices[i + (k + 1) % 3]);
             }
         }
     }
     check();
+    for (auto& mesh : *meshes) { publishMeshGeometry(mesh); }
     result.meshes = std::move(meshes);
     return result;
 }
@@ -609,12 +624,12 @@ static uint64_t comparisonSignature(const UiState& state, SceneObjectId id, bool
             if (!boundsOnly && settings.analysisMode == AnalysisMode::model) { hashCombine(seed, static_cast<int>(file.fileSettings.analysisMode)); }
             hashCombine(seed, file.groupSettings[index].objectId);
             hashCombine(seed, file.mesh.contentRevision);
-            hashCombine(seed, file.mesh.precisePositions.size());
-            hashCombine(seed, file.mesh.vertices.size());
-            hashCombine(seed, file.mesh.indices.size());
-            hashCombine(seed, file.mesh.nodes[index].indexOffset);
-            hashCombine(seed, file.mesh.nodes[index].indexCount);
-            hashCombine(seed, file.mesh.nodes[index].hasTexcoords);
+            hashCombine(seed, meshGeometry(file.mesh).precisePositions.size());
+            hashCombine(seed, meshGeometry(file.mesh).vertices.size());
+            hashCombine(seed, meshGeometry(file.mesh).indices.size());
+            hashCombine(seed, meshGeometry(file.mesh).nodes[index].indexOffset);
+            hashCombine(seed, meshGeometry(file.mesh).nodes[index].indexCount);
+            hashCombine(seed, meshGeometry(file.mesh).nodes[index].hasTexcoords);
             double local[16], model[16];
             groupTransformMatrix(file.groupSettings[index], local);
             coordinateMultiply(model, parent, local);
@@ -648,18 +663,18 @@ static std::optional<Bounds> calculateComparisonDisplayBounds(const UiState& sta
             double local[16], model[16];
             groupTransformMatrix(file.groupSettings[index], local);
             coordinateMultiply(model, parent, local);
-            const auto& node = file.mesh.nodes[index];
+            const auto& node = meshGeometry(file.mesh).nodes[index];
             UvExtent patch;
             for (size_t i = node.indexOffset; i < size_t{node.indexOffset} + node.indexCount; ++i) {
-                const auto vertex = file.mesh.indices[i];
+                const auto vertex = meshGeometry(file.mesh).indices[i];
                 const auto p = renderPosition(transformCoordinate(model, meshPosition(file.mesh, vertex)));
                 for (size_t k = 0; k < 3; ++k) {
                     source.min[k] = std::min(source.min[k], p[k]);
                     source.max[k] = std::max(source.max[k], p[k]);
                 }
                 if (node.hasTexcoords) {
-                    includeUv(uv, file.mesh.vertices[vertex].texcoord);
-                    includeUv(patch, file.mesh.vertices[vertex].texcoord);
+                    includeUv(uv, meshGeometry(file.mesh).vertices[vertex].texcoord);
+                    includeUv(patch, meshGeometry(file.mesh).vertices[vertex].texcoord);
                 }
             }
             if (node.hasTexcoords) { patches.push_back(patch); }
@@ -690,11 +705,11 @@ static std::optional<Bounds> calculateComparisonDisplayBounds(const UiState& sta
         float radiusSquared = 0;
         size_t patch = 0;
         visitParts(state, ComparisonSide::a, id, [&](const UiFileState& file, size_t index, const double*) {
-            const auto& node = file.mesh.nodes[index];
+            const auto& node = meshGeometry(file.mesh).nodes[index];
             if (!node.hasTexcoords) { return; }
             const auto& placement = placements[patch++];
             for (size_t i = node.indexOffset; i < size_t{node.indexOffset}+node.indexCount; ++i) {
-                const auto position = uvPatchPosition(placement, file.mesh.vertices[file.mesh.indices[i]].texcoord);
+                const auto position = uvPatchPosition(placement, meshGeometry(file.mesh).vertices[meshGeometry(file.mesh).indices[i]].texcoord);
                 const float x = position[0]-bounds.center[0], y = position[1]-bounds.center[1], z = position[2]-bounds.center[2];
                 radiusSquared = std::max(radiusSquared, x*x+y*y+z*z);
             }

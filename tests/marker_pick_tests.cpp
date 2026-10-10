@@ -53,8 +53,8 @@ TEST_CASE("Marker coordinates use the selected file and the submitted instance t
     std::vector<woby::LoadedModelRuntime> runtimes(2);
     for (size_t i = 0; i < 2; ++i) {
         state.files[i].objectId = 10 + i;
-        state.files[i].mesh.vertices.resize(2);
-        state.files[i].mesh.vertices[1].position = {static_cast<float>(i), 2, 3};
+        editMeshGeometry(state.files[i].mesh).vertices.resize(2);
+        editMeshGeometry(state.files[i].mesh).vertices[1].position = {static_cast<float>(i), 2, 3};
         runtimes[i].gpuMesh.pointVertexIndices = {0, 1};
     }
     std::vector<woby::MarkerDraw> draws = {{translated(10, 20, 30), 100, 1, 1, 1, 11}};

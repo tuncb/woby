@@ -59,8 +59,8 @@ inline void initialize(Capture& c, woby::UiState& ui) {
     metadata["distance"] = base.distance;
     metadata["near_plane"] = base.nearPlane;
     for (const auto& file : ui.files) {
-        metadata["models"].push_back({{"path", file.path.string()}, {"vertices", file.mesh.vertices.size()},
-            {"triangles", file.mesh.indices.size()/3}, {"groups", file.groupSettings.size()}});
+        metadata["models"].push_back({{"path", file.path.string()}, {"vertices", meshGeometry(file.mesh).vertices.size()},
+            {"triangles", meshGeometry(file.mesh).indices.size()/3}, {"groups", file.groupSettings.size()}});
     }
     std::ofstream(output.string() + ".json") << metadata.dump(2);
 }

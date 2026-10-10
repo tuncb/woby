@@ -66,12 +66,12 @@ void initialize(EdgeGpuFixture& fixture, bool multisample, bool markerIds)
         {-.8f,0,.7f},{.8f,0,.7f},{0,.8f,.7f},
         {-.4f,-.4f,.3f},{.4f,-.4f,.3f},{.4f,.4f,.3f},{-.4f,.4f,.3f}}}) {
         woby::Vertex vertex; vertex.position = position; vertex.normal = {0,0,1};
-        vertex.texcoord = {position[0]+.5f,position[1]+.5f}; mesh.vertices.push_back(vertex);
+        vertex.texcoord = {position[0]+.5f,position[1]+.5f}; editMeshGeometry(mesh).vertices.push_back(vertex);
     }
     // Exercise index offsets above 16 bits, with no separate runtime edge buffer.
-    mesh.indices.assign(65538, 0); mesh.indices.insert(mesh.indices.end(), {0,1,2,3,4,5,3,5,6});
-    mesh.nodes = {{"unused",0,65538},{"rear",65538,3},{"front",65541,6}};
-    mesh.nodes[2].hasTexcoords = true; mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).indices.assign(65538, 0); editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {0,1,2,3,4,5,3,5,6});
+    editMeshGeometry(mesh).nodes = {{"unused",0,65538},{"rear",65538,3},{"front",65541,6}};
+    editMeshGeometry(mesh).nodes[2].hasTexcoords = true; mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     auto file = woby::createUiFileState({}, mesh, 0);
     file.groupSettings[0].visible = false;
     for (auto& group : file.groupSettings) { group.showTriangles = true; group.showVertices = false; }

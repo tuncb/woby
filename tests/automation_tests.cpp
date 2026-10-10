@@ -294,10 +294,10 @@ TEST_CASE("analysis creation retries reuse the created object and recover its re
     woby::setAutomationReady(*fixture.server);
     woby::UiState state;
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    mesh.indices = {0, 1, 2};
-    mesh.nodes = {{"triangle", 0, 3}};
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes = {{"triangle", 0, 3}};
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     state.files.push_back(woby::createUiFileState("triangle.obj", mesh, 0));
     woby::assignSceneObjectIds(state);
     const auto clean = woby::createSceneDocument(state);
@@ -328,9 +328,9 @@ TEST_CASE("annotation RPC validates IDs and replays creation without duplicate a
     woby::setAutomationReady(*fixture.server);
     woby::UiState state;
     woby::Mesh mesh;
-    mesh.vertices = {{{-1,-1,0}, {}, {}}, {{1,-1,0}, {}, {}}, {{0,1,0}, {}, {}}};
-    mesh.indices = {0,1,2}; mesh.nodes = {{"triangle",0,3}};
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{-1,-1,0}, {}, {}}, {{1,-1,0}, {}, {}}, {{0,1,0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0,1,2}; editMeshGeometry(mesh).nodes = {{"triangle",0,3}};
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     state.files.push_back(woby::createUiFileState(fixture.directory / "triangle.obj", mesh, 0));
     woby::appendDefaultSceneNodesForFiles(state, 0); woby::recalculateSceneBounds(state);
     woby::setSceneUpAxis(state, woby::SceneUpAxis::y);

@@ -35,7 +35,7 @@ TEST_CASE("Overlay experiment rejects invalid workload settings") {
 TEST_CASE("Visibility diagnostics retain footprint fringes and reject invalid depth or provenance") {
     woby::Mesh mesh;
     for (const auto& p:std::array<std::array<float,3>,3>{{{0,0,.2f},{1.1f,0,.7f},{0,0,1.1f}}}) {
-        woby::Vertex v; v.position=p; mesh.vertices.push_back(v);
+        woby::Vertex v; v.position=p; editMeshGeometry(mesh).vertices.push_back(v);
     }
     o::Scene scene; scene.markerVertices={0,1,2}; scene.markerCount=3;
     o::Group group; group.range.pointIndexCount=3; scene.groups.push_back(group);
@@ -57,9 +57,9 @@ TEST_CASE("Overlay GPU full-footprint visibility preserves every color and MSAA 
     auto mesh=o::fixtureMesh();
     for (const auto& p:std::array<std::array<float,3>,5>{{{0,0,.3f},{.405f,0,.3f},{1.02f,0,.7f},{0,0,1.1f},{.405f,0,.3f}}}) {
         woby::Vertex v; v.position=p; v.normal={0,0,1};
-        mesh.pointIndices.push_back(static_cast<uint32_t>(mesh.vertices.size())); mesh.vertices.push_back(v);
+        editMeshGeometry(mesh).pointIndices.push_back(static_cast<uint32_t>(meshGeometry(mesh).vertices.size())); editMeshGeometry(mesh).vertices.push_back(v);
     }
-    woby::MeshNode node; node.name="diagnostic markers"; node.pointIndexCount=5; mesh.nodes.push_back(node);
+    woby::MeshNode node; node.name="diagnostic markers"; node.pointIndexCount=5; editMeshGeometry(mesh).nodes.push_back(node);
     for (const uint32_t samples:{1u,4u}) {
         o::Renderer r; o::initialize(r,{128,96,samples,true}); o::upload(r,mesh);
         r.scene.groups[0].points=false; r.scene.groups[1].points=false;
@@ -155,8 +155,8 @@ TEST_CASE("Overlay GPU native and pulled barycentrics agree on edges and preserv
 TEST_CASE("Overlay GPU surfaces occlude marker IDs and transformed near-plane clipping keeps complete circles") {
     auto mesh=o::fixtureMesh();
     woby::Vertex hidden; hidden.position={0,0,.3f}; hidden.normal={0,0,1};
-    mesh.vertices.push_back(hidden); mesh.pointIndices={7};
-    woby::MeshNode node; node.name="hidden marker"; node.pointIndexCount=1; mesh.nodes.push_back(node);
+    editMeshGeometry(mesh).vertices.push_back(hidden); editMeshGeometry(mesh).pointIndices={7};
+    woby::MeshNode node; node.name="hidden marker"; node.pointIndexCount=1; editMeshGeometry(mesh).nodes.push_back(node);
     for (const uint32_t samples:{1u,4u}) {
         o::Renderer r; o::initialize(r,{128,96,samples,true}); o::upload(r,mesh);
         const auto visible=capture(r,{.edges=false,.pointSize=8});

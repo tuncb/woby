@@ -42,21 +42,21 @@ TEST_CASE("Line importer supports mixed and line-only hierarchies with owned geo
         const auto& file = state.files[0]; const auto& mesh = file.mesh;
         const bool only = std::string(name) == "lineonly";
         CHECK_FALSE(woby::empty(mesh));
-        CHECK(mesh.indices.size() == (only ? 0 : 6));
-        CHECK(mesh.lineIndices == std::vector<uint32_t>{4,5,6,7});
-        REQUIRE(mesh.nodes.size() == (only ? 2 : 3));
+        CHECK(meshGeometry(mesh).indices.size() == (only ? 0 : 6));
+        CHECK(meshGeometry(mesh).lineIndices == std::vector<uint32_t>{4,5,6,7});
+        REQUIRE(meshGeometry(mesh).nodes.size() == (only ? 2 : 3));
         const auto first = only ? 0u : 1u;
-        CHECK(mesh.nodes[first].name == "rear-curve");
-        CHECK(mesh.nodes[first].displayName == "Rear curve");
-        CHECK(mesh.nodes[first].indexCount == 0);
-        CHECK(mesh.nodes[first].lineIndexCount == 2);
-        CHECK_FALSE(mesh.nodes[first].hasTexcoords);
+        CHECK(meshGeometry(mesh).nodes[first].name == "rear-curve");
+        CHECK(meshGeometry(mesh).nodes[first].displayName == "Rear curve");
+        CHECK(meshGeometry(mesh).nodes[first].indexCount == 0);
+        CHECK(meshGeometry(mesh).nodes[first].lineIndexCount == 2);
+        CHECK_FALSE(meshGeometry(mesh).nodes[first].hasTexcoords);
         CHECK(file.groupSettings[first].color == std::array<float,4>{0,1,0,1});
         CHECK(file.groupSettings[first].localBounds.min[0] == -1.5f);
         CHECK(file.groupSettings[first].localBounds.max[0] == 1.5f);
         CHECK(file.groupSettings[first].localBounds.center[2] == -.25f);
-        CHECK(woby::originalMeshBounds(mesh, &mesh.nodes[first])[0][2] == -.25);
-        CHECK(woby::nodeCenter(mesh, mesh.nodes[first])[2] == -.25f);
+        CHECK(woby::originalMeshBounds(mesh, &meshGeometry(mesh).nodes[first])[0][2] == -.25);
+        CHECK(woby::nodeCenter(mesh, meshGeometry(mesh).nodes[first])[2] == -.25f);
         CHECK(woby::comparisonObjectParts(state, {file.objectId}).size() == (only ? 0 : 1));
         CHECK(woby::comparisonObjectParts(state, {file.groupSettings[first].objectId}).empty());
         CHECK_FALSE(woby::setObjectUvGrid(state, {file.groupSettings[first].objectId}, true, {}, {}));
@@ -69,7 +69,7 @@ TEST_CASE("Line importer supports mixed and line-only hierarchies with owned geo
         const auto tree = woby::controlSceneTree(state, formatId);
         CHECK(tree[0]["children"][0]["children"].back()["name"] == "Boundary curves");
     }
-    CHECK(f.scene("absent").files[0].mesh.lineIndices.empty());
+    CHECK(meshGeometry(f.scene("absent").files[0].mesh).lineIndices.empty());
     const auto hidden = f.scene("hidden");
     CHECK_FALSE(hidden.files[0].groupSettings.back().visible);
 }
@@ -79,13 +79,13 @@ TEST_CASE("Line importer rejects malformed buffers and releases errors and cance
     LineFixture f;
     for (const auto* name : {"invalid_index", "odd_count", "null_buffer", "short_lines", "failure"}) {
         CHECK_THROWS_AS((void)woby::loadModel(f.file(name)), std::runtime_error);
-        REQUIRE(f.scene().files[0].mesh.lineIndices.size() == 4);
+        REQUIRE(meshGeometry(f.scene().files[0].mesh).lineIndices.size() == 4);
     }
     bool canceled = false;
     woby::ImportCallbacks callbacks;
     callbacks.progress = [&](float) { canceled = true; }; callbacks.canceled = [&] { return canceled; };
     CHECK(woby::importModel(f.file("canceled"), {}, callbacks).canceled);
-    CHECK(f.scene().files[0].mesh.lineIndices.size() == 4);
+    CHECK(meshGeometry(f.scene().files[0].mesh).lineIndices.size() == 4);
 }
 
 TEST_CASE("Line buffer validation enforces pair partitions unique identities and limits")
@@ -98,12 +98,12 @@ TEST_CASE("Line buffer validation enforces pair partitions unique identities and
     WobyImportLines lines{sizeof(WobyImportLines),indices,4,groups,2};
     SUBCASE("valid line-only result") {
         const auto mesh = woby::copyImportedMesh(result, nullptr, &lines);
-        CHECK(mesh.nodes.size() == 2); CHECK(mesh.indices.empty()); CHECK(mesh.bounds.max[0] == 2); return;
+        CHECK(meshGeometry(mesh).nodes.size() == 2); CHECK(meshGeometry(mesh).indices.empty()); CHECK(mesh.bounds.max[0] == 2); return;
     }
     SUBCASE("implicit Lines group") {
         lines.groups = nullptr; lines.group_count = 0;
         const auto mesh = woby::copyImportedMesh(result, nullptr, &lines);
-        CHECK(mesh.nodes.size() == 1); CHECK(mesh.nodes[0].name == "Lines"); CHECK(mesh.nodes[0].lineIndexCount == 4); return;
+        CHECK(meshGeometry(mesh).nodes.size() == 1); CHECK(meshGeometry(mesh).nodes[0].name == "Lines"); CHECK(meshGeometry(mesh).nodes[0].lineIndexCount == 4); return;
     }
     SUBCASE("odd group offset") { groups[1].index_offset = 1; }
     SUBCASE("odd group length") { groups[0].index_count = 1; }
@@ -284,10 +284,10 @@ TEST_CASE("Line styles clamp at operation and scene load boundaries and ctl vali
 TEST_CASE("Imported line picking respects width depth transforms and selection bounds")
 {
     woby::Mesh mesh;
-    mesh.vertices = {{{-.8f,-.8f,.4f},{},{}},{{.8f,-.8f,.4f},{},{}},{{0,.8f,.4f},{},{}},
+    editMeshGeometry(mesh).vertices = {{{-.8f,-.8f,.4f},{},{}},{{.8f,-.8f,.4f},{},{}},{{0,.8f,.4f},{},{}},
         {{-.6f,0,.7f},{},{}},{{.6f,0,.7f},{},{}}};
-    mesh.indices = {0,1,2}; mesh.lineIndices = {3,4};
-    mesh.nodes = {{"surface",0,3},{"line",0,0}}; mesh.nodes[1].lineIndexCount = 2;
+    editMeshGeometry(mesh).indices = {0,1,2}; editMeshGeometry(mesh).lineIndices = {3,4};
+    editMeshGeometry(mesh).nodes = {{"surface",0,3},{"line",0,0}}; editMeshGeometry(mesh).nodes[1].lineIndexCount = 2;
     woby::finalizeMesh(mesh, true);
     woby::UiState state;
     state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
@@ -315,8 +315,8 @@ TEST_CASE("Imported line picking respects width depth transforms and selection b
 TEST_CASE("Line picking clips near-plane crossings and skips degenerate and offscreen segments")
 {
     woby::Mesh mesh;
-    mesh.vertices = {{{-.8f,0,-.5f},{},{}},{{.8f,0,.5f},{},{}}};
-    mesh.lineIndices = {0,1};
+    editMeshGeometry(mesh).vertices = {{{-.8f,0,-.5f},{},{}},{{.8f,0,.5f},{},{}}};
+    editMeshGeometry(mesh).lineIndices = {0,1};
     woby::ScenePickPart part;
     part.objectId = 1; part.mesh = &mesh; part.lineIndexCount = 2;
     part.lineWidth = 4; part.edges = true; part.solid = false; part.edgeXray = false;
@@ -325,11 +325,11 @@ TEST_CASE("Line picking clips near-plane crossings and skips degenerate and offs
     view.width = view.height = 100;
     auto pick = [&](float x) { return woby::pickSceneObject(std::span(&part, 1), view, {x,50}); };
     CHECK(pick(70) == 1); CHECK(pick(30) == woby::invalidSceneObjectId);
-    mesh.lineIndices[1] = 0;
+    editMeshGeometry(mesh).lineIndices[1] = 0;
     CHECK(pick(10) == woby::invalidSceneObjectId);
-    mesh.lineIndices[1] = 1;
-    mesh.vertices[1].position[2] = -.5f;
+    editMeshGeometry(mesh).lineIndices[1] = 1;
+    editMeshGeometry(mesh).vertices[1].position[2] = -.5f;
     CHECK(pick(70) == woby::invalidSceneObjectId);
-    mesh.vertices[0].position = {2,0,.5f}; mesh.vertices[1].position = {3,0,.5f};
+    editMeshGeometry(mesh).vertices[0].position = {2,0,.5f}; editMeshGeometry(mesh).vertices[1].position = {3,0,.5f};
     CHECK(pick(99) == woby::invalidSceneObjectId);
 }

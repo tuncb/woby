@@ -30,8 +30,8 @@ int main(int argc, char** argv)
         else if (backend == "woby") {
             const auto begin = Clock::now();
             auto mesh = woby::loadObjMesh(path);
-            measured = {{"load_ms", elapsed(begin)}, {"stages", stages}, {"vertices", mesh.vertices.size()},
-                {"triangles", mesh.indices.size() / 3}, {"positions", mesh.sourceData->points.size()}, {"shapes", mesh.nodes.size()}};
+            measured = {{"load_ms", elapsed(begin)}, {"stages", stages}, {"vertices", meshGeometry(mesh).vertices.size()},
+                {"triangles", meshGeometry(mesh).indices.size() / 3}, {"positions", mesh.sourceData->points.size()}, {"shapes", meshGeometry(mesh).nodes.size()}};
         } else { throw std::runtime_error("unknown backend"); }
         result.update(measured);
 #ifdef _WIN32

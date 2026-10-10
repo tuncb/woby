@@ -236,7 +236,7 @@ inline void poll(Runtime& r,uint32_t frame,const render_fps::Capture& capture,co
             const auto& gpu=runtimes[0].gpuMesh; const uint32_t rank=id-1;
             const auto& d=s.draws[*draw]; event["draw"]=*draw;
             if (rank>=gpu.pointVertexIndices.size() || rank<d.begin || rank-d.begin>=d.count) { throw std::runtime_error("Marker identity out of range"); }
-            const auto& local=ui.files[0].mesh.vertices[gpu.pointVertexIndices[rank]].position;
+            const auto& local=meshGeometry(ui.files[0].mesh).vertices[gpu.pointVertexIndices[rank]].position;
             std::array<float,3> world{};
             const float w=d.model[3]*local[0]+d.model[7]*local[1]+d.model[11]*local[2]+d.model[15];
             for (size_t k=0;k<3;++k) { world[k]=(d.model[k]*local[0]+d.model[4+k]*local[1]+d.model[8+k]*local[2]+d.model[12+k])/w; }

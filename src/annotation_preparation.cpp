@@ -6,7 +6,7 @@
 namespace woby {
 void cancelAnnotationPreparation(AnnotationPreparationRuntime& runtime)
 {
-    runtime.job.reset(); // jthread requests stop and joins before geometry can be released.
+    runtime.job.reset(); // Stop and join before destroying the job.
     runtime.error.clear();
 }
 
@@ -19,10 +19,10 @@ bool annotationPreparationReady(const UiState& state)
         std::vector<const Mesh*> meshes;
         for (const auto& part : scenePickParts(state)) {
             if (part.mesh && !annotationMeshCacheReady(*part.mesh)) { return false; }
-            if (part.mesh && !annotationMeshSnapshotReady(*part.mesh)
+            if (part.mesh && part.mesh->draft
                 && std::find(meshes.begin(), meshes.end(), part.mesh) == meshes.end()) {
                 meshes.push_back(part.mesh);
-                copyBytes += part.mesh->vertices.size() * sizeof(Vertex) + part.mesh->indices.size() * sizeof(uint32_t);
+                copyBytes += meshGeometry(*part.mesh).vertices.size() * sizeof(Vertex) + meshGeometry(*part.mesh).indices.size() * sizeof(uint32_t);
                 if (copyBytes > annotationInlineSnapshotBytes) { return false; }
             }
         }
@@ -42,8 +42,8 @@ void updateAnnotationPreparation(AnnotationPreparationRuntime& runtime, UiState&
             auto& mesh = file.mesh;
             if (job.owner == &state && job.generation == state.sceneGeneration
                 && job.fileId == file.objectId && job.contentRevision == mesh.contentRevision
-                && mesh.vertices.data() == job.vertices && mesh.indices.data() == job.indices
-                && mesh.vertices.size() == job.vertexCount && mesh.indices.size() == job.indexCount) {
+                && meshGeometry(mesh).vertices.data() == job.vertices && meshGeometry(mesh).indices.data() == job.indices
+                && meshGeometry(mesh).vertices.size() == job.vertexCount && meshGeometry(mesh).indices.size() == job.indexCount) {
                 mesh.annotationCache = job.result;
             }
         }
@@ -52,22 +52,19 @@ void updateAnnotationPreparation(AnnotationPreparationRuntime& runtime, UiState&
         validateAnnotationTargets(state);
     }
     if (!runtime.error.empty()) { return; }
-    for (const auto& file : state.files) {
-        const auto& mesh = file.mesh;
-        if (mesh.indices.empty() || mesh.nodes.empty() || annotationMeshSnapshotReady(mesh)) { continue; }
+    for (auto& file : state.files) {
+        auto& mesh = file.mesh;
+        if (meshGeometry(mesh).indices.empty() || meshGeometry(mesh).nodes.empty() || annotationMeshSnapshotReady(mesh)) { continue; }
+        publishMeshGeometry(mesh);
         auto job = std::make_unique<AnnotationPreparationJob>();
         job->owner = &state; job->generation = state.sceneGeneration;
         job->fileId = file.objectId; job->contentRevision = mesh.contentRevision;
-        job->vertices = mesh.vertices.data(); job->indices = mesh.indices.data();
-        job->vertexCount = mesh.vertices.size(); job->indexCount = mesh.indices.size();
-        // Spans survive moves of Mesh/UiFileState (e.g. append/reallocation).
-        const std::span<const Vertex> vertices = mesh.vertices;
-        const std::span<const uint32_t> indices = mesh.indices;
-        const std::span<const MeshNode> nodes = mesh.nodes;
+        job->vertices = meshGeometry(mesh).vertices.data(); job->indices = meshGeometry(mesh).indices.data();
+        job->vertexCount = meshGeometry(mesh).vertices.size(); job->indexCount = meshGeometry(mesh).indices.size();
         try {
-            job->worker = std::jthread([task = job.get(), vertices, indices, nodes](std::stop_token stop) {
+            job->worker = std::jthread([task = job.get(), input = mesh](std::stop_token stop) mutable {
                 try {
-                    task->result = buildAnnotationMeshCache(vertices, indices, nodes, [&] { return stop.stop_requested(); });
+                    task->result = buildAnnotationMeshCache(std::move(input), [&] { return stop.stop_requested(); });
                 } catch (const std::exception& error) { task->error = error.what(); }
                 catch (...) { task->error = "Annotation preparation failed."; }
                 task->done.store(true, std::memory_order_release);

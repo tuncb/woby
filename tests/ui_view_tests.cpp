@@ -26,10 +26,10 @@ struct ViewDirectory {
 woby::UiFileState viewFile(const std::filesystem::path& root = ".")
 {
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    mesh.indices = {0, 1, 2};
-    mesh.nodes.push_back({"part", 0, 3});
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes.push_back({"part", 0, 3});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     return woby::createUiFileState(root / "same.obj", std::move(mesh), 0);
 }
 
@@ -115,7 +115,7 @@ TEST_CASE("views capture independent display checkpoints and restore selection d
     CHECK(restored == original);
     CHECK(state.selectedSceneObjects == selection);
     CHECK(state.camera.distance == 42);
-    CHECK(state.files[0].mesh.vertices.size() == 3);
+    CHECK(meshGeometry(state.files[0].mesh).vertices.size() == 3);
     woby::applyView(state, second);
     CHECK_FALSE(state.files[0].groupSettings[0].visible);
     CHECK(state.camera.distance == 3);

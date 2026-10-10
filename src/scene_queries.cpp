@@ -78,8 +78,8 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
         const auto group = [&](size_t f, size_t g, const PickMatrix& parent, float opacity, bool visible) {
             if (f >= state.files.size()) { return; }
             const auto& file = state.files[f];
-            if (g >= file.groupSettings.size() || g >= file.mesh.nodes.size()) { return; }
-            const auto& settings = file.groupSettings[g]; const auto& node = file.mesh.nodes[g];
+            if (g >= file.groupSettings.size() || g >= meshGeometry(file.mesh).nodes.size()) { return; }
+            const auto& settings = file.groupSettings[g]; const auto& node = meshGeometry(file.mesh).nodes[g];
             ScenePartRecord record;
             record.ancestors = ancestors;
             record.ancestors.push_back(settings.objectId);
@@ -97,7 +97,7 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
             part.edges = node.lineIndexCount || (node.indexCount && settings.showTriangles);
             part.vertices = settings.showVertices;
             part.opacity = opacity * settings.opacity;
-            record.framingVisible = visible && settings.visible && !file.mesh.vertices.empty();
+            record.framingVisible = visible && settings.visible && !meshGeometry(file.mesh).vertices.empty();
             record.visible = visible && settings.visible && (part.vertices || part.opacity > 0) && (node.pointIndexCount
                 ? settings.showVertices : node.lineIndexCount || settings.showSolidMesh || settings.showTriangles || settings.showVertices);
             cache.records.push_back(std::move(record));
@@ -227,8 +227,8 @@ void updateAnnotationProjection(AnnotationQuery& cache, const UiAnnotation& item
             const auto& transform = sources[segment.source].transform;
             std::array<std::array<float, 4>, 3> corners;
             for (size_t k = 0; k < 3; ++k) {
-                const auto index = target->mesh->indices[target->indexOffset + static_cast<size_t>(segment.triangle) * 3 + k];
-                const auto& p = target->mesh->vertices[index].position;
+                const auto index = meshGeometry(*target->mesh).indices[target->indexOffset + static_cast<size_t>(segment.triangle) * 3 + k];
+                const auto& p = meshGeometry(*target->mesh).vertices[index].position;
                 corners[k] = annotationTransform(transform, {p[0], p[1], p[2], 1});
             }
             // NDC depth is affine over the projected face. Extend the stroke in
@@ -394,11 +394,11 @@ void updateSceneSelectionQueries(SceneQueryRuntime& runtime, const UiState& stat
                 Bounds measured;
                 measured.min.fill(std::numeric_limits<float>::infinity());
                 measured.max.fill(-std::numeric_limits<float>::infinity());
-                for (const auto index : meshNodeIndices(mesh, mesh.nodes[part.groupIndex])) {
-                    if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) { continue; }
+                for (const auto index : meshNodeIndices(mesh, meshGeometry(mesh).nodes[part.groupIndex])) {
+                    if (index >= meshGeometry(mesh).vertices.size() || !finitePosition(meshGeometry(mesh).vertices[index].position)) { continue; }
                     for (size_t axis = 0; axis < 3; ++axis) {
-                        measured.min[axis] = std::min(measured.min[axis], mesh.vertices[index].position[axis]);
-                        measured.max[axis] = std::max(measured.max[axis], mesh.vertices[index].position[axis]);
+                        measured.min[axis] = std::min(measured.min[axis], meshGeometry(mesh).vertices[index].position[axis]);
+                        measured.max[axis] = std::max(measured.max[axis], meshGeometry(mesh).vertices[index].position[axis]);
                     }
                 }
                 local = finitePosition(measured.min) ? measured : mesh.bounds;

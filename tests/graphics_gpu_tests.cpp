@@ -90,11 +90,11 @@ TEST_CASE("Native comparison distance upload failures clean up both sides and su
         }
     } comparison;
     Mesh mesh;
-    mesh.vertices.resize(3);
-    mesh.vertices[1].position[0] = 1;
-    mesh.vertices[2].position[1] = 1;
-    mesh.indices = {0, 1, 2};
-    mesh.nodes.push_back({"triangle", 0, 3});
+    editMeshGeometry(mesh).vertices.resize(3);
+    editMeshGeometry(mesh).vertices[1].position[0] = 1;
+    editMeshGeometry(mesh).vertices[2].position[1] = 1;
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes.push_back({"triangle", 0, 3});
     captureSourceMesh(mesh, SourceProvenance::objPositions);
     finalizeMesh(mesh, true);
     comparison.state.files.push_back(createUiFileState(comparison.root / "triangle.obj", mesh, 0));

@@ -135,7 +135,7 @@ std::vector<ObjectReference> objectReferences(const UiState& state)
     for (size_t f = 0; f < state.files.size(); ++f) {
         const auto& file = state.files[f];
         result.push_back({file.objectId, {ViewObjectKind::file, static_cast<int>(f), -1, {}}});
-        for (size_t g = 0; g < file.groupSettings.size() && g < file.mesh.nodes.size(); ++g) {
+        for (size_t g = 0; g < file.groupSettings.size() && g < meshGeometry(file.mesh).nodes.size(); ++g) {
             result.push_back({file.groupSettings[g].objectId,
                 {ViewObjectKind::group, static_cast<int>(f), static_cast<int>(g), {}}});
         }
@@ -414,7 +414,7 @@ void loadSceneViews(UiState& state, const SceneDocument& document)
             if (item.kind == ViewObjectKind::group) {
                 const auto f = static_cast<size_t>(item.index), g = static_cast<size_t>(item.groupIndex);
                 if (f >= document.files.size() || g >= document.files[f].groups.size()
-                    || state.files[f].mesh.nodes[g].name != document.files[f].groups[g].name) { continue; }
+                    || meshGeometry(state.files[f].mesh).nodes[g].name != document.files[f].groups[g].name) { continue; }
             }
             if (std::any_of(view.objects.begin(), view.objects.end(),
                 [&](const auto& object) { return object.objectId == found->id; })) { continue; }

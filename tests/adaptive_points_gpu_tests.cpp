@@ -65,11 +65,11 @@ bool initialize(PointGpuFixture& f,uint32_t samples,bool requireAtomics=true,g::
     auto& source=f.source;
     for (uint32_t i=0;i<257;++i) {
         woby::Vertex v; v.position={float(int(i*17%109)-54)/43,float(int(i*23%79)-39)/34,float(i%13)/12};
-        source.vertices.push_back(v); source.pointIndices.push_back(i);
+        editMeshGeometry(source).vertices.push_back(v); editMeshGeometry(source).pointIndices.push_back(i);
     }
-    source.vertices[256].position=source.vertices[255].position; // Stable equal-depth tie.
-    source.nodes={{"first"},{"second"}}; source.nodes[0].pointIndexCount=131;
-    source.nodes[1].pointIndexOffset=131; source.nodes[1].pointIndexCount=126;
+    editMeshGeometry(source).vertices[256].position=meshGeometry(source).vertices[255].position; // Stable equal-depth tie.
+    editMeshGeometry(source).nodes={{"first"},{"second"}}; editMeshGeometry(source).nodes[0].pointIndexCount=131;
+    editMeshGeometry(source).nodes[1].pointIndexOffset=131; editMeshGeometry(source).nodes[1].pointIndexCount=126;
     auto prepared=woby::prepareSceneMesh(source,woby::gpuMeshPoints,{},false); REQUIRE(prepared);
     prepared->pointCloud=std::make_shared<const woby::points::Cloud>(woby::points::buildCloud(source,32,8));
     prepared->pointVertexIndices.clear(); prepared->compactOnly=true;
@@ -262,9 +262,9 @@ TEST_CASE("Transparent surfaces retain adaptive point rendering cached visibilit
 
         woby::Mesh surface;
         for (const auto& position:std::array<std::array<float,3>,4>{{{-1,-1,1.8f},{1,-1,1.8f},{1,1,1.8f},{-1,1,1.8f}}}) {
-            woby::Vertex vertex; vertex.position=position; vertex.normal={0,0,1}; surface.vertices.push_back(vertex);
+            woby::Vertex vertex; vertex.position=position; vertex.normal={0,0,1}; editMeshGeometry(surface).vertices.push_back(vertex);
         }
-        surface.indices={0,1,2,0,2,3}; surface.nodes={{"surface",0,6}};
+        editMeshGeometry(surface).indices={0,1,2,0,2,3}; editMeshGeometry(surface).nodes={{"surface",0,6}};
         f.models.push_back({woby::createGpuMesh(surface,woby::meshVertexLayout(),woby::gpuMeshPoints)});
         woby::SceneDrawItem item; item.fileIndex=1; item.solid=true; item.color={0,0,1,.35f};
         woby::identityMatrix(item.model.data()); f.plan.items.push_back(item);
@@ -353,14 +353,14 @@ TEST_CASE("Compact point fallback preserves full-source colors and valid origina
                 const auto id=uint32_t(compact[offset])|(uint32_t(compact[offset+1])<<8)
                     |(uint32_t(compact[offset+2])<<16)|(uint32_t(compact[offset+3])<<24);
                 if (!id) continue;
-                ++picked; REQUIRE(id<=f.source.vertices.size());
+                ++picked; REQUIRE(id<=meshGeometry(f.source).vertices.size());
                 const auto& item=f.plan.items[id<=131?0:1];
-                const auto p=woby::transformMarkerPosition(item.model,f.source.vertices[id-1].position);
+                const auto p=woby::transformMarkerPosition(item.model,meshGeometry(f.source).vertices[id-1].position);
                 const float dx=(p[0]*.5f+.5f)*float(f.view.width)-(float(x)+.5f);
                 const float dy=(.5f-p[1]*.5f)*float(f.view.height)-(float(y)+.5f);
                 CHECK(dx*dx+dy*dy<=item.pointSize*item.pointSize*.25f+.0001f);
                 const auto nearest=expected[size_t(y)*f.view.width+x]; REQUIRE(nearest);
-                CHECK(p[2]==f.source.vertices[nearest-1].position[2]);
+                CHECK(p[2]==meshGeometry(f.source).vertices[nearest-1].position[2]);
             }
             CHECK(picked>0);
         }
@@ -448,10 +448,10 @@ TEST_CASE("Adaptive hardware points redraw navigation cuts and retain full sourc
                     const uint32_t id=uint32_t(queried[index])|(uint32_t(queried[index+1])<<8)
                         |(uint32_t(queried[index+2])<<16)|(uint32_t(queried[index+3])<<24);
                     if (!nearest) { CHECK(id==0); continue; }
-                    REQUIRE(id>0); REQUIRE(id<=f.source.vertices.size());
-                    CHECK(f.source.vertices[id-1].position[2]==f.source.vertices[nearest-1].position[2]);
+                    REQUIRE(id>0); REQUIRE(id<=meshGeometry(f.source).vertices.size());
+                    CHECK(meshGeometry(f.source).vertices[id-1].position[2]==meshGeometry(f.source).vertices[nearest-1].position[2]);
                     const auto& item=f.plan.items[id<=131?0:1];
-                    const auto p=woby::transformMarkerPosition(item.model,f.source.vertices[id-1].position);
+                    const auto p=woby::transformMarkerPosition(item.model,meshGeometry(f.source).vertices[id-1].position);
                     const float dx=(p[0]*.5f+.5f)*float(f.view.width)-(float(x)+.5f);
                     const float dy=(.5f-p[1]*.5f)*float(f.view.height)-(float(y)+.5f);
                     CHECK(dx*dx+dy*dy<=item.pointSize*item.pointSize*.25f+.0001f);

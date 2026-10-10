@@ -130,20 +130,20 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
     for (const auto& file : state.files) {
         if (file.objectId == id) {
             return {{"settings", fileInfo(file)}, {"importerId", file.importerId},
-                {"vertexCount", file.mesh.vertices.size()}, {"triangleCount", file.mesh.indices.size() / 3},
-                {"lineSegmentCount", file.mesh.lineIndices.size() / 2},
-                {"pointCount", file.mesh.pointIndices.size()},
+                {"vertexCount", meshGeometry(file.mesh).vertices.size()}, {"triangleCount", meshGeometry(file.mesh).indices.size() / 3},
+                {"lineSegmentCount", meshGeometry(file.mesh).lineIndices.size() / 2},
+                {"pointCount", meshGeometry(file.mesh).pointIndices.size()},
                 {"groupCount", file.groupSettings.size()}, {"localBounds", originalBoundsInfo(file.mesh, file.mesh.bounds.radius)}};
         }
         for (size_t index = 0; index < file.groupSettings.size(); ++index) {
             const auto& group = file.groupSettings[index];
             if (group.objectId == id) {
-                return {{"settings", groupInfo(group)}, {"triangleCount", file.mesh.nodes.at(index).indexCount / 3},
-                    {"primitive", file.mesh.nodes[index].pointIndexCount ? "points" : file.mesh.nodes[index].lineIndexCount ? "lines" : "triangles"},
-                    {"lineSegmentCount", file.mesh.nodes[index].lineIndexCount / 2},
-                    {"pointCount", file.mesh.nodes[index].pointIndexCount},
-                    {"hasTexcoords", file.mesh.nodes.at(index).hasTexcoords},
-                    {"localBounds", group.localBoundsValid ? originalBoundsInfo(file.mesh, group.localBounds.radius, &file.mesh.nodes[index]) : Json(nullptr)}};
+                return {{"settings", groupInfo(group)}, {"triangleCount", meshGeometry(file.mesh).nodes.at(index).indexCount / 3},
+                    {"primitive", meshGeometry(file.mesh).nodes[index].pointIndexCount ? "points" : meshGeometry(file.mesh).nodes[index].lineIndexCount ? "lines" : "triangles"},
+                    {"lineSegmentCount", meshGeometry(file.mesh).nodes[index].lineIndexCount / 2},
+                    {"pointCount", meshGeometry(file.mesh).nodes[index].pointIndexCount},
+                    {"hasTexcoords", meshGeometry(file.mesh).nodes.at(index).hasTexcoords},
+                    {"localBounds", group.localBoundsValid ? originalBoundsInfo(file.mesh, group.localBounds.radius, &meshGeometry(file.mesh).nodes[index]) : Json(nullptr)}};
             }
         }
     }
@@ -178,7 +178,7 @@ Json treeNode(const UiState& state, const UiSceneNode& node, const ObjectIdForma
         } else {
             const auto& group = file.groupSettings.at(node.groupIndex);
             result["kind"] = "group";
-            const auto& meshNode = file.mesh.nodes.at(node.groupIndex);
+            const auto& meshNode = meshGeometry(file.mesh).nodes.at(node.groupIndex);
             result["primitive"] = meshNode.pointIndexCount ? "points" : meshNode.lineIndexCount ? "lines" : "triangles";
             result["fileId"] = formatId(file.objectId);
             result["settings"] = groupInfo(group);
@@ -264,9 +264,9 @@ Json controlSceneInfo(const UiState& state)
 {
     size_t vertices = 0, triangles = 0, lineSegments = 0, points = 0;
     for (const auto& file : state.files) {
-        vertices += file.mesh.vertices.size(); triangles += file.mesh.indices.size() / 3;
-        lineSegments += file.mesh.lineIndices.size() / 2;
-        points += file.mesh.pointIndices.size();
+        vertices += meshGeometry(file.mesh).vertices.size(); triangles += meshGeometry(file.mesh).indices.size() / 3;
+        lineSegments += meshGeometry(file.mesh).lineIndices.size() / 2;
+        points += meshGeometry(file.mesh).pointIndices.size();
     }
     Json modes = Json::object();
     const size_t groups = totalGroupCount(state);
@@ -735,7 +735,7 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance, bo
 {
     const auto surface = [&result, tolerance, includeDetectors](const SurfaceComparison& value) {
         const auto& diagnostics = value.diagnostics;
-        if (value.source.indices.empty()) { return Json(nullptr); }
+        if (meshGeometry(value.source).indices.empty()) { return Json(nullptr); }
         const bool measured = !value.distances.empty();
         Json quality = {{"degenerateTriangles", value.quality.degenerateTriangles}};
         for (size_t i = 0; i < surfaceQualityMetricCount; ++i) {
@@ -759,7 +759,7 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance, bo
                 }
                 return detectors;
             }()},
-            {"surfaceMeshQuality", quality}, {"sampleCount", value.distances.size()}, {"triangleCount", value.source.indices.size() / 3},
+            {"surfaceMeshQuality", quality}, {"sampleCount", value.distances.size()}, {"triangleCount", meshGeometry(value.source).indices.size() / 3},
             {"diagnostics", {{"boundaryEdges", diagnostics.boundaryEdges.size()},
                 {"nonManifoldEdges", diagnostics.nonManifoldEdges.size()},
                 {"inconsistentWindingEdges", diagnostics.inconsistentWindingEdges.size()},

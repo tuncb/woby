@@ -136,10 +136,10 @@ PropertyTargetContext propertyTargetContext(const UiState& state)
     context.byId.reserve(context.objects.size());
     for (const auto& object : context.objects) { context.byId.emplace(object.id, &object); }
     for (const auto& file : state.files) {
-        bool opacity = file.mesh.pointIndices.empty();
-        for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
+        bool opacity = meshGeometry(file.mesh).pointIndices.empty();
+        for (size_t i = 0; i < file.groupSettings.size() && i < meshGeometry(file.mesh).nodes.size(); ++i) {
             const auto id = file.groupSettings[i].objectId;
-            const auto& node = file.mesh.nodes[i];
+            const auto& node = meshGeometry(file.mesh).nodes[i];
             if (node.hasTexcoords) { context.eligible[0].insert(id); }
             if (node.lineIndexCount) { context.eligible[1].insert(id); }
             if (!node.lineIndexCount && !node.pointIndexCount) { context.eligible[2].insert(id); }
@@ -221,10 +221,10 @@ std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectPropert
     } else if (isUvProperty(property) || lines || triangles) {
         boost::unordered_flat_set<SceneObjectId> eligible;
         for (const auto& file : state.files) {
-            for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
-                if (isUvProperty(property) ? file.mesh.nodes[i].hasTexcoords
-                    : (lines ? file.mesh.nodes[i].lineIndexCount != 0
-                        : file.mesh.nodes[i].lineIndexCount == 0 && file.mesh.nodes[i].pointIndexCount == 0)) { eligible.insert(file.groupSettings[i].objectId); }
+            for (size_t i = 0; i < file.groupSettings.size() && i < meshGeometry(file.mesh).nodes.size(); ++i) {
+                if (isUvProperty(property) ? meshGeometry(file.mesh).nodes[i].hasTexcoords
+                    : (lines ? meshGeometry(file.mesh).nodes[i].lineIndexCount != 0
+                        : meshGeometry(file.mesh).nodes[i].lineIndexCount == 0 && meshGeometry(file.mesh).nodes[i].pointIndexCount == 0)) { eligible.insert(file.groupSettings[i].objectId); }
             }
         }
         std::erase_if(targets, [&](SceneObjectId id) { return !eligible.contains(id); });
@@ -337,9 +337,9 @@ bool setObjectLineStyle(UiState& state, const std::vector<SceneObjectId>& object
     const boost::unordered_flat_set<SceneObjectId> included(targets.begin(), targets.end());
     bool available = false, changed = false;
     for (auto& file : state.files) {
-        for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
+        for (size_t i = 0; i < file.groupSettings.size() && i < meshGeometry(file.mesh).nodes.size(); ++i) {
             auto& part = file.groupSettings[i];
-            if (!file.mesh.nodes[i].lineIndexCount || (!objects.empty() && !included.contains(part.objectId))) { continue; }
+            if (!meshGeometry(file.mesh).nodes[i].lineIndexCount || (!objects.empty() && !included.contains(part.objectId))) { continue; }
             available = true;
             auto settings = part.lines;
             if (width) { settings.width = *width; }
@@ -363,17 +363,17 @@ bool setObjectUvGrid(UiState& state, const std::vector<SceneObjectId>& objects,
     const boost::unordered_flat_set<SceneObjectId> included(targets.begin(), targets.end());
     // Validate every eligible child before applying a multi-object edit.
     for (const auto& file : state.files) {
-        for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
+        for (size_t i = 0; i < file.groupSettings.size() && i < meshGeometry(file.mesh).nodes.size(); ++i) {
             const auto& part = file.groupSettings[i];
-            if (!file.mesh.nodes[i].hasTexcoords || (!objects.empty() && !included.contains(part.objectId))) { continue; }
+            if (!meshGeometry(file.mesh).nodes[i].hasTexcoords || (!objects.empty() && !included.contains(part.objectId))) { continue; }
             if (maximum.value_or(part.uvGrid.maximum) <= minimum.value_or(part.uvGrid.minimum)) { return false; }
         }
     }
     bool available = false, changed = false;
     for (auto& file : state.files) {
-        for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
+        for (size_t i = 0; i < file.groupSettings.size() && i < meshGeometry(file.mesh).nodes.size(); ++i) {
             auto& part = file.groupSettings[i];
-            if (!file.mesh.nodes[i].hasTexcoords || (!objects.empty() && !included.contains(part.objectId))) { continue; }
+            if (!meshGeometry(file.mesh).nodes[i].hasTexcoords || (!objects.empty() && !included.contains(part.objectId))) { continue; }
             available = true;
             auto settings = part.uvGrid;
             if (enabled) { settings.enabled = *enabled; }
@@ -604,7 +604,7 @@ void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group)
             for (size_t i = 0; i < file.groupSettings.size(); ++i) {
                 auto& part = file.groupSettings[i];
                 if (parts.contains(part.objectId)) {
-                    const bool points = i < file.mesh.nodes.size() && file.mesh.nodes[i].pointIndexCount != 0;
+                    const bool points = i < meshGeometry(file.mesh).nodes.size() && meshGeometry(file.mesh).nodes[i].pointIndexCount != 0;
                     resetGroupColor(part, colorIndex);
                     setGroupVertexSizeScale(part, 1.0f);
                     setGroupRenderMode(part, UiRenderMode::solidMesh, !points);

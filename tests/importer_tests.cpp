@@ -50,7 +50,7 @@ TEST_CASE("Model loading reports CPU allocation failure and allows a subsequent 
     woby::ImportCallbacks callbacks;
     callbacks.stageProgress = [](const auto&) { throw std::bad_alloc(); };
     CHECK_THROWS_WITH((void)woby::loadModel(path, {}, callbacks), "Insufficient CPU memory while loading the model.");
-    CHECK(woby::loadModel(path).mesh.indices.size() == 3);
+    CHECK(meshGeometry(woby::loadModel(path).mesh).indices.size() == 3);
 }
 
 void writeFile(const std::filesystem::path& path, const std::string& contents = "fixture")
@@ -200,16 +200,16 @@ TEST_CASE("DLL importer supports case insensitive discovery and owns copied mesh
     auto model = woby::loadModel(path);
     CHECK_THROWS_WITH_AS((void)woby::loadModel("model.obj", "org.woby.test"), doctest::Contains("no longer supports"), std::runtime_error);
     CHECK(model.importerId == "org.woby.test");
-    REQUIRE(model.mesh.vertices.size() == 4u);
-    CHECK(model.mesh.vertices[3].position == std::array<float, 3>{9, 9, 9});
-    CHECK(model.mesh.indices == std::vector<uint32_t>{0, 1, 2});
-    REQUIRE(model.mesh.nodes.size() == 1u);
-    CHECK(model.mesh.nodes[0].name == "triangle");
+    REQUIRE(meshGeometry(model.mesh).vertices.size() == 4u);
+    CHECK(meshGeometry(model.mesh).vertices[3].position == std::array<float, 3>{9, 9, 9});
+    CHECK(meshGeometry(model.mesh).indices == std::vector<uint32_t>{0, 1, 2});
+    REQUIRE(meshGeometry(model.mesh).nodes.size() == 1u);
+    CHECK(meshGeometry(model.mesh).nodes[0].name == "triangle");
     CHECK(model.mesh.bounds.max == std::array<float, 3>{9, 9, 9});
-    for (const auto& vertex : model.mesh.vertices) { CHECK(woby::validNormal(vertex.normal)); }
+    for (const auto& vertex : meshGeometry(model.mesh).vertices) { CHECK(woby::validNormal(vertex.normal)); }
     woby::unloadImporters();
     CHECK_FALSE(woby::isModelPath(path));
-    CHECK(model.mesh.vertices.size() == 4u);
+    CHECK(meshGeometry(model.mesh).vertices.size() == 4u);
     CHECK_THROWS_WITH_AS((void)woby::loadModel(path, "org.woby.test"), doctest::Contains("Required importer is not loaded"), std::runtime_error);
 }
 
@@ -233,7 +233,7 @@ TEST_CASE("DLL importer cancellation and callback exceptions release results wit
     const auto model = woby::loadModel("triangle.wtest", {}, {
         [&] { return canceled; }, [&](float fraction) { ++updates; CHECK(fraction == 0.5f); canceled = true; }});
     CHECK(model.canceled);
-    CHECK(model.mesh.vertices.empty());
+    CHECK(meshGeometry(model.mesh).vertices.empty());
     CHECK(updates == 1);
     CHECK_THROWS_WITH_AS((void)woby::loadModel("triangle.wtest", {}, {{}, [](float) {
         throw std::runtime_error("callback failed");
@@ -242,7 +242,7 @@ TEST_CASE("DLL importer cancellation and callback exceptions release results wit
     int polls = 0;
     const auto canceledAfterCopy = woby::loadModel("valid.wtest", {}, {[&] { return ++polls == 4; }, {}});
     CHECK(canceledAfterCopy.canceled);
-    CHECK(canceledAfterCopy.mesh.vertices.empty());
+    CHECK(meshGeometry(canceledAfterCopy.mesh).vertices.empty());
     CHECK_NOTHROW((void)woby::loadModel("valid.wtest"));
 }
 
@@ -486,19 +486,19 @@ TEST_CASE("Imported appearance initializes UI state and hidden geometry remains 
     const auto path = scope.root / "colored_hidden.wtest";
     writeFile(path);
     auto imported = woby::loadModel(path);
-    REQUIRE(imported.mesh.nodes.size() == 1u);
+    REQUIRE(meshGeometry(imported.mesh).nodes.size() == 1u);
     // The fixture clears its metadata during release_result.
-    REQUIRE(imported.mesh.nodes[0].defaultColor.has_value());
-    CHECK(*imported.mesh.nodes[0].defaultColor == std::array<float, 4>{0.2f, 0.4f, 0.6f, 0.25f});
-    CHECK_FALSE(imported.mesh.nodes[0].defaultVisible);
+    REQUIRE(meshGeometry(imported.mesh).nodes[0].defaultColor.has_value());
+    CHECK(*meshGeometry(imported.mesh).nodes[0].defaultColor == std::array<float, 4>{0.2f, 0.4f, 0.6f, 0.25f});
+    CHECK_FALSE(meshGeometry(imported.mesh).nodes[0].defaultVisible);
     auto file = woby::createUiFileState(path, std::move(imported.mesh), 5u, imported.importerId);
     REQUIRE(file.groupSettings.size() == 1u);
     CHECK(file.groupSettings[0].color == std::array<float, 4>{0.2f, 0.4f, 0.6f, 1.0f});
     CHECK(file.groupSettings[0].opacity == 0.25f);
     CHECK_FALSE(file.groupSettings[0].visible);
     CHECK_FALSE(file.fileSettings.visible);
-    CHECK(file.mesh.vertices.size() == 4u);
-    CHECK(file.mesh.indices == std::vector<uint32_t>{0, 1, 2});
+    CHECK(meshGeometry(file.mesh).vertices.size() == 4u);
+    CHECK(meshGeometry(file.mesh).indices == std::vector<uint32_t>{0, 1, 2});
     woby::setGroupVisible(file, file.groupSettings[0], true);
     CHECK(file.groupSettings[0].visible);
     CHECK(file.fileSettings.visible);
@@ -569,8 +569,8 @@ TEST_CASE("OFF example DLL reads real files including Unicode paths")
     writeFile(path, "OFF\n3 1 0\n0 0 0\n1 0 0\n0 1 0\n3 0 1 2\n");
     const auto loaded = woby::loadModel(path);
     CHECK(loaded.importerId == "org.woby.example.off");
-    CHECK(loaded.mesh.vertices.size() == 3u);
-    CHECK(loaded.mesh.indices.size() == 3u);
+    CHECK(meshGeometry(loaded.mesh).vertices.size() == 3u);
+    CHECK(meshGeometry(loaded.mesh).indices.size() == 3u);
     woby::UiState state;
     state.files.push_back(woby::createUiFileState(path, loaded.mesh, 0u, loaded.importerId));
     const auto scene = scope.root / "unicode.woby";
@@ -602,12 +602,12 @@ TEST_CASE("Importer mesh validation handles optional attributes and group partit
     result.group_count = 2;
     result.flags = WOBY_IMPORT_HAS_NORMALS | WOBY_IMPORT_HAS_TEXCOORDS;
     const auto mesh = woby::copyImportedMesh(result);
-    REQUIRE(mesh.nodes.size() == 2u);
-    CHECK(mesh.nodes[1].indexOffset == 3u);
-    CHECK(mesh.vertices[0].normal[2] == 1.0f);
-    CHECK(mesh.nodes[0].hasTexcoords);
-    CHECK(mesh.nodes[1].hasTexcoords);
-    CHECK(mesh.vertices[1].texcoord == std::array<float, 2>{1, 0});
+    REQUIRE(meshGeometry(mesh).nodes.size() == 2u);
+    CHECK(meshGeometry(mesh).nodes[1].indexOffset == 3u);
+    CHECK(meshGeometry(mesh).vertices[0].normal[2] == 1.0f);
+    CHECK(meshGeometry(mesh).nodes[0].hasTexcoords);
+    CHECK(meshGeometry(mesh).nodes[1].hasTexcoords);
+    CHECK(meshGeometry(mesh).vertices[1].texcoord == std::array<float, 2>{1, 0});
     groups[1].name = "front";
     CHECK_THROWS_AS((void)woby::copyImportedMesh(result), std::runtime_error);
     groups[1].name = "back";
@@ -627,7 +627,7 @@ TEST_CASE("Importer mesh validation handles optional attributes and group partit
     CHECK_THROWS_AS((void)woby::copyImportedMesh(result), std::runtime_error);
     result.flags = 0;
     CHECK_NOTHROW((void)woby::copyImportedMesh(result));
-    CHECK_FALSE(woby::copyImportedMesh(result).nodes[0].hasTexcoords);
+    CHECK_FALSE(meshGeometry(woby::copyImportedMesh(result)).nodes[0].hasTexcoords);
 }
 
 TEST_CASE("Importer group appearance is optional validated and copied per group")
@@ -652,11 +652,11 @@ TEST_CASE("Importer group appearance is optional validated and copied per group"
     result.groups = groups;
     result.group_count = 2;
     auto mesh = woby::copyImportedMesh(result);
-    REQUIRE(mesh.nodes.size() == 2u);
-    CHECK(mesh.indices == std::vector<uint32_t>{0, 1, 2, 2, 1, 0});
-    CHECK(mesh.nodes[0].indexOffset == 0u);
-    CHECK(mesh.nodes[1].indexOffset == 3u);
-    CHECK_FALSE(mesh.nodes[1].defaultColor.has_value());
+    REQUIRE(meshGeometry(mesh).nodes.size() == 2u);
+    CHECK(meshGeometry(mesh).indices == std::vector<uint32_t>{0, 1, 2, 2, 1, 0});
+    CHECK(meshGeometry(mesh).nodes[0].indexOffset == 0u);
+    CHECK(meshGeometry(mesh).nodes[1].indexOffset == 3u);
+    CHECK_FALSE(meshGeometry(mesh).nodes[1].defaultColor.has_value());
     const auto file = woby::createUiFileState(scope.root / "groups.wtest", std::move(mesh), 7u);
     CHECK(file.fileSettings.visible);
     REQUIRE(file.groupSettings.size() == 2u);
@@ -686,7 +686,7 @@ TEST_CASE("Importer group appearance is optional validated and copied per group"
     result.groups = nullptr;
     const auto fallback = woby::createUiFileState(scope.root / "ungrouped.wtest", woby::copyImportedMesh(result), 7u);
     REQUIRE(fallback.groupSettings.size() == 1u);
-    CHECK(fallback.mesh.nodes[0].name == "Mesh");
+    CHECK(meshGeometry(fallback.mesh).nodes[0].name == "Mesh");
     CHECK(fallback.groupSettings[0].visible);
     CHECK(fallback.groupSettings[0].color == woby::defaultGroupColor(7u));
     CHECK(fallback.groupSettings[0].opacity == 1.0f);
@@ -709,12 +709,12 @@ TEST_CASE("Importer hierarchy validates structure coverage labels and limits")
     WobyImportHierarchy hierarchy{sizeof(WobyImportHierarchy), nodes, 4};
     SUBCASE("repeated display labels keep unique source identities and ordering") {
         const auto mesh = woby::copyImportedMesh(result, &hierarchy);
-        REQUIRE(mesh.hierarchy.size() == 4);
-        CHECK(mesh.hierarchy[3].parentIndex == 2);
-        CHECK(mesh.nodes[0].name == "a/patch");
-        CHECK(mesh.nodes[1].name == "b/patch");
-        CHECK(woby::meshNodeDisplayName(mesh.nodes[0]) == "Patch");
-        CHECK(woby::meshNodeDisplayName(mesh.nodes[1]) == "Patch");
+        REQUIRE(meshGeometry(mesh).hierarchy.size() == 4);
+        CHECK(meshGeometry(mesh).hierarchy[3].parentIndex == 2);
+        CHECK(meshGeometry(mesh).nodes[0].name == "a/patch");
+        CHECK(meshGeometry(mesh).nodes[1].name == "b/patch");
+        CHECK(woby::meshNodeDisplayName(meshGeometry(mesh).nodes[0]) == "Patch");
+        CHECK(woby::meshNodeDisplayName(meshGeometry(mesh).nodes[1]) == "Patch");
         return;
     }
     SUBCASE("short metadata") { hierarchy.struct_size = 0; }
@@ -748,8 +748,8 @@ TEST_CASE("Importer hierarchy bounds depth and label storage and supports ungrou
     nodes.push_back({"Surface", WOBY_IMPORT_MAX_HIERARCHY_DEPTH - 2u, 0});
     WobyImportHierarchy hierarchy{sizeof(WobyImportHierarchy), nodes.data(), static_cast<uint32_t>(nodes.size())};
     const auto mesh = woby::copyImportedMesh(result, &hierarchy);
-    CHECK(mesh.nodes[0].name == "Mesh");
-    CHECK(woby::meshNodeDisplayName(mesh.nodes[0]) == "Surface");
+    CHECK(meshGeometry(mesh).nodes[0].name == "Mesh");
+    CHECK(woby::meshNodeDisplayName(meshGeometry(mesh).nodes[0]) == "Surface");
     nodes.back().group_index = WOBY_IMPORT_NO_GROUP;
     nodes.push_back({"Too deep", WOBY_IMPORT_MAX_HIERARCHY_DEPTH - 1u, 0});
     hierarchy.nodes = nodes.data(); hierarchy.node_count = static_cast<uint32_t>(nodes.size());
@@ -767,7 +767,7 @@ TEST_CASE("Importer hierarchy bounds depth and label storage and supports ungrou
     // Empty containers and root-level leaves are legal; no fabricated geometry.
     nodes = {{"Empty", WOBY_IMPORT_NO_PARENT, WOBY_IMPORT_NO_GROUP}, {"Surface", WOBY_IMPORT_NO_PARENT, 0}};
     hierarchy.nodes = nodes.data(); hierarchy.node_count = 2;
-    CHECK(woby::copyImportedMesh(result, &hierarchy).hierarchy.size() == 2);
+    CHECK(meshGeometry(woby::copyImportedMesh(result, &hierarchy)).hierarchy.size() == 2);
 }
 
 TEST_CASE("Extended importer copies hierarchy before release and retains flat ABI compatibility")
@@ -779,8 +779,8 @@ TEST_CASE("Extended importer copies hierarchy before release and retains flat AB
     const auto path = scope.root / "assembly.whier";
     writeFile(legacyPath); writeFile(path);
     const auto legacy = woby::loadModel(legacyPath);
-    CHECK(legacy.mesh.hierarchy.empty());
-    CHECK(legacy.mesh.nodes[0].displayName.empty());
+    CHECK(meshGeometry(legacy.mesh).hierarchy.empty());
+    CHECK(meshGeometry(legacy.mesh).nodes[0].displayName.empty());
     const auto oldTree = woby::createFileSceneNode(woby::createUiFileState(legacyPath, legacy.mesh, 0), 0);
     REQUIRE(oldTree.children.size() == 1);
     CHECK(oldTree.children[0].kind == woby::UiSceneNodeKind::group);
@@ -794,17 +794,17 @@ TEST_CASE("Extended importer copies hierarchy before release and retains flat AB
             callbacks.progress = [&](float) { canceled = true; };
             CHECK(woby::importModel(testPath, {}, callbacks).canceled);
         } else if (std::string(mode) == "flat") {
-            CHECK(woby::loadModel(testPath).mesh.hierarchy.empty());
+            CHECK(meshGeometry(woby::loadModel(testPath).mesh).hierarchy.empty());
         } else {
             CHECK_THROWS_AS((void)woby::loadModel(testPath), std::runtime_error);
         }
         // The DLL refuses the next import if the previous result leaked.
         const auto imported = woby::loadModel(path);
-        REQUIRE(imported.mesh.hierarchy.size() == 7);
-        CHECK(imported.mesh.hierarchy[0].name == "Assembly");
-        CHECK(imported.mesh.nodes[0].name == "solid-a/patch-1");
-        CHECK(imported.mesh.nodes[0].displayName == "Patch 1");
-        CHECK(imported.mesh.nodes[2].displayName == "Patch 1");
+        REQUIRE(meshGeometry(imported.mesh).hierarchy.size() == 7);
+        CHECK(meshGeometry(imported.mesh).hierarchy[0].name == "Assembly");
+        CHECK(meshGeometry(imported.mesh).nodes[0].name == "solid-a/patch-1");
+        CHECK(meshGeometry(imported.mesh).nodes[0].displayName == "Patch 1");
+        CHECK(meshGeometry(imported.mesh).nodes[2].displayName == "Patch 1");
     }
 }
 

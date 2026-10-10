@@ -232,7 +232,7 @@ TEST_CASE("single-source mesh analyses consolidate sources preserve disabled and
     // Applying an earlier view can restore its task, but cannot resurrect removed membership sides.
     setAnalysisTask(f.state, id, task);
     const auto mesh = comparisonWorldMesh(f.state, ComparisonSide::a, id);
-    CHECK(mesh.indices.size() == 6);
+    CHECK(meshGeometry(mesh).indices.size() == 6);
     REQUIRE(recordSceneHistory(history, f.state));
     auto undo = prepareSceneHistoryStep(history, f.state, before, false);
     REQUIRE(undo);

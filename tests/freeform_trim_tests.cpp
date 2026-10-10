@@ -53,7 +53,7 @@ TEST_CASE("OBJ trimming imports parameter curves and ordered regions without dis
     CHECK(region.outer.segments.empty()); REQUIRE(region.holes.size()==1);
     CHECK(region.holes[0].segments[0].interval==std::array<double,2>{4,0});
     const auto mesh=woby::loadObjMesh(file);
-    CHECK(mesh.nodes.size()==1); CHECK(mesh.lineIndices.empty()); CHECK(mesh.pointIndices.empty());
+    CHECK(meshGeometry(mesh).nodes.size()==1); CHECK(meshGeometry(mesh).lineIndices.empty()); CHECK(meshGeometry(mesh).pointIndices.empty());
     CHECK(area(mesh.freeform->grids[0])==doctest::Approx(.75));
 }
 
@@ -61,8 +61,8 @@ TEST_CASE("Trimmed rational circular hole preserves area and conforming boundari
     const auto mesh=tessellate(trimTestPatch(true));
     const auto& grid=mesh.freeform->grids[0];
     CHECK(area(grid)==doctest::Approx(1-std::numbers::pi/16).epsilon(3e-5));
-    CHECK(mesh.vertices.size()==grid.samples.size());
-    CHECK(mesh.indices.size()==grid.triangles.size());
+    CHECK(meshGeometry(mesh).vertices.size()==grid.samples.size());
+    CHECK(meshGeometry(mesh).indices.size()==grid.triangles.size());
     std::map<std::pair<uint32_t,uint32_t>,size_t> incidence;
     for (size_t i=0;i<grid.triangles.size();i+=3) for (size_t k=0;k<3;++k) {
         const auto a=grid.triangles[i+k],b=grid.triangles[i+(k+1)%3]; ++incidence[std::minmax(a,b)];
@@ -86,7 +86,7 @@ TEST_CASE("Trimming supports concavity multiple regions winding and narrow retai
     const auto mesh=tessellate(p);
     CHECK(area(mesh.freeform->grids[0])==doctest::Approx(.200001).epsilon(1e-8));
     const auto again=tessellate(p);
-    CHECK(mesh.indices==again.indices); CHECK(mesh.precisePositions==again.precisePositions);
+    CHECK(meshGeometry(mesh).indices==meshGeometry(again).indices); CHECK(meshGeometry(mesh).precisePositions==meshGeometry(again).precisePositions);
 }
 
 TEST_CASE("Trimming rejects invalid loops with source context") {
@@ -180,7 +180,7 @@ TEST_CASE("Trimming checks triangulator index capacity and cancels during prepar
         struct Canceled {};
         int visits=0; woby::Mesh mesh;
         CHECK_THROWS_AS(woby::appendFreeformGeometry(mesh,{p},[&](const auto&) { if (++visits==12) { throw Canceled{}; } }),Canceled);
-        CHECK(visits==12); CHECK(mesh.vertices.empty());
+        CHECK(visits==12); CHECK(meshGeometry(mesh).vertices.empty());
     }
 }
 

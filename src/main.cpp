@@ -975,7 +975,7 @@ void drawSceneTreeNode(
         const bool fileTreeOpen = ImGui::TreeNodeEx("file", flags, "%s", node.name.c_str());
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetTooltip("%s\nVertices: %zu  Triangles: %zu", file.path.string().c_str(),
-                file.mesh.vertices.size(), file.mesh.indices.size() / 3u);
+                meshGeometry(file.mesh).vertices.size(), meshGeometry(file.mesh).indices.size() / 3u);
         }
         if (drawSceneItemInteraction(state, node.objectId, true, true)) {
             removeFileIndex = node.fileIndex;
@@ -1009,13 +1009,13 @@ void drawSceneTreeNode(
 
     auto& file = state.files[node.fileIndex];
     const auto& gpuMesh = runtimes[node.fileIndex].gpuMesh;
-    if (node.groupIndex >= file.mesh.nodes.size() || node.groupIndex >= gpuMesh.nodeRanges.size()) {
+    if (node.groupIndex >= meshGeometry(file.mesh).nodes.size() || node.groupIndex >= gpuMesh.nodeRanges.size()) {
         return;
     }
 
     drawGroupControls(
         state,
-        file.mesh.nodes[node.groupIndex],
+        meshGeometry(file.mesh).nodes[node.groupIndex],
         gpuMesh.nodeRanges[node.groupIndex],
         file,
         node.groupIndex, queries);
@@ -1212,8 +1212,8 @@ LoadedModelFileWithRuntime loadModelFile(
         spdlog::info(
             "perf model_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} gpu_ms={} total_ms={}",
             modelPath.string(),
-            loaded.file.mesh.vertices.size(),
-            loaded.file.mesh.indices.size() / 3u,
+            meshGeometry(loaded.file.mesh).vertices.size(),
+            meshGeometry(loaded.file.mesh).indices.size() / 3u,
             loaded.file.groupSettings.size(),
             parseMilliseconds,
             gpuMilliseconds,
@@ -3396,9 +3396,9 @@ int main(int argc, char** argv)
                     size_t vertexCountTotal = 0;
                     size_t triangleCountTotal = 0, lineCountTotal = 0;
                     for (const auto& file : files) {
-                        vertexCountTotal += file.mesh.vertices.size();
-                        triangleCountTotal += file.mesh.indices.size() / 3u;
-                        lineCountTotal += file.mesh.lineIndices.size() / 2u;
+                        vertexCountTotal += meshGeometry(file.mesh).vertices.size();
+                        triangleCountTotal += meshGeometry(file.mesh).indices.size() / 3u;
+                        lineCountTotal += meshGeometry(file.mesh).lineIndices.size() / 2u;
                     }
                     ImGui::TextDisabled("%zu vertices | %zu triangles", vertexCountTotal, triangleCountTotal);
                     if (lineCountTotal) { ImGui::SameLine(); ImGui::TextDisabled("| %zu lines", lineCountTotal); }

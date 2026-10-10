@@ -25,8 +25,8 @@ struct AnnotationPreparationRuntime {
 };
 // Main-thread adapter. Call after scene commit; only this function publishes results.
 void updateAnnotationPreparation(AnnotationPreparationRuntime& runtime, UiState& state);
-// Required BEFORE geometry removal/replacement/mutation; cooperative cancellation
-// joins the worker after at most one small block, not the full preparation pass.
+// Optional when replacing geometry: each job owns its input. Cancellation joins
+// the worker; stale results are also rejected by document, file, and revision.
 void cancelAnnotationPreparation(AnnotationPreparationRuntime& runtime);
 // Projection examines visible occluders too, so all visible model caches are needed.
 [[nodiscard]] bool annotationPreparationReady(const UiState& state);

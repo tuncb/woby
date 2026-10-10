@@ -64,9 +64,9 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
 {
     if (fileIndex >= state.files.size()) { return; }
     const auto& file = state.files[fileIndex];
-    if (groupIndex >= file.mesh.nodes.size() || groupIndex >= file.groupSettings.size()) { return; }
+    if (groupIndex >= meshGeometry(file.mesh).nodes.size() || groupIndex >= file.groupSettings.size()) { return; }
     const auto& group = file.groupSettings[groupIndex];
-    const auto& node = file.mesh.nodes[groupIndex];
+    const auto& node = meshGeometry(file.mesh).nodes[groupIndex];
     opacity *= group.opacity;
     if (!includeHidden && (!group.visible || (opacity <= 0.0f && !group.showVertices)
         || (node.pointIndexCount ? !group.showVertices : (!node.lineIndexCount && !group.showSolidMesh && !group.showTriangles && !group.showVertices)))) { return; }
@@ -304,7 +304,7 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
     part.objectId = comparison.objectId;
     // Sampled heatmap triangles have the same surface as their source mesh.
     part.mesh = &surface.source;
-    part.indexCount = surface.source.indices.size();
+    part.indexCount = meshGeometry(surface.source).indices.size();
     part.bounds = surface.source.bounds;
     woby::translationMatrix(part.model.data(), comparison.translation[0], comparison.translation[1], comparison.translation[2]);
     part.solid = true;
@@ -313,7 +313,7 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
     part.surfaceLessEqual = true;
     part.selected = isSelected;
     if (isUvAnalysis(settings.type) && settings.uvLinkedSelection) {
-        for (const auto& node : surface.source.nodes) {
+        for (const auto& node : meshGeometry(surface.source).nodes) {
             auto patch = part;
             patch.objectId = node.sourceObjectId ? node.sourceObjectId : comparison.objectId;
             patch.analysisId = comparison.objectId;
@@ -327,7 +327,7 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
     if (settings.mode == ComparisonMode::overlay) {
         auto overlay = part;
         overlay.mesh = &result.original.source;
-        overlay.indexCount = result.original.source.indices.size();
+        overlay.indexCount = meshGeometry(result.original.source).indices.size();
         overlay.bounds = result.original.source.bounds;
         overlay.solid = false;
         overlay.edges = true;
@@ -447,7 +447,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                         indices=candidatesAtCursor;
                     }
                     for (const auto index : indices) {
-                        if (index >= mesh.vertices.size()) { continue; }
+                        if (index >= meshGeometry(mesh).vertices.size()) { continue; }
                         const auto p = clip(meshPosition(mesh, index));
                         if (!inside(p, view.homogeneousDepth)) { continue; }
                         const auto xy = screen(p, view);
@@ -458,7 +458,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                 if (part.lineIndexCount) {
                     const auto indices = scenePartIndices(part);
                     for (size_t i = 0; i + 1 < indices.size(); i += 2) {
-                        if (indices[i] >= mesh.vertices.size() || indices[i+1] >= mesh.vertices.size()) { continue; }
+                        if (indices[i] >= meshGeometry(mesh).vertices.size() || indices[i+1] >= meshGeometry(mesh).vertices.size()) { continue; }
                         const auto a = clip(meshPosition(mesh, indices[i])), b = clip(meshPosition(mesh, indices[i+1]));
                         closest(edgeDepth, edgeHit(a, b, view, point, part.lineWidth));
                         if (part.vertices) {
@@ -471,15 +471,15 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                         }
                     }
                 }
-                const size_t begin = std::min(part.indexOffset, mesh.indices.size());
-                const size_t finish = begin + std::min(part.indexCount, mesh.indices.size() - begin);
+                const size_t begin = std::min(part.indexOffset, meshGeometry(mesh).indices.size());
+                const size_t finish = begin + std::min(part.indexCount, meshGeometry(mesh).indices.size() - begin);
                 const auto visitTriangle = [&](size_t i) {
                     std::array<Point, 3> triangle;
                     bool valid = true;
                     for (size_t k = 0; k < 3; ++k) {
-                        const auto index = mesh.indices[i + k];
-                        if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) { valid = false; break; }
-                        const auto& p = mesh.vertices[index].position;
+                        const auto index = meshGeometry(mesh).indices[i + k];
+                        if (index >= meshGeometry(mesh).vertices.size() || !finitePosition(meshGeometry(mesh).vertices[index].position)) { valid = false; break; }
+                        const auto& p = meshGeometry(mesh).vertices[index].position;
                         triangle[k] = {p[0], p[1], p[2]};
                     }
                     if (!valid) { return; }
@@ -507,12 +507,12 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                     }
                 };
                 bool useBlocks = testSurface && !part.edges && !part.vertices && mesh.annotationCache
-                    && mesh.annotationCache->vertexCount == mesh.vertices.size()
-                    && mesh.annotationCache->indexCount == mesh.indices.size()
-                    && mesh.annotationCache->vertexData == mesh.vertices.data()
-                    && mesh.annotationCache->indexData == mesh.indices.data();
+                    && mesh.annotationCache->vertexCount == meshGeometry(mesh).vertices.size()
+                    && mesh.annotationCache->indexCount == meshGeometry(mesh).indices.size()
+                    && mesh.annotationCache->vertexData == meshGeometry(mesh).vertices.data()
+                    && mesh.annotationCache->indexData == meshGeometry(mesh).indices.data();
                 if (useBlocks) {
-                    useBlocks = std::any_of(mesh.nodes.begin(), mesh.nodes.end(), [&](const auto& node) {
+                    useBlocks = std::any_of(meshGeometry(mesh).nodes.begin(), meshGeometry(mesh).nodes.end(), [&](const auto& node) {
                         return node.indexOffset == part.indexOffset && node.indexCount == part.indexCount;
                     });
                 }
@@ -558,7 +558,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
 std::span<const uint32_t> scenePartIndices(const ScenePickPart& part)
 {
     if (!part.mesh) { return {}; }
-    const auto& indices = part.pointIndexCount ? part.mesh->pointIndices : part.lineIndexCount ? part.mesh->lineIndices : part.mesh->indices;
+    const auto& indices = part.pointIndexCount ? meshGeometry(*part.mesh).pointIndices : part.lineIndexCount ? meshGeometry(*part.mesh).lineIndices : meshGeometry(*part.mesh).indices;
     const auto begin = std::min(part.pointIndexCount ? part.pointIndexOffset : part.lineIndexCount ? part.lineIndexOffset : part.indexOffset, indices.size());
     const auto count = std::min(part.pointIndexCount ? part.pointIndexCount : part.lineIndexCount ? part.lineIndexCount : part.indexCount, indices.size() - begin);
     return std::span<const uint32_t>(indices).subspan(begin, count);
@@ -595,8 +595,8 @@ void sceneSelectionLines(std::span<const ScenePickPart> parts, std::vector<std::
         if (!bounds) {
             const auto& mesh = *part.mesh;
             for (const auto index : scenePartIndices(part)) {
-                if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) { continue; }
-                const auto& p = mesh.vertices[index].position;
+                if (index >= meshGeometry(mesh).vertices.size() || !finitePosition(meshGeometry(mesh).vertices[index].position)) { continue; }
+                const auto& p = meshGeometry(mesh).vertices[index].position;
                 if (!bounds) { bounds = Bounds{p, p, p, 0}; }
                 for (size_t k = 0; k < 3; ++k) { bounds->min[k] = std::min(bounds->min[k], p[k]); bounds->max[k] = std::max(bounds->max[k], p[k]); }
             }
@@ -633,11 +633,11 @@ void uvProbeLines(std::span<const ScenePickPart> parts, const UiState& state,
             if (part.objectId != probe.partId || (part.analysisId && part.analysisId != comparison.objectId)
                 || !part.mesh || probe.triangle == 0 || probe.triangle > part.indexCount/3) { continue; }
             const auto offset = part.indexOffset+(probe.triangle-1)*3;
-            if (offset+2 >= part.mesh->indices.size()) { continue; }
+            if (offset+2 >= meshGeometry(*part.mesh).indices.size()) { continue; }
             std::array<Point,3> p;
             Point center{};
             for (size_t k=0;k<3;++k) {
-                p[k] = position(part.model,meshPosition(*part.mesh,part.mesh->indices[offset+k]));
+                p[k] = position(part.model,meshPosition(*part.mesh,meshGeometry(*part.mesh).indices[offset+k]));
                 for (size_t j=0;j<3;++j) { center[j] += p[k][j]*probe.barycentric[k]; }
             }
             double size = 0;

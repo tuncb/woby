@@ -2,7 +2,7 @@
 
 Woby can remove substantial work by separating geometry identity, geometry ownership, and display attributes. The strongest opportunities are immutable shared mesh storage, retaining the mapping from render vertices to source positions, and drawing analysis results from per-face records instead of expanded meshes. These changes would remove copies, synchronization rules, and conversion passes together.
 
-This assessment applies to commit `974d8a583bfa977d2cfcba76f5ea9b419d8d3888`, inspected on 7 October 2026. It covers import, scene state and history, analysis, annotations, picking, rendering, and the relevant third-party interfaces. The proposals below are not implemented. Byte counts are representation calculations, not measured reductions in process memory or frame time.
+This assessment applies to commit `974d8a583bfa977d2cfcba76f5ea9b419d8d3888`, inspected on 7 October 2026. It covers import, scene state and history, analysis, annotations, picking, rendering, and the relevant third-party interfaces. The proposals below were not implemented at the time of that inspection. Byte counts are representation calculations, not measured reductions in process memory or frame time.
 
 | Priority | Change | Work it could remove | Confidence and scope |
 | --- | --- | --- | --- |
@@ -21,6 +21,8 @@ This assessment applies to commit `974d8a583bfa977d2cfcba76f5ea9b419d8d3888`, in
 | Research | Instance-aware spatial queries and direct OBJ corner access | World-mesh baking and tuple flattening | Potentially large; needs workload and semantic validation |
 
 ## Geometry ownership
+
+Idea 1 is now implemented. See [shared geometry implementation and measurements](shared-geometry-performance.md) for the ownership rules, tests, and before/after results. The assessment below describes the original implementation.
 
 `Mesh` combines owning vectors, source data, derived caches, and analysis-specific fields. It looks cheap to copy because several members are shared pointers, but its vertices, precise positions, indices, nodes, and batch IDs are ordinary vectors. This matters at several boundaries:
 

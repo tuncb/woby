@@ -1197,7 +1197,7 @@ void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId i
             ImGui::EndTable();
         }
         drawUvFindings(state, display, runtime.results.signature, id);
-    } else if (display.nodes.empty()) {
+    } else if (meshGeometry(display).nodes.empty()) {
         ImGui::TextWrapped("No UV coordinates to display. Add a source with UVs or choose the 3D surface view.");
     }
 }
@@ -1411,7 +1411,7 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
     if (isUvAnalysis(settings.type)) {
         if (!woby::graphics::isValid(gpu.vertices) || !woby::graphics::isValid(gpu.triangles)) { return; }
         const std::array<float, 4> gray = {.58f, .63f, .69f, 1};
-        for (const auto& node : runtime.results.value.original.source.nodes) {
+        for (const auto& node : meshGeometry(runtime.results.value.original.source).nodes) {
             const bool uvQuality = settings.type == AnalysisType::uvQuality;
             const auto uv = uvQuality ? std::array<float,4>{0,0,6,settings.uvMetric == UvQualityMetric::area ? 1.0f : 0.0f} : uvColorParameters(settings.uvGrid,node.hasTexcoords,true);
             woby::graphics::setTransform(identity);

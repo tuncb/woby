@@ -8,6 +8,36 @@
 #include <utility>
 
 namespace woby {
+Mesh::Mesh(const Mesh& other)
+    : storage(other.storage), draft(other.draft ? std::make_unique<MeshGeometry>(*other.draft) : nullptr),
+      bounds(other.bounds), originalBounds(other.originalBounds), origin(other.origin),
+      sourceData(other.sourceData), duplicateInput(other.duplicateInput),
+      annotationCache(other.draft ? nullptr : other.annotationCache), uvQuality(other.uvQuality),
+      freeform(other.freeform), contentRevision(other.contentRevision)
+{
+}
+Mesh& Mesh::operator=(const Mesh& other)
+{
+    if (this != &other) { Mesh copy(other); *this = std::move(copy); }
+    return *this;
+}
+MeshGeometry& editMeshGeometry(Mesh& mesh)
+{
+    if (!mesh.draft) {
+        auto next = std::make_unique<MeshGeometry>(meshGeometry(mesh));
+        mesh.draft = std::move(next);
+        if (mesh.storage) { mesh.annotationCache.reset(); mesh.uvQuality.reset(); }
+        // Retain the previous owner until publication so existing const borrows
+        // remain valid while construction starts (including argument evaluation).
+        renewMeshContentRevision(mesh);
+    }
+    return *mesh.draft;
+}
+void publishMeshGeometry(Mesh& mesh)
+{
+    if (mesh.draft) { mesh.storage = std::shared_ptr<const MeshGeometry>(std::move(mesh.draft)); }
+}
+
 uint64_t nextMeshContentRevision()
 {
     static std::atomic<uint64_t> revision{0};
@@ -88,15 +118,15 @@ bool finiteCoordinate(const Coordinate& point) noexcept
 }
 Coordinate meshPosition(const Mesh& mesh, size_t index)
 {
-    if (!mesh.precisePositions.empty()) { return mesh.precisePositions.at(index); }
-    const auto& p = mesh.vertices.at(index).position;
+    if (!meshGeometry(mesh).precisePositions.empty()) { return meshGeometry(mesh).precisePositions.at(index); }
+    const auto& p = meshGeometry(mesh).vertices.at(index).position;
     return {p[0], p[1], p[2]};
 }
 std::array<Coordinate, 2> originalMeshBounds(const Mesh& mesh, const MeshNode* node)
 {
     if (!node && mesh.originalBounds) { return *mesh.originalBounds; }
     const auto indices = node ? meshNodeIndices(mesh, *node) : std::span<const uint32_t>{};
-    const auto count = node ? indices.size() : mesh.vertices.size();
+    const auto count = node ? indices.size() : meshGeometry(mesh).vertices.size();
     std::array<Coordinate, 2> bounds{};
     for (size_t i = 0; i < count; ++i) {
         const auto p = originalPosition(meshPosition(mesh, node ? indices[i] : i), mesh.origin);
@@ -144,14 +174,14 @@ Coordinate coordinateOrigin(const std::vector<Coordinate>& points)
 void localizeMesh(Mesh& mesh)
 {
     renewMeshContentRevision(mesh);
-    if (mesh.precisePositions.size() != mesh.vertices.size()) {
+    if (meshGeometry(mesh).precisePositions.size() != meshGeometry(mesh).vertices.size()) {
         throw std::invalid_argument("Source and render position counts differ.");
     }
-    mesh.origin = coordinateOrigin(mesh.precisePositions);
-    for (size_t i = 0; i < mesh.vertices.size(); ++i) {
-        auto& p = mesh.precisePositions[i];
+    mesh.origin = coordinateOrigin(meshGeometry(mesh).precisePositions);
+    for (size_t i = 0; i < meshGeometry(mesh).vertices.size(); ++i) {
+        auto& p = editMeshGeometry(mesh).precisePositions[i];
         p = relativePosition(p, mesh.origin);
-        mesh.vertices[i].position = renderPosition(p);
+        editMeshGeometry(mesh).vertices[i].position = renderPosition(p);
     }
 }
 
@@ -161,14 +191,14 @@ void rebaseMesh(Mesh& mesh, const Coordinate& origin)
     if (!finiteCoordinate(origin)) { throw std::invalid_argument("Non-finite mesh origin."); }
     if (mesh.origin == origin) { return; }
     const auto delta = relativePosition(mesh.origin, origin);
-    if (mesh.precisePositions.empty()) {
-        mesh.precisePositions.reserve(mesh.vertices.size());
-        for (const auto& vertex : mesh.vertices) { mesh.precisePositions.push_back({vertex.position[0], vertex.position[1], vertex.position[2]}); }
+    if (meshGeometry(mesh).precisePositions.empty()) {
+        editMeshGeometry(mesh).precisePositions.reserve(meshGeometry(mesh).vertices.size());
+        for (const auto& vertex : meshGeometry(mesh).vertices) { editMeshGeometry(mesh).precisePositions.push_back({vertex.position[0], vertex.position[1], vertex.position[2]}); }
     }
-    for (size_t i = 0; i < mesh.vertices.size(); ++i) {
-        auto& p = mesh.precisePositions.at(i);
+    for (size_t i = 0; i < meshGeometry(mesh).vertices.size(); ++i) {
+        auto& p = editMeshGeometry(mesh).precisePositions.at(i);
         p = originalPosition(p, delta);
-        mesh.vertices[i].position = renderPosition(p);
+        editMeshGeometry(mesh).vertices[i].position = renderPosition(p);
     }
     if (mesh.sourceData) {
         auto source = std::make_shared<SourceMeshData>(*mesh.sourceData);
@@ -185,17 +215,17 @@ void rebaseMesh(Mesh& mesh, const Coordinate& origin)
     }
     mesh.origin = origin;
     mesh.annotationCache.reset();
-    if (!mesh.vertices.empty()) { mesh.bounds = calculateBounds(mesh.vertices); }
+    if (!meshGeometry(mesh).vertices.empty()) { mesh.bounds = calculateBounds(meshGeometry(mesh).vertices); }
 }
 
 bool empty(const Mesh& mesh) noexcept
 {
-    return mesh.vertices.empty() || (mesh.indices.empty() && mesh.lineIndices.empty() && mesh.pointIndices.empty());
+    return meshGeometry(mesh).vertices.empty() || (meshGeometry(mesh).indices.empty() && meshGeometry(mesh).lineIndices.empty() && meshGeometry(mesh).pointIndices.empty());
 }
 
 std::span<const uint32_t> meshNodeIndices(const Mesh& mesh, const MeshNode& node)
 {
-    const auto& indices = node.pointIndexCount ? mesh.pointIndices : node.lineIndexCount ? mesh.lineIndices : mesh.indices;
+    const auto& indices = node.pointIndexCount ? meshGeometry(mesh).pointIndices : node.lineIndexCount ? meshGeometry(mesh).lineIndices : meshGeometry(mesh).indices;
     const size_t offset = node.pointIndexCount ? node.pointIndexOffset : node.lineIndexCount ? node.lineIndexOffset : node.indexOffset;
     const size_t count = node.pointIndexCount ? node.pointIndexCount : node.lineIndexCount ? node.lineIndexCount : node.indexCount;
     if (offset > indices.size() || count > indices.size() - offset) {
@@ -306,9 +336,9 @@ void captureSourceMesh(Mesh& mesh, SourceProvenance provenance, std::span<const 
 {
     auto data = std::make_shared<SourceMeshData>();
     data->provenance = provenance;
-    data->points.reserve(mesh.vertices.size());
-    for (size_t i = 0; i < mesh.vertices.size(); ++i) { data->points.push_back(meshPosition(mesh, i)); }
-    data->indices = mesh.indices;
+    data->points.reserve(meshGeometry(mesh).vertices.size());
+    for (size_t i = 0; i < meshGeometry(mesh).vertices.size(); ++i) { data->points.push_back(meshPosition(mesh, i)); }
+    data->indices = meshGeometry(mesh).indices;
     data->originalPointIds.assign(originalPointIds.begin(), originalPointIds.end());
     mesh.sourceData = std::move(data);
 }
@@ -321,12 +351,12 @@ void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals, const ModelLoad
     }
 
     reportModelLoadProgress(progress, ModelLoadStage::normals);
-    if (generateMissingSmoothNormals && !hasCompleteNormals(mesh.vertices)) {
-        generateSmoothNormals(mesh.vertices, mesh.indices, progress);
+    if (generateMissingSmoothNormals && !hasCompleteNormals(meshGeometry(mesh).vertices)) {
+        generateSmoothNormals(editMeshGeometry(mesh).vertices, meshGeometry(mesh).indices, progress);
     }
 
     reportModelLoadProgress(progress, ModelLoadStage::bounds);
-    mesh.bounds = calculateBounds(mesh.vertices, progress);
+    mesh.bounds = calculateBounds(meshGeometry(mesh).vertices, progress);
     mesh.originalBounds.reset();
     mesh.originalBounds = originalMeshBounds(mesh);
 }

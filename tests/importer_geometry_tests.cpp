@@ -31,17 +31,17 @@ TEST_CASE("Geometry importer owns points rational curves and trimmed surfaces wi
 {
     GeometryFixture f;
     const auto mesh = f.mesh(); // DLL allocation is freed before any inspection.
-    REQUIRE(mesh.nodes.size() == 5);
-    CHECK(mesh.hierarchy.size() == 6);
-    CHECK(mesh.nodes[2].pointIndexCount == 2);
-    CHECK(mesh.nodes[2].displayName == "Points");
-    CHECK_FALSE(mesh.nodes[2].defaultVisible);
-    CHECK(mesh.nodes[2].defaultColor == std::array<float,4>{1,0,0,.5f});
-    CHECK(mesh.pointIndices == std::vector<uint32_t>{0,3});
-    CHECK(mesh.nodes[3].lineIndexOffset == 2);
-    CHECK(mesh.nodes[3].lineIndexCount == 64);
-    CHECK(mesh.nodes[4].indexOffset == 3);
-    CHECK(mesh.nodes[4].hasTexcoords);
+    REQUIRE(meshGeometry(mesh).nodes.size() == 5);
+    CHECK(meshGeometry(mesh).hierarchy.size() == 6);
+    CHECK(meshGeometry(mesh).nodes[2].pointIndexCount == 2);
+    CHECK(meshGeometry(mesh).nodes[2].displayName == "Points");
+    CHECK_FALSE(meshGeometry(mesh).nodes[2].defaultVisible);
+    CHECK(meshGeometry(mesh).nodes[2].defaultColor == std::array<float,4>{1,0,0,.5f});
+    CHECK(meshGeometry(mesh).pointIndices == std::vector<uint32_t>{0,3});
+    CHECK(meshGeometry(mesh).nodes[3].lineIndexOffset == 2);
+    CHECK(meshGeometry(mesh).nodes[3].lineIndexCount == 64);
+    CHECK(meshGeometry(mesh).nodes[4].indexOffset == 3);
+    CHECK(meshGeometry(mesh).nodes[4].hasTexcoords);
     REQUIRE(mesh.freeform);
     REQUIRE(mesh.freeform->patches.size() == 2);
     const auto sample = woby::evaluateFreeform(mesh.freeform->patches[0],.5);
@@ -58,16 +58,16 @@ TEST_CASE("Geometry importer owns points rational curves and trimmed surfaces wi
     }
     CHECK(area == doctest::Approx(.75));
     for (size_t i = 0; i < grid.samples.size(); ++i) {
-        const auto& vertex = mesh.vertices[grid.vertexOffset+i];
+        const auto& vertex = meshGeometry(mesh).vertices[grid.vertexOffset+i];
         CHECK(vertex.normal == std::array<float,3>{0,0,-1});
         CHECK(vertex.texcoord[0] == doctest::Approx(grid.samples[i][0]));
         CHECK(vertex.texcoord[1] == doctest::Approx(1-grid.samples[i][1]));
     }
     REQUIRE(mesh.sourceData);
     CHECK(mesh.sourceData->provenance == woby::SourceProvenance::importerVertices);
-    CHECK(mesh.sourceData->indices == mesh.indices);
+    CHECK(mesh.sourceData->indices == meshGeometry(mesh).indices);
     const auto& ids = mesh.sourceData->originalPointIds;
-    REQUIRE(ids.size() == mesh.vertices.size());
+    REQUIRE(ids.size() == meshGeometry(mesh).vertices.size());
     CHECK(ids[0] == 0); CHECK(ids[1] == UINT64_MAX); CHECK(ids[2] == 2); CHECK(ids[3] == 0);
     CHECK(std::set<uint64_t>(ids.begin(),ids.end()).size() == ids.size()-1);
     CHECK_FALSE(woby::packFreeformGpu(mesh.freeform->patches[0],mesh.freeform->grids[0],mesh.origin).empty());
@@ -80,15 +80,15 @@ TEST_CASE("Geometry importer supports point clouds freeform-only results and abs
 {
     GeometryFixture f;
     const auto cloud = f.mesh("pointsonly");
-    CHECK(cloud.nodes.size() == 1); CHECK(cloud.pointIndices.size() == 2);
-    CHECK(cloud.indices.empty()); CHECK(cloud.lineIndices.empty()); CHECK_FALSE(cloud.freeform);
+    CHECK(meshGeometry(cloud).nodes.size() == 1); CHECK(meshGeometry(cloud).pointIndices.size() == 2);
+    CHECK(meshGeometry(cloud).indices.empty()); CHECK(meshGeometry(cloud).lineIndices.empty()); CHECK_FALSE(cloud.freeform);
     const auto splines = f.mesh("freeformonly");
-    CHECK(splines.nodes.size() == 2); CHECK(splines.pointIndices.empty());
+    CHECK(meshGeometry(splines).nodes.size() == 2); CHECK(meshGeometry(splines).pointIndices.empty());
     CHECK(splines.sourceData->originalPointIds.empty());
     CHECK(splines.sourceData->provenance == woby::SourceProvenance::importerVertices);
     const auto absent = f.mesh("absent");
-    CHECK(absent.nodes.size() == 1); CHECK(absent.nodes[0].indexCount == 3);
-    CHECK(absent.pointIndices.empty()); CHECK_FALSE(absent.freeform);
+    CHECK(meshGeometry(absent).nodes.size() == 1); CHECK(meshGeometry(absent).nodes[0].indexCount == 3);
+    CHECK(meshGeometry(absent).pointIndices.empty()); CHECK_FALSE(absent.freeform);
 }
 
 TEST_CASE("Geometry importer releases rejected results and cancels during host tessellation")
@@ -96,7 +96,7 @@ TEST_CASE("Geometry importer releases rejected results and cancels during host t
     GeometryFixture f;
     for (const auto* name : {"invalid_point","invalid_spline","invalid_trim","failure"}) {
         CHECK_THROWS_AS((void)f.mesh(name),std::runtime_error);
-        CHECK(f.mesh("pointsonly").pointIndices.size() == 2);
+        CHECK(meshGeometry(f.mesh("pointsonly")).pointIndices.size() == 2);
     }
     size_t updates = 0; bool canceled = false;
     woby::ImportCallbacks callbacks;
@@ -104,11 +104,11 @@ TEST_CASE("Geometry importer releases rejected results and cancels during host t
     callbacks.canceled = [&] { return canceled; };
     const auto model = woby::importModel(f.file("freeformonly"),{},callbacks);
     CHECK(model.canceled); CHECK(woby::empty(model.mesh)); CHECK(updates == 6);
-    CHECK(f.mesh("pointsonly").pointIndices.size() == 2);
+    CHECK(meshGeometry(f.mesh("pointsonly")).pointIndices.size() == 2);
     callbacks = {};
     callbacks.stageProgress = [](const woby::ModelLoadProgress&) { throw std::runtime_error("Host progress failed."); };
     CHECK_THROWS_WITH_AS((void)woby::importModel(f.file(),{},callbacks),"Host progress failed.",std::runtime_error);
-    CHECK(f.mesh("pointsonly").pointIndices.size() == 2);
+    CHECK(meshGeometry(f.mesh("pointsonly")).pointIndices.size() == 2);
 }
 
 TEST_CASE("Geometry importer validates point partitions indexes names and limits")
@@ -131,7 +131,7 @@ TEST_CASE("Geometry importer validates point partitions indexes names and limits
     SUBCASE("byte budget before reading indices") { g.points.index_count = UINT32_MAX; }
     SUBCASE("generated points group") {
         g.points.groups = nullptr; g.points.group_count = 0;
-        CHECK(copy(g).nodes[2].name == "Points"); return;
+        CHECK(meshGeometry(copy(g)).nodes[2].name == "Points"); return;
     }
     CHECK_THROWS_AS((void)copy(g),std::runtime_error);
 }
@@ -200,11 +200,11 @@ TEST_CASE("Geometry importer retains freeform precision before and after rebasin
     for (auto& point : g.arc) { point.position[0] += 100000000.0; point.position[1] += 100000000.0; }
     const auto mesh = woby::copyImportedMesh(g.result,nullptr,nullptr,nullptr,nullptr,&g.freeform);
     CHECK(mesh.origin[0] == 100000000.5);
-    CHECK(mesh.precisePositions.front()[0] == .5);
-    CHECK(mesh.vertices.front().position[0] == .5f);
+    CHECK(meshGeometry(mesh).precisePositions.front()[0] == .5);
+    CHECK(meshGeometry(mesh).vertices.front().position[0] == .5f);
     CHECK(woby::evaluateFreeform(mesh.freeform->patches[0],.5).position[0] == doctest::Approx(100000000.0+std::sqrt(.5)));
     auto rebased = mesh; woby::rebaseMesh(rebased,{100000001,100000001,0});
-    CHECK(rebased.precisePositions.front()[0] == 0);
+    CHECK(meshGeometry(rebased).precisePositions.front()[0] == 0);
     CHECK(rebased.freeform == mesh.freeform);
 }
 

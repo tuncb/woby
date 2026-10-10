@@ -115,10 +115,10 @@ TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
 {
     ComparisonNameFixture f;
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    mesh.indices = {0, 1, 2};
-    mesh.nodes.push_back({"surface", 0, 3});
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
     woby::appendDefaultSceneNodesForFiles(f.state, 0);
     woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, f.id);
@@ -302,10 +302,10 @@ TEST_CASE("file analysis menus preserve selection until a task is chosen and use
     ComparisonNameFixture f;
     for (size_t i = 0; i < 2; ++i) {
         woby::Mesh mesh;
-        mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-        mesh.indices = {0, 1, 2};
-        mesh.nodes.push_back({"surface", 0, 3});
-        mesh.bounds = woby::calculateBounds(mesh.vertices);
+        editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+        editMeshGeometry(mesh).indices = {0, 1, 2};
+        editMeshGeometry(mesh).nodes.push_back({"surface", 0, 3});
+        mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
         f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), i));
     }
     woby::appendDefaultSceneNodesForFiles(f.state, 0);
@@ -428,10 +428,10 @@ TEST_CASE("analysis input groups start collapsed")
     ComparisonNameFixture f;
     const auto addPart = [&](const char* filename, const char* partName, size_t index) {
         woby::Mesh mesh;
-        mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-        mesh.indices = {0, 1, 2};
-        mesh.nodes.push_back({partName, 0, 3});
-        mesh.bounds = woby::calculateBounds(mesh.vertices);
+        editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+        editMeshGeometry(mesh).indices = {0, 1, 2};
+        editMeshGeometry(mesh).nodes.push_back({partName, 0, 3});
+        mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
         f.state.files.push_back(woby::createUiFileState(filename, std::move(mesh), index));
     };
     addPart("first.obj", "first-input-part", 0);
@@ -464,10 +464,10 @@ TEST_CASE("analysis inspectors keep measurements separate from diagnostic findin
 {
     ComparisonNameFixture f;
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    mesh.indices = {0, 1, 2};
-    mesh.nodes.push_back({"surface", 0, 3});
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     f.state.files.push_back(woby::createUiFileState({}, mesh, 0));
     woby::appendDefaultSceneNodesForFiles(f.state, 0);
     for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
@@ -522,10 +522,10 @@ TEST_CASE("analysis UV inspector shows all findings and only relevant normalizat
 {
     ComparisonNameFixture f;
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    for (int i = 0; i < 125; ++i) { mesh.indices.insert(mesh.indices.end(), {0, 1, 2}); }
-    mesh.nodes.push_back({"Missing UV patch", 0, 375});
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    for (int i = 0; i < 125; ++i) { editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {0, 1, 2}); }
+    editMeshGeometry(mesh).nodes.push_back({"Missing UV patch", 0, 375});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
     woby::appendDefaultSceneNodesForFiles(f.state, 0);
     woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, f.id);
@@ -569,10 +569,10 @@ TEST_CASE("analysis properties distinguish queued calculating failed and inactiv
 {
     ComparisonNameFixture f;
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    mesh.indices = {0, 1, 2};
-    mesh.nodes.push_back({"surface", 0, 3});
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
     woby::appendDefaultSceneNodesForFiles(f.state, 0);
     woby::setComparisonObjects(f.state, {f.state.files[0].groupSettings[0].objectId},
@@ -732,10 +732,10 @@ TEST_CASE("analysis status stays fixed while active and collapses without losing
 {
     ComparisonNameFixture f;
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    mesh.indices = {0, 1, 2};
-    mesh.nodes.push_back({"surface", 0, 3});
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
     woby::appendDefaultSceneNodesForFiles(f.state, 0);
     woby::setComparisonObjects(f.state, {f.state.files[0].groupSettings[0].objectId},
@@ -1015,16 +1015,16 @@ TEST_CASE("diagnostics show all checks including zero counts and pending results
 {
     ComparisonNameFixture f;
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    mesh.indices = {0, 1, 2};
-    mesh.nodes.push_back({"surface", 0, 3});
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     auto source = std::make_shared<woby::SourceMeshData>();
     source->provenance = woby::SourceProvenance::objPositions;
-    for (const auto& vertex : mesh.vertices) {
+    for (const auto& vertex : meshGeometry(mesh).vertices) {
         source->points.push_back({vertex.position[0], vertex.position[1], vertex.position[2]});
     }
-    source->indices = mesh.indices;
+    source->indices = meshGeometry(mesh).indices;
     mesh.sourceData = std::move(source);
     f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
     woby::appendDefaultSceneNodesForFiles(f.state, 0);
@@ -1080,10 +1080,10 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
     SUBCASE("two inputs") { hasB = true; }
     SUBCASE("no inputs") { hasA = hasB = false; }
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    mesh.indices = {0, 1, 2};
-    mesh.nodes.push_back({"surface", 0, 3});
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
     woby::appendDefaultSceneNodesForFiles(f.state, 0);
     const auto part = f.state.files[0].groupSettings[0].objectId;
@@ -1330,10 +1330,10 @@ TEST_CASE("diagnostics keep readable labels and reachable controls as properties
     style.ScaleAllSizes(scale);
     style.FontScaleMain = scale;
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    mesh.indices = {0, 1, 2};
-    mesh.nodes.push_back({"surface", 0, 3});
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
     woby::appendDefaultSceneNodesForFiles(f.state, 0);
     const auto part = f.state.files[0].groupSettings[0].objectId;
@@ -1524,10 +1524,10 @@ TEST_CASE("fin findings use table columns and continuous one based indices on pa
 {
     ComparisonNameFixture f;
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    mesh.indices = {0, 1, 2};
-    mesh.nodes.push_back({"surface", 0, 3});
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
     woby::appendDefaultSceneNodesForFiles(f.state, 0);
     woby::setComparisonObjects(f.state, {f.state.files[0].groupSettings[0].objectId},

@@ -9,12 +9,12 @@ size_t payloadBytes(Node node, const Trace& trace)
     switch (node) {
     case Node::source: return trace.source.size();
     case Node::attributes: return attributes + trace.originalCorners*sizeof(Corner);
-    case Node::corners: return attributes + trace.mesh.indices.size()*sizeof(Corner);
-    case Node::mesh: return trace.mesh.vertices.size()*(sizeof(woby::Vertex)+sizeof(woby::Coordinate))
-        + trace.mesh.indices.size()*sizeof(uint32_t)
+    case Node::corners: return attributes + meshGeometry(trace.mesh).indices.size()*sizeof(Corner);
+    case Node::mesh: return meshGeometry(trace.mesh).vertices.size()*(sizeof(woby::Vertex)+sizeof(woby::Coordinate))
+        + meshGeometry(trace.mesh).indices.size()*sizeof(uint32_t)
         + trace.mesh.sourceData->points.size()*sizeof(woby::Coordinate)
         + trace.mesh.sourceData->indices.size()*sizeof(uint32_t);
-    case Node::gpu: return trace.mesh.vertices.size()*sizeof(woby::Vertex) + trace.mesh.indices.size()*sizeof(uint32_t);
+    case Node::gpu: return meshGeometry(trace.mesh).vertices.size()*sizeof(woby::Vertex) + meshGeometry(trace.mesh).indices.size()*sizeof(uint32_t);
     default: throw std::invalid_argument("Only data nodes have a payload.");
     }
 }

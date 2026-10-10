@@ -27,11 +27,11 @@ woby::UiState scene(size_t parts, const std::filesystem::path& root)
 {
     woby::UiState state;
     woby::Mesh mesh;
-    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
-    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
     for (size_t i = 0; i < parts; ++i) {
-        mesh.nodes.push_back({"part" + std::to_string(i), static_cast<uint32_t>(mesh.indices.size()), 3});
-        mesh.indices.insert(mesh.indices.end(), {0, 1, 2});
+        editMeshGeometry(mesh).nodes.push_back({"part" + std::to_string(i), static_cast<uint32_t>(meshGeometry(mesh).indices.size()), 3});
+        editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {0, 1, 2});
     }
     state.files.push_back(woby::createUiFileState(root / "model.obj", std::move(mesh), 0));
     woby::appendFolderTreeSceneNode(state, root, 0, 1);

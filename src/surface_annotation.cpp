@@ -138,20 +138,20 @@ void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
     if (cache.mesh != &mesh || cache.transform != transform || cache.homogeneous != homogeneous) {
         cache.sparse.clear();
         if (!result.region) {
-            if (cache.mesh != &mesh || cache.vertices.size() != mesh.vertices.size()) {
-                cache.vertices.resize(mesh.vertices.size());
-                cache.masks.resize(mesh.vertices.size());
-                cache.stamps.assign(mesh.vertices.size(), 0);
+            if (cache.mesh != &mesh || cache.vertices.size() != meshGeometry(mesh).vertices.size()) {
+                cache.vertices.resize(meshGeometry(mesh).vertices.size());
+                cache.masks.resize(meshGeometry(mesh).vertices.size());
+                cache.stamps.assign(meshGeometry(mesh).vertices.size(), 0);
                 cache.generation = 0;
             }
             if (++cache.generation == 0) {
-                cache.stamps.assign(mesh.vertices.size(), 0);
+                cache.stamps.assign(meshGeometry(mesh).vertices.size(), 0);
                 cache.generation = 1;
             }
         }
         cache.mesh = &mesh; cache.transform = transform; cache.homogeneous = homogeneous;
     }
-    const size_t finish = std::min({mesh.indices.size(), part.indexOffset + part.indexCount, rangeEnd});
+    const size_t finish = std::min({meshGeometry(mesh).indices.size(), part.indexOffset + part.indexCount, rangeEnd});
     for (size_t i = std::max(part.indexOffset, rangeBegin); i + 2 < finish; i += 3) {
         if ((i % 768) < 3) { checkAnnotationStop(result.stop); }
         AnnotationProjectionFace face;
@@ -160,15 +160,15 @@ void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
         size_t count = 3;
         uint8_t outside = 0, common = 0x3f;
         for (size_t k = 0; k < 3; ++k) {
-            const auto index = mesh.indices[i + k];
-            if (index >= mesh.vertices.size()) { count = 0; break; }
+            const auto index = meshGeometry(mesh).indices[i + k];
+            if (index >= meshGeometry(mesh).vertices.size()) { count = 0; break; }
             auto [entry, inserted] = result.region ? cache.sparse.try_emplace(index)
                 : std::pair{cache.sparse.end(), false};
             auto& mask = result.region ? entry->second.mask : cache.masks[index];
             auto& vertex = result.region ? entry->second.vertex : cache.vertices[index];
             if (result.region ? inserted : cache.stamps[index] != cache.generation) {
                 if (!result.region) { cache.stamps[index] = cache.generation; }
-                const auto& p = mesh.vertices[index].position;
+                const auto& p = meshGeometry(mesh).vertices[index].position;
                 const auto q = annotationTransform(transform, {p[0], p[1], p[2], 1});
                 mask = 0x80;
                 if (finitePosition(p) && std::all_of(q.begin(), q.end(), [](double v) { return std::isfinite(v); })) {
@@ -233,7 +233,7 @@ void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
         for (size_t k = 1; k + 1 < count; ++k) {
             AnnotationProjectedTriangle t;
             t.objectId = part.objectId;
-            for (size_t j = 0; j < 3; ++j) { t.localTriangle[j] = mesh.vertices[mesh.indices[i + j]].position; }
+            for (size_t j = 0; j < 3; ++j) { t.localTriangle[j] = meshGeometry(mesh).vertices[meshGeometry(mesh).indices[i + j]].position; }
             t.triangle = static_cast<uint32_t>((i - part.indexOffset) / 3);
             const std::array<ClipVertex, 3> vertices{polygon[0], polygon[k], polygon[k + 1]};
             for (size_t j = 0; j < 3; ++j) { t.clip[j] = vertices[j].clip; t.bary[j] = vertices[j].bary; }
@@ -256,13 +256,13 @@ void appendProjectionBlocks(std::vector<AnnotationProjectionBlock>& blocks, cons
 {
     if (!part.mesh || part.opacity <= 0) { return; }
     const auto& mesh = *part.mesh;
-    const size_t end = std::min(mesh.indices.size(), part.indexOffset + part.indexCount);
-    if (mesh.annotationCache && mesh.annotationCache->vertexCount == mesh.vertices.size()
-        && mesh.annotationCache->indexCount == mesh.indices.size()
-        && mesh.annotationCache->vertexData == mesh.vertices.data()
-        && mesh.annotationCache->indexData == mesh.indices.data()) {
+    const size_t end = std::min(meshGeometry(mesh).indices.size(), part.indexOffset + part.indexCount);
+    if (mesh.annotationCache && mesh.annotationCache->vertexCount == meshGeometry(mesh).vertices.size()
+        && mesh.annotationCache->indexCount == meshGeometry(mesh).indices.size()
+        && mesh.annotationCache->vertexData == meshGeometry(mesh).vertices.data()
+        && mesh.annotationCache->indexData == meshGeometry(mesh).indices.data()) {
         bool aligned = false;
-        for (const auto& node : mesh.nodes) {
+        for (const auto& node : meshGeometry(mesh).nodes) {
             if (node.indexOffset == part.indexOffset && node.indexCount == part.indexCount) { aligned = true; break; }
         }
         if (aligned) {
@@ -282,9 +282,9 @@ void appendProjectionBlocks(std::vector<AnnotationProjectionBlock>& blocks, cons
         block.minimum.fill(std::numeric_limits<float>::infinity());
         block.maximum.fill(-std::numeric_limits<float>::infinity());
         for (size_t i = begin; i < block.end; ++i) {
-            const auto index = mesh.indices[i];
-            if (index >= mesh.vertices.size()) { continue; }
-            const auto& p = mesh.vertices[index].position;
+            const auto index = meshGeometry(mesh).indices[i];
+            if (index >= meshGeometry(mesh).vertices.size()) { continue; }
+            const auto& p = meshGeometry(mesh).vertices[index].position;
             if (!finitePosition(p)) { continue; }
             for (size_t axis = 0; axis < 3; ++axis) {
                 block.minimum[axis] = std::min(block.minimum[axis], p[axis]);
@@ -319,10 +319,10 @@ void appendRegion(AnnotationProjection& projection, const ScenePickPart& part,
     if (!projection.region) { appendProjection(projection, part, transform, homogeneous, vertices); return; }
     const auto& mesh = *part.mesh;
     const auto& cache = mesh.annotationCache;
-    if (cache && cache->vertexData == mesh.vertices.data() && cache->indexData == mesh.indices.data()
-        && cache->vertexCount == mesh.vertices.size() && cache->indexCount == mesh.indices.size()
+    if (cache && cache->vertexData == meshGeometry(mesh).vertices.data() && cache->indexData == meshGeometry(mesh).indices.data()
+        && cache->vertexCount == meshGeometry(mesh).vertices.size() && cache->indexCount == meshGeometry(mesh).indices.size()
         && cache->spatial && !cache->spatial->tree.empty()
-        && std::any_of(mesh.nodes.begin(), mesh.nodes.end(), [&](const auto& node) {
+        && std::any_of(meshGeometry(mesh).nodes.begin(), meshGeometry(mesh).nodes.end(), [&](const auto& node) {
             return node.indexOffset == part.indexOffset && node.indexCount == part.indexCount;
         })) {
         const auto& spatial = *cache->spatial;
@@ -651,14 +651,14 @@ std::string annotationFingerprint(const Mesh& mesh, size_t offset, size_t count)
 {
     uint64_t hash = 1469598103934665603ull;
     hashCombine(hash, count);
-    const size_t end = std::min(mesh.indices.size(), offset + count);
+    const size_t end = std::min(meshGeometry(mesh).indices.size(), offset + count);
     for (size_t i = offset; i < end; ++i) {
-        const auto index = mesh.indices[i];
+        const auto index = meshGeometry(mesh).indices[i];
         // Preserve the saved fingerprint format while avoiding four function
         // calls per index in Debug builds.
         hash ^= uint64_t{index} + 0x9e3779b97f4a7c15ull + (hash << 6u) + (hash >> 2u);
-        if (index < mesh.vertices.size()) {
-            for (const float value : mesh.vertices[index].position) {
+        if (index < meshGeometry(mesh).vertices.size()) {
+            for (const float value : meshGeometry(mesh).vertices[index].position) {
                 hash ^= uint64_t{std::bit_cast<uint32_t>(value)} + 0x9e3779b97f4a7c15ull
                     + (hash << 6u) + (hash >> 2u);
             }
@@ -668,28 +668,32 @@ std::string annotationFingerprint(const Mesh& mesh, size_t offset, size_t count)
 }
 void prepareAnnotationMeshCache(Mesh& mesh)
 {
-    mesh.annotationCache = buildAnnotationMeshCache(mesh.vertices, mesh.indices, mesh.nodes);
+    publishMeshGeometry(mesh);
+    mesh.annotationCache = buildAnnotationMeshCache(mesh);
 }
 bool annotationMeshCacheReady(const Mesh& mesh)
 {
-    return mesh.indices.size() < 50000 * 3 || mesh.nodes.empty()
-        || (mesh.annotationCache && mesh.annotationCache->vertexCount == mesh.vertices.size()
-            && mesh.annotationCache->indexCount == mesh.indices.size()
-            && mesh.annotationCache->vertexData == mesh.vertices.data()
-            && mesh.annotationCache->indexData == mesh.indices.data());
+    return meshGeometry(mesh).indices.size() < 50000 * 3 || meshGeometry(mesh).nodes.empty()
+        || (mesh.annotationCache && mesh.annotationCache->vertexCount == meshGeometry(mesh).vertices.size()
+            && mesh.annotationCache->indexCount == meshGeometry(mesh).indices.size()
+            && mesh.annotationCache->vertexData == meshGeometry(mesh).vertices.data()
+            && mesh.annotationCache->indexData == meshGeometry(mesh).indices.data());
 }
 bool annotationMeshSnapshotReady(const Mesh& mesh)
 {
-    return mesh.annotationCache && mesh.annotationCache->snapshot
-        && mesh.annotationCache->vertexCount == mesh.vertices.size()
-        && mesh.annotationCache->indexCount == mesh.indices.size()
-        && mesh.annotationCache->vertexData == mesh.vertices.data()
-        && mesh.annotationCache->indexData == mesh.indices.data();
+    return mesh.annotationCache && mesh.annotationCache->geometry
+        && mesh.annotationCache->vertexCount == meshGeometry(mesh).vertices.size()
+        && mesh.annotationCache->indexCount == meshGeometry(mesh).indices.size()
+        && mesh.annotationCache->vertexData == meshGeometry(mesh).vertices.data()
+        && mesh.annotationCache->indexData == meshGeometry(mesh).indices.data();
 }
 std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
-    std::span<const Vertex> vertices, std::span<const uint32_t> indices, std::span<const MeshNode> nodes,
-    const std::function<bool()>& canceled)
+    Mesh mesh, const std::function<bool()>& canceled)
 {
+    publishMeshGeometry(mesh);
+    const auto& vertices = meshGeometry(mesh).vertices;
+    const auto& indices = meshGeometry(mesh).indices;
+    const auto& nodes = meshGeometry(mesh).nodes;
     if (indices.empty() || nodes.empty()) { return {}; }
     auto cache = std::make_shared<MeshAnnotationCache>();
     cache->vertexCount = vertices.size();
@@ -828,35 +832,17 @@ std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
     };
     if (!spatial->triangles.empty()) { build(build, 0, spatial->triangles.size()); }
     cache->spatial = std::move(spatial);
-    // Stage ownership off the UI thread. Do not retain normals, UV data, precise
-    // positions, topology, or other analysis scratch in an annotation snapshot.
-    auto snapshot = std::make_shared<Mesh>();
-    snapshot->vertices.reserve(vertices.size()); snapshot->indices.reserve(indices.size());
-    for (size_t i = 0; i < vertices.size(); ++i) {
-        if (i % 256 == 0 && canceled && canceled()) { return {}; }
-        Vertex vertex; vertex.position = vertices[i].position;
-        snapshot->vertices.push_back(vertex);
-    }
-    for (size_t i = 0; i < indices.size(); ++i) {
-        if (i % 768 == 0 && canceled && canceled()) { return {}; }
-        snapshot->indices.push_back(indices[i]);
-    }
-    snapshot->nodes.assign(nodes.begin(), nodes.end());
-    // The snapshot's index has no snapshot pointer: ownership is acyclic.
-    auto snapshotCache = std::make_shared<MeshAnnotationCache>(*cache);
-    snapshotCache->vertexData = snapshot->vertices.data(); snapshotCache->indexData = snapshot->indices.data();
-    snapshot->annotationCache = std::move(snapshotCache);
-    cache->snapshot = std::move(snapshot);
+    cache->geometry = mesh.storage;
     return cache;
 }
 std::string gestureFingerprint(const Mesh& mesh, size_t offset, size_t count)
 {
-    if (mesh.annotationCache && mesh.annotationCache->vertexCount == mesh.vertices.size()
-        && mesh.annotationCache->indexCount == mesh.indices.size()
-        && mesh.annotationCache->vertexData == mesh.vertices.data()
-        && mesh.annotationCache->indexData == mesh.indices.data()) {
-        for (size_t i = 0; i < mesh.nodes.size(); ++i) {
-            if (mesh.nodes[i].indexOffset == offset && mesh.nodes[i].indexCount == count) {
+    if (mesh.annotationCache && mesh.annotationCache->vertexCount == meshGeometry(mesh).vertices.size()
+        && mesh.annotationCache->indexCount == meshGeometry(mesh).indices.size()
+        && mesh.annotationCache->vertexData == meshGeometry(mesh).vertices.data()
+        && mesh.annotationCache->indexData == meshGeometry(mesh).indices.data()) {
+        for (size_t i = 0; i < meshGeometry(mesh).nodes.size(); ++i) {
+            if (meshGeometry(mesh).nodes[i].indexOffset == offset && meshGeometry(mesh).nodes[i].indexCount == count) {
                 return mesh.annotationCache->fingerprints[i];
             }
         }
@@ -1164,8 +1150,8 @@ std::array<float, 3> annotationPosition(const Mesh& mesh, size_t offset, uint32_
     std::array<float, 3> result{};
     for (size_t k = 0; k < 3; ++k) {
         const size_t index = offset + static_cast<size_t>(triangle) * 3 + k;
-        if (index >= mesh.indices.size() || mesh.indices[index] >= mesh.vertices.size()) { throw std::runtime_error("Annotation triangle is unavailable."); }
-        const auto& p = mesh.vertices[mesh.indices[index]].position;
+        if (index >= meshGeometry(mesh).indices.size() || meshGeometry(mesh).indices[index] >= meshGeometry(mesh).vertices.size()) { throw std::runtime_error("Annotation triangle is unavailable."); }
+        const auto& p = meshGeometry(mesh).vertices[meshGeometry(mesh).indices[index]].position;
         for (size_t axis = 0; axis < 3; ++axis) { result[axis] += bary[k] * p[axis]; }
     }
     return result;

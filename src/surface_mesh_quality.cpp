@@ -76,24 +76,24 @@ SurfaceQualityMetric parseSurfaceQualityMetric(const std::string& key)
 SurfaceMeshQuality inspectSurfaceMeshQuality(const Mesh& mesh, std::stop_token stop)
 {
     canceled(stop);
-    if (mesh.indices.size() % 3 != 0) { throw std::invalid_argument("Quality requires triangle indices."); }
+    if (meshGeometry(mesh).indices.size() % 3 != 0) { throw std::invalid_argument("Quality requires triangle indices."); }
     SurfaceMeshQuality result;
     std::pmr::monotonic_buffer_resource arena;
     std::pmr::map<std::pair<uint32_t, Point>, size_t> vertices{&arena};
     constexpr size_t unassigned = std::numeric_limits<size_t>::max();
-    std::vector<size_t> welded(mesh.vertices.size(), unassigned);
+    std::vector<size_t> welded(meshGeometry(mesh).vertices.size(), unassigned);
     // Sort/reduce contiguous edge records instead of allocating a tree node
     // and performing a pointer-chasing lookup for every triangle corner.
     struct Edge { size_t a = 0, b = 0, face = 0; };
     std::vector<Edge> edges;
-    edges.reserve(mesh.indices.size());
-    result.triangles.reserve(mesh.indices.size() / 3);
-    for (size_t face = 0; face < mesh.indices.size() / 3; ++face) {
+    edges.reserve(meshGeometry(mesh).indices.size());
+    result.triangles.reserve(meshGeometry(mesh).indices.size() / 3);
+    for (size_t face = 0; face < meshGeometry(mesh).indices.size() / 3; ++face) {
         canceled(stop);
         std::array<Point, 3> p;
         for (size_t k = 0; k < 3; ++k) {
-            const auto index = mesh.indices[face * 3 + k];
-            if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) {
+            const auto index = meshGeometry(mesh).indices[face * 3 + k];
+            if (index >= meshGeometry(mesh).vertices.size() || !finitePosition(meshGeometry(mesh).vertices[index].position)) {
                 throw std::invalid_argument("Quality requires valid indices and finite coordinates.");
             }
             p[k] = meshPosition(mesh, index);
@@ -114,9 +114,9 @@ SurfaceMeshQuality inspectSurfaceMeshQuality(const Mesh& mesh, std::stop_token s
         if (t.degenerate) { ++result.degenerateTriangles; continue; }
         std::array<size_t, 3> ids;
         for (size_t k = 0; k < 3; ++k) {
-            auto& id = welded[mesh.indices[face * 3 + k]];
+            auto& id = welded[meshGeometry(mesh).indices[face * 3 + k]];
             if (id == unassigned) {
-                const auto batch = mesh.analysisVertexBatches.empty() ? 0 : mesh.analysisVertexBatches.at(mesh.indices[face * 3 + k]);
+                const auto batch = meshGeometry(mesh).analysisVertexBatches.empty() ? 0 : meshGeometry(mesh).analysisVertexBatches.at(meshGeometry(mesh).indices[face * 3 + k]);
                 id = vertices.emplace(std::pair{batch, p[k]}, vertices.size()).first->second;
             }
             ids[k] = id;
@@ -224,18 +224,18 @@ std::vector<Vertex> surfaceQualityVertices(const Mesh& mesh, const SurfaceMeshQu
     SurfaceQualityMetric metric, const QualityDistribution& distribution)
 {
     std::vector<Vertex> result;
-    result.reserve(mesh.indices.size());
+    result.reserve(meshGeometry(mesh).indices.size());
     for (size_t i = 0; i < quality.triangles.size(); ++i) {
         const auto& t = quality.triangles[i];
         const double value = t.values.at(static_cast<size_t>(metric));
         const float encoded = t.degenerate ? -1.0f : !std::isfinite(value) ? -2.0f :
             static_cast<float>(std::clamp((value - distribution.minimum) / (distribution.maximum - distribution.minimum), 0.0, 1.0));
-        const auto& a = mesh.vertices.at(mesh.indices.at(i * 3)).position;
-        const auto& b = mesh.vertices.at(mesh.indices.at(i * 3 + 1)).position;
-        const auto& c = mesh.vertices.at(mesh.indices.at(i * 3 + 2)).position;
+        const auto& a = meshGeometry(mesh).vertices.at(meshGeometry(mesh).indices.at(i * 3)).position;
+        const auto& b = meshGeometry(mesh).vertices.at(meshGeometry(mesh).indices.at(i * 3 + 1)).position;
+        const auto& c = meshGeometry(mesh).vertices.at(meshGeometry(mesh).indices.at(i * 3 + 2)).position;
         const auto normal = calculateFaceNormal(a, b, c);
         for (size_t k = 0; k < 3; ++k) {
-            auto vertex = mesh.vertices.at(mesh.indices.at(i * 3 + k));
+            auto vertex = meshGeometry(mesh).vertices.at(meshGeometry(mesh).indices.at(i * 3 + k));
             vertex.normal = normal;
             vertex.texcoord = {encoded, 0};
             result.push_back(vertex);
@@ -249,11 +249,11 @@ std::vector<Vertex> surfaceQualityDisplayVertices(const Mesh& mesh,
     const std::array<QualityDistribution, surfaceQualityMetricCount>& distributions, std::stop_token stop)
 {
     canceled(stop);
-    if (mesh.indices.size() % 3 != 0 || quality.triangles.size() != mesh.indices.size() / 3) {
+    if (meshGeometry(mesh).indices.size() % 3 != 0 || quality.triangles.size() != meshGeometry(mesh).indices.size() / 3) {
         throw std::runtime_error("Surface quality display does not match its source triangles.");
     }
     std::vector<Vertex> result;
-    result.reserve(mesh.indices.size());
+    result.reserve(meshGeometry(mesh).indices.size());
     for (size_t i = 0; i < quality.triangles.size(); ++i) {
         if (i % 1024 == 0) { canceled(stop); }
         const auto& triangle = quality.triangles[i];
@@ -264,9 +264,9 @@ std::vector<Vertex> surfaceQualityDisplayVertices(const Mesh& mesh,
             values[metric] = triangle.degenerate ? -1.0f : !std::isfinite(value) ? -2.0f :
                 static_cast<float>(std::clamp((value - range.minimum) / (range.maximum - range.minimum), 0.0, 1.0));
         }
-        const auto& a = mesh.vertices.at(mesh.indices[i * 3]).position;
-        const auto& b = mesh.vertices.at(mesh.indices[i * 3 + 1]).position;
-        const auto& c = mesh.vertices.at(mesh.indices[i * 3 + 2]).position;
+        const auto& a = meshGeometry(mesh).vertices.at(meshGeometry(mesh).indices[i * 3]).position;
+        const auto& b = meshGeometry(mesh).vertices.at(meshGeometry(mesh).indices[i * 3 + 1]).position;
+        const auto& c = meshGeometry(mesh).vertices.at(meshGeometry(mesh).indices[i * 3 + 2]).position;
         const auto normal = calculateFaceNormal(a, b, c);
         result.push_back({a, normal, {values[0], values[1]}});
         result.push_back({b, normal, {values[2], values[3]}});
