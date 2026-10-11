@@ -144,6 +144,7 @@ struct UiComparison {
     uint64_t intersectionRequestRevision = 0;
     bool cancelIntersections = false;
     std::array<DetectorRequest, backgroundDetectorCount> detectorRequests{};
+    DetectorRequest differenceRequest;
     // Derived memoization only, never serialized. Immutable entries can safely
     // be shared by state copies; queries do not change logical scene state.
     struct BoundsCache {

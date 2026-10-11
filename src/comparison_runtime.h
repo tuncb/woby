@@ -55,6 +55,17 @@ struct ComparisonSourceRuntime {
     uint64_t preparationSignature = 0;
     bool refreshUvQuality = false;
 };
+struct DifferenceRuntime {
+    std::stop_source stop;
+    std::future<std::shared_ptr<const DifferenceMesh>> worker;
+    std::shared_ptr<const DifferenceMesh> result;
+    std::array<ComparisonGpuSurface, 3> gpu;
+    uint64_t signature = 0, workerSignature = 0, consumedRequest = 0, workerRequest = 0;
+    std::string phase = "not_created", error;
+    bool uploaded = false, initialized = false;
+    std::future<std::string> exportWorker;
+    std::string exportPath, exportState = "idle", exportError;
+};
 struct ComparisonDisplayRuntime {
     std::stop_source stop;
     std::future<MeshComparison> worker;
@@ -99,6 +110,7 @@ struct ComparisonInspectorRuntime {
     std::array<std::array<DiagnosticSummary, 2>, diagnosticCategoryCount> diagnosticSummaries{};
 };
 struct ComparisonRuntime {
+    DifferenceRuntime difference;
     ComparisonSourceRuntime sources;
     ComparisonJobRuntime jobs;
     ComparisonResultRuntime results;

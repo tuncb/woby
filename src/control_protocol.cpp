@@ -18,6 +18,13 @@ using Json = nlohmann::json;
 const std::vector<ControlMethod>& controlMethods()
 {
     static const std::vector<ControlMethod> methods = {
+        {ControlAction::differenceCreate, "analysis.difference-create", "analysis difference-create", "target", {}, {}, false, true},
+        {ControlAction::differenceRebuild, "analysis.difference-rebuild", "analysis difference-rebuild", "target", {}, {}, false, true},
+        {ControlAction::differenceGet, "analysis.difference-get", "analysis difference-get", "target", {}, {}},
+        {ControlAction::differenceSet, "analysis.difference-set", "analysis difference-set", "target", {"visible", "showAOnly", "showBOnly", "showWalls", "opacity"}, {}, true, true},
+        {ControlAction::differenceCancel, "analysis.difference-cancel", "analysis difference-cancel", "target", {}, {}, false, true},
+        {ControlAction::differenceDelete, "analysis.difference-delete", "analysis difference-delete", "target", {}, {}, false, true},
+        {ControlAction::differenceExport, "analysis.difference-export", "analysis difference-export", "target", {"path"}, {"path"}, false, true},
         {ControlAction::annotationList, "annotation.list", "annotation list", {}, {}, {}},
         {ControlAction::annotationGet, "annotation.get", "annotation get", "target", {}, {}},
         {ControlAction::annotationCreate, "annotation.create", "annotation create", "target",
@@ -123,6 +130,7 @@ const ControlMethod& controlMethod(ControlAction action)
 namespace {
 bool booleanOption(const std::string& name)
 {
+    if (name == "showAOnly" || name == "showBOnly" || name == "showWalls") { return true; }
     if (name == "showPlane" || name == "showConnections" || name == "showDifferences" || name == "faceOn" || name == "sourceVisible") { return true; }
     if (name == "uvThresholdEnabled" || name == "uvOverlapEnabled" || name == "uvRangeEnabled" || name == "uvSeparated" || name == "uvLinkedSelection" || name == "isolate" || name == "uvGrid" || name == "lineDepthTest") { return true; }
     return name == "autoUpdateBoundaries" || name == "autoUpdateNonManifold" || name == "autoUpdateWinding" || name == "autoUpdateSelfIntersections" || name == "selfIntersections" || name == "showSelfIntersections" || name == "nonManifoldVertices" || name == "showNonManifoldVertices" || name == "fins" || name == "showFins" || name == "holes" || name == "showHoles" || name == "degenerateTriangles" || name == "showDegenerateTriangles" || name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles"
@@ -148,6 +156,9 @@ bool vectorOption(const std::string& name)
 }
 std::string cliOption(const std::string& name)
 {
+    if (name == "showAOnly") { return "--show-a-only"; }
+    if (name == "showBOnly") { return "--show-b-only"; }
+    if (name == "showWalls") { return "--show-walls"; }
     if (name == "planeStart") { return "--plane-start"; }
     if (name == "planeEnd") { return "--plane-end"; }
     if (name == "sectionUpAxis") { return "--section-up-axis"; }
@@ -326,6 +337,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         }
     }
 #define BOOL_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<bool>(); }
+    BOOL_FIELD(showAOnly) BOOL_FIELD(showBOnly) BOOL_FIELD(showWalls)
     BOOL_FIELD(showPlane) BOOL_FIELD(showConnections) BOOL_FIELD(showDifferences) BOOL_FIELD(faceOn) BOOL_FIELD(sourceVisible)
     BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(xray) BOOL_FIELD(adaptivePoints) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
     BOOL_FIELD(uvThresholdEnabled) BOOL_FIELD(uvOverlapEnabled) BOOL_FIELD(uvRangeEnabled)
@@ -504,6 +516,7 @@ Json controlOperationParams(const ControlOperation& command)
     if (command.action == ControlAction::folderAdd) { result["tree"] = command.tree; }
     if (command.action == ControlAction::importersAdd || command.action == ControlAction::importersScan) { result["remember"] = command.remember; }
 #define FIELD(field) if (command.field) { result[#field] = *command.field; }
+    FIELD(showAOnly) FIELD(showBOnly) FIELD(showWalls)
     FIELD(planeStart) FIELD(planeEnd) FIELD(sectionUpAxis) FIELD(lift) FIELD(showPlane) FIELD(showConnections) FIELD(showDifferences) FIELD(faceOn) FIELD(sourceIndex) FIELD(sourceVisible) FIELD(referenceIndex) FIELD(comparedIndex)
     FIELD(analysisMode) FIELD(visible) FIELD(propertiesVisible) FIELD(solid) FIELD(xray) FIELD(adaptivePoints) FIELD(triangles) FIELD(vertices) FIELD(translation) FIELD(rotationDegrees) FIELD(rgb) FIELD(barycentric)
     FIELD(lineWidth) FIELD(lineDepthTest) FIELD(uvGrid) FIELD(uvDensityU) FIELD(uvDensityV)
@@ -546,6 +559,9 @@ Json controlCapabilities()
     }
     return {{"analysisResults", {{"defaultListingLimit", 100}, {"pageLimit", {1, 100}}, {"offsetBase", 0}, {"collectionIndexBase", 0}, {"defaultCollection", "/findings"}, {"intersectionPairLimitDefault", 10000}, {"intersectionCandidateLimitDefault", 1000000}, {"intersectionBudgetRange", {0, 2147483647}}, {"zeroBudgetMeansUnlimited", true}, {"exportOverwrites", false}, {"concurrentExports", 1}}}, {"apiVersion", 1}, {"methods", methods}, {"objectKinds", {"folder", "file", "group", "analysis", "annotation"}},
         {"analysisTransformFields", {"translation"}},
+        {"differenceMeshes", {{"targets", {"analysis"}}, {"inputTypes", {"closed_solids", "single_boundary_surfaces"}},
+            {"exportFormat", "obj"}, {"exportOverwrites", false}, {"volumeUnits", "model_units_cubed"},
+            {"buildOnSceneLoad", true}, {"boundaryEditing", false}}},
         {"annotations", {{"shapes", {"line", "rectangle", "section"}},
             {"createRequiredByShape", {{"line", {"start", "end"}}, {"rectangle", {"start", "end"}}, {"section", {"planeStart", "planeEnd"}}}},
             {"sectionTargets", {"scene", "folder", "file", "group"}}, {"sectionIndexBase", 0}, {"sectionCoordinateSpace", "world"}}},

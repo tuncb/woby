@@ -6,6 +6,7 @@
 #include "mesh_topology.h"
 #include "mesh_intersections.h"
 #include "uv_grid.h"
+#include "difference_mesh.h"
 
 #include <cstddef>
 #include <string>
@@ -82,6 +83,7 @@ enum class UvView { layout, surface };
 
 struct ComparisonSettings
 {
+    DifferenceSettings difference;
     AnalysisType type = AnalysisType::mesh;
     AnalysisTask task = AnalysisTask::automatic;
     UvView uvView = UvView::layout;

@@ -2,6 +2,7 @@
 #include "marker_pick.h"
 #include "comparison_view.h"
 #include "comparison_gpu.h"
+#include "difference_runtime.h"
 #include "analysis_presentation.h"
 #include "comparison_scene.h"
 #include "comparison_legend.h"
@@ -1337,15 +1338,22 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     {
         if (task == AnalysisTask::surfaceComparison) {
             ImGui::SeparatorText("View");
-            const char* modes[] = {"Distance heatmap", "Input A", "Input B", "Overlay"};
-            int mode = settings.mode == ComparisonMode::surfaceQuality ? 0 : static_cast<int>(settings.mode);
+            const char* modes[] = {"Distance heatmap", "Input A", "Input B", "Overlay", "Difference mesh"};
+            int mode = settings.difference.visible ? 4 : settings.mode == ComparisonMode::surfaceQuality ? 0 : static_cast<int>(settings.mode);
             ImGui::SetNextItemWidth(-1);
-            if (ImGui::Combo("##comparison_mode", &mode, modes, 4)) {
+            if (ImGui::Combo("##comparison_mode", &mode, modes, 5)) {
                 settings.task = AnalysisTask::surfaceComparison;
-                settings.mode = static_cast<ComparisonMode>(mode);
+                settings.difference.visible = mode == 4;
+                if (mode != 4) { settings.mode = static_cast<ComparisonMode>(mode); }
+                else { settings.difference.created = true; }
                 resetComparisonDiagnosticFocus(state, id);
             }
             if (!both) { ImGui::TextWrapped("Add a second input for surface comparison. Available input geometry remains visible."); }
+            if (both && !settings.difference.visible && ImGui::Button("Create difference mesh")) { requestDifferenceMesh(state, id); return; }
+            if (settings.difference.visible) {
+                if (settings != initial) { setComparisonSettings(state, settings, id); }
+                drawDifferenceInspector(state, runtime, id); return;
+            }
         }
         if (both && settings.mode == ComparisonMode::distance)
         {
@@ -1559,6 +1567,12 @@ void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const U
     for (const auto& comparison : state.comparisons) {
         if (!comparison.settings.enabled) { continue; }
         const auto it = runtimes.objects.find(comparison.objectId);
+        if (it != runtimes.objects.end() && comparison.settings.difference.visible) {
+            const auto first = parts.size();
+            appendDifferencePickParts(parts, comparison, it->second.difference);
+            for (size_t i = first; i < parts.size(); ++i) { parts[i].selected = sceneObjectSelected(state, comparison.objectId); }
+            continue;
+        }
         if (it != runtimes.objects.end() && comparisonStagesReady(it->second, state, comparison.objectId, comparisonSource, true)) {
             const auto first = parts.size();
             appendComparisonPickParts(parts, comparison, readyComparisonSettings(it->second, state, comparison.objectId),
@@ -1576,6 +1590,9 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
     for (const auto& comparison : state.comparisons) {
         if (!comparison.settings.enabled) { continue; }
         const auto it = runtimes.objects.find(comparison.objectId);
+        if (it != runtimes.objects.end() && comparison.settings.difference.visible) {
+            submitDifferenceMesh(view, comparison, it->second.difference, runtimes.program, markerProgram); continue;
+        }
         if (it != runtimes.objects.end() && comparisonStagesReady(it->second, state, comparison.objectId, comparisonSource, true)) {
             auto settings = readyComparisonSettings(it->second, state, comparison.objectId);
             submitComparisonScene(view, comparison, it->second, runtimes, colorProgram, settings, markerProgram);

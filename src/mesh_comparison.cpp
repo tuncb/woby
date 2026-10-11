@@ -610,6 +610,9 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
 
 ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
 {
+    if (!std::isfinite(settings.difference.opacity)) { settings.difference.opacity = .85f; }
+    settings.difference.opacity = std::clamp(settings.difference.opacity, .05f, 1.0f);
+    if (!settings.difference.created) { settings.difference.visible = false; }
     if (settings.type != AnalysisType::mesh && settings.type != AnalysisType::uv && settings.type != AnalysisType::uvQuality
         && settings.type != AnalysisType::surfaceComparison) { settings.type = AnalysisType::mesh; }
     if (settings.uvView != UvView::layout && settings.uvView != UvView::surface) { settings.uvView = UvView::layout; }

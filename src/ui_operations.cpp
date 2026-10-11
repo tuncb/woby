@@ -872,6 +872,19 @@ void requestComparisonIntersections(UiState& state, SceneObjectId id, bool cance
         }
     }
 }
+void requestDifferenceMesh(UiState& state, SceneObjectId id, bool cancel)
+{
+    auto* item = findComparison(state, id);
+    if (!item || isUvAnalysis(item->settings.type)) { throw std::invalid_argument("Difference mesh requires a mesh comparison."); }
+    if (!cancel && (!enabledComparisonPartCount(state, ComparisonSide::a, id) || !enabledComparisonPartCount(state, ComparisonSide::b, id))) {
+        throw std::invalid_argument("Difference mesh needs populated inputs A and B.");
+    }
+    if (!cancel) {
+        auto settings = item->settings; settings.difference.created = true; settings.difference.visible = true; settings.enabled = true;
+        setComparisonSettings(state, settings, id);
+    }
+    item = findComparison(state, id); ++item->differenceRequest.revision; item->differenceRequest.cancel = cancel;
+}
 
 void requestComparisonDetector(UiState& state, SceneObjectId id, DiagnosticCategory category, bool cancel)
 {

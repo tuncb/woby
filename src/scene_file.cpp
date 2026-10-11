@@ -610,6 +610,12 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         record.settings.quality.minimumSize = parseTomlFloat(value);
     } else if (key == "quality_maximum_size") {
         record.settings.quality.maximumSize = parseTomlFloat(value);
+    } else if (key == "difference_created") { record.settings.difference.created = parseTomlBool(value);
+    } else if (key == "difference_visible") { record.settings.difference.visible = parseTomlBool(value);
+    } else if (key == "difference_show_a") { record.settings.difference.showA = parseTomlBool(value);
+    } else if (key == "difference_show_b") { record.settings.difference.showB = parseTomlBool(value);
+    } else if (key == "difference_show_walls") { record.settings.difference.showWalls = parseTomlBool(value);
+    } else if (key == "difference_opacity") { record.settings.difference.opacity = parseTomlFloat(value);
     } else if (key == "analysis_color_range") {
         record.settings.colorRange = parseTomlFloat(value);
     } else if (key == "analysis_color_minimum") {
@@ -681,6 +687,12 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "diagnostic_category = \"" << category << "\"\n";
     stream << "analysis_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
     stream << "analysis_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
+    stream << "difference_created = " << (comparison.difference.created ? "true" : "false") << "\n";
+    stream << "difference_visible = " << (comparison.difference.visible ? "true" : "false") << "\n";
+    stream << "difference_show_a = " << (comparison.difference.showA ? "true" : "false") << "\n";
+    stream << "difference_show_b = " << (comparison.difference.showB ? "true" : "false") << "\n";
+    stream << "difference_show_walls = " << (comparison.difference.showWalls ? "true" : "false") << "\n";
+    stream << "difference_opacity = "; writeTomlFloat(stream, comparison.difference.opacity); stream << "\n";
     stream << "analysis_color_minimum = "; writeTomlFloat(stream, comparison.colorMinimum); stream << "\n";
     stream << "analysis_color_range_mode = \"" << comparisonColorRangeKeys[static_cast<size_t>(comparison.colorRangeMode)] << "\"\n";
     stream << "analysis_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";

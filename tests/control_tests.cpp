@@ -115,6 +115,10 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
         {"analysis", "uv-triangles", "object", "--offset", "100", "--limit", "20", "--revision", "42"},
         {"analysis", "uv-probe", "object", "--object", "source", "--index", "1", "--barycentric", ".5", ".2", ".3"},
         {"analysis", "uv-probe-get", "object"}, {"analysis", "uv-probe-clear", "object"},
+        {"analysis", "difference-create", "object"}, {"analysis", "difference-get", "object"},
+        {"analysis", "difference-rebuild", "object"}, {"analysis", "difference-cancel", "object"},
+        {"analysis", "difference-delete", "object"}, {"analysis", "difference-export", "object", "--path", path},
+        {"analysis", "difference-set", "object", "--visible", "true", "--show-a-only", "false", "--show-b-only", "true", "--show-walls", "false", "--opacity", ".6"},
     };
     CHECK(commands.size() == woby::controlMethods().size());
     for (auto words : commands) {
