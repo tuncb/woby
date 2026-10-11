@@ -24,9 +24,11 @@
 #include <iostream>
 #include <future>
 #include <random>
+#include <type_traits>
 
 namespace {
 using namespace woby;
+static_assert(std::is_same_v<decltype(*std::declval<AnnotationGeometryOwner&>()), const AnnotationGeometry&>);
 Mesh surface(bool folded = false)
 {
     Mesh mesh;
@@ -113,6 +115,113 @@ struct Fixture {
     { return projectAnnotation(projection(), shape, {-.8f, -.4f}, {.8f, .4f}); }
     SceneObjectId add(AnnotationShape shape = AnnotationShape::line) { return createAnnotation(state, target(), geometry(shape)); }
 };
+TEST_CASE("annotation history and save records share one immutable outline across property edits")
+{
+    Fixture fixture;
+    publishMeshGeometry(fixture.state.files[0].mesh);
+    const std::weak_ptr<const MeshGeometry> meshOwner = fixture.state.files[0].mesh.storage;
+    auto draft = fixture.geometry();
+    draft.segments.resize(20000, draft.segments.front());
+    const auto* segments = draft.segments.data();
+    const auto id = createAnnotation(fixture.state, fixture.target(), std::move(draft));
+    const auto owner = findAnnotation(fixture.state, id)->geometry;
+    CHECK(owner->segments.data() == segments);
+    const auto clean = createSceneDocument(fixture.state);
+    CHECK(clean.annotations[0].geometry.storage == owner.storage);
+    SceneHistory history; resetSceneHistory(history, fixture.state);
+    for (int i = 0; i < 12; ++i) {
+        setMasterVertexPointSize(fixture.state, 5.0f + static_cast<float>(i));
+        REQUIRE(recordSceneHistory(history, fixture.state));
+        updateSceneDirty(fixture.state, clean);
+        CHECK(fixture.state.isDirty);
+    }
+    REQUIRE(history.snapshots.size() == 13);
+    for (const auto& snapshot : history.snapshots) {
+        CHECK(snapshot.content.annotations[0].geometry.storage == owner.storage);
+        CHECK(snapshot.document.annotations[0].geometry.storage == owner.storage);
+        CHECK(snapshot.content.annotations[0].geometry->segments.data() == segments);
+        CHECK_FALSE(snapshot.content.annotations[0].targetValid);
+        CHECK_FALSE(snapshot.content.annotations[0].targetPending);
+        CHECK(snapshot.content.annotations[0].geometryRevision == 0);
+        CHECK(meshGeometry(snapshot.content.files[0].mesh).vertices.empty());
+    }
+    const auto duplicate = duplicateAnnotation(fixture.state, id);
+    CHECK(findAnnotation(fixture.state, duplicate)->geometry.storage == owner.storage);
+    reshapeAnnotation(fixture.state, duplicate,
+        projectAnnotation(fixture.projection(), AnnotationShape::line, {-.7f,-.3f}, {.7f,.3f}));
+    CHECK(findAnnotation(fixture.state, duplicate)->geometry.storage != owner.storage);
+    CHECK(findAnnotation(fixture.state, id)->geometry.storage == owner.storage);
+    CHECK(clean.annotations[0].geometry->segments.data() == segments);
+    deleteAnnotation(fixture.state, id); deleteAnnotation(fixture.state, duplicate);
+    CHECK(history.snapshots[0].content.annotations[0].geometry->segments.size() == 20000);
+    fixture.state.files.clear();
+    CHECK(meshOwner.expired());
+}
+TEST_CASE("equal annotation owners preserve no-op edits and remove a drag that returns to its start")
+{
+    Fixture fixture;
+    const auto id = fixture.add();
+    const auto original = findAnnotation(fixture.state, id)->geometry;
+    const auto separate = shareAnnotationGeometry(*original);
+    REQUIRE(separate.storage != original.storage);
+    CHECK(separate == original);
+    const auto clean = createSceneDocument(fixture.state);
+    SceneHistory history; resetSceneHistory(history, fixture.state);
+    const auto revision = fixture.state.sceneEditRevision;
+    reshapeAnnotation(fixture.state, id, separate);
+    CHECK(fixture.state.sceneEditRevision == revision);
+    CHECK(findAnnotation(fixture.state, id)->geometry.storage == original.storage);
+    notifySceneEdit(fixture.state);
+    REQUIRE(recordSceneHistory(history, fixture.state));
+    CHECK(history.snapshots.size() == 1);
+    updateSceneDirty(fixture.state, clean);
+    CHECK_FALSE(fixture.state.isDirty);
+    reshapeAnnotation(fixture.state, id,
+        projectAnnotation(fixture.projection(), AnnotationShape::line, {-.7f,-.3f}, {.7f,.3f}));
+    REQUIRE(recordSceneHistory(history, fixture.state, 71));
+    reshapeAnnotation(fixture.state, id, separate);
+    REQUIRE(recordSceneHistory(history, fixture.state, 0));
+    CHECK(history.snapshots.size() == 1);
+    CHECK_FALSE(canUndoScene(history));
+    CHECK(findAnnotation(fixture.state, id)->geometry.storage == separate.storage);
+    CHECK(history.snapshots[0].content.annotations[0].geometry.storage == original.storage);
+    updateSceneDirty(fixture.state, clean);
+    CHECK_FALSE(fixture.state.isDirty);
+}
+TEST_CASE("annotation load publishes immutable values and rejects malformed batches atomically")
+{
+    Fixture fixture;
+    const auto id = fixture.add();
+    const auto original = findAnnotation(fixture.state, id)->geometry;
+    auto document = createSceneDocument(fixture.state);
+    std::filesystem::create_directories(fixture.root);
+    const auto firstPath = fixture.root / "first.woby", secondPath = fixture.root / "second.woby";
+    writeSceneDocument(firstPath, document);
+    auto loaded = readSceneDocument(firstPath);
+    REQUIRE(loaded.annotations.size() == 1);
+    CHECK(loaded.annotations[0].geometry.storage != original.storage);
+    CHECK(loaded.annotations[0].geometry == original);
+    for (auto& file : loaded.files) { file.path = sceneAbsolutePath(firstPath, file.path); }
+    writeSceneDocument(secondPath, loaded);
+    std::ifstream first(firstPath), second(secondPath);
+    CHECK(std::string(std::istreambuf_iterator<char>(first), {}) == std::string(std::istreambuf_iterator<char>(second), {}));
+    loadSceneAnnotations(fixture.state, loaded);
+    CHECK(fixture.state.annotations[0].geometry.storage == loaded.annotations[0].geometry.storage);
+    CHECK(fixture.state.annotations[0].targetId == fixture.target());
+    CHECK(fixture.state.annotations[0].targetValid);
+    const auto before = createSceneDocument(fixture.state);
+    const auto owner = fixture.state.annotations[0].geometry.storage;
+    const auto objectId = fixture.state.annotations[0].objectId;
+    loaded.annotations.push_back(loaded.annotations[0]);
+    auto malformed = *loaded.annotations.back().geometry;
+    malformed.segments[0].a = {1,1,1};
+    loaded.annotations.back().geometry = shareAnnotationGeometry(std::move(malformed));
+    CHECK_THROWS(loadSceneAnnotations(fixture.state, loaded));
+    REQUIRE(fixture.state.annotations.size() == 1);
+    CHECK(fixture.state.annotations[0].geometry.storage == owner);
+    CHECK(fixture.state.annotations[0].objectId == objectId);
+    CHECK(sceneContentEqual(before, createSceneDocument(fixture.state)));
+}
 TEST_CASE("annotations retain projection precision with a distant camera and tiny near plane")
 {
     Fixture fixture;
@@ -255,7 +364,7 @@ TEST_CASE("regional annotation projection preserves exact geometry and bounds sc
     for (const auto shape : {AnnotationShape::line, AnnotationShape::rectangle}) {
         const auto expected = projectAnnotation(full, shape, start, end);
         CHECK(projectAnnotation(region, shape, start, end) == expected);
-        UiAnnotation item; item.targetId = 1; item.geometry = expected;
+        UiAnnotation item; item.targetId = 1; item.geometry = shareAnnotationGeometry(expected);
         const std::array<float, 2> moved{.045f, .043f};
         const auto edit = annotationEditProjection(std::array{part}, item, annotationRegion(start, moved));
         CHECK(projectAnnotation(edit, shape, start, moved)
@@ -355,6 +464,8 @@ TEST_CASE("background annotation commands publish once through operations and hi
     SUBCASE("publish then undo redo") {
         CHECK_NOTHROW((void)publishAnnotationCommand(fixture.state, clean, command, format));
         const auto edited = findAnnotation(fixture.state, id)->geometry;
+        const auto editedRevision = findAnnotation(fixture.state, id)->geometryRevision;
+        CHECK(edited.storage == command.result->geometry.storage);
         CHECK(edited != original);
         recordSceneHistory(history, fixture.state);
         CHECK(history.snapshots.size() == 2);
@@ -362,9 +473,23 @@ TEST_CASE("background annotation commands publish once through operations and hi
         auto undo = prepareSceneHistoryStep(history, fixture.state, clean, false);
         REQUIRE(undo); commitSceneHistoryStep(history, fixture.state, std::move(*undo), false);
         CHECK(findAnnotation(fixture.state, id)->geometry == original);
+        CHECK(findAnnotation(fixture.state, id)->geometry.storage == original.storage);
+        const auto undoRevision = findAnnotation(fixture.state, id)->geometryRevision;
+        CHECK(undoRevision > editedRevision);
         auto redo = prepareSceneHistoryStep(history, fixture.state, clean, true);
         REQUIRE(redo); commitSceneHistoryStep(history, fixture.state, std::move(*redo), true);
         CHECK(findAnnotation(fixture.state, id)->geometry == edited);
+        CHECK(findAnnotation(fixture.state, id)->geometry.storage == edited.storage);
+        CHECK(findAnnotation(fixture.state, id)->geometryRevision > undoRevision);
+    }
+    SUBCASE("replaced outline rejects a late result without changing historical owners") {
+        reshapeAnnotation(fixture.state, id,
+            projectAnnotation(fixture.projection(), AnnotationShape::line, {-.6f,-.2f}, {.6f,.2f}));
+        const auto replacement = findAnnotation(fixture.state, id)->geometry;
+        CHECK_THROWS((void)publishAnnotationCommand(fixture.state, clean, command, format));
+        CHECK(findAnnotation(fixture.state, id)->geometry.storage == replacement.storage);
+        CHECK(clean.annotations[0].geometry.storage == original.storage);
+        CHECK(history.snapshots[0].content.annotations[0].geometry.storage == original.storage);
     }
     SUBCASE("deleted annotation cannot be resurrected") {
         deleteAnnotation(fixture.state, id);
@@ -428,7 +553,7 @@ TEST_CASE("background annotation pointer release commits the latest drag and can
     else {
         REQUIRE(interaction.error.empty());
         REQUIRE(fixture.state.annotations.size() == 1);
-        const auto& geometry = fixture.state.annotations.front().geometry;
+        const auto& geometry = *fixture.state.annotations.front().geometry;
         CHECK(geometry == projectAnnotation(fixture.projection(), AnnotationShape::line,
             annotationNdc(view(), {30, 130}), annotationNdc(view(), {160, 60})));
     }
@@ -505,7 +630,7 @@ TEST_CASE("background pointer annotations retain transformed sibling attachments
     REQUIRE_FALSE(interaction.pending);
     REQUIRE(interaction.error.empty());
     CHECK(findAnnotation(fixture.state, id)->geometry != original);
-    CHECK(findAnnotation(fixture.state, id)->geometry.sources == original.sources);
+    CHECK(findAnnotation(fixture.state, id)->geometry->sources == original->sources);
 }
 SceneObjectId drawSiblingAnnotation(Fixture& fixture, AnnotationShape shape = AnnotationShape::line, bool sampledPreview = false)
 {
@@ -647,7 +772,7 @@ TEST_CASE("annotation gestures draw on half-opacity surfaces with any selection 
         REQUIRE(fixture.state.annotations.size() == 1);
         CHECK(fixture.state.annotations.front().targetId == fixture.target());
         const auto& item = fixture.state.annotations.front();
-        CHECK(item.geometry.shape == shape);
+        CHECK(item.geometry->shape == shape);
         const auto vertices = annotationVertices(fixture.state, item);
         REQUIRE(vertices.size() == (shape == AnnotationShape::line ? 2u : 4u));
         nearPoint(vertices.front(), {-.8f,-.4f,.5f});
@@ -714,12 +839,12 @@ TEST_CASE("annotation CLI creates inspects styles moves reshapes and deletes sur
     annotationCommand(fixture, "camera.frame", {{"object", annotationId(id)}});
     const auto original = findAnnotation(fixture.state, id)->geometry;
     annotationCommand(fixture, "annotation.move", {{"delta", {.05,.05}}}, id);
-    CHECK(findAnnotation(fixture.state, id)->geometry.start[0] == doctest::Approx(-.1));
-    CHECK(findAnnotation(fixture.state, id)->geometry.end[0] == doctest::Approx(.2));
-    CHECK(findAnnotation(fixture.state, id)->geometry.projector == original.projector);
+    CHECK(findAnnotation(fixture.state, id)->geometry->start[0] == doctest::Approx(-.1));
+    CHECK(findAnnotation(fixture.state, id)->geometry->end[0] == doctest::Approx(.2));
+    CHECK(findAnnotation(fixture.state, id)->geometry->projector == original->projector);
     annotationCommand(fixture, "annotation.reshape", {{"start", {-.05,-.05}}}, id);
-    CHECK(findAnnotation(fixture.state, id)->geometry.start[0] == doctest::Approx(-.05));
-    CHECK(findAnnotation(fixture.state, id)->geometry.end[0] == doctest::Approx(.2));
+    CHECK(findAnnotation(fixture.state, id)->geometry->start[0] == doctest::Approx(-.05));
+    CHECK(findAnnotation(fixture.state, id)->geometry->end[0] == doctest::Approx(.2));
     annotationCommand(fixture, "annotation.set", {{"comments", ""}}, id);
     CHECK(findAnnotation(fixture.state, id)->settings.note.empty());
     annotationCommand(fixture, "annotation.delete", Json::object(), id);
@@ -1178,10 +1303,10 @@ TEST_CASE("selected annotation edge drag translates a curved outline once with u
     endAnnotationPointer(fixture.state, interaction, true);
     const auto moved = findAnnotation(fixture.state, id)->geometry;
     for (size_t axis = 0; axis < 2; ++axis) {
-        CHECK(moved.start[axis] == doctest::Approx(original.start[axis] + .1f));
-        CHECK(moved.end[axis] == doctest::Approx(original.end[axis] + .1f));
+        CHECK(moved->start[axis] == doctest::Approx(original->start[axis] + .1f));
+        CHECK(moved->end[axis] == doctest::Approx(original->end[axis] + .1f));
     }
-    for (const auto& segment : moved.segments) {
+    for (const auto& segment : moved->segments) {
         for (const auto& bary : {segment.a, segment.b}) {
             const auto p = annotationPosition(fixture.state.files[0].mesh, 0, segment.triangle, bary);
             CHECK(p[2] == doctest::Approx(.2f + .6f * std::abs(p[0])));
@@ -1261,7 +1386,7 @@ TEST_CASE("annotation edge movement uses the original projector after changing t
     moveAnnotationPointer(fixture.state, interaction, screen(.1f,.1f));
     REQUIRE(interaction.error.empty());
     endAnnotationPointer(fixture.state, interaction, true);
-    const auto& geometry = findAnnotation(fixture.state, id)->geometry;
+    const auto& geometry = *findAnnotation(fixture.state, id)->geometry;
     CHECK(geometry.start[0] == doctest::Approx(-.7f));
     CHECK(geometry.start[1] == doctest::Approx(-.3f));
     CHECK(geometry.end[0] == doctest::Approx(.9f));
@@ -1278,8 +1403,8 @@ TEST_CASE("annotation vertex dragging takes priority over moving the whole outli
     moveAnnotationPointer(fixture.state, interaction, {30,130});
     REQUIRE(interaction.error.empty());
     endAnnotationPointer(fixture.state, interaction, true);
-    CHECK(findAnnotation(fixture.state, id)->geometry.end == original.end);
-    CHECK(findAnnotation(fixture.state, id)->geometry.start != original.start);
+    CHECK(findAnnotation(fixture.state, id)->geometry->end == original->end);
+    CHECK(findAnnotation(fixture.state, id)->geometry->start != original->start);
 }
 TEST_CASE("selected annotation edges show move cursor while interior and unselected edges do not")
 {
@@ -1585,7 +1710,7 @@ TEST_CASE("annotation bridges survive editing transforms scene files and history
     const auto parts = scenePickParts(fixture.state);
     const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& part) { return part.objectId == fixture.target(); });
     REQUIRE(target != parts.end());
-    const auto projection = annotationEditProjection(*target, findAnnotation(fixture.state, id)->geometry);
+    const auto projection = annotationEditProjection(*target, *findAnnotation(fixture.state, id)->geometry);
     const auto edited = projectAnnotation(projection, AnnotationShape::rectangle, {-.7f,-.3f}, {.7f,.3f});
     reshapeAnnotation(fixture.state, id, edited);
     REQUIRE(recordSceneHistory(history, fixture.state));
@@ -1622,14 +1747,14 @@ TEST_CASE("annotation bridge endpoint triangle is validated at operation and loa
     Fixture fixture;
     fixture.state.files[0].mesh = holedSurface();
     const auto id = fixture.add();
-    auto malformed = findAnnotation(fixture.state, id)->geometry;
+    auto malformed = *findAnnotation(fixture.state, id)->geometry;
     auto bridge = std::find_if(malformed.segments.begin(), malformed.segments.end(), [](const auto& segment) { return segment.endTriangle.has_value(); });
     REQUIRE(bridge != malformed.segments.end());
     bridge->endTriangle = 10000;
     CHECK_THROWS(createAnnotation(fixture.state, fixture.target(), malformed));
     CHECK_THROWS(reshapeAnnotation(fixture.state, id, malformed));
     auto document = createSceneDocument(fixture.state);
-    document.annotations[0].geometry = malformed;
+    document.annotations[0].geometry = shareAnnotationGeometry(malformed);
     const auto restored = prepareSceneReplacement(fixture.state, fixture.state.files, document);
     REQUIRE(restored.annotations.size() == 1);
     CHECK_FALSE(restored.annotations[0].targetValid);
@@ -1667,7 +1792,7 @@ TEST_CASE("annotation pointer draws across a hole and rejects moving a main vert
     REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {20,140}));
     moveAnnotationPointer(fixture.state, interaction, {180,60});
     REQUIRE(interaction.error.empty());
-    CHECK(std::any_of(interaction.preview.geometry.segments.begin(), interaction.preview.geometry.segments.end(),
+    CHECK(std::any_of(interaction.preview.geometry->segments.begin(), interaction.preview.geometry->segments.end(),
         [](const auto& segment) { return segment.endTriangle.has_value(); }));
     endAnnotationPointer(fixture.state, interaction, true);
     REQUIRE(fixture.state.annotations.size() == 1);
@@ -1787,7 +1912,7 @@ TEST_CASE("annotation handles reshape with the frozen projector and respect lock
     REQUIRE(interaction.error.empty());
     endAnnotationPointer(fixture.state, interaction, true);
     REQUIRE(findAnnotation(fixture.state, id));
-    CHECK(findAnnotation(fixture.state, id)->geometry.start[0] == doctest::Approx(-.65f));
+    CHECK(findAnnotation(fixture.state, id)->geometry->start[0] == doctest::Approx(-.65f));
     auto style = findAnnotation(fixture.state, id)->settings; style.locked = true;
     setAnnotationSettings(fixture.state, id, style);
     CHECK_FALSE(beginAnnotationPointer(fixture.state, interaction, view(), {35,130}));
@@ -1888,7 +2013,7 @@ TEST_CASE("old scenes load without annotations and malformed annotation data is 
     { std::ofstream out(path); out << "version = 8\n[[annotations]]\nshape = \"circle\"\n"; }
     CHECK_THROWS((void)readSceneDocument(path));
     auto document = createSceneDocument(fixture.state);
-    SceneAnnotationRecord record; record.geometry = fixture.geometry(); record.fileIndex = 99; record.groupIndex = 0;
+    SceneAnnotationRecord record; record.geometry = shareAnnotationGeometry(fixture.geometry()); record.fileIndex = 99; record.groupIndex = 0;
     document.annotations.push_back(record);
     writeSceneDocument(path, document);
     CHECK_THROWS((void)readSceneDocument(path));
@@ -2273,7 +2398,7 @@ TEST_CASE("dense annotation gestures resolve the sampled guide before committing
     REQUIRE(interaction.sampledPreview);
     moveAnnotationPointer(fixture.state, interaction, {177,49});
     REQUIRE(interaction.error.empty());
-    REQUIRE(interaction.preview.geometry.segments.size() <= 128);
+    REQUIRE(interaction.preview.geometry->segments.size() <= 128);
     const auto expected = projectAnnotation(interaction.projection, AnnotationShape::rectangle, interaction.start, interaction.end);
     REQUIRE(expected.segments.size() > 128);
     SUBCASE("cancel leaves no annotation") {
@@ -2426,14 +2551,14 @@ TEST_CASE("annotations cross touching transformed siblings without matching seam
         const auto id = drawSiblingAnnotation(fixture, shape);
         const auto& item = *findAnnotation(fixture.state, id);
         REQUIRE(item.targetIds.size() == 2);
-        REQUIRE(item.geometry.sources.size() == 2);
+        REQUIRE(item.geometry->sources.size() == 2);
         CHECK(item.targetValid);
         const auto lines = annotationWorldLines(item, scenePickParts(fixture.state));
-        REQUIRE(lines.size() == item.geometry.segments.size());
+        REQUIRE(lines.size() == item.geometry->segments.size());
         bool left = false, right = false;
         for (size_t i = 0; i < lines.size(); ++i) {
-            left |= item.geometry.segments[i].source == 0;
-            right |= item.geometry.segments[i].source == 1;
+            left |= item.geometry->segments[i].source == 0;
+            right |= item.geometry->segments[i].source == 1;
             if (i) { nearPoint(lines[i-1].b, lines[i].a); }
             CHECK(lines[i].a[2] == doctest::Approx(.5));
             CHECK(lines[i].b[2] == doctest::Approx(.5));
@@ -2454,14 +2579,14 @@ TEST_CASE("sibling bridges retain separate endpoint attachments after transforms
     const auto id = drawSiblingAnnotation(fixture);
     const auto item = *findAnnotation(fixture.state, id);
     const auto before = annotationWorldLines(item, scenePickParts(fixture.state));
-    REQUIRE(std::any_of(item.geometry.segments.begin(), item.geometry.segments.end(), [](const auto& s) {
+    REQUIRE(std::any_of(item.geometry->segments.begin(), item.geometry->segments.end(), [](const auto& s) {
         return s.endTriangle && s.endSource && *s.endSource != s.source;
     }));
     fixture.state.files[0].groupSettings[1].translation[2] += 2;
     const auto after = annotationWorldLines(item, scenePickParts(fixture.state));
     REQUIRE(after.size() == before.size());
     for (size_t i = 0; i < before.size(); ++i) {
-        const auto& segment = item.geometry.segments[i];
+        const auto& segment = item.geometry->segments[i];
         nearPoint(after[i].a, {before[i].a[0], before[i].a[1], before[i].a[2] + (segment.source == 1 ? 2.0f : 0.0f)});
         nearPoint(after[i].b, {before[i].b[0], before[i].b[1], before[i].b[2] + (segment.endSource.value_or(segment.source) == 1 ? 2.0f : 0.0f)});
     }
@@ -2492,7 +2617,7 @@ TEST_CASE("multi source annotation editing save load and undo preserve attachmen
     SUBCASE("depth transition") { siblingSurface(fixture, 0, .2f); }
     SUBCASE("depth transition with sampled preview") { siblingSurface(fixture, 0, .2f); sampledPreview = true; }
     const auto id = drawSiblingAnnotation(fixture, AnnotationShape::rectangle, sampledPreview);
-    CHECK(std::count_if(fixture.state.annotations[0].geometry.segments.begin(), fixture.state.annotations[0].geometry.segments.end(),
+    CHECK(std::count_if(fixture.state.annotations[0].geometry->segments.begin(), fixture.state.annotations[0].geometry->segments.end(),
         [](const auto& s) { return s.endTriangle.has_value(); }) == 2);
     const auto clean = createSceneDocument(fixture.state);
     SceneHistory history; resetSceneHistory(history, fixture.state);
@@ -2534,7 +2659,7 @@ TEST_CASE("multi source annotation rejects malformed references atomically")
     Fixture fixture; siblingSurface(fixture);
     const auto id = drawSiblingAnnotation(fixture);
     const auto original = *findAnnotation(fixture.state, id);
-    auto geometry = original.geometry;
+    auto geometry = *original.geometry;
     SUBCASE("invalid start source") { geometry.segments.front().source = 99; }
     SUBCASE("invalid end source") { geometry.segments.front().endTriangle = 0; geometry.segments.front().endSource = 99; }
     SUBCASE("invalid secondary triangle") { geometry.segments.back().triangle = 99; }
@@ -2616,11 +2741,11 @@ TEST_CASE("sampled annotation previews keep sibling bridge source identities")
         annotationGroupTargets(fixture.state, fixture.target()));
     UiAnnotation preview;
     preview.targetId = fixture.target(); preview.targetIds = projection.targetIds; preview.targetValid = true;
-    preview.geometry = previewAnnotation(projection, AnnotationShape::line, {-.8f,-.4f}, {.8f,.4f});
+    preview.geometry = shareAnnotationGeometry(previewAnnotation(projection, AnnotationShape::line, {-.8f,-.4f}, {.8f,.4f}));
     const auto lines = annotationWorldLines(preview, scenePickParts(fixture.state));
     REQUIRE_FALSE(lines.empty());
     nearPoint(lines.front().a, {-.8f,-.4f,.5f}); nearPoint(lines.back().b, {.8f,.4f,.5f});
-    CHECK(std::any_of(preview.geometry.segments.begin(), preview.geometry.segments.end(), [](const auto& segment) {
+    CHECK(std::any_of(preview.geometry->segments.begin(), preview.geometry->segments.end(), [](const auto& segment) {
         return segment.endSource && segment.source != *segment.endSource;
     }));
 }
@@ -2660,7 +2785,7 @@ TEST_CASE("annotation CLI creates and reshapes across sibling surfaces")
     CHECK(created["object"]["sourceIds"].size() == 2);
     const auto moved = annotationCommand(fixture, "annotation.move", {{"delta", {0,.05}}}, id);
     CHECK(moved["object"]["targetValid"] == true);
-    CHECK(fixture.state.annotations[0].geometry.start[1] == doctest::Approx(-.05));
+    CHECK(fixture.state.annotations[0].geometry->start[1] == doctest::Approx(-.05));
 }
 
 TEST_CASE("annotation render scratch reuses lines and clears hidden or missing sources")
@@ -2691,7 +2816,7 @@ TEST_CASE("annotation render scratch reuses lines and clears hidden or missing s
     prepare();
     REQUIRE(lines.size() == original.size());
     for (size_t i = 0; i < lines.size(); ++i) {
-        const auto& segment = item.geometry.segments[i];
+        const auto& segment = item.geometry->segments[i];
         nearPoint(lines[i].a, {original[i].a[0], original[i].a[1], original[i].a[2] + (segment.source == 1 ? 2.0f : 0.0f)});
         nearPoint(lines[i].b, {original[i].b[0], original[i].b[1], original[i].b[2] + (segment.endSource.value_or(segment.source) == 1 ? 2.0f : 0.0f)});
     }

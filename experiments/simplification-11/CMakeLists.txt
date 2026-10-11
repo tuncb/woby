@@ -1,4 +1,7 @@
 add_executable(woby_simplification_11_probe main.cpp)
+add_executable(woby_annotation_history_benchmark production.cpp)
+target_link_libraries(woby_annotation_history_benchmark PRIVATE woby_core nlohmann_json::nlohmann_json)
+woby_enable_project_warnings(woby_annotation_history_benchmark)
 target_link_libraries(woby_simplification_11_probe PRIVATE woby_core nlohmann_json::nlohmann_json)
 woby_enable_project_warnings(woby_simplification_11_probe)
 if(MSVC)

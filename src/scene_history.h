@@ -7,7 +7,8 @@
 namespace woby {
 
 // Logical scene metadata only: paths, importer IDs, settings and object IDs.
-// No vertex/index buffers, GPU handles, source-file IO, or UI/timing objects.
+// Annotation outlines are shared immutable values. No mesh vertex/index
+// buffers, GPU handles, source-file IO, or UI/timing objects.
 struct SceneSnapshot {
     UiState content; // File meshes are empty; geometry belongs only to the live scene.
     SceneDocument document;

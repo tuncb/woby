@@ -179,7 +179,7 @@ void drawAnnotationInspector(UiState& state)
     const auto id = item->objectId;
     ImGui::PushID(std::to_string(id).c_str());
     auto settings = item->settings;
-    ImGui::TextUnformatted(item->geometry.shape == AnnotationShape::line ? "Surface line" : "Surface rectangle");
+    ImGui::TextUnformatted(item->geometry->shape == AnnotationShape::line ? "Surface line" : "Surface rectangle");
     ImGui::TextWrapped("Target: %s", item->targetName.c_str());
     if (item->targetPending) { ImGui::TextWrapped("Preparing annotation data..."); }
     else if (!item->targetValid || !findSceneObject(state, item->targetId)) {
@@ -209,7 +209,7 @@ void drawAnnotationInspector(UiState& state)
         ImGui::TableHeadersRow();
         for (size_t i = 0; i < vertices.size(); ++i) {
             ImGui::TableNextRow(); ImGui::TableNextColumn();
-            if (item->geometry.shape == AnnotationShape::line) { ImGui::TextUnformatted(i == 0 ? "Start" : "End"); }
+            if (item->geometry->shape == AnnotationShape::line) { ImGui::TextUnformatted(i == 0 ? "Start" : "End"); }
             else { ImGui::Text("Corner %d", static_cast<int>(i + 1)); }
             for (const auto value : vertices[i]) { ImGui::TableNextColumn(); ImGui::Text("%.12g", value); }
         }
@@ -264,13 +264,13 @@ bool beginPointerProjection(const UiState& state, AnnotationInteraction& interac
                 annotationRegion(annotationNdc(view, point), annotationNdc(view, point)), stop);
             const auto hit = annotationSurfaceHit(interaction.currentProjection, annotationNdc(view, point));
             if (!hit || !annotationHasTarget(*selected, hit->objectId)) { return false; }
-            interaction.projection = annotationEditProjection(parts, *selected, annotationRegion(selected->geometry.start, selected->geometry.end), stop);
+            interaction.projection = annotationEditProjection(parts, *selected, annotationRegion(selected->geometry->start, selected->geometry->end), stop);
             interaction.preview = *selected; interaction.editing = selected->objectId;
-            interaction.start = selected->geometry.start; interaction.end = selected->geometry.end;
+            interaction.start = selected->geometry->start; interaction.end = selected->geometry->end;
             const auto source = annotationSourceIndex(interaction.projection, hit->objectId);
             const auto* target = annotationSourcePart(*selected, parts, source);
             const auto local = annotationPosition(*target->mesh, target->indexOffset, hit->triangle, hit->bary);
-            const auto clip = annotationTransform(annotationSourceProjector(selected->geometry, source), {local[0], local[1], local[2], 1});
+            const auto clip = annotationTransform(annotationSourceProjector(*selected->geometry, source), {local[0], local[1], local[2], 1});
             if (clip[3] <= 0) { return false; }
             interaction.grabControl = {static_cast<float>(clip[0] / clip[3]), static_cast<float>(clip[1] / clip[3])};
         } else {
@@ -288,11 +288,12 @@ bool beginPointerProjection(const UiState& state, AnnotationInteraction& interac
             interaction.preview = {};
             interaction.preview.targetId = target; interaction.preview.targetValid = true;
             interaction.preview.targetIds = interaction.projection.targetIds;
-            interaction.preview.geometry = interaction.projection.definition;
-            interaction.preview.geometry.shape = *interaction.tool;
+            auto definition = interaction.projection.definition;
+            definition.shape = *interaction.tool;
+            interaction.preview.geometry = shareAnnotationGeometry(std::move(definition));
             interaction.start = interaction.end = annotationNdc(view, point);
         }
-        interaction.preview.geometry.segments.clear();
+        interaction.preview.geometry = shareAnnotationGeometry(annotationGeometryDefinition(*interaction.preview.geometry));
         interaction.sampledPreview = interaction.projection.triangles.size() > 50000
             || std::any_of(parts.begin(), parts.end(), [](const auto& part) { return part.indexCount >= 50000 * 3; });
         interaction.dragging = true;
@@ -303,7 +304,7 @@ void movePointerProjection(const UiState& state, AnnotationInteraction& interact
 {
     if (!interaction.dragging) { return; }
     interaction.pointerEnd = point;
-    interaction.preview.geometry.segments.clear();
+    interaction.preview.geometry = shareAnnotationGeometry(annotationGeometryDefinition(*interaction.preview.geometry));
     try {
         if (!annotationWorkCurrent(interaction.identity, state, true)) { throw std::runtime_error("Scene changed while drawing. Start again."); }
         auto control = annotationNdc(interaction.view, point);
@@ -326,7 +327,7 @@ void movePointerProjection(const UiState& state, AnnotationInteraction& interact
                     interaction.start[axis] = interaction.projection.definition.start[axis] + delta;
                     interaction.end[axis] = interaction.projection.definition.end[axis] + delta;
                 }
-            } else if (interaction.preview.geometry.shape == AnnotationShape::line) {
+            } else if (interaction.preview.geometry->shape == AnnotationShape::line) {
                 (interaction.handle == 0 ? interaction.start : interaction.end) = control;
             } else {
                 (interaction.handle == 0 || interaction.handle == 3 ? interaction.start[0] : interaction.end[0]) = control[0];
@@ -338,9 +339,9 @@ void movePointerProjection(const UiState& state, AnnotationInteraction& interact
         expandAnnotationGestureProjection(interaction.projection, parts, interaction.view,
             interaction.start, interaction.end);
         interaction.sampledPreview = interaction.sampledPreview || interaction.projection.triangles.size() > 50000;
-        interaction.preview.geometry = interaction.sampledPreview
-            ? previewAnnotation(interaction.projection, interaction.preview.geometry.shape, interaction.start, interaction.end)
-            : projectAnnotation(interaction.projection, interaction.preview.geometry.shape, interaction.start, interaction.end);
+        interaction.preview.geometry = shareAnnotationGeometry(interaction.sampledPreview
+            ? previewAnnotation(interaction.projection, interaction.preview.geometry->shape, interaction.start, interaction.end)
+            : projectAnnotation(interaction.projection, interaction.preview.geometry->shape, interaction.start, interaction.end));
         interaction.error.clear();
     } catch (const std::exception& error) { interaction.error = error.what(); }
 }
@@ -390,9 +391,9 @@ void queuePointerProjection(AnnotationInteraction& interaction)
             input->origin, input->sources.parts, stop, &input->targets);
         if (calculated.dragging && end != input->origin) {
             movePointerProjection(input->metadata, calculated, end, input->sources.parts);
-            if (released && calculated.error.empty() && !calculated.preview.geometry.segments.empty()) {
-                calculated.preview.geometry = projectAnnotation(calculated.projection,
-                    calculated.preview.geometry.shape, calculated.start, calculated.end);
+            if (released && calculated.error.empty() && !calculated.preview.geometry->segments.empty()) {
+                calculated.preview.geometry = shareAnnotationGeometry(projectAnnotation(calculated.projection,
+                    calculated.preview.geometry->shape, calculated.start, calculated.end));
             }
         }
         result->preview = std::move(calculated.preview); result->error = std::move(calculated.error);
@@ -485,7 +486,7 @@ void updateAnnotationPointer(UiState& state, AnnotationInteraction& interaction,
     interaction.sampledPreview = result.sampled;
     interaction.error = pending.work->error.empty() ? result.error : pending.work->error;
     if (!pending.released) { return; }
-    if (interaction.error.empty() && !result.preview.geometry.segments.empty()
+    if (interaction.error.empty() && !result.preview.geometry->segments.empty()
         && std::hypot(interaction.pointerEnd[0] - interaction.pointerStart[0],
             interaction.pointerEnd[1] - interaction.pointerStart[1]) >= 4 * interaction.view.pixelScale) {
         try {
@@ -511,12 +512,12 @@ void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bo
     if (!allowed || !annotationWorkCurrent(interaction.identity, state, true)) {
         interaction.error = "Drawing canceled because the viewport or scene changed."; return;
     }
-    if (!interaction.error.empty() || interaction.preview.geometry.segments.empty()) { return; }
+    if (!interaction.error.empty() || interaction.preview.geometry->segments.empty()) { return; }
     if (std::hypot(interaction.pointerEnd[0] - interaction.pointerStart[0], interaction.pointerEnd[1] - interaction.pointerStart[1]) < 4 * interaction.view.pixelScale) { return; }
     try {
         if (interaction.sampledPreview) {
-            interaction.preview.geometry = projectAnnotation(interaction.projection,
-                interaction.preview.geometry.shape, interaction.start, interaction.end);
+            interaction.preview.geometry = shareAnnotationGeometry(projectAnnotation(interaction.projection,
+                interaction.preview.geometry->shape, interaction.start, interaction.end));
         }
         if (interaction.editing) {
             const auto* selected = selectedAnnotation(state);
@@ -537,7 +538,7 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
     const auto screenPoint = [&](PickPoint p) { return ImVec2{windowX + p[0] * pixelsToWindow, windowY + p[1] * pixelsToWindow}; };
     if (interaction.dragging && !interaction.error.empty()) {
         const auto a = screenPoint(interaction.pointerStart), b = screenPoint(interaction.pointerEnd);
-        if (interaction.preview.geometry.shape == AnnotationShape::rectangle) { draw->AddRect(ImVec2{std::min(a.x,b.x),std::min(a.y,b.y)}, ImVec2{std::max(a.x,b.x),std::max(a.y,b.y)}, IM_COL32(255,90,90,255)); }
+        if (interaction.preview.geometry->shape == AnnotationShape::rectangle) { draw->AddRect(ImVec2{std::min(a.x,b.x),std::min(a.y,b.y)}, ImVec2{std::max(a.x,b.x),std::max(a.y,b.y)}, IM_COL32(255,90,90,255)); }
         else { draw->AddLine(a, b, IM_COL32(255,90,90,255), 2); }
     }
     if (!interaction.dragging) {
@@ -647,7 +648,7 @@ void submitSceneAnnotations(woby::graphics::ViewId viewId, const UiState& state,
 {
     for (const auto& item : state.annotations) {
         if (interaction && interaction->dragging && interaction->editing == item.objectId && interaction->error.empty()
-            && !interaction->preview.geometry.segments.empty()) { continue; }
+            && !interaction->preview.geometry->segments.empty()) { continue; }
         const auto& query = scratch.queries.annotations.objects.at(item.objectId);
         submitLines(viewId, item.settings, query.projected, layout, program);
     }

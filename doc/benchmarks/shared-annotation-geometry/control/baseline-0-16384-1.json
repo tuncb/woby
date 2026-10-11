@@ -1,0 +1,207 @@
+{
+  "actions": 12,
+  "discrete": [
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 179.7698,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 243.709,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 188.9356,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 194.6194,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 141.4498,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 132.0091,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 129.98,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 130.7562,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 192.9459,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    }
+  ],
+  "drag": [
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 232.1081,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 275.5184,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 185.3788,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 153.5749,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 145.4121,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 147.497,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 138.2178,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 140.7166,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 185.2675,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    }
+  ],
+  "groups": 16384,
+  "segments": 0
+}

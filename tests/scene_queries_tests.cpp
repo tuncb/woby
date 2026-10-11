@@ -607,7 +607,9 @@ TEST_CASE("scene query cache benchmark" * doctest::skip()) {
     QueryFixture f(1);
     const auto id = f.annotation();
     auto& item = f.state.annotations[0];
-    item.geometry.segments.resize(20000, item.geometry.segments.front());
+    auto geometry = *item.geometry;
+    geometry.segments.resize(20000, geometry.segments.front());
+    item.geometry = shareAnnotationGeometry(std::move(geometry));
     ++item.geometryRevision; notifySceneEdit(f.state, SceneChange::annotations);
     updateSceneAnnotationQueries(f.queries, f.state);
     const auto parts = scenePickParts(f.state);

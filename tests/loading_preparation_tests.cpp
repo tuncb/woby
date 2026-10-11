@@ -177,7 +177,9 @@ TEST_CASE("saved annotation target validation waits for background fingerprints"
     auto state = preparationScene();
     woby::UiAnnotation item;
     item.targetId = state.files[0].groupSettings[0].objectId;
-    item.geometry.fingerprint = woby::annotationFingerprint(state.files[0].mesh, 0, meshGeometry(state.files[0].mesh).indices.size());
+    woby::AnnotationGeometry geometry;
+    geometry.fingerprint = woby::annotationFingerprint(state.files[0].mesh, 0, meshGeometry(state.files[0].mesh).indices.size());
+    item.geometry = woby::shareAnnotationGeometry(std::move(geometry));
     state.annotations.push_back(item);
     woby::validateAnnotationTargets(state);
     CHECK(state.annotations[0].targetPending); CHECK_FALSE(state.annotations[0].targetValid);
@@ -195,7 +197,9 @@ TEST_CASE("saved annotation target validation waits for background fingerprints"
     runtime.job->worker.join();
     woby::updateAnnotationPreparation(runtime, state);
     CHECK_FALSE(state.annotations[0].targetPending); CHECK(state.annotations[0].targetValid);
-    state.annotations[0].geometry.fingerprint = "changed";
+    geometry = *state.annotations[0].geometry;
+    geometry.fingerprint = "changed";
+    state.annotations[0].geometry = woby::shareAnnotationGeometry(std::move(geometry));
     woby::validateAnnotationTargets(state);
     CHECK_FALSE(state.annotations[0].targetValid);
 }

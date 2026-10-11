@@ -1,5 +1,7 @@
 # Item 11: scene content and history
 
+The [shared geometry implementation](shared-annotation-geometry-implementation.md) completes the first production step, with owner, persistence, history, reload and worker checks. Its production-path measurements are separate from the prototype results below.
+
 This investigation uses production commit `46a27585c5bc8638a8bde5d601e5cead71376631`. It adds isolated probes. It does not change scene state, persistence, or undo behavior in the application.
 
 ## Decision scope

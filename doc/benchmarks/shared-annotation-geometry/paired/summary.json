@@ -1,0 +1,902 @@
+[
+  {
+    "segments": 147,
+    "groups": 1,
+    "mode": "discrete",
+    "baseline": {
+      "allocation_calls": {
+        "median": 457,
+        "min": 457,
+        "max": 457
+      },
+      "allocation_traffic_bytes": {
+        "median": 330716,
+        "min": 329756,
+        "max": 330716
+      },
+      "extra_peak_bytes": {
+        "median": 226359,
+        "min": 225959,
+        "max": 226359
+      },
+      "extra_retained_bytes": {
+        "median": 218056,
+        "min": 217672,
+        "max": 218056
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 28,
+        "min": 28,
+        "max": 28
+      },
+      "ms": {
+        "median": 0.3312,
+        "min": 0.3102,
+        "max": 0.4262
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 197568,
+        "min": 197568,
+        "max": 197568
+      },
+      "snapshots": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      }
+    },
+    "candidate": {
+      "allocation_calls": {
+        "median": 385,
+        "min": 385,
+        "max": 385
+      },
+      "allocation_traffic_bytes": {
+        "median": 66080,
+        "min": 65120,
+        "max": 66080
+      },
+      "extra_peak_bytes": {
+        "median": 42584,
+        "min": 42184,
+        "max": 42584
+      },
+      "extra_retained_bytes": {
+        "median": 41632,
+        "min": 41248,
+        "max": 41632
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "ms": {
+        "median": 0.0785,
+        "min": 0.065,
+        "max": 0.0842
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 7056,
+        "min": 7056,
+        "max": 7056
+      },
+      "snapshots": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      }
+    },
+    "time_change_percent": -76.29830917874396
+  },
+  {
+    "segments": 147,
+    "groups": 1,
+    "mode": "drag",
+    "baseline": {
+      "allocation_calls": {
+        "median": 445,
+        "min": 445,
+        "max": 445
+      },
+      "allocation_traffic_bytes": {
+        "median": 316772,
+        "min": 315812,
+        "max": 316772
+      },
+      "extra_peak_bytes": {
+        "median": 35076,
+        "min": 35012,
+        "max": 35076
+      },
+      "extra_retained_bytes": {
+        "median": 18166,
+        "min": 18134,
+        "max": 18166
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 6,
+        "min": 6,
+        "max": 6
+      },
+      "ms": {
+        "median": 0.1317,
+        "min": 0.1208,
+        "max": 0.2068
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 42336,
+        "min": 42336,
+        "max": 42336
+      },
+      "snapshots": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "candidate": {
+      "allocation_calls": {
+        "median": 373,
+        "min": 373,
+        "max": 373
+      },
+      "allocation_traffic_bytes": {
+        "median": 52136,
+        "min": 51176,
+        "max": 52136
+      },
+      "extra_peak_bytes": {
+        "median": 5672,
+        "min": 5608,
+        "max": 5672
+      },
+      "extra_retained_bytes": {
+        "median": 3464,
+        "min": 3432,
+        "max": 3464
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "ms": {
+        "median": 0.0628,
+        "min": 0.061,
+        "max": 0.0694
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 7056,
+        "min": 7056,
+        "max": 7056
+      },
+      "snapshots": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "time_change_percent": -52.31586940015187
+  },
+  {
+    "segments": 20000,
+    "groups": 1,
+    "mode": "discrete",
+    "baseline": {
+      "allocation_calls": {
+        "median": 457,
+        "min": 457,
+        "max": 457
+      },
+      "allocation_traffic_bytes": {
+        "median": 34636700,
+        "min": 34636700,
+        "max": 34636700
+      },
+      "extra_peak_bytes": {
+        "median": 24049959,
+        "min": 24049959,
+        "max": 24049959
+      },
+      "extra_retained_bytes": {
+        "median": 23088712,
+        "min": 23088712,
+        "max": 23088712
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 28,
+        "min": 28,
+        "max": 28
+      },
+      "ms": {
+        "median": 13.419,
+        "min": 12.716,
+        "max": 15.9898
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 26880000,
+        "min": 26880000,
+        "max": 26880000
+      },
+      "snapshots": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      }
+    },
+    "candidate": {
+      "allocation_calls": {
+        "median": 385,
+        "min": 385,
+        "max": 385
+      },
+      "allocation_traffic_bytes": {
+        "median": 66080,
+        "min": 65120,
+        "max": 66080
+      },
+      "extra_peak_bytes": {
+        "median": 42584,
+        "min": 42184,
+        "max": 42584
+      },
+      "extra_retained_bytes": {
+        "median": 41632,
+        "min": 41248,
+        "max": 41632
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "ms": {
+        "median": 0.0836,
+        "min": 0.0711,
+        "max": 0.1625
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 960000,
+        "min": 960000,
+        "max": 960000
+      },
+      "snapshots": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      }
+    },
+    "time_change_percent": -99.37700275728444
+  },
+  {
+    "segments": 20000,
+    "groups": 1,
+    "mode": "drag",
+    "baseline": {
+      "allocation_calls": {
+        "median": 445,
+        "min": 445,
+        "max": 445
+      },
+      "allocation_traffic_bytes": {
+        "median": 34622756,
+        "min": 34622756,
+        "max": 34622756
+      },
+      "extra_peak_bytes": {
+        "median": 3846852,
+        "min": 3846852,
+        "max": 3846852
+      },
+      "extra_retained_bytes": {
+        "median": 1924054,
+        "min": 1924054,
+        "max": 1924054
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 6,
+        "min": 6,
+        "max": 6
+      },
+      "ms": {
+        "median": 17.1014,
+        "min": 16.5246,
+        "max": 19.9683
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 5760000,
+        "min": 5760000,
+        "max": 5760000
+      },
+      "snapshots": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "candidate": {
+      "allocation_calls": {
+        "median": 373,
+        "min": 373,
+        "max": 373
+      },
+      "allocation_traffic_bytes": {
+        "median": 52136,
+        "min": 51176,
+        "max": 52136
+      },
+      "extra_peak_bytes": {
+        "median": 5672,
+        "min": 5608,
+        "max": 5672
+      },
+      "extra_retained_bytes": {
+        "median": 3464,
+        "min": 3432,
+        "max": 3464
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "ms": {
+        "median": 0.0726,
+        "min": 0.0629,
+        "max": 0.1381
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 960000,
+        "min": 960000,
+        "max": 960000
+      },
+      "snapshots": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "time_change_percent": -99.57547335305883
+  },
+  {
+    "segments": 1000000,
+    "groups": 1,
+    "mode": "discrete",
+    "baseline": {
+      "allocation_calls": {
+        "median": 457,
+        "min": 457,
+        "max": 457
+      },
+      "allocation_traffic_bytes": {
+        "median": 1728075740,
+        "min": 1728075740,
+        "max": 1728076700
+      },
+      "extra_peak_bytes": {
+        "median": 1200049559,
+        "min": 1200049559,
+        "max": 1200049959
+      },
+      "extra_retained_bytes": {
+        "median": 1152048328,
+        "min": 1152048328,
+        "max": 1152048712
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 28,
+        "min": 28,
+        "max": 28
+      },
+      "ms": {
+        "median": 706.4522,
+        "min": 638.1558,
+        "max": 761.9058
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 1344000000,
+        "min": 1344000000,
+        "max": 1344000000
+      },
+      "snapshots": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      }
+    },
+    "candidate": {
+      "allocation_calls": {
+        "median": 385,
+        "min": 385,
+        "max": 385
+      },
+      "allocation_traffic_bytes": {
+        "median": 66080,
+        "min": 65120,
+        "max": 66080
+      },
+      "extra_peak_bytes": {
+        "median": 42584,
+        "min": 42184,
+        "max": 42584
+      },
+      "extra_retained_bytes": {
+        "median": 41632,
+        "min": 41248,
+        "max": 41632
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "ms": {
+        "median": 0.0963,
+        "min": 0.0883,
+        "max": 0.1451
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 48000000,
+        "min": 48000000,
+        "max": 48000000
+      },
+      "snapshots": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      }
+    },
+    "time_change_percent": -99.98636850447915
+  },
+  {
+    "segments": 1000000,
+    "groups": 1,
+    "mode": "drag",
+    "baseline": {
+      "allocation_calls": {
+        "median": 445,
+        "min": 445,
+        "max": 445
+      },
+      "allocation_traffic_bytes": {
+        "median": 1728061796,
+        "min": 1728061796,
+        "max": 1728062756
+      },
+      "extra_peak_bytes": {
+        "median": 192006788,
+        "min": 192006788,
+        "max": 192006852
+      },
+      "extra_retained_bytes": {
+        "median": 96004022,
+        "min": 96004022,
+        "max": 96004054
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 6,
+        "min": 6,
+        "max": 6
+      },
+      "ms": {
+        "median": 791.3877,
+        "min": 735.4089,
+        "max": 1124.3455
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 288000000,
+        "min": 288000000,
+        "max": 288000000
+      },
+      "snapshots": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "candidate": {
+      "allocation_calls": {
+        "median": 373,
+        "min": 373,
+        "max": 373
+      },
+      "allocation_traffic_bytes": {
+        "median": 52136,
+        "min": 51176,
+        "max": 52136
+      },
+      "extra_peak_bytes": {
+        "median": 5672,
+        "min": 5608,
+        "max": 5672
+      },
+      "extra_retained_bytes": {
+        "median": 3464,
+        "min": 3432,
+        "max": 3464
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "ms": {
+        "median": 0.0801,
+        "min": 0.0787,
+        "max": 0.1604
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 48000000,
+        "min": 48000000,
+        "max": 48000000
+      },
+      "snapshots": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "time_change_percent": -99.98987853867327
+  },
+  {
+    "segments": 0,
+    "groups": 256,
+    "mode": "discrete",
+    "baseline": {
+      "allocation_calls": {
+        "median": 901,
+        "min": 901,
+        "max": 901
+      },
+      "allocation_traffic_bytes": {
+        "median": 4997180,
+        "min": 4996220,
+        "max": 4997180
+      },
+      "extra_peak_bytes": {
+        "median": 1923893,
+        "min": 1923493,
+        "max": 1923893
+      },
+      "extra_retained_bytes": {
+        "median": 1844272,
+        "min": 1843888,
+        "max": 1844272
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "ms": {
+        "median": 3.4576,
+        "min": 2.6197,
+        "max": 4.2758
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "snapshots": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      }
+    },
+    "candidate": {
+      "allocation_calls": {
+        "median": 901,
+        "min": 901,
+        "max": 901
+      },
+      "allocation_traffic_bytes": {
+        "median": 4997180,
+        "min": 4996220,
+        "max": 4997180
+      },
+      "extra_peak_bytes": {
+        "median": 1923893,
+        "min": 1923493,
+        "max": 1923893
+      },
+      "extra_retained_bytes": {
+        "median": 1844272,
+        "min": 1843888,
+        "max": 1844272
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "ms": {
+        "median": 3.0148,
+        "min": 2.7288,
+        "max": 4.0892
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "snapshots": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      }
+    },
+    "time_change_percent": -12.806571031929648
+  },
+  {
+    "segments": 0,
+    "groups": 256,
+    "mode": "drag",
+    "baseline": {
+      "allocation_calls": {
+        "median": 889,
+        "min": 889,
+        "max": 889
+      },
+      "allocation_traffic_bytes": {
+        "median": 4983236,
+        "min": 4982276,
+        "max": 4983236
+      },
+      "extra_peak_bytes": {
+        "median": 306112,
+        "min": 306048,
+        "max": 306112
+      },
+      "extra_retained_bytes": {
+        "median": 153684,
+        "min": 153652,
+        "max": 153684
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "ms": {
+        "median": 4.912,
+        "min": 4.1144,
+        "max": 5.7539
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "snapshots": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "candidate": {
+      "allocation_calls": {
+        "median": 889,
+        "min": 889,
+        "max": 889
+      },
+      "allocation_traffic_bytes": {
+        "median": 4983236,
+        "min": 4982276,
+        "max": 4983236
+      },
+      "extra_peak_bytes": {
+        "median": 306112,
+        "min": 306048,
+        "max": 306112
+      },
+      "extra_retained_bytes": {
+        "median": 153684,
+        "min": 153652,
+        "max": 153684
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "ms": {
+        "median": 5.979,
+        "min": 4.7092,
+        "max": 6.814
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "snapshots": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "time_change_percent": 21.722312703583068
+  },
+  {
+    "segments": 0,
+    "groups": 16384,
+    "mode": "discrete",
+    "baseline": {
+      "allocation_calls": {
+        "median": 1381,
+        "min": 1381,
+        "max": 1381
+      },
+      "allocation_traffic_bytes": {
+        "median": 296337800,
+        "min": 296337800,
+        "max": 296338760
+      },
+      "extra_peak_bytes": {
+        "median": 118571753,
+        "min": 118571753,
+        "max": 118572153
+      },
+      "extra_retained_bytes": {
+        "median": 113803780,
+        "min": 113803780,
+        "max": 113804164
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "ms": {
+        "median": 179.2236,
+        "min": 163.6483,
+        "max": 268.2852
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "snapshots": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      }
+    },
+    "candidate": {
+      "allocation_calls": {
+        "median": 1381,
+        "min": 1381,
+        "max": 1381
+      },
+      "allocation_traffic_bytes": {
+        "median": 296337800,
+        "min": 296337800,
+        "max": 296338760
+      },
+      "extra_peak_bytes": {
+        "median": 118571753,
+        "min": 118571753,
+        "max": 118572153
+      },
+      "extra_retained_bytes": {
+        "median": 113803780,
+        "min": 113803780,
+        "max": 113804164
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "ms": {
+        "median": 176.6949,
+        "min": 158.098,
+        "max": 260.04
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "snapshots": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      }
+    },
+    "time_change_percent": -1.4109190977081187
+  },
+  {
+    "segments": 0,
+    "groups": 16384,
+    "mode": "drag",
+    "baseline": {
+      "allocation_calls": {
+        "median": 1369,
+        "min": 1369,
+        "max": 1369
+      },
+      "allocation_traffic_bytes": {
+        "median": 296323856,
+        "min": 296323856,
+        "max": 296324816
+      },
+      "extra_peak_bytes": {
+        "median": 18966030,
+        "min": 18966030,
+        "max": 18966094
+      },
+      "extra_retained_bytes": {
+        "median": 9483643,
+        "min": 9483643,
+        "max": 9483675
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "ms": {
+        "median": 184.5066,
+        "min": 173.4687,
+        "max": 196.4828
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "snapshots": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "candidate": {
+      "allocation_calls": {
+        "median": 1369,
+        "min": 1369,
+        "max": 1369
+      },
+      "allocation_traffic_bytes": {
+        "median": 296323856,
+        "min": 296323856,
+        "max": 296324816
+      },
+      "extra_peak_bytes": {
+        "median": 18966030,
+        "min": 18966030,
+        "max": 18966094
+      },
+      "extra_retained_bytes": {
+        "median": 9483643,
+        "min": 9483643,
+        "max": 9483675
+      },
+      "geometry_owners_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "ms": {
+        "median": 255.0432,
+        "min": 176.2525,
+        "max": 313.9392
+      },
+      "segment_capacity_bytes_live_clean_history": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "snapshots": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "time_change_percent": 38.22985194025581
+  }
+]

@@ -1,0 +1,119 @@
+{
+  "actions": 12,
+  "discrete": [
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 157.3965,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 149.581,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 159.5776,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 146.8029,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1381,
+      "allocation_traffic_bytes": 296337800,
+      "extra_peak_bytes": 118571753,
+      "extra_retained_bytes": 113803780,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 127.566,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    }
+  ],
+  "drag": [
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 159.5893,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 174.1156,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 155.0522,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 156.0446,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 1369,
+      "allocation_traffic_bytes": 296323856,
+      "extra_peak_bytes": 18966030,
+      "extra_retained_bytes": 9483643,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 148.7737,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    }
+  ],
+  "groups": 16384,
+  "segments": 0
+}

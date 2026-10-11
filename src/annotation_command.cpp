@@ -37,8 +37,8 @@ AnnotationCommand prepareAnnotationCommand(const UiState& state, const ControlOp
         if (!selected || selected->settings.locked || !selected->targetValid) {
             throw std::invalid_argument("The annotation is locked or its source is unavailable.");
         }
-        item = *selected; shape = item.geometry.shape;
-        start = operation.start.value_or(item.geometry.start); end = operation.end.value_or(item.geometry.end);
+        item = *selected; shape = item.geometry->shape;
+        start = operation.start.value_or(item.geometry->start); end = operation.end.value_or(item.geometry->end);
         if (operation.delta) {
             for (size_t axis = 0; axis < 2; ++axis) { start[axis] += (*operation.delta)[axis]; end[axis] += (*operation.delta)[axis]; }
         }
@@ -53,7 +53,7 @@ AnnotationCommand prepareAnnotationCommand(const UiState& state, const ControlOp
             : annotationEditProjection(sources.parts, item, annotationRegion(start, end), stop);
         const auto projected = std::chrono::steady_clock::now();
         result->projectedTriangles = projection.triangles.size(); result->projectedVertices = projection.vertices.size();
-        result->geometry = projectAnnotation(projection, shape, start, end);
+        result->geometry = shareAnnotationGeometry(projectAnnotation(projection, shape, start, end));
         result->projectionMilliseconds = std::chrono::duration<double, std::milli>(projected - begin).count();
         result->exactMilliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - projected).count();
         result->targets = std::move(projection.targetIds);

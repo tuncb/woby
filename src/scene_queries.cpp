@@ -216,7 +216,7 @@ void updateAnnotationProjection(AnnotationQuery& cache, const UiAnnotation& item
         if (!source) { return; }
         sources.push_back({static_cast<size_t>(source - parts.data()), annotationCompose(source->model, vp)});
     }
-    const auto& geometry = item.geometry;
+    const auto& geometry = *item.geometry;
     vertices.reserve(lines.size() * 6);
     size_t segmentIndex = 0;
     for (const auto& line : lines) {

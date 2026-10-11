@@ -302,11 +302,14 @@ void navigateUiCamera(UiState& state, const CameraNavigation& navigation);
 [[nodiscard]] std::vector<std::array<float, 3>> annotationVertices(const UiState& state, const UiAnnotation& item);
 SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationGeometry geometry,
     std::vector<SceneObjectId> targets = {});
+SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationGeometryOwner geometry,
+    std::vector<SceneObjectId> targets = {});
 SceneObjectId duplicateAnnotation(UiState& state, SceneObjectId id);
 void renameAnnotation(UiState& state, SceneObjectId id, const std::string& name);
 void setAnnotationSettings(UiState& state, SceneObjectId id, AnnotationSettings settings);
 void setAllAnnotationsVisible(UiState& state, bool visible);
 void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometry geometry);
+void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometryOwner geometry);
 void deleteAnnotation(UiState& state, SceneObjectId id);
 void validateAnnotationTargets(UiState& state);
 [[nodiscard]] std::vector<SceneAnnotationRecord> sceneAnnotationRecords(const UiState& state);

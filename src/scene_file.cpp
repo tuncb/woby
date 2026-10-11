@@ -825,6 +825,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
     };
 
     SceneDocument document;
+    std::vector<AnnotationGeometry> annotationDrafts;
     Section section = Section::root;
     bool viewCameraSeen = false;
     int sceneVersion = 2;
@@ -840,19 +841,19 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
 
         try {
             if (text == "[[annotations]]") {
-                document.annotations.emplace_back(); section = Section::annotation; continue;
+                document.annotations.emplace_back(); annotationDrafts.emplace_back(); section = Section::annotation; continue;
             }
             if (text == "[[annotations.sources]]") {
                 if (document.annotations.empty()) { throw std::runtime_error("Annotation source appeared before annotation."); }
                 auto& item = document.annotations.back();
-                if (item.geometry.sources.size() >= 100000) { throw std::runtime_error("Too many annotation sources."); }
-                item.geometry.sources.emplace_back(); item.targets.emplace_back();
+                if (annotationDrafts.back().sources.size() >= 100000) { throw std::runtime_error("Too many annotation sources."); }
+                annotationDrafts.back().sources.emplace_back(); item.targets.emplace_back();
                 section = Section::annotationSource; continue;
             }
             if (text == "[[annotations.segments]]") {
                 if (document.annotations.empty()) { throw std::runtime_error("Annotation segment appeared before annotation."); }
-                if (document.annotations.back().geometry.segments.size() >= 1000000) { throw std::runtime_error("Too many annotation segments."); }
-                document.annotations.back().geometry.segments.emplace_back(); section = Section::annotationSegment; continue;
+                if (annotationDrafts.back().segments.size() >= 1000000) { throw std::runtime_error("Too many annotation segments."); }
+                annotationDrafts.back().segments.emplace_back(); section = Section::annotationSegment; continue;
             }
             if (text == "[[views]]") {
                 document.views.emplace_back();
@@ -982,26 +983,26 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 else if (key == "locked") { item.settings.locked = parseTomlBool(value); }
                 else if (key == "width") { item.settings.width = parseTomlFloat(value); }
                 else if (key == "color") { item.settings.color = parseTomlFloat4(value); }
-                else if (key == "fingerprint") { item.geometry.fingerprint = parseTomlString(value); }
-                else if (key == "homogeneous_depth") { item.geometry.homogeneousDepth = parseTomlBool(value); }
+                else if (key == "fingerprint") { annotationDrafts.back().fingerprint = parseTomlString(value); }
+                else if (key == "homogeneous_depth") { annotationDrafts.back().homogeneousDepth = parseTomlBool(value); }
                 else if (key == "shape") {
                     const auto shape = parseTomlString(value);
-                    if (shape == "line") { item.geometry.shape = AnnotationShape::line; }
-                    else if (shape == "rectangle") { item.geometry.shape = AnnotationShape::rectangle; }
+                    if (shape == "line") { annotationDrafts.back().shape = AnnotationShape::line; }
+                    else if (shape == "rectangle") { annotationDrafts.back().shape = AnnotationShape::rectangle; }
                     else { throw std::runtime_error("Unknown annotation shape."); }
                 } else if (key == "projector") {
                     const auto values = parseTomlFloatArray<double>(value);
                     if (values.size() != 16) { throw std::runtime_error("Expected 16 annotation projector values."); }
-                    std::copy(values.begin(), values.end(), item.geometry.projector.begin());
+                    std::copy(values.begin(), values.end(), annotationDrafts.back().projector.begin());
                 } else if (key == "start" || key == "end") {
                     const auto values = parseTomlFloatArray(value);
                     if (values.size() != 2) { throw std::runtime_error("Expected 2 annotation control coordinates."); }
-                    auto& control = key == "start" ? item.geometry.start : item.geometry.end;
+                    auto& control = key == "start" ? annotationDrafts.back().start : annotationDrafts.back().end;
                     control = {values[0], values[1]};
                 }
             } else if (section == Section::annotationSource) {
                 auto& item = document.annotations.back();
-                auto& source = item.geometry.sources.back();
+                auto& source = annotationDrafts.back().sources.back();
                 auto& target = item.targets.back();
                 if (key == "file_index") { target.fileIndex = parseTomlInteger(value); }
                 else if (key == "group_index") { target.groupIndex = parseTomlInteger(value); }
@@ -1016,7 +1017,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     std::copy(values.begin(), values.end(), source.toPrimary.begin());
                 }
             } else if (section == Section::annotationSegment) {
-                auto& segment = document.annotations.back().geometry.segments.back();
+                auto& segment = annotationDrafts.back().segments.back();
                 if (key == "triangle" || key == "end_triangle" || key == "source" || key == "end_source") {
                     const int triangle = parseTomlInteger(value);
                     if (triangle < 0) { throw std::runtime_error("Invalid annotation triangle."); }
@@ -1152,10 +1153,12 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         }
     }
 
-    for (auto& item : document.annotations) {
-        validateAnnotationGeometry(item.geometry);
+    for (size_t i = 0; i < document.annotations.size(); ++i) {
+        auto& item = document.annotations[i];
+        validateAnnotationGeometry(annotationDrafts[i]);
+        item.geometry = shareAnnotationGeometry(std::move(annotationDrafts[i]));
         item.settings = normalizedAnnotationSettings(std::move(item.settings));
-        if (item.targets.size() != item.geometry.sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
+        if (item.targets.size() != item.geometry->sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
         for (const auto& target : item.targets) {
             if (target.fileIndex == -1 && target.groupIndex == -1) { continue; }
             if (target.fileIndex < 0 || static_cast<size_t>(target.fileIndex) >= document.files.size()
@@ -1307,7 +1310,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "\n";
     }
     for (const auto& item : document.annotations) {
-        validateAnnotationGeometry(item.geometry);
+        validateAnnotationGeometry(*item.geometry);
         stream << "\n[[annotations]]\n";
         stream << "name = \"" << escapeTomlString(item.settings.name) << "\"\n";
         stream << "note = \"" << escapeTomlString(item.settings.note) << "\"\n";
@@ -1317,28 +1320,28 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "locked = " << (item.settings.locked ? "true" : "false") << "\n";
         stream << "width = "; writeTomlFloat(stream, item.settings.width); stream << "\n";
         stream << "color = "; writeTomlFloat4(stream, item.settings.color); stream << "\n";
-        stream << "shape = \"" << (item.geometry.shape == AnnotationShape::line ? "line" : "rectangle") << "\"\n";
-        stream << "fingerprint = \"" << escapeTomlString(item.geometry.fingerprint) << "\"\n";
-        stream << "homogeneous_depth = " << (item.geometry.homogeneousDepth ? "true" : "false") << "\n";
+        stream << "shape = \"" << (item.geometry->shape == AnnotationShape::line ? "line" : "rectangle") << "\"\n";
+        stream << "fingerprint = \"" << escapeTomlString(item.geometry->fingerprint) << "\"\n";
+        stream << "homogeneous_depth = " << (item.geometry->homogeneousDepth ? "true" : "false") << "\n";
         const auto array = [&](const char* key, const auto& values) {
             stream << key << " = [";
             for (size_t i = 0; i < values.size(); ++i) { if (i) { stream << ", "; } writeTomlFloat(stream, values[i]); }
             stream << "]\n";
         };
-        array("projector", item.geometry.projector); array("start", item.geometry.start); array("end", item.geometry.end);
-        if (item.targets.size() != item.geometry.sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
-        for (size_t i = 0; i < item.geometry.sources.size(); ++i) {
-            const auto& source = item.geometry.sources[i];
+        array("projector", item.geometry->projector); array("start", item.geometry->start); array("end", item.geometry->end);
+        if (item.targets.size() != item.geometry->sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
+        for (size_t i = 0; i < item.geometry->sources.size(); ++i) {
+            const auto& source = item.geometry->sources[i];
             stream << "\n[[annotations.sources]]\nfile_index = " << item.targets[i].fileIndex
                 << "\ngroup_index = " << item.targets[i].groupIndex << "\n";
             stream << "fingerprint = \"" << escapeTomlString(source.fingerprint) << "\"\n";
             array("projector", source.projector);
             array("to_primary", source.toPrimary);
         }
-        for (const auto& segment : item.geometry.segments) {
+        for (const auto& segment : item.geometry->segments) {
             stream << "\n[[annotations.segments]]\ntriangle = " << segment.triangle << "\n";
             if (segment.endTriangle) { stream << "end_triangle = " << *segment.endTriangle << "\n"; }
-            if (!item.geometry.sources.empty()) { stream << "source = " << segment.source << "\n"; }
+            if (!item.geometry->sources.empty()) { stream << "source = " << segment.source << "\n"; }
             if (segment.endSource) { stream << "end_source = " << *segment.endSource << "\n"; }
             array("a", segment.a); array("b", segment.b);
         }
