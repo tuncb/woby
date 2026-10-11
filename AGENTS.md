@@ -20,7 +20,7 @@
 - If there are no unrelated changes in the repository, commit the version update and wait for the commit to finish. Only after the commit succeeds, create the matching tag with `nu c:\tools\gittag.nu vX.Y.Z`.
 
 ## Code changes
-- Build woby project in debug mode, the build should succeed without any warnings.
+- Build woby project in release mode, the build should succeed without any warnings.
 - If there is already a woby instance open, terminate the process and re-try.
 
 # Build rules
@@ -34,7 +34,7 @@ woby::UiState is the canonical logical UI state. User-visible scene controls sho
 bgfx, SDL, ImGui, dialogs, and timing state must stay outside UiState; keep them in runtime/adaptor code.
 UI code should read state, edit local values, then call ui_operations functions. It should not directly mutate scene-visible state.
 Any new user-editable scene property must be handled in three places: UiState, ui_operations, and .woby save/load mapping.
-Transformation functions should be deterministic, free functions over structs, with no ImGui/SDL/bgfx dependencies.
+Transformation functions should be deterministic, free functions over structs, with no ImGui/SDL dependencies.
 Clamp and validate state at operation/load boundaries, not in rendering code.
 Render code should only draw from the already-updated state; it should not change logical state.
 Cache reusable derived results and invalidate them when their inputs change; do not recalculate them every frame.
