@@ -1,5 +1,6 @@
 #include "scene_history_load.h"
 #include "model_load.h"
+#include "utf8_path.h"
 
 #include <algorithm>
 #include <stdexcept>
@@ -23,7 +24,7 @@ std::optional<UiState> loadSceneHistoryStep(const SceneHistory& history,
             restored.objectId = file.objectId;
             reloaded.push_back(std::move(restored));
         } catch (const std::exception& error) {
-            throw std::runtime_error("Could not reload " + file.path.string() + ": " + error.what());
+            throw std::runtime_error("Could not reload " + pathToUtf8(file.path) + ": " + error.what());
         }
     }
     return prepareSceneHistoryStep(history, current, cleanDocument, redo, std::move(reloaded));

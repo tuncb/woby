@@ -3,6 +3,7 @@
 #include "comparison_scene.h"
 #include "mesh_comparison.h"
 #include "uv_quality.h"
+#include "utf8_path.h"
 
 #include <algorithm>
 #include <cmath>
@@ -1178,12 +1179,12 @@ UiSceneNode& ensureFolderSceneNode(
 
 std::string folderDisplayName(const std::filesystem::path& path)
 {
-    const std::string filename = path.filename().string();
+    const std::string filename = pathToUtf8(path.filename());
     if (!filename.empty()) {
         return filename;
     }
 
-    return path.string();
+    return pathToUtf8(path);
 }
 
 } // namespace
@@ -1856,7 +1857,7 @@ void appendFolderTreeSceneNode(
 
         std::vector<UiSceneNode>* children = &rootNode.children;
         for (const auto& part : relativePath.parent_path()) {
-            const std::string name = part.string();
+            const std::string name = pathToUtf8(part);
             if (name.empty() || name == "." || name == "..") {
                 continue;
             }

@@ -1,4 +1,5 @@
 #include "file_discovery.h"
+#include "utf8_path.h"
 
 #include <doctest/doctest.h>
 
@@ -6,6 +7,7 @@
 #include <random>
 #include <filesystem>
 #include <fstream>
+#include <nlohmann/json.hpp>
 #include <vector>
 
 namespace {
@@ -82,4 +84,18 @@ TEST_CASE("model collection rejects non-folders and excludes unsupported extensi
 
     REQUIRE(objPaths.size() == 1u);
     CHECK(objPaths[0].filename() == "one.obj");
+}
+
+TEST_CASE("folder discovery errors preserve UTF-8 paths for automation responses")
+{
+    const DiscoveryTestDirectory fixture;
+    const auto path = fixture.path / woby::pathFromUtf8("caf\xc3\xa9 \xe6\xa8\xa1\xe5\x9e\x8b");
+    try {
+        (void)woby::collectModelPathsRecursive(path);
+        FAIL("Expected a missing folder error.");
+    } catch (const std::runtime_error& error) {
+        CHECK(std::string(error.what()) == "Folder path is not a folder: " + woby::pathToUtf8(path));
+        const nlohmann::json response = {{"error", error.what()}};
+        CHECK_NOTHROW(response.dump());
+    }
 }

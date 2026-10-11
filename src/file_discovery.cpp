@@ -1,5 +1,6 @@
 #include "file_discovery.h"
 #include "importer_host.h"
+#include "utf8_path.h"
 
 #include <algorithm>
 #include <cctype>
@@ -23,7 +24,7 @@ std::string lowercase(std::string value)
 
 bool isObjPath(const std::filesystem::path& path)
 {
-    return lowercase(path.extension().string()) == ".obj";
+    return lowercase(pathToUtf8(path.extension())) == ".obj";
 }
 
 bool isModelPath(const std::filesystem::path& path)
@@ -33,7 +34,7 @@ bool isModelPath(const std::filesystem::path& path)
 
 bool isWobyPath(const std::filesystem::path& path)
 {
-    return lowercase(path.extension().string()) == ".woby";
+    return lowercase(pathToUtf8(path.extension())) == ".woby";
 }
 
 std::vector<std::filesystem::path> collectModelPathsRecursive(
@@ -41,14 +42,14 @@ std::vector<std::filesystem::path> collectModelPathsRecursive(
 {
     std::error_code error;
     if (!std::filesystem::is_directory(folder, error)) {
-        throw std::runtime_error("Folder path is not a folder: " + folder.string());
+        throw std::runtime_error("Folder path is not a folder: " + pathToUtf8(folder));
     }
 
     std::vector<std::filesystem::path> modelPaths;
     const auto options = std::filesystem::directory_options::skip_permission_denied;
     std::filesystem::recursive_directory_iterator iterator(folder, options, error);
     if (error) {
-        throw std::runtime_error("Failed to scan folder: " + folder.string());
+        throw std::runtime_error("Failed to scan folder: " + pathToUtf8(folder));
     }
 
     const std::filesystem::recursive_directory_iterator end;
@@ -62,7 +63,7 @@ std::vector<std::filesystem::path> collectModelPathsRecursive(
         error.clear();
         iterator.increment(error);
         if (error) {
-            throw std::runtime_error("Failed to scan folder: " + folder.string());
+            throw std::runtime_error("Failed to scan folder: " + pathToUtf8(folder));
         }
     }
 

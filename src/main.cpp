@@ -188,17 +188,17 @@ void loadAppFont(const std::filesystem::path& assets)
 {
     const std::filesystem::path fontPath = assets / "fonts" / appFontFilename;
     if (!std::filesystem::exists(fontPath)) {
-        throw std::runtime_error("App font not found: " + fontPath.string());
+        throw std::runtime_error("App font not found: " + woby::pathToUtf8(fontPath));
     }
 
     ImGuiIO& io = ImGui::GetIO();
     const auto textPath = assets / "fonts" / "Lato-Regular.ttf";
     ImFont* font = io.Fonts->AddFontFromFileTTF(woby::pathToUtf8(textPath).c_str(), appFontSize);
-    if (!font) { throw std::runtime_error("Failed to load UI font: " + textPath.string()); }
+    if (!font) { throw std::runtime_error("Failed to load UI font: " + woby::pathToUtf8(textPath)); }
     ImFontConfig icons;
     icons.MergeMode = true;
     if (!io.Fonts->AddFontFromFileTTF(woby::pathToUtf8(fontPath).c_str(), appFontSize, &icons, appFontGlyphRanges)) {
-        throw std::runtime_error("Failed to load icon font: " + fontPath.string());
+        throw std::runtime_error("Failed to load icon font: " + woby::pathToUtf8(fontPath));
     }
 
     io.FontDefault = font;
@@ -502,12 +502,12 @@ MousePosition mousePositionInPixels(SDL_Window* window)
 
 std::string fileDisplayName(const std::filesystem::path& path)
 {
-    const auto filename = path.filename().string();
+    const auto filename = woby::pathToUtf8(path.filename());
     if (!filename.empty()) {
         return filename;
     }
 
-    return path.string();
+    return woby::pathToUtf8(path);
 }
 
 std::filesystem::path normalizedPath(const std::filesystem::path& path)
@@ -973,7 +973,7 @@ void drawSceneTreeNode(
         if (std::find(revealPath.begin(), revealPath.end(), node.objectId) != revealPath.end()) { ImGui::SetNextItemOpen(true); }
         const bool fileTreeOpen = ImGui::TreeNodeEx("file", flags, "%s", node.name.c_str());
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("%s\nVertices: %zu  Triangles: %zu", file.path.string().c_str(),
+            ImGui::SetTooltip("%s\nVertices: %zu  Triangles: %zu", woby::pathToUtf8(file.path).c_str(),
                 meshGeometry(file.mesh).vertices.size(), meshGeometry(file.mesh).indices.size() / 3u);
         }
         if (drawSceneItemInteraction(state, node.objectId, true, true)) {
@@ -1040,11 +1040,11 @@ void appendFolderModelPaths(
     const std::vector<std::filesystem::path> folderPaths = woby::collectModelPathsRecursive(folder);
     spdlog::info(
         "perf folder_scan path=\"{}\" model_count={} duration_ms={}",
-        folder.string(),
+        woby::pathToUtf8(folder),
         folderPaths.size(),
         elapsedMilliseconds(start));
     if (folderPaths.empty()) {
-        throw std::runtime_error("Folder did not contain model files recursively: " + folder.string());
+        throw std::runtime_error("Folder did not contain model files recursively: " + woby::pathToUtf8(folder));
     }
 
     modelPaths.insert(modelPaths.end(), folderPaths.begin(), folderPaths.end());
@@ -1210,7 +1210,7 @@ LoadedModelFileWithRuntime loadModelFile(
 
         spdlog::info(
             "perf model_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} gpu_ms={} total_ms={}",
-            modelPath.string(),
+            woby::pathToUtf8(modelPath),
             meshGeometry(loaded.file.mesh).vertices.size(),
             meshGeometry(loaded.file.mesh).indices.size() / 3u,
             loaded.file.groupSettings.size(),
@@ -1220,7 +1220,7 @@ LoadedModelFileWithRuntime loadModelFile(
     } catch (const std::exception& exception) {
         spdlog::info(
             "perf model_load_failed path=\"{}\" duration_ms={} error=\"{}\"",
-            modelPath.string(),
+            woby::pathToUtf8(modelPath),
             elapsedMilliseconds(totalStart),
             exception.what());
         throw;
@@ -1533,7 +1533,7 @@ void loadScene(
     }
     spdlog::info(
         "perf scene_load path=\"{}\" files={} read_ms={} files_ms={} apply_ms={} total_ms={}",
-        scenePath.string(),
+        woby::pathToUtf8(scenePath),
         state.files.size(),
         readMilliseconds,
         filesMilliseconds,
@@ -1574,7 +1574,7 @@ void loadSceneFromPath(
     woby::clearSceneDirty(state);
     spdlog::info(
         "perf scene_open path=\"{}\" duration_ms={}",
-        scenePath.string(),
+        woby::pathToUtf8(scenePath),
         elapsedMilliseconds(start));
 }
 
@@ -1916,7 +1916,7 @@ std::optional<std::string> processGpuFinalizeStep(
             frameBytes += finalize.upload->uploadedBytes - previousBytes;
             if (complete) {
                 spdlog::info("perf model_gpu_finalize path=\"{}\" bytes={} upload_ms={} longest_step_ms={}",
-                    file.path.string(), finalize.upload->uploadedBytes, finalize.uploadMilliseconds,
+                    woby::pathToUtf8(file.path), finalize.upload->uploadedBytes, finalize.uploadMilliseconds,
                     finalize.longestUploadStepMilliseconds);
                 LoadedModelRuntime runtime;
                 runtime.requestedFeatures = finalize.upload->features;

@@ -1,4 +1,5 @@
 #include "graphics_helpers.h"
+#include "utf8_path.h"
 
 #include <fstream>
 #include <stdexcept>
@@ -51,12 +52,12 @@ woby::graphics::ShaderHandle loadShader(const std::filesystem::path& path)
 {
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file) {
-        throw std::runtime_error("Failed to open shader: " + path.string());
+        throw std::runtime_error("Failed to open shader: " + pathToUtf8(path));
     }
 
     const auto size = file.tellg();
     if (size <= 0) {
-        throw std::runtime_error("Shader is empty: " + path.string());
+        throw std::runtime_error("Shader is empty: " + pathToUtf8(path));
     }
 
     std::vector<char> data(static_cast<size_t>(size));
@@ -66,9 +67,9 @@ woby::graphics::ShaderHandle loadShader(const std::filesystem::path& path)
     const woby::graphics::Memory* memory = woby::graphics::copy(data.data(), static_cast<uint32_t>(data.size()));
     woby::graphics::ShaderHandle shader = woby::graphics::createShader(memory);
     if (!woby::graphics::isValid(shader)) {
-        throw std::runtime_error("Failed to create shader: " + path.string());
+        throw std::runtime_error("Failed to create shader: " + pathToUtf8(path));
     }
-    woby::graphics::setName(shader, path.filename().string().c_str());
+    woby::graphics::setName(shader, pathToUtf8(path.filename()).c_str());
     return shader;
 }
 

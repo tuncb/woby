@@ -1,10 +1,12 @@
 #include "scene_file.h"
 #include "automation_registry.h"
+#include "utf8_path.h"
 
 #include <doctest/doctest.h>
 
 #include <filesystem>
 #include <fstream>
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
 
@@ -34,6 +36,22 @@ void checkReadThrowsContaining(const std::filesystem::path& path, const std::str
 }
 
 } // namespace
+
+TEST_CASE("scene read errors preserve UTF-8 paths for automation responses")
+{
+    const CameraDirectory directory;
+    const auto path = directory.root / woby::pathFromUtf8("caf\xc3\xa9 \xe6\xa8\xa1\xe5\x9e\x8b.woby");
+    SUBCASE("missing scene") {}
+    SUBCASE("malformed scene") { writeText(path, "version = invalid\n"); }
+    try {
+        (void)woby::readSceneDocument(path);
+        FAIL("Expected a scene read error.");
+    } catch (const std::runtime_error& error) {
+        CHECK(std::string(error.what()).find(woby::pathToUtf8(path)) != std::string::npos);
+        const nlohmann::json response = {{"error", error.what()}};
+        CHECK_NOTHROW(response.dump());
+    }
+}
 
 TEST_CASE("camera records clamp finite ranges and use defaults for missing fields")
 {

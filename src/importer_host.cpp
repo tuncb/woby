@@ -729,7 +729,7 @@ ImportedModel importModel(const std::filesystem::path& path, const std::string& 
         });
         if (found == host.entries.end()) {
             throw std::runtime_error(requiredImporterId.empty()
-                ? "Unsupported model file extension: " + path.string()
+                ? "Unsupported model file extension: " + pathToUtf8(path)
                 : "Required importer is not loaded: " + requiredImporterId);
         }
         if (!supports(found->info, path)) {

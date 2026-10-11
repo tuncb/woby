@@ -39,7 +39,7 @@ std::string lowercase(std::string value)
 
 bool isWobyPath(const std::filesystem::path& path)
 {
-    return lowercase(path.extension().string()) == ".woby";
+    return lowercase(pathToUtf8(path.extension())) == ".woby";
 }
 
 std::string trim(std::string_view value)
@@ -803,7 +803,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
 {
     std::ifstream stream(scenePath);
     if (!stream) {
-        throw std::runtime_error("Failed to open scene file: " + scenePath.string());
+        throw std::runtime_error("Failed to open scene file: " + pathToUtf8(scenePath));
     }
 
     enum class Section {
@@ -1106,7 +1106,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
             }
         } catch (const std::exception& exception) {
             throw std::runtime_error(
-                scenePath.string()
+                pathToUtf8(scenePath)
                 + ":"
                 + std::to_string(lineNumber)
                 + ": "

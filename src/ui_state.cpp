@@ -2,6 +2,7 @@
 #include "surface_annotation.h"
 #include "ui_operations.h"
 #include "comparison_scene.h"
+#include "utf8_path.h"
 
 #include <algorithm>
 #include <cmath>
@@ -610,9 +611,8 @@ UiSceneNode createFileSceneNode(const UiFileState& file, size_t fileIndex)
     UiSceneNode fileNode;
     fileNode.kind = UiSceneNodeKind::file;
     fileNode.objectId = file.objectId;
-    fileNode.name = file.path.filename().string().empty()
-        ? file.path.string()
-        : file.path.filename().string();
+    const auto filename = pathToUtf8(file.path.filename());
+    fileNode.name = filename.empty() ? pathToUtf8(file.path) : filename;
     fileNode.fileIndex = fileIndex;
     fileNode.children.reserve(file.groupSettings.size());
 

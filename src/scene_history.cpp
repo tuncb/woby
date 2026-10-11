@@ -1,5 +1,6 @@
 #include "scene_history.h"
 #include "ui_operations.h"
+#include "utf8_path.h"
 
 #include <algorithm>
 #include <stdexcept>
@@ -157,16 +158,16 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
             [&](const auto& candidate) { return candidate.objectId == file.objectId; });
         const auto* source = live != current.files.end() ? &*live
             : (loaded != reloaded.end() ? &*loaded : nullptr);
-        if (!source) { throw std::runtime_error("Model must be reloaded: " + file.path.string()); }
+        if (!source) { throw std::runtime_error("Model must be reloaded: " + pathToUtf8(file.path)); }
         const auto& groups = target.document.files[index].groups;
         if (meshGeometry(source->mesh).nodes.size() != groups.size() || source->groupSettings.size() != groups.size()) {
-            throw std::runtime_error("Source model parts changed; cannot restore references: " + file.path.string());
+            throw std::runtime_error("Source model parts changed; cannot restore references: " + pathToUtf8(file.path));
         }
         for (size_t group = 0; group < groups.size(); ++group) {
             if (meshGeometry(source->mesh).nodes[group].name != groups[group].name
                 || (meshGeometry(source->mesh).nodes[group].lineIndexCount != 0) != groups[group].lineGroup
                 || (meshGeometry(source->mesh).nodes[group].pointIndexCount != 0) != groups[group].pointGroup) {
-                throw std::runtime_error("Source model parts changed; cannot restore references: " + file.path.string());
+                throw std::runtime_error("Source model parts changed; cannot restore references: " + pathToUtf8(file.path));
             }
             // Geometry may have changed since removal. Keep historical appearance,
             // transforms and IDs, but use the current source's geometric bounds.

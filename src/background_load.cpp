@@ -3,6 +3,7 @@
 #include "file_discovery.h"
 #include "model_load.h"
 #include "performance_log.h"
+#include "utf8_path.h"
 
 #include <spdlog/spdlog.h>
 
@@ -172,13 +173,13 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
                     break;
                 }
                 result.preparations.push_back(std::move(*prepared));
-                spdlog::info("perf model_upload_prepare path=\"{}\" duration_ms={}", modelPath.string(),
+                spdlog::info("perf model_upload_prepare path=\"{}\" duration_ms={}", pathToUtf8(modelPath),
                     millisecondsBetween(prepareStart, PerformanceClock::now()));
             }
             colorIndex += file.groupSettings.size();
             spdlog::info(
                 "perf model_cpu_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} total_ms={}",
-                modelPath.string(),
+                pathToUtf8(modelPath),
                 meshGeometry(file.mesh).vertices.size(),
                 meshGeometry(file.mesh).indices.size() / 3u,
                 file.groupSettings.size(),
@@ -194,7 +195,7 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
             result.lastError = exception.what();
             spdlog::info(
                 "perf model_cpu_load_failed path=\"{}\" duration_ms={} error=\"{}\"",
-                modelPath.string(),
+                pathToUtf8(modelPath),
                 millisecondsBetween(totalStart, PerformanceClock::now()),
                 exception.what());
         }
@@ -266,8 +267,8 @@ SceneCpuLoadResult loadSceneCpu(
         colorIndex += file.groupSettings.size();
         spdlog::info(
             "perf scene_model_cpu_load scene=\"{}\" path=\"{}\" vertices={} triangles={} groups={} duration_ms={}",
-            scenePath.string(),
-            modelPath.string(),
+            pathToUtf8(scenePath),
+            pathToUtf8(modelPath),
             meshGeometry(file.mesh).vertices.size(),
             meshGeometry(file.mesh).indices.size() / 3u,
             file.groupSettings.size(),
@@ -278,7 +279,7 @@ SceneCpuLoadResult loadSceneCpu(
     result.canceled = result.canceled || canceled(shouldCancel);
     spdlog::info(
         "perf scene_cpu_load path=\"{}\" files={} read_ms={} canceled={} total_ms={}",
-        scenePath.string(),
+        pathToUtf8(scenePath),
         result.files.size(),
         readMilliseconds,
         result.canceled,
