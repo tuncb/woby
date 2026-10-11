@@ -74,11 +74,11 @@ def make_fixture(root):
     return fixture
 
 
-def configure(fixture, slow_cases=SLOW_CASES):
+def configure(fixture, slow_cases=SLOW_CASES, configuration="Debug"):
     (fixture.root / "CMakeLists.txt").write_text(
         "cmake_minimum_required(VERSION 3.24)\n"
         "project(suite_selection LANGUAGES NONE)\n"
-        "set(CMAKE_BUILD_TYPE Debug)\n"
+        f"set(CMAKE_BUILD_TYPE {bracket(configuration)})\n"
         "enable_testing()\n"
         f"set(Python3_EXECUTABLE {bracket(sys.executable)})\n"
         f"set(_DOCTEST_DISCOVER_TESTS_SCRIPT {bracket((fixture.module / 'doctestAddTests.cmake').as_posix())})\n"
@@ -202,9 +202,23 @@ def test_discovery_cache_tracks_configurations_binary_and_parser_changes():
         fixture = make_fixture(Path(temporary))
         configure(fixture)
         arguments = ["--test-dir", str(fixture.build)]
+        multi_config = any(line.startswith("CMAKE_CONFIGURATION_TYPES:")
+                           for line in (fixture.build / "CMakeCache.txt").read_text().splitlines())
+        configured = "Debug"
+        cached_calls = 0
         for configuration, count in [("Debug", 1), ("Debug", 1), ("Release", 2), ("Debug", 2)]:
+            if not multi_config and configuration != configured:
+                # A single-configuration build ignores CTest's -C option.
+                # It must keep the current cache until CMake is reconfigured.
+                listing(fixture, *arguments, "-C", configuration)
+                actual = len((fixture.root / "calls.txt").read_text().splitlines())
+                assert actual == cached_calls, (configuration, actual, cached_calls)
+                configure(fixture, configuration=configuration)
+                configured = configuration
             listing(fixture, *arguments, "-C", configuration)
-            assert len((fixture.root / "calls.txt").read_text().splitlines()) == count
+            actual = len((fixture.root / "calls.txt").read_text().splitlines())
+            assert actual == count, (configuration, actual, count, multi_config)
+            cached_calls = count
         debug_cache = fixture.build / "test-discovery/fake_tests/Debug/tests.cmake"
         debug_cache.unlink()
         listing(fixture, *arguments, "-C", "Debug")

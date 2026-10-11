@@ -201,3 +201,20 @@ Validation results:
 Local implementation checks are complete. The change can proceed to CI review.
 The measured benefit here is the verified root size and allocation reduction;
 no new full-frame performance claim is made.
+
+### CI follow-up
+
+[CI run 38140309301](https://github.com/tuncb/woby/actions/runs/38140309301)
+compiled Windows, Linux and macOS successfully, including native Metal shaders.
+All three jobs stopped at the same test-discovery cache assertion. That test
+assumed that `ctest -C Release` selects a different build configuration. This
+works with Visual Studio, but the single-configuration Ninja generator used in
+CI requires a CMake reconfiguration to change the build type.
+
+The test now checks both behaviors. For a single-configuration generator, it
+first checks that `-C` alone keeps the current cache, then reconfigures before
+it checks the other configuration. Binary, parser and missing-cache checks
+remain active. The original failure was reproduced locally with Ninja. All
+eight fixture tests then passed with Ninja, and the Visual Studio development
+suite passed all 83 tests in 113.93 seconds. The Debug build passed without
+compiler or linker warnings. This fix changes test code only.
