@@ -1,5 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
+const { resolve } = require('node:path');
 const { createCiConfig } = require('./ci-config.cjs');
 
 function inputs() {
@@ -82,5 +84,19 @@ test('invalid pin, absent compiler, and unknown triplet fail before a cache can 
         const input = inputs();
         change(input);
         assert.throws(() => createCiConfig(input));
+    }
+});
+
+test('build and release workflows disable the unused uv dependency cache', () => {
+    for (const [filename, expectedSteps] of [
+        ['build-and-release.yml', 1], ['release.yml', 2],
+    ]) {
+        const workflow = readFileSync(resolve(__dirname, '../workflows', filename), 'utf8');
+        const setupSteps = workflow.split(/^      - /m)
+            .filter(step => /^        uses: astral-sh\/setup-uv@/m.test(step));
+        assert.equal(setupSteps.length, expectedSteps, filename);
+        for (const step of setupSteps) {
+            assert.match(step, /^        with:\r?\n(?:          [^\r\n]*\r?\n)*          enable-cache: false\s*$/m, filename);
+        }
     }
 });
