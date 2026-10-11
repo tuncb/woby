@@ -203,6 +203,8 @@ Sources: [trim construction](../src/freeform_trim.cpp), [previous crop measureme
 
 ## Exact intersection predicates
 
+The [10–19 follow-up investigation](simplifications-10-19-investigation.md) adds executable prototypes, performance and memory measurements, input hashes, and implementation/merge decisions for this section and all later alternatives. It uses commit `46a27585c5bc8638a8bde5d601e5cead71376631`; the original assessment and its validation below remain historical.
+
 The self-intersection detector asks a boolean question, but its exact fallback converts both triangles to `cpp_rational`, clips segments, constructs rational intersection points, and checks whether those points lie on an allowed shared feature. The report stores the original triangle coordinates, not the constructed intersection points.
 
 A predicate-only triangle-overlap algorithm could avoid constructing those exact coordinates. Robust orientation signs, projected coplanar tests, and explicit shared-feature classification are sufficient in principle. The repository already obtains adaptive `orient2d` and `orient3d` implementations through CDT's installed `predicates.h`; [Shewchuk's predicate work](https://www.cs.cmu.edu/~quake/robust.html) explains the adaptive approach.

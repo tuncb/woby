@@ -1,0 +1,2652 @@
+{
+  "base_commit": "46a27585c5bc8638a8bde5d601e5cead71376631",
+  "configuration": "Release",
+  "started_utc": "2026-10-11T00:18:08.8708724Z",
+  "completed_utc": "2026-10-11T00:22:57.9295580Z",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics",
+  "physical_cores": 8,
+  "logical_processors": 16,
+  "executables": {
+    "micro": "f866fe250e214b988459208ee3c6ae661509ec9d423c424402ba8e4b6dd10c33",
+    "custom": "71018b270169d00d8f3267c3e849f13e7f22edf5d04da55f381522f3900af821",
+    "dense_set": "736fb09ff67f92f5893f1ac752a54e8d77ad2393ca7eefaa25680ee8dcdc51a9"
+  },
+  "sources": {
+    "CMakeLists.txt": "cbc1d483b0b8b0978e6d2ce0804fc7284f8bd0dcf8ae0b52bc9279642c56217a",
+    "experiments/simplification-19-dense-set/CMakeLists.txt": "c373e631588594cb060b987b90bb6e84de645ce19c50ec19a991acfab8e4b7f1",
+    "experiments/simplification-19-dense-set/main.cpp": "36b8290e9ac55567dbb42bdde85ace9b879135f2ef080164b5ad06a89b3562fe",
+    "experiments/simplification-19-dense-set/dense_set_index.h": "e569d767dd992052d98313885eff8e2b0468c0ddd3ce8095ef1c2b1a5acbc7ca",
+    "experiments/simplification-19-dense-set/dense_set_pipeline_index.h": "d454ffe5a33d7d2eda4bf14883ec54a46862dcb5ca2418df7de1fff5b8f58ca3",
+    "experiments/simplification-19-dense-set/tracked_custom_pipeline_index.h": "4e08a7ea17fcfc36ce399acef8e4f426f6b9c20f322993e98a3de176128de2f0",
+    "experiments/simplification-19-dense-set/index_allocation.h": "f29828cc7a97dbda63e12438b4a79a3f60816ddbc186714495e366f78a03c19e",
+    "experiments/simplification-19-dense-set/run.ps1": "1e5c2545feb42c345d3967bb1e028902ede2a76072c515fb295d4ab2af06c2ad",
+    "experiments/simplification-19-dense-set/exit-report-contract.ps1": "11cc0c95d85f0f93d75563307e81131ec71c8724b25471dff4d137e982505e9d",
+    "experiments/simplification-19-dense-set/provenance.ps1": "703cf05dc0518ee850734f6cb809e128b36c1bccd22736290cafad8abc75c3a6",
+    "src/analysis_index.h": "78300eb34714e67cef4ee1379b15f125b7394bfd12efff930ab9fb5571d1389b",
+    "tests/performance_benchmarks.cpp": "0ef78d1b51d1108455c4751286a95f50e8314e6ca26678049fa7d9cd696db50d",
+    "tests/analysis_export_benchmarks.cpp": "724e6544a1368749af23d51777682a3d3755a7baa75d501829b2a7314f5d0844",
+    "src/analysis_results.cpp": "f1847e695c9295bf2deafb3f97c110eb568e2397ffe9b0576dcb18ea8e57e04b",
+    "src/mesh_comparison.cpp": "faaf4339b37272328680b2c8dc28d5f87e33495e218a29ad2f11b663616f4dec",
+    "src/mesh_duplicates.cpp": "311bde9c7419f4a4e2cb4fd73326242842ebfd8a45b902363b3534f9ac17c160",
+    "src/mesh_topology.cpp": "2d6098dffe5b2c13c36d31443e127fac6e4b6870218d26824e7b130dca6cc12f",
+    "src/model_mesh.cpp": "c4c8c94ba0aab33fd60af39910f22869f89da16eedd266f0e9ed0718d6286eac",
+    "src/obj_mesh.cpp": "de63423cb2999ff144f3d142b8e6457c06073a47171160a922daac3e0c0ce153",
+    "src/obj_freeform.cpp": "3ba87e8e3a3db84fe26a2e546356b0635c944acbe5047f66eed032329f027440",
+    "src/freeform.cpp": "b5a2e4386dd43d608d306c1ee7ea62dc7672a0abb279c75d712f84f43c8c45e1",
+    "src/freeform_trim.cpp": "827097cf8212d85fb66e453a7bf18ebe83b5fc756cd53035329ad5917fecc9d8",
+    "src/mesh_degenerates.cpp": "777176602c387055e9afccee8a726f731e28b842dfb154785ccae73ef9a51eaf",
+    "src/uv_quality.cpp": "18609eb24a91841a9af674da80dbbb0c42c40b42297bffa9dffab160a4f916e5",
+    "src/uv_overlap.cpp": "e238f7a46773bf54078ed2ee70388fa1e9c4d826bfcfcc3d9f83d920ed1e1183",
+    "src/mesh_intersections.cpp": "7cb536a5fd7c2a9aeb19d00790ec27943967bf9e424ca382d2aeec71be70b73b",
+    "src/surface_mesh_quality.cpp": "e35db27406b957fa1faef5a89601a092e18b3b826da7a5e33d911d4a3a33223d",
+    "generated/custom/mesh_comparison.cpp": "128745a76dcd83639b9c918c15e2871877eb5d035e59eda5cb23d312302708d9",
+    "generated/dense/mesh_comparison.cpp": "ed6712ba8d689edb51dbfedde1cc2a9b7b28590818f9d06de05aa59fe5d39850",
+    "generated/custom/mesh_duplicates.cpp": "3490cc7235c5c8217b509072a12403b89098e4ab95bb873be04774c75e84215b",
+    "generated/dense/mesh_duplicates.cpp": "59a5de8bfe4b2116fdf01cedbdc456f1a39be3b12c60ee2a9a3875a5085df191",
+    "generated/custom/mesh_topology.cpp": "cbea9e9614807f9db5151eadfb9418a37fe468357b3bd5372483c2a5ae74833a",
+    "generated/dense/mesh_topology.cpp": "41ed3c916d34ab30e05b89849ef0cdfe075d9bb940446f1d9aa9a99417c36cfe",
+    "generated/tracked_custom_index.h": "8badf3c7bcbe7bc96c660335b3389dea548922da14a2f4d3ca1ea2953006e0b7",
+    "dependency/ankerl/unordered_dense.h": "bc1174255ec5052ec6b82d69fb8e58b4d29615306996241df33f2c4cc47465a1",
+    "project/woby_analysis_index_dense_set_probe.vcxproj": "030ee6e0d011be385fe5ed1d0b7f76b017fcc2b9d800d750c699f2ed4973adbd",
+    "project/woby_benchmarks_dense_set_custom.vcxproj": "0e60e0a284e7688c28f209c1bd30f9f59935e6d72ef0551833783378cc465192",
+    "project/woby_benchmarks_dense_set.vcxproj": "210ec68fe5db88e9868488cea9b621d018e7b9794fbf43b71407a99233636f90"
+  },
+  "micro": {
+    "contracts": {
+      "big_capacity_limit": 4611686018427387903,
+      "default_capacity_limit": 4294967295,
+      "growth_records_compared": 9000,
+      "ok": true,
+      "signed_zero_and_finite_contracts": 2
+    },
+    "coordinate": [
+      {
+        "entries": 4096,
+        "samples": [
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.5829,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.78,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.7846,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7195,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 0,
+            "sample": 0
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.6625,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7816,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.8241,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.79,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 1,
+            "sample": 1
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.6007,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7919,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.8412,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7507,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 2,
+            "sample": 2
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.589,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.8003,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.8669,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7402,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 3,
+            "sample": 3
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.591,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7853,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.8357,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7409,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 0,
+            "sample": 4
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.5929,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.788,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.8337,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7536,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 1,
+            "sample": 5
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.6204,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.8123,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.9126,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.761,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 2,
+            "sample": 6
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.5932,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.8017,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.8598,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7364,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 3,
+            "sample": 7
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.6151,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.8,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.8507,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.769,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 0,
+            "sample": 8
+          }
+        ]
+      },
+      {
+        "entries": 524288,
+        "samples": [
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 213.3785,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 254.8234,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 291.1044,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 205.6867,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 0,
+            "sample": 0
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 212.635,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 250.031,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 289.4424,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 212.5836,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 1,
+            "sample": 1
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 212.0767,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 256.0897,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 323.9215,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 196.1839,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 2,
+            "sample": 2
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 271.9884,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 233.9924,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 273.4619,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 297.9358,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 3,
+            "sample": 3
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 199.4405,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 236.7108,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 286.1875,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 198.3492,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 0,
+            "sample": 4
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 214.1309,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 237.9885,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 276.5828,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 205.5837,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 1,
+            "sample": 5
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 197.6063,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 238.2919,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 293.6975,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 193.3592,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 2,
+            "sample": 6
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 215.4566,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 216.3729,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 271.1729,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 196.9364,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 3,
+            "sample": 7
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 202.1155,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 243.8247,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 281.1208,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 206.2405,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 0,
+            "sample": 8
+          }
+        ]
+      }
+    ],
+    "integer_tuple": [
+      {
+        "entries": 4096,
+        "samples": [
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.4528,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7358,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.8102,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.6197,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 0,
+            "sample": 0
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.5118,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7463,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.7859,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.6171,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 1,
+            "sample": 1
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.4511,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.713,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.7756,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.6079,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 2,
+            "sample": 2
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.481,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.712,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.905,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.6022,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 3,
+            "sample": 3
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.4608,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7434,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.7858,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.6165,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 0,
+            "sample": 4
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.4554,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7225,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.7969,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.6003,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 1,
+            "sample": 5
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.4437,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7664,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.7931,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.5949,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 2,
+            "sample": 6
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.4645,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7175,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.7609,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.6049,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 3,
+            "sample": 7
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.4365,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163840
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.7323,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 163864,
+              "retained_requested_bytes": 163864,
+              "total_requested_bytes": 163896
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 0.7856,
+              "checksum": 33546240,
+              "key_capacity": 4097,
+              "peak_requested_bytes": 196632,
+              "retained_requested_bytes": 196632,
+              "total_requested_bytes": 196680
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 8192,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 0.6034,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "peak_requested_bytes": 163840,
+              "retained_requested_bytes": 163840,
+              "total_requested_bytes": 163872
+            },
+            "first_backend": 0,
+            "sample": 8
+          }
+        ]
+      },
+      {
+        "entries": 524288,
+        "samples": [
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 178.208,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 184.5574,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 221.6594,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 172.7739,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 0,
+            "sample": 0
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 174.4789,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 170.8597,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 213.7049,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 174.6397,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 1,
+            "sample": 1
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 164.617,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 182.1921,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 220.6929,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 162.6302,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 2,
+            "sample": 2
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 175.2604,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 182.2613,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 242.0988,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 170.0929,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 3,
+            "sample": 3
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 188.9026,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 180.0526,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 215.8781,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 174.2741,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 0,
+            "sample": 4
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 204.2222,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 167.2051,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 216.7476,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 186.9645,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 1,
+            "sample": 5
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 205.1007,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 188.5643,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 225.5974,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 189.8729,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 2,
+            "sample": 6
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 177.6903,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 169.5657,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 215.2697,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 181.4647,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 3,
+            "sample": 7
+          },
+          {
+            "custom": {
+              "allocation_calls": 2,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 183.6832,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971520
+            },
+            "dense_set": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 194.6114,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 20971544,
+              "retained_requested_bytes": 20971544,
+              "total_requested_bytes": 20971576
+            },
+            "dense_set_big": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 12,
+              "build_plus_3_hit_passes_ms": 227.1079,
+              "checksum": 549754765312,
+              "key_capacity": 524289,
+              "peak_requested_bytes": 25165848,
+              "retained_requested_bytes": 25165848,
+              "total_requested_bytes": 25165896
+            },
+            "dense_set_find_first": {
+              "allocation_calls": 3,
+              "bucket_capacity": 1048576,
+              "bucket_record_bytes": 8,
+              "build_plus_3_hit_passes_ms": 208.0838,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "peak_requested_bytes": 20971520,
+              "retained_requested_bytes": 20971520,
+              "total_requested_bytes": 20971552
+            },
+            "first_backend": 0,
+            "sample": 8
+          }
+        ]
+      }
+    ],
+    "notes": "One warmup per backend; nine rotated four-backend samples. Same production hasher with default library mix, fixed shuffle seed417, one insertion and three hit passes. Index construction/destruction and full ordered-key validation excluded from timing. Matched tracking allocator measures only index allocation requests, including construction and dense bucket rebinds; input keys, allocator overhead and process memory excluded. Allocation-event counters affect both micro and pipeline timings. Custom hash/probing source is extracted unchanged with allocator/type-name substitutions. Sets retain each key once. Append strategy reserves one spare and maintains it with geometric growth; default find-first alternative avoids temporary hit insertion but repeats lookup on misses. Default 32-bit value-index guard rejects unsupported sizes; a production port must retain the custom wide fallback."
+  },
+  "detectors": [
+    {
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "input_bytes": 75585857,
+      "model_sha256": "9ac38b16814658cee4d52415796e7c8a1cfffa70549f9b7f0eb0c1f1704e4977",
+      "backend": "custom",
+      "order": 0,
+      "header": "triangles=1054542 source_points=535893 parts=65",
+      "csv": "uploads_files_2720101_BusGameMap-0-custom.csv",
+      "csv_sha256": "45d6ee9f00e3f1d816f37f5449c486c26824a736d99b99a279f6753bbad0a4d1",
+      "log": "uploads_files_2720101_BusGameMap-0-custom.log",
+      "log_sha256": "eb5ce02c201ee4d193aa7d346e8c322b5518fed7fe18e37c30522b80a75a1e51",
+      "index_allocations": {
+        "live_requested_bytes": 0,
+        "peak_requested_bytes": 25907616,
+        "total_requested_bytes": 141479880,
+        "allocation_calls": 18
+      },
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0289,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 1506.06,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 1506.09,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0101,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 1506.47,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 1506.48,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0101,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 1483.54,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 1483.55,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "input_bytes": 75585857,
+      "model_sha256": "9ac38b16814658cee4d52415796e7c8a1cfffa70549f9b7f0eb0c1f1704e4977",
+      "backend": "dense_set",
+      "order": 0,
+      "header": "triangles=1054542 source_points=535893 parts=65",
+      "csv": "uploads_files_2720101_BusGameMap-0-dense_set.csv",
+      "csv_sha256": "a2a95bc9d702c7bd7724696f38c88b687fc5368c8a803d21c4bc0243e8bb7b33",
+      "log": "uploads_files_2720101_BusGameMap-0-dense_set.log",
+      "log_sha256": "46de75ad2f38daf12fe2ebc2d51ffda690c305a718d64597faaf2bc7831ada10",
+      "index_allocations": {
+        "live_requested_bytes": 0,
+        "peak_requested_bytes": 25907648,
+        "total_requested_bytes": 141474864,
+        "allocation_calls": 36
+      },
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0425,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 1591.2,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 1591.25,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0178,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 1572.07,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 1572.09,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0113,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 1611.97,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 1611.99,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "input_bytes": 75585857,
+      "model_sha256": "9ac38b16814658cee4d52415796e7c8a1cfffa70549f9b7f0eb0c1f1704e4977",
+      "backend": "dense_set",
+      "order": 1,
+      "header": "triangles=1054542 source_points=535893 parts=65",
+      "csv": "uploads_files_2720101_BusGameMap-1-dense_set.csv",
+      "csv_sha256": "d9f47d173457e81b6475ca4bf978ac7ef0f2c598d390e1372b1bf6f482a2f97a",
+      "log": "uploads_files_2720101_BusGameMap-1-dense_set.log",
+      "log_sha256": "46de75ad2f38daf12fe2ebc2d51ffda690c305a718d64597faaf2bc7831ada10",
+      "index_allocations": {
+        "live_requested_bytes": 0,
+        "peak_requested_bytes": 25907648,
+        "total_requested_bytes": 141474864,
+        "allocation_calls": 36
+      },
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0273,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 1696.71,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 1696.74,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0146,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 1694.9,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 1694.92,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0108,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 1548.51,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 1548.52,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "input_bytes": 75585857,
+      "model_sha256": "9ac38b16814658cee4d52415796e7c8a1cfffa70549f9b7f0eb0c1f1704e4977",
+      "backend": "custom",
+      "order": 1,
+      "header": "triangles=1054542 source_points=535893 parts=65",
+      "csv": "uploads_files_2720101_BusGameMap-1-custom.csv",
+      "csv_sha256": "cfdac12cede39f27655d60d7ecad143bc0e2edda04ae5b391b3c5415344a8898",
+      "log": "uploads_files_2720101_BusGameMap-1-custom.log",
+      "log_sha256": "eb5ce02c201ee4d193aa7d346e8c322b5518fed7fe18e37c30522b80a75a1e51",
+      "index_allocations": {
+        "live_requested_bytes": 0,
+        "peak_requested_bytes": 25907616,
+        "total_requested_bytes": 141479880,
+        "allocation_calls": 18
+      },
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0264,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 1500.72,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 1500.74,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0107,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 1435.59,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 1435.6,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0116,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 1409.23,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 1409.24,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\powerplant.obj",
+      "input_bytes": 817891724,
+      "model_sha256": "1bda60ac06a11a6299799c95f4caac63b5c2a3654464040ff5b7d4bb8db190a8",
+      "backend": "custom",
+      "order": 0,
+      "header": "triangles=12759246 source_points=5984083 parts=21",
+      "csv": "powerplant-0-custom.csv",
+      "csv_sha256": "6e6777d520f632d54baeeddaac6cb5e719fc70795965f3dc88ca3c853bc1254d",
+      "log": "powerplant-0-custom.log",
+      "log_sha256": "6f52c3393631b7db47e322d2817708d5f59c1e130ec2e18371d197569c31369e",
+      "index_allocations": {
+        "live_requested_bytes": 0,
+        "peak_requested_bytes": 484733792,
+        "total_requested_bytes": 2287715448,
+        "allocation_calls": 18
+      },
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0252,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 18137.0,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 18137.1,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0149,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 18272.6,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 18272.6,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0152,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 18153.3,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 18153.3,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\powerplant.obj",
+      "input_bytes": 817891724,
+      "model_sha256": "1bda60ac06a11a6299799c95f4caac63b5c2a3654464040ff5b7d4bb8db190a8",
+      "backend": "dense_set",
+      "order": 0,
+      "header": "triangles=12759246 source_points=5984083 parts=21",
+      "csv": "powerplant-0-dense_set.csv",
+      "csv_sha256": "78a282f1e6c66588599c73e97184ff9458f34ffdbd735b27807b3cc13af621c0",
+      "log": "powerplant-0-dense_set.log",
+      "log_sha256": "d89ef1af7c2b19097ae1cd9b8468acee7e03699b060d5e9685b9e19df4a2480c",
+      "index_allocations": {
+        "live_requested_bytes": 0,
+        "peak_requested_bytes": 484733824,
+        "total_requested_bytes": 2086383840,
+        "allocation_calls": 36
+      },
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.027,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 18935.9,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 18936.0,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0174,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 18579.1,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 18579.1,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0147,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 18728.1,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 18728.1,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\powerplant.obj",
+      "input_bytes": 817891724,
+      "model_sha256": "1bda60ac06a11a6299799c95f4caac63b5c2a3654464040ff5b7d4bb8db190a8",
+      "backend": "dense_set",
+      "order": 1,
+      "header": "triangles=12759246 source_points=5984083 parts=21",
+      "csv": "powerplant-1-dense_set.csv",
+      "csv_sha256": "f8aedde8bdcdac8692dc69d71707597510ba83d1b29eef48f176732b5d252137",
+      "log": "powerplant-1-dense_set.log",
+      "log_sha256": "d89ef1af7c2b19097ae1cd9b8468acee7e03699b060d5e9685b9e19df4a2480c",
+      "index_allocations": {
+        "live_requested_bytes": 0,
+        "peak_requested_bytes": 484733824,
+        "total_requested_bytes": 2086383840,
+        "allocation_calls": 36
+      },
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0355,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 18776.8,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 18776.8,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0122,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 18726.9,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 18726.9,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.013,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 18784.1,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 18784.1,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\powerplant.obj",
+      "input_bytes": 817891724,
+      "model_sha256": "1bda60ac06a11a6299799c95f4caac63b5c2a3654464040ff5b7d4bb8db190a8",
+      "backend": "custom",
+      "order": 1,
+      "header": "triangles=12759246 source_points=5984083 parts=21",
+      "csv": "powerplant-1-custom.csv",
+      "csv_sha256": "573d664384291c3a45824290fe68b645d87e47428994013a54c94e56179f3b4a",
+      "log": "powerplant-1-custom.log",
+      "log_sha256": "6f52c3393631b7db47e322d2817708d5f59c1e130ec2e18371d197569c31369e",
+      "index_allocations": {
+        "live_requested_bytes": 0,
+        "peak_requested_bytes": 484733792,
+        "total_requested_bytes": 2287715448,
+        "allocation_calls": 18
+      },
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0263,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 18453.2,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 18453.2,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.017,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 18231.2,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 18231.3,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.013,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 18200.0,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 18200.0,
+          "counts": []
+        }
+      ]
+    }
+  ],
+  "all_detector_count_vectors_equal": true,
+  "method": "Serial exclusive Release window. Micro has nine rotated four-backend samples, one warmup, fixed shuffled keys, insertion plus three hit passes. Both micro and pipeline use matched analysis-index TrackingAllocator counters on allocation events only, including all allocator rebinds; all other application allocations untracked. Pipeline uses unchanged current detector harness: two fresh three-run processes per backend per model, reversed backend order. Process-exit summary records aggregate index peak/traffic/calls and requires zero live bytes. Import/render excluded. Every computeComparisonStages call receives default empty analysisInputs; no application analysis cache is retained or reused between calls. First and later repetitions can differ through allocator/OS/input-data warmth. Full trailing count vectors/header/stage layouts validated. Pipeline default set uses append/spare strategy, stores keys once and preserves first-use IDs within checked 32-bit library domain; production needs custom wide fallback. Big-bucket and default find-first sets are micro-only. Counts do not establish complete finding/export/order equivalence."
+}

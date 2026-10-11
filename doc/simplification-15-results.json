@@ -1,0 +1,1521 @@
+{
+  "checksum": 21476753750,
+  "float_slope_precision": [
+    {
+      "camera_cases": 180,
+      "different_output_counts": 0,
+      "finite": true,
+      "max_ndc_depth_difference": 2.980232238769531E-08,
+      "max_ndc_xy_difference": 0.0,
+      "triangle_y_separation": 1.0
+    },
+    {
+      "camera_cases": 180,
+      "different_output_counts": 0,
+      "finite": true,
+      "max_ndc_depth_difference": 0.004008293151855469,
+      "max_ndc_xy_difference": 0.0,
+      "triangle_y_separation": 0.009999999776482582
+    },
+    {
+      "camera_cases": 180,
+      "different_output_counts": 0,
+      "finite": true,
+      "max_ndc_depth_difference": 0.0014066696166992188,
+      "max_ndc_xy_difference": 0.0,
+      "triangle_y_separation": 9.999999747378752E-05
+    },
+    {
+      "camera_cases": 180,
+      "different_output_counts": 0,
+      "finite": true,
+      "max_ndc_depth_difference": 16.7750244140625,
+      "max_ndc_xy_difference": 0.0,
+      "triangle_y_separation": 9.999999974752427E-07
+    },
+    {
+      "camera_cases": 180,
+      "different_output_counts": 0,
+      "finite": true,
+      "max_ndc_depth_difference": 3327.041015625,
+      "max_ndc_xy_difference": 0.0,
+      "triangle_y_separation": 1.0000000116860974E-07
+    }
+  ],
+  "ok": true,
+  "rows": [
+    {
+      "anchor_bytes": 480,
+      "mode": "flat",
+      "projection_capacity_bytes": 720,
+      "rounds": 100000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.4701000000000005E-05,
+          "camera_projection_ms": 0.00242568,
+          "memcpy_ms": 1.7905E-05,
+          "slope_cached_projection_ms": 0.002640824
+        },
+        {
+          "cache_hit_ms": 4.8037E-05,
+          "camera_projection_ms": 0.002361128,
+          "memcpy_ms": 1.8065E-05,
+          "slope_cached_projection_ms": 0.0026595639999999997
+        },
+        {
+          "cache_hit_ms": 4.5317999999999995E-05,
+          "camera_projection_ms": 0.002371312,
+          "memcpy_ms": 1.8871999999999998E-05,
+          "slope_cached_projection_ms": 0.002677957
+        },
+        {
+          "cache_hit_ms": 4.4710000000000004E-05,
+          "camera_projection_ms": 0.002345799,
+          "memcpy_ms": 1.7899E-05,
+          "slope_cached_projection_ms": 0.00267914
+        },
+        {
+          "cache_hit_ms": 4.5298E-05,
+          "camera_projection_ms": 0.002340198,
+          "memcpy_ms": 1.8798E-05,
+          "slope_cached_projection_ms": 0.002660062
+        }
+      ],
+      "segments": 10,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 10,
+      "slope_cache_requested_bytes": 744,
+      "source_triangles": 64,
+      "submitted_bytes": 720,
+      "unique_faces": false,
+      "world_cache_bytes": 240
+    },
+    {
+      "anchor_bytes": 480,
+      "mode": "oblique",
+      "projection_capacity_bytes": 720,
+      "rounds": 100000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.5693000000000004E-05,
+          "camera_projection_ms": 0.002392282,
+          "memcpy_ms": 2.0371000000000002E-05,
+          "slope_cached_projection_ms": 0.0027200799999999997
+        },
+        {
+          "cache_hit_ms": 4.4699999999999996E-05,
+          "camera_projection_ms": 0.0023535179999999998,
+          "memcpy_ms": 2.0319E-05,
+          "slope_cached_projection_ms": 0.0026453649999999998
+        },
+        {
+          "cache_hit_ms": 4.4696999999999996E-05,
+          "camera_projection_ms": 0.0023503020000000003,
+          "memcpy_ms": 2.0629E-05,
+          "slope_cached_projection_ms": 0.0026444150000000002
+        },
+        {
+          "cache_hit_ms": 4.6365999999999996E-05,
+          "camera_projection_ms": 0.002352607,
+          "memcpy_ms": 2.0263E-05,
+          "slope_cached_projection_ms": 0.002643505
+        },
+        {
+          "cache_hit_ms": 4.4841E-05,
+          "camera_projection_ms": 0.002345834,
+          "memcpy_ms": 2.0305E-05,
+          "slope_cached_projection_ms": 0.0026463119999999996
+        }
+      ],
+      "segments": 10,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 10,
+      "slope_cache_requested_bytes": 744,
+      "source_triangles": 64,
+      "submitted_bytes": 720,
+      "unique_faces": false,
+      "world_cache_bytes": 240
+    },
+    {
+      "anchor_bytes": 480,
+      "mode": "half_bridges",
+      "projection_capacity_bytes": 720,
+      "rounds": 100000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.7752E-05,
+          "camera_projection_ms": 0.0018836279999999998,
+          "memcpy_ms": 1.8024E-05,
+          "slope_cached_projection_ms": 0.002156177
+        },
+        {
+          "cache_hit_ms": 4.5145E-05,
+          "camera_projection_ms": 0.001899811,
+          "memcpy_ms": 1.7938E-05,
+          "slope_cached_projection_ms": 0.002104427
+        },
+        {
+          "cache_hit_ms": 4.5489E-05,
+          "camera_projection_ms": 0.0018674330000000002,
+          "memcpy_ms": 1.8156E-05,
+          "slope_cached_projection_ms": 0.002088767
+        },
+        {
+          "cache_hit_ms": 4.4772E-05,
+          "camera_projection_ms": 0.0018732140000000002,
+          "memcpy_ms": 2.0432E-05,
+          "slope_cached_projection_ms": 0.00208216
+        },
+        {
+          "cache_hit_ms": 4.4716E-05,
+          "camera_projection_ms": 0.001866638,
+          "memcpy_ms": 1.8133E-05,
+          "slope_cached_projection_ms": 0.002090719
+        }
+      ],
+      "segments": 10,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 5,
+      "slope_cache_requested_bytes": 744,
+      "source_triangles": 64,
+      "submitted_bytes": 720,
+      "unique_faces": false,
+      "world_cache_bytes": 240
+    },
+    {
+      "anchor_bytes": 480,
+      "mode": "near_crossing",
+      "projection_capacity_bytes": 720,
+      "rounds": 100000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.5835E-05,
+          "camera_projection_ms": 0.002459213,
+          "memcpy_ms": 1.9068E-05,
+          "slope_cached_projection_ms": 0.00282185
+        },
+        {
+          "cache_hit_ms": 4.4924E-05,
+          "camera_projection_ms": 0.002473073,
+          "memcpy_ms": 1.7982E-05,
+          "slope_cached_projection_ms": 0.002823024
+        },
+        {
+          "cache_hit_ms": 4.7137E-05,
+          "camera_projection_ms": 0.002502371,
+          "memcpy_ms": 1.7969E-05,
+          "slope_cached_projection_ms": 0.002843098
+        },
+        {
+          "cache_hit_ms": 4.5323E-05,
+          "camera_projection_ms": 0.002494135,
+          "memcpy_ms": 1.8387E-05,
+          "slope_cached_projection_ms": 0.002914255
+        },
+        {
+          "cache_hit_ms": 4.4702E-05,
+          "camera_projection_ms": 0.002490824,
+          "memcpy_ms": 1.7933E-05,
+          "slope_cached_projection_ms": 0.0028555900000000003
+        }
+      ],
+      "segments": 10,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 10,
+      "slope_cache_requested_bytes": 744,
+      "source_triangles": 64,
+      "submitted_bytes": 720,
+      "unique_faces": false,
+      "world_cache_bytes": 240
+    },
+    {
+      "anchor_bytes": 480,
+      "mode": "flat",
+      "projection_capacity_bytes": 720,
+      "rounds": 100000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.814E-05,
+          "camera_projection_ms": 0.002352926,
+          "memcpy_ms": 2.1551999999999996E-05,
+          "slope_cached_projection_ms": 0.002643254
+        },
+        {
+          "cache_hit_ms": 4.4938E-05,
+          "camera_projection_ms": 0.002357411,
+          "memcpy_ms": 2.2504E-05,
+          "slope_cached_projection_ms": 0.002646229
+        },
+        {
+          "cache_hit_ms": 4.4862000000000005E-05,
+          "camera_projection_ms": 0.002466197,
+          "memcpy_ms": 2.1669999999999998E-05,
+          "slope_cached_projection_ms": 0.002822883
+        },
+        {
+          "cache_hit_ms": 4.4818E-05,
+          "camera_projection_ms": 0.002387742,
+          "memcpy_ms": 2.1312000000000002E-05,
+          "slope_cached_projection_ms": 0.002647658
+        },
+        {
+          "cache_hit_ms": 4.4648000000000003E-05,
+          "camera_projection_ms": 0.00242805,
+          "memcpy_ms": 2.1497E-05,
+          "slope_cached_projection_ms": 0.0026897699999999997
+        }
+      ],
+      "segments": 10,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 10,
+      "slope_cache_requested_bytes": 744,
+      "source_triangles": 10,
+      "submitted_bytes": 720,
+      "unique_faces": true,
+      "world_cache_bytes": 240
+    },
+    {
+      "anchor_bytes": 480,
+      "mode": "oblique",
+      "projection_capacity_bytes": 720,
+      "rounds": 100000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.5199E-05,
+          "camera_projection_ms": 0.002414454,
+          "memcpy_ms": 2.2567E-05,
+          "slope_cached_projection_ms": 0.002647745
+        },
+        {
+          "cache_hit_ms": 4.5085E-05,
+          "camera_projection_ms": 0.002364941,
+          "memcpy_ms": 2.2447E-05,
+          "slope_cached_projection_ms": 0.002683961
+        },
+        {
+          "cache_hit_ms": 4.4921E-05,
+          "camera_projection_ms": 0.0023530860000000003,
+          "memcpy_ms": 2.2301000000000002E-05,
+          "slope_cached_projection_ms": 0.0026280970000000002
+        },
+        {
+          "cache_hit_ms": 4.4703E-05,
+          "camera_projection_ms": 0.00234687,
+          "memcpy_ms": 2.25E-05,
+          "slope_cached_projection_ms": 0.002731524
+        },
+        {
+          "cache_hit_ms": 4.7182E-05,
+          "camera_projection_ms": 0.002359133,
+          "memcpy_ms": 2.2547999999999998E-05,
+          "slope_cached_projection_ms": 0.002626894
+        }
+      ],
+      "segments": 10,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 10,
+      "slope_cache_requested_bytes": 744,
+      "source_triangles": 10,
+      "submitted_bytes": 720,
+      "unique_faces": true,
+      "world_cache_bytes": 240
+    },
+    {
+      "anchor_bytes": 480,
+      "mode": "half_bridges",
+      "projection_capacity_bytes": 720,
+      "rounds": 100000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.476E-05,
+          "camera_projection_ms": 0.001874097,
+          "memcpy_ms": 2.2468E-05,
+          "slope_cached_projection_ms": 0.002115525
+        },
+        {
+          "cache_hit_ms": 4.469E-05,
+          "camera_projection_ms": 0.0018787629999999999,
+          "memcpy_ms": 2.2769E-05,
+          "slope_cached_projection_ms": 0.002125058
+        },
+        {
+          "cache_hit_ms": 4.4743E-05,
+          "camera_projection_ms": 0.00215981,
+          "memcpy_ms": 2.2768000000000003E-05,
+          "slope_cached_projection_ms": 0.0020948670000000003
+        },
+        {
+          "cache_hit_ms": 4.4989E-05,
+          "camera_projection_ms": 0.001883651,
+          "memcpy_ms": 2.2429E-05,
+          "slope_cached_projection_ms": 0.002100499
+        },
+        {
+          "cache_hit_ms": 5.1331E-05,
+          "camera_projection_ms": 0.0018958369999999998,
+          "memcpy_ms": 2.3226E-05,
+          "slope_cached_projection_ms": 0.002080685
+        }
+      ],
+      "segments": 10,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 5,
+      "slope_cache_requested_bytes": 744,
+      "source_triangles": 10,
+      "submitted_bytes": 720,
+      "unique_faces": true,
+      "world_cache_bytes": 240
+    },
+    {
+      "anchor_bytes": 480,
+      "mode": "near_crossing",
+      "projection_capacity_bytes": 720,
+      "rounds": 100000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.4806E-05,
+          "camera_projection_ms": 0.002472755,
+          "memcpy_ms": 2.3264E-05,
+          "slope_cached_projection_ms": 0.002794366
+        },
+        {
+          "cache_hit_ms": 4.4692E-05,
+          "camera_projection_ms": 0.002471618,
+          "memcpy_ms": 2.3177E-05,
+          "slope_cached_projection_ms": 0.0027891520000000005
+        },
+        {
+          "cache_hit_ms": 4.5370999999999996E-05,
+          "camera_projection_ms": 0.002476096,
+          "memcpy_ms": 2.7282E-05,
+          "slope_cached_projection_ms": 0.00281971
+        },
+        {
+          "cache_hit_ms": 4.5026E-05,
+          "camera_projection_ms": 0.0024672649999999997,
+          "memcpy_ms": 2.3290000000000002E-05,
+          "slope_cached_projection_ms": 0.0028052460000000004
+        },
+        {
+          "cache_hit_ms": 4.4704E-05,
+          "camera_projection_ms": 0.002464074,
+          "memcpy_ms": 2.3224E-05,
+          "slope_cached_projection_ms": 0.00279001
+        }
+      ],
+      "segments": 10,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 10,
+      "slope_cache_requested_bytes": 744,
+      "source_triangles": 10,
+      "submitted_bytes": 720,
+      "unique_faces": true,
+      "world_cache_bytes": 240
+    },
+    {
+      "anchor_bytes": 48000,
+      "mode": "flat",
+      "projection_capacity_bytes": 72000,
+      "rounds": 1000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.53E-05,
+          "camera_projection_ms": 0.2238938,
+          "memcpy_ms": 0.0023966,
+          "slope_cached_projection_ms": 0.1555006
+        },
+        {
+          "cache_hit_ms": 4.4999999999999996E-05,
+          "camera_projection_ms": 0.2232727,
+          "memcpy_ms": 0.0023905,
+          "slope_cached_projection_ms": 0.156513
+        },
+        {
+          "cache_hit_ms": 4.5400000000000006E-05,
+          "camera_projection_ms": 0.2232344,
+          "memcpy_ms": 0.0023940000000000003,
+          "slope_cached_projection_ms": 0.1555704
+        },
+        {
+          "cache_hit_ms": 5.1E-05,
+          "camera_projection_ms": 0.2263029,
+          "memcpy_ms": 0.0023849,
+          "slope_cached_projection_ms": 0.1575083
+        },
+        {
+          "cache_hit_ms": 4.5199999999999994E-05,
+          "camera_projection_ms": 0.226232,
+          "memcpy_ms": 0.0024127999999999997,
+          "slope_cached_projection_ms": 0.1569818
+        }
+      ],
+      "segments": 1000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 64,
+      "slope_cache_requested_bytes": 3000,
+      "source_triangles": 64,
+      "submitted_bytes": 72000,
+      "unique_faces": false,
+      "world_cache_bytes": 24000
+    },
+    {
+      "anchor_bytes": 48000,
+      "mode": "oblique",
+      "projection_capacity_bytes": 72000,
+      "rounds": 1000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.5199999999999994E-05,
+          "camera_projection_ms": 0.22789979999999999,
+          "memcpy_ms": 0.0023908999999999996,
+          "slope_cached_projection_ms": 0.17017169999999998
+        },
+        {
+          "cache_hit_ms": 4.4999999999999996E-05,
+          "camera_projection_ms": 0.22241460000000002,
+          "memcpy_ms": 0.0023877,
+          "slope_cached_projection_ms": 0.15611000000000003
+        },
+        {
+          "cache_hit_ms": 4.51E-05,
+          "camera_projection_ms": 0.2235636,
+          "memcpy_ms": 0.0023849,
+          "slope_cached_projection_ms": 0.16179839999999998
+        },
+        {
+          "cache_hit_ms": 0.0001013,
+          "camera_projection_ms": 0.2319426,
+          "memcpy_ms": 0.0032589999999999997,
+          "slope_cached_projection_ms": 0.1562507
+        },
+        {
+          "cache_hit_ms": 4.5400000000000006E-05,
+          "camera_projection_ms": 0.2276158,
+          "memcpy_ms": 0.0023919,
+          "slope_cached_projection_ms": 0.15582300000000002
+        }
+      ],
+      "segments": 1000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 64,
+      "slope_cache_requested_bytes": 3000,
+      "source_triangles": 64,
+      "submitted_bytes": 72000,
+      "unique_faces": false,
+      "world_cache_bytes": 24000
+    },
+    {
+      "anchor_bytes": 48000,
+      "mode": "half_bridges",
+      "projection_capacity_bytes": 72000,
+      "rounds": 1000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.53E-05,
+          "camera_projection_ms": 0.1761782,
+          "memcpy_ms": 0.0024407,
+          "slope_cached_projection_ms": 0.1458005
+        },
+        {
+          "cache_hit_ms": 4.49E-05,
+          "camera_projection_ms": 0.1790751,
+          "memcpy_ms": 0.0024355,
+          "slope_cached_projection_ms": 0.1447418
+        },
+        {
+          "cache_hit_ms": 4.58E-05,
+          "camera_projection_ms": 0.17819829999999998,
+          "memcpy_ms": 0.0024312,
+          "slope_cached_projection_ms": 0.1458528
+        },
+        {
+          "cache_hit_ms": 4.4999999999999996E-05,
+          "camera_projection_ms": 0.1777078,
+          "memcpy_ms": 0.0024095,
+          "slope_cached_projection_ms": 0.1456547
+        },
+        {
+          "cache_hit_ms": 4.5199999999999994E-05,
+          "camera_projection_ms": 0.1760215,
+          "memcpy_ms": 0.002475,
+          "slope_cached_projection_ms": 0.1468507
+        }
+      ],
+      "segments": 1000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 32,
+      "slope_cache_requested_bytes": 3000,
+      "source_triangles": 64,
+      "submitted_bytes": 72000,
+      "unique_faces": false,
+      "world_cache_bytes": 24000
+    },
+    {
+      "anchor_bytes": 48000,
+      "mode": "near_crossing",
+      "projection_capacity_bytes": 72000,
+      "rounds": 1000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.5600000000000004E-05,
+          "camera_projection_ms": 0.2383724,
+          "memcpy_ms": 0.0024053,
+          "slope_cached_projection_ms": 0.1663881
+        },
+        {
+          "cache_hit_ms": 4.4999999999999996E-05,
+          "camera_projection_ms": 0.2357327,
+          "memcpy_ms": 0.0023858,
+          "slope_cached_projection_ms": 0.1659475
+        },
+        {
+          "cache_hit_ms": 4.5199999999999994E-05,
+          "camera_projection_ms": 0.2357309,
+          "memcpy_ms": 0.0023919,
+          "slope_cached_projection_ms": 0.1669544
+        },
+        {
+          "cache_hit_ms": 4.51E-05,
+          "camera_projection_ms": 0.2378192,
+          "memcpy_ms": 0.0023986999999999997,
+          "slope_cached_projection_ms": 0.1666715
+        },
+        {
+          "cache_hit_ms": 4.58E-05,
+          "camera_projection_ms": 0.23559180000000002,
+          "memcpy_ms": 0.002387,
+          "slope_cached_projection_ms": 0.1672439
+        }
+      ],
+      "segments": 1000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 64,
+      "slope_cache_requested_bytes": 3000,
+      "source_triangles": 64,
+      "submitted_bytes": 72000,
+      "unique_faces": false,
+      "world_cache_bytes": 24000
+    },
+    {
+      "anchor_bytes": 48000,
+      "mode": "flat",
+      "projection_capacity_bytes": 72000,
+      "rounds": 1000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.51E-05,
+          "camera_projection_ms": 0.2229323,
+          "memcpy_ms": 0.0025196999999999997,
+          "slope_cached_projection_ms": 0.2697989
+        },
+        {
+          "cache_hit_ms": 5.55E-05,
+          "camera_projection_ms": 0.2252302,
+          "memcpy_ms": 0.0024121999999999998,
+          "slope_cached_projection_ms": 0.2620842
+        },
+        {
+          "cache_hit_ms": 4.53E-05,
+          "camera_projection_ms": 0.22820320000000002,
+          "memcpy_ms": 0.0025252,
+          "slope_cached_projection_ms": 0.2620423
+        },
+        {
+          "cache_hit_ms": 4.4999999999999996E-05,
+          "camera_projection_ms": 0.2228167,
+          "memcpy_ms": 0.0024466,
+          "slope_cached_projection_ms": 0.27351319999999996
+        },
+        {
+          "cache_hit_ms": 4.5199999999999994E-05,
+          "camera_projection_ms": 0.2227756,
+          "memcpy_ms": 0.0028582,
+          "slope_cached_projection_ms": 0.2574822
+        }
+      ],
+      "segments": 1000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 1000,
+      "slope_cache_requested_bytes": 48120,
+      "source_triangles": 1000,
+      "submitted_bytes": 72000,
+      "unique_faces": true,
+      "world_cache_bytes": 24000
+    },
+    {
+      "anchor_bytes": 48000,
+      "mode": "oblique",
+      "projection_capacity_bytes": 72000,
+      "rounds": 1000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.5199999999999994E-05,
+          "camera_projection_ms": 0.2261273,
+          "memcpy_ms": 0.0023994,
+          "slope_cached_projection_ms": 0.2580368
+        },
+        {
+          "cache_hit_ms": 4.51E-05,
+          "camera_projection_ms": 0.230523,
+          "memcpy_ms": 0.0024246,
+          "slope_cached_projection_ms": 0.2578011
+        },
+        {
+          "cache_hit_ms": 4.5400000000000006E-05,
+          "camera_projection_ms": 0.2262567,
+          "memcpy_ms": 0.0024011999999999996,
+          "slope_cached_projection_ms": 0.2578333
+        },
+        {
+          "cache_hit_ms": 4.4999999999999996E-05,
+          "camera_projection_ms": 0.2224251,
+          "memcpy_ms": 0.0024002,
+          "slope_cached_projection_ms": 0.2633727
+        },
+        {
+          "cache_hit_ms": 4.5600000000000004E-05,
+          "camera_projection_ms": 0.22303720000000002,
+          "memcpy_ms": 0.0024008,
+          "slope_cached_projection_ms": 0.2538407
+        }
+      ],
+      "segments": 1000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 1000,
+      "slope_cache_requested_bytes": 48120,
+      "source_triangles": 1000,
+      "submitted_bytes": 72000,
+      "unique_faces": true,
+      "world_cache_bytes": 24000
+    },
+    {
+      "anchor_bytes": 48000,
+      "mode": "half_bridges",
+      "projection_capacity_bytes": 72000,
+      "rounds": 1000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.5400000000000006E-05,
+          "camera_projection_ms": 0.1771552,
+          "memcpy_ms": 0.0025379,
+          "slope_cached_projection_ms": 0.2002697
+        },
+        {
+          "cache_hit_ms": 4.4999999999999996E-05,
+          "camera_projection_ms": 0.1769617,
+          "memcpy_ms": 0.0024018,
+          "slope_cached_projection_ms": 0.2039665
+        },
+        {
+          "cache_hit_ms": 4.5400000000000006E-05,
+          "camera_projection_ms": 0.17755359999999998,
+          "memcpy_ms": 0.0026569,
+          "slope_cached_projection_ms": 0.1985625
+        },
+        {
+          "cache_hit_ms": 4.49E-05,
+          "camera_projection_ms": 0.1832127,
+          "memcpy_ms": 0.0024005000000000003,
+          "slope_cached_projection_ms": 0.20204660000000002
+        },
+        {
+          "cache_hit_ms": 4.53E-05,
+          "camera_projection_ms": 0.1768886,
+          "memcpy_ms": 0.002412,
+          "slope_cached_projection_ms": 0.1991251
+        }
+      ],
+      "segments": 1000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 500,
+      "slope_cache_requested_bytes": 48120,
+      "source_triangles": 1000,
+      "submitted_bytes": 72000,
+      "unique_faces": true,
+      "world_cache_bytes": 24000
+    },
+    {
+      "anchor_bytes": 48000,
+      "mode": "near_crossing",
+      "projection_capacity_bytes": 72000,
+      "rounds": 1000,
+      "samples": [
+        {
+          "cache_hit_ms": 4.5199999999999994E-05,
+          "camera_projection_ms": 0.2409438,
+          "memcpy_ms": 0.0023734999999999997,
+          "slope_cached_projection_ms": 0.27460680000000004
+        },
+        {
+          "cache_hit_ms": 4.4999999999999996E-05,
+          "camera_projection_ms": 0.2411268,
+          "memcpy_ms": 0.0023889999999999996,
+          "slope_cached_projection_ms": 0.27438799999999997
+        },
+        {
+          "cache_hit_ms": 4.51E-05,
+          "camera_projection_ms": 0.23620259999999998,
+          "memcpy_ms": 0.0024664,
+          "slope_cached_projection_ms": 0.2780048
+        },
+        {
+          "cache_hit_ms": 4.49E-05,
+          "camera_projection_ms": 0.2350037,
+          "memcpy_ms": 0.0023767999999999997,
+          "slope_cached_projection_ms": 0.27469920000000003
+        },
+        {
+          "cache_hit_ms": 4.51E-05,
+          "camera_projection_ms": 0.23622130000000002,
+          "memcpy_ms": 0.0024855999999999997,
+          "slope_cached_projection_ms": 0.2753139
+        }
+      ],
+      "segments": 1000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 1000,
+      "slope_cache_requested_bytes": 48120,
+      "source_triangles": 1000,
+      "submitted_bytes": 72000,
+      "unique_faces": true,
+      "world_cache_bytes": 24000
+    },
+    {
+      "anchor_bytes": 960000,
+      "mode": "flat",
+      "projection_capacity_bytes": 1440000,
+      "rounds": 50,
+      "samples": [
+        {
+          "cache_hit_ms": 6.8E-05,
+          "camera_projection_ms": 4.479934,
+          "memcpy_ms": 0.081456,
+          "slope_cached_projection_ms": 3.07875
+        },
+        {
+          "cache_hit_ms": 5.4000000000000005E-05,
+          "camera_projection_ms": 4.5983339999999995,
+          "memcpy_ms": 0.072266,
+          "slope_cached_projection_ms": 3.118426
+        },
+        {
+          "cache_hit_ms": 5.7999999999999994E-05,
+          "camera_projection_ms": 4.572446,
+          "memcpy_ms": 0.07165,
+          "slope_cached_projection_ms": 3.1987900000000002
+        },
+        {
+          "cache_hit_ms": 5.4000000000000005E-05,
+          "camera_projection_ms": 4.574342,
+          "memcpy_ms": 0.072906,
+          "slope_cached_projection_ms": 3.07368
+        },
+        {
+          "cache_hit_ms": 5.6E-05,
+          "camera_projection_ms": 4.630152,
+          "memcpy_ms": 0.069784,
+          "slope_cached_projection_ms": 3.08195
+        }
+      ],
+      "segments": 20000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 64,
+      "slope_cache_requested_bytes": 3000,
+      "source_triangles": 64,
+      "submitted_bytes": 1440000,
+      "unique_faces": false,
+      "world_cache_bytes": 480000
+    },
+    {
+      "anchor_bytes": 960000,
+      "mode": "oblique",
+      "projection_capacity_bytes": 1440000,
+      "rounds": 50,
+      "samples": [
+        {
+          "cache_hit_ms": 0.000126,
+          "camera_projection_ms": 4.4432279999999995,
+          "memcpy_ms": 0.07527400000000001,
+          "slope_cached_projection_ms": 2.981884
+        },
+        {
+          "cache_hit_ms": 5.4000000000000005E-05,
+          "camera_projection_ms": 4.561074,
+          "memcpy_ms": 0.070878,
+          "slope_cached_projection_ms": 3.161638
+        },
+        {
+          "cache_hit_ms": 6.4E-05,
+          "camera_projection_ms": 4.56538,
+          "memcpy_ms": 0.07897599999999999,
+          "slope_cached_projection_ms": 3.0466879999999996
+        },
+        {
+          "cache_hit_ms": 5.4000000000000005E-05,
+          "camera_projection_ms": 4.545904,
+          "memcpy_ms": 0.074672,
+          "slope_cached_projection_ms": 3.0737759999999996
+        },
+        {
+          "cache_hit_ms": 5.6E-05,
+          "camera_projection_ms": 4.557536,
+          "memcpy_ms": 0.078042,
+          "slope_cached_projection_ms": 3.039982
+        }
+      ],
+      "segments": 20000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 64,
+      "slope_cache_requested_bytes": 3000,
+      "source_triangles": 64,
+      "submitted_bytes": 1440000,
+      "unique_faces": false,
+      "world_cache_bytes": 480000
+    },
+    {
+      "anchor_bytes": 960000,
+      "mode": "half_bridges",
+      "projection_capacity_bytes": 1440000,
+      "rounds": 50,
+      "samples": [
+        {
+          "cache_hit_ms": 6E-05,
+          "camera_projection_ms": 3.567652,
+          "memcpy_ms": 0.074042,
+          "slope_cached_projection_ms": 2.9285879999999995
+        },
+        {
+          "cache_hit_ms": 5.4000000000000005E-05,
+          "camera_projection_ms": 3.7095260000000003,
+          "memcpy_ms": 0.076326,
+          "slope_cached_projection_ms": 3.079742
+        },
+        {
+          "cache_hit_ms": 5.6E-05,
+          "camera_projection_ms": 3.62298,
+          "memcpy_ms": 0.07081,
+          "slope_cached_projection_ms": 3.111332
+        },
+        {
+          "cache_hit_ms": 5.6E-05,
+          "camera_projection_ms": 3.7066000000000003,
+          "memcpy_ms": 0.066194,
+          "slope_cached_projection_ms": 3.011918
+        },
+        {
+          "cache_hit_ms": 5.7999999999999994E-05,
+          "camera_projection_ms": 3.652914,
+          "memcpy_ms": 0.07586,
+          "slope_cached_projection_ms": 2.983698
+        }
+      ],
+      "segments": 20000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 32,
+      "slope_cache_requested_bytes": 3000,
+      "source_triangles": 64,
+      "submitted_bytes": 1440000,
+      "unique_faces": false,
+      "world_cache_bytes": 480000
+    },
+    {
+      "anchor_bytes": 960000,
+      "mode": "near_crossing",
+      "projection_capacity_bytes": 1440000,
+      "rounds": 50,
+      "samples": [
+        {
+          "cache_hit_ms": 5.6E-05,
+          "camera_projection_ms": 4.759076,
+          "memcpy_ms": 0.07412200000000001,
+          "slope_cached_projection_ms": 3.264534
+        },
+        {
+          "cache_hit_ms": 5.2E-05,
+          "camera_projection_ms": 4.88183,
+          "memcpy_ms": 0.073908,
+          "slope_cached_projection_ms": 3.353264
+        },
+        {
+          "cache_hit_ms": 5.6E-05,
+          "camera_projection_ms": 5.077952,
+          "memcpy_ms": 0.07431,
+          "slope_cached_projection_ms": 3.4306
+        },
+        {
+          "cache_hit_ms": 5.7999999999999994E-05,
+          "camera_projection_ms": 4.878356,
+          "memcpy_ms": 0.075024,
+          "slope_cached_projection_ms": 3.328806
+        },
+        {
+          "cache_hit_ms": 5.4000000000000005E-05,
+          "camera_projection_ms": 4.973878,
+          "memcpy_ms": 0.092678,
+          "slope_cached_projection_ms": 3.71628
+        }
+      ],
+      "segments": 20000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 64,
+      "slope_cache_requested_bytes": 3000,
+      "source_triangles": 64,
+      "submitted_bytes": 1440000,
+      "unique_faces": false,
+      "world_cache_bytes": 480000
+    },
+    {
+      "anchor_bytes": 960000,
+      "mode": "flat",
+      "projection_capacity_bytes": 1440000,
+      "rounds": 50,
+      "samples": [
+        {
+          "cache_hit_ms": 6.2E-05,
+          "camera_projection_ms": 5.780678,
+          "memcpy_ms": 0.07536,
+          "slope_cached_projection_ms": 5.804678
+        },
+        {
+          "cache_hit_ms": 5.4000000000000005E-05,
+          "camera_projection_ms": 4.579844,
+          "memcpy_ms": 0.07956400000000001,
+          "slope_cached_projection_ms": 5.681466
+        },
+        {
+          "cache_hit_ms": 0.000112,
+          "camera_projection_ms": 4.63839,
+          "memcpy_ms": 0.114594,
+          "slope_cached_projection_ms": 6.306445999999999
+        },
+        {
+          "cache_hit_ms": 5E-05,
+          "camera_projection_ms": 5.41991,
+          "memcpy_ms": 0.08233599999999999,
+          "slope_cached_projection_ms": 8.346608
+        },
+        {
+          "cache_hit_ms": 6.4E-05,
+          "camera_projection_ms": 5.5109,
+          "memcpy_ms": 0.072404,
+          "slope_cached_projection_ms": 5.850236
+        }
+      ],
+      "segments": 20000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 20000,
+      "slope_cache_requested_bytes": 770040,
+      "source_triangles": 20000,
+      "submitted_bytes": 1440000,
+      "unique_faces": true,
+      "world_cache_bytes": 480000
+    },
+    {
+      "anchor_bytes": 960000,
+      "mode": "oblique",
+      "projection_capacity_bytes": 1440000,
+      "rounds": 50,
+      "samples": [
+        {
+          "cache_hit_ms": 6.6E-05,
+          "camera_projection_ms": 4.973876000000001,
+          "memcpy_ms": 0.0713,
+          "slope_cached_projection_ms": 5.6013340000000005
+        },
+        {
+          "cache_hit_ms": 5.4000000000000005E-05,
+          "camera_projection_ms": 4.596852,
+          "memcpy_ms": 0.06268,
+          "slope_cached_projection_ms": 5.685282
+        },
+        {
+          "cache_hit_ms": 6E-05,
+          "camera_projection_ms": 4.549886,
+          "memcpy_ms": 0.071302,
+          "slope_cached_projection_ms": 5.707424
+        },
+        {
+          "cache_hit_ms": 5.6E-05,
+          "camera_projection_ms": 4.589708,
+          "memcpy_ms": 0.071746,
+          "slope_cached_projection_ms": 5.722028
+        },
+        {
+          "cache_hit_ms": 5.7999999999999994E-05,
+          "camera_projection_ms": 4.545194,
+          "memcpy_ms": 0.08262,
+          "slope_cached_projection_ms": 5.771660000000001
+        }
+      ],
+      "segments": 20000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 20000,
+      "slope_cache_requested_bytes": 770040,
+      "source_triangles": 20000,
+      "submitted_bytes": 1440000,
+      "unique_faces": true,
+      "world_cache_bytes": 480000
+    },
+    {
+      "anchor_bytes": 960000,
+      "mode": "half_bridges",
+      "projection_capacity_bytes": 1440000,
+      "rounds": 50,
+      "samples": [
+        {
+          "cache_hit_ms": 6E-05,
+          "camera_projection_ms": 3.588356,
+          "memcpy_ms": 0.069316,
+          "slope_cached_projection_ms": 4.238026
+        },
+        {
+          "cache_hit_ms": 5.7999999999999994E-05,
+          "camera_projection_ms": 3.647882,
+          "memcpy_ms": 0.072008,
+          "slope_cached_projection_ms": 4.447038
+        },
+        {
+          "cache_hit_ms": 6.6E-05,
+          "camera_projection_ms": 3.6559679999999997,
+          "memcpy_ms": 0.075846,
+          "slope_cached_projection_ms": 4.3563979999999995
+        },
+        {
+          "cache_hit_ms": 5.6E-05,
+          "camera_projection_ms": 3.7786500000000003,
+          "memcpy_ms": 0.07625799999999999,
+          "slope_cached_projection_ms": 4.3788979999999995
+        },
+        {
+          "cache_hit_ms": 5.7999999999999994E-05,
+          "camera_projection_ms": 3.707152,
+          "memcpy_ms": 0.069144,
+          "slope_cached_projection_ms": 4.392548
+        }
+      ],
+      "segments": 20000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 10000,
+      "slope_cache_requested_bytes": 770040,
+      "source_triangles": 20000,
+      "submitted_bytes": 1440000,
+      "unique_faces": true,
+      "world_cache_bytes": 480000
+    },
+    {
+      "anchor_bytes": 960000,
+      "mode": "near_crossing",
+      "projection_capacity_bytes": 1440000,
+      "rounds": 50,
+      "samples": [
+        {
+          "cache_hit_ms": 5.7999999999999994E-05,
+          "camera_projection_ms": 4.835914,
+          "memcpy_ms": 0.08271,
+          "slope_cached_projection_ms": 5.943394
+        },
+        {
+          "cache_hit_ms": 5.4000000000000005E-05,
+          "camera_projection_ms": 4.878294,
+          "memcpy_ms": 0.08064600000000001,
+          "slope_cached_projection_ms": 6.206770000000001
+        },
+        {
+          "cache_hit_ms": 6E-05,
+          "camera_projection_ms": 4.863854,
+          "memcpy_ms": 0.07251,
+          "slope_cached_projection_ms": 6.06122
+        },
+        {
+          "cache_hit_ms": 5.6E-05,
+          "camera_projection_ms": 4.959596,
+          "memcpy_ms": 0.073108,
+          "slope_cached_projection_ms": 6.138644
+        },
+        {
+          "cache_hit_ms": 6E-05,
+          "camera_projection_ms": 4.854074,
+          "memcpy_ms": 0.07797799999999999,
+          "slope_cached_projection_ms": 5.964188
+        }
+      ],
+      "segments": 20000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 20000,
+      "slope_cache_requested_bytes": 770040,
+      "source_triangles": 20000,
+      "submitted_bytes": 1440000,
+      "unique_faces": true,
+      "world_cache_bytes": 480000
+    },
+    {
+      "anchor_bytes": 4800000,
+      "mode": "flat",
+      "projection_capacity_bytes": 7200000,
+      "rounds": 20,
+      "samples": [
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 21.71573,
+          "memcpy_ms": 0.32043499999999997,
+          "slope_cached_projection_ms": 14.765565
+        },
+        {
+          "cache_hit_ms": 5.9999999999999995E-05,
+          "camera_projection_ms": 22.743285,
+          "memcpy_ms": 0.30301,
+          "slope_cached_projection_ms": 15.54861
+        },
+        {
+          "cache_hit_ms": 7.500000000000001E-05,
+          "camera_projection_ms": 23.2393,
+          "memcpy_ms": 0.31345,
+          "slope_cached_projection_ms": 15.902449999999998
+        },
+        {
+          "cache_hit_ms": 8E-05,
+          "camera_projection_ms": 23.02413,
+          "memcpy_ms": 0.339485,
+          "slope_cached_projection_ms": 15.34775
+        },
+        {
+          "cache_hit_ms": 0.00014,
+          "camera_projection_ms": 22.78491,
+          "memcpy_ms": 0.31022,
+          "slope_cached_projection_ms": 15.49119
+        }
+      ],
+      "segments": 100000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 64,
+      "slope_cache_requested_bytes": 3000,
+      "source_triangles": 64,
+      "submitted_bytes": 7200000,
+      "unique_faces": false,
+      "world_cache_bytes": 2400000
+    },
+    {
+      "anchor_bytes": 4800000,
+      "mode": "oblique",
+      "projection_capacity_bytes": 7200000,
+      "rounds": 20,
+      "samples": [
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 21.85571,
+          "memcpy_ms": 0.37642000000000003,
+          "slope_cached_projection_ms": 14.77441
+        },
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 23.593600000000002,
+          "memcpy_ms": 0.33016999999999996,
+          "slope_cached_projection_ms": 15.63072
+        },
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 23.307949999999998,
+          "memcpy_ms": 0.31638,
+          "slope_cached_projection_ms": 15.725624999999999
+        },
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 22.776400000000002,
+          "memcpy_ms": 0.35856499999999997,
+          "slope_cached_projection_ms": 15.45884
+        },
+        {
+          "cache_hit_ms": 8E-05,
+          "camera_projection_ms": 23.045085,
+          "memcpy_ms": 0.325205,
+          "slope_cached_projection_ms": 15.536600000000002
+        }
+      ],
+      "segments": 100000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 64,
+      "slope_cache_requested_bytes": 3000,
+      "source_triangles": 64,
+      "submitted_bytes": 7200000,
+      "unique_faces": false,
+      "world_cache_bytes": 2400000
+    },
+    {
+      "anchor_bytes": 4800000,
+      "mode": "half_bridges",
+      "projection_capacity_bytes": 7200000,
+      "rounds": 20,
+      "samples": [
+        {
+          "cache_hit_ms": 8.999999999999999E-05,
+          "camera_projection_ms": 17.73971,
+          "memcpy_ms": 0.30457999999999996,
+          "slope_cached_projection_ms": 14.263535
+        },
+        {
+          "cache_hit_ms": 7.500000000000001E-05,
+          "camera_projection_ms": 19.63288,
+          "memcpy_ms": 0.33257,
+          "slope_cached_projection_ms": 15.454204999999998
+        },
+        {
+          "cache_hit_ms": 7.500000000000001E-05,
+          "camera_projection_ms": 18.824985,
+          "memcpy_ms": 0.309255,
+          "slope_cached_projection_ms": 14.93459
+        },
+        {
+          "cache_hit_ms": 8E-05,
+          "camera_projection_ms": 18.592305,
+          "memcpy_ms": 0.38082,
+          "slope_cached_projection_ms": 14.944365
+        },
+        {
+          "cache_hit_ms": 8E-05,
+          "camera_projection_ms": 18.589075,
+          "memcpy_ms": 0.33214,
+          "slope_cached_projection_ms": 14.899619999999999
+        }
+      ],
+      "segments": 100000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 32,
+      "slope_cache_requested_bytes": 3000,
+      "source_triangles": 64,
+      "submitted_bytes": 7200000,
+      "unique_faces": false,
+      "world_cache_bytes": 2400000
+    },
+    {
+      "anchor_bytes": 4800000,
+      "mode": "near_crossing",
+      "projection_capacity_bytes": 7200000,
+      "rounds": 20,
+      "samples": [
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 22.812395000000002,
+          "memcpy_ms": 0.31652,
+          "slope_cached_projection_ms": 15.678065
+        },
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 24.42867,
+          "memcpy_ms": 0.33021,
+          "slope_cached_projection_ms": 16.608404999999998
+        },
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 25.505515,
+          "memcpy_ms": 0.31094,
+          "slope_cached_projection_ms": 17.33413
+        },
+        {
+          "cache_hit_ms": 8E-05,
+          "camera_projection_ms": 24.05493,
+          "memcpy_ms": 0.354085,
+          "slope_cached_projection_ms": 16.53714
+        },
+        {
+          "cache_hit_ms": 8E-05,
+          "camera_projection_ms": 24.273895,
+          "memcpy_ms": 0.33997,
+          "slope_cached_projection_ms": 16.727255
+        }
+      ],
+      "segments": 100000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 64,
+      "slope_cache_requested_bytes": 3000,
+      "source_triangles": 64,
+      "submitted_bytes": 7200000,
+      "unique_faces": false,
+      "world_cache_bytes": 2400000
+    },
+    {
+      "anchor_bytes": 4800000,
+      "mode": "flat",
+      "projection_capacity_bytes": 7200000,
+      "rounds": 20,
+      "samples": [
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 22.13825,
+          "memcpy_ms": 0.32771,
+          "slope_cached_projection_ms": 31.06829
+        },
+        {
+          "cache_hit_ms": 6.5E-05,
+          "camera_projection_ms": 23.203364999999998,
+          "memcpy_ms": 0.30648,
+          "slope_cached_projection_ms": 32.6961
+        },
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 23.023400000000002,
+          "memcpy_ms": 0.315205,
+          "slope_cached_projection_ms": 33.56004
+        },
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 24.23207,
+          "memcpy_ms": 0.325705,
+          "slope_cached_projection_ms": 32.730775
+        },
+        {
+          "cache_hit_ms": 7.500000000000001E-05,
+          "camera_projection_ms": 23.039535,
+          "memcpy_ms": 0.33656,
+          "slope_cached_projection_ms": 32.651925
+        }
+      ],
+      "segments": 100000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 100000,
+      "slope_cache_requested_bytes": 3080184,
+      "source_triangles": 100000,
+      "submitted_bytes": 7200000,
+      "unique_faces": true,
+      "world_cache_bytes": 2400000
+    },
+    {
+      "anchor_bytes": 4800000,
+      "mode": "oblique",
+      "projection_capacity_bytes": 7200000,
+      "rounds": 20,
+      "samples": [
+        {
+          "cache_hit_ms": 7.500000000000001E-05,
+          "camera_projection_ms": 22.107975,
+          "memcpy_ms": 0.31536,
+          "slope_cached_projection_ms": 31.12058
+        },
+        {
+          "cache_hit_ms": 6.5E-05,
+          "camera_projection_ms": 23.052385,
+          "memcpy_ms": 0.309545,
+          "slope_cached_projection_ms": 33.40281
+        },
+        {
+          "cache_hit_ms": 0.00011999999999999999,
+          "camera_projection_ms": 22.95733,
+          "memcpy_ms": 0.33043,
+          "slope_cached_projection_ms": 33.125074999999995
+        },
+        {
+          "cache_hit_ms": 8.499999999999999E-05,
+          "camera_projection_ms": 23.08664,
+          "memcpy_ms": 0.32597,
+          "slope_cached_projection_ms": 32.693799999999996
+        },
+        {
+          "cache_hit_ms": 7.500000000000001E-05,
+          "camera_projection_ms": 23.754315,
+          "memcpy_ms": 0.318125,
+          "slope_cached_projection_ms": 34.714600000000004
+        }
+      ],
+      "segments": 100000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 100000,
+      "slope_cache_requested_bytes": 3080184,
+      "source_triangles": 100000,
+      "submitted_bytes": 7200000,
+      "unique_faces": true,
+      "world_cache_bytes": 2400000
+    },
+    {
+      "anchor_bytes": 4800000,
+      "mode": "half_bridges",
+      "projection_capacity_bytes": 7200000,
+      "rounds": 20,
+      "samples": [
+        {
+          "cache_hit_ms": 8.499999999999999E-05,
+          "camera_projection_ms": 18.363815,
+          "memcpy_ms": 0.38479,
+          "slope_cached_projection_ms": 25.094810000000003
+        },
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 18.7893,
+          "memcpy_ms": 0.31981000000000004,
+          "slope_cached_projection_ms": 25.944215000000003
+        },
+        {
+          "cache_hit_ms": 7.500000000000001E-05,
+          "camera_projection_ms": 18.810415,
+          "memcpy_ms": 0.316775,
+          "slope_cached_projection_ms": 25.04941
+        },
+        {
+          "cache_hit_ms": 6.5E-05,
+          "camera_projection_ms": 18.745685,
+          "memcpy_ms": 0.348535,
+          "slope_cached_projection_ms": 24.893975
+        },
+        {
+          "cache_hit_ms": 7E-05,
+          "camera_projection_ms": 19.362625,
+          "memcpy_ms": 0.3156,
+          "slope_cached_projection_ms": 25.042075
+        }
+      ],
+      "segments": 100000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 50000,
+      "slope_cache_requested_bytes": 3080184,
+      "source_triangles": 100000,
+      "submitted_bytes": 7200000,
+      "unique_faces": true,
+      "world_cache_bytes": 2400000
+    },
+    {
+      "anchor_bytes": 4800000,
+      "mode": "near_crossing",
+      "projection_capacity_bytes": 7200000,
+      "rounds": 20,
+      "samples": [
+        {
+          "cache_hit_ms": 0.000135,
+          "camera_projection_ms": 22.96858,
+          "memcpy_ms": 0.387625,
+          "slope_cached_projection_ms": 32.675844999999995
+        },
+        {
+          "cache_hit_ms": 6.5E-05,
+          "camera_projection_ms": 24.069205,
+          "memcpy_ms": 0.31967500000000004,
+          "slope_cached_projection_ms": 34.291000000000004
+        },
+        {
+          "cache_hit_ms": 7.500000000000001E-05,
+          "camera_projection_ms": 24.237395,
+          "memcpy_ms": 0.34562,
+          "slope_cached_projection_ms": 34.048495
+        },
+        {
+          "cache_hit_ms": 8.999999999999999E-05,
+          "camera_projection_ms": 24.64367,
+          "memcpy_ms": 0.37575,
+          "slope_cached_projection_ms": 34.537580000000005
+        },
+        {
+          "cache_hit_ms": 7.500000000000001E-05,
+          "camera_projection_ms": 24.34138,
+          "memcpy_ms": 0.378975,
+          "slope_cached_projection_ms": 34.527375
+        }
+      ],
+      "segments": 100000,
+      "slope_cache_allocations": 1,
+      "slope_cache_entries": 100000,
+      "slope_cache_requested_bytes": 3080184,
+      "source_triangles": 100000,
+      "submitted_bytes": 7200000,
+      "unique_faces": true,
+      "world_cache_bytes": 2400000
+    }
+  ],
+  "scope": "Production annotation projection and standalone memcpy; no GPU upload, driver staging, frame or candidate shader timing."
+}

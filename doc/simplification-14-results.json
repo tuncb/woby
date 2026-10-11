@@ -1,0 +1,416 @@
+{
+  "ok": true,
+  "records": [
+    {
+      "checksum": 9891127636950766549,
+      "complete_authored_normals": true,
+      "corners": 3163626,
+      "current_gpu_surface_bytes": 30173512,
+      "current_incremental_cpu_bytes": 32363388,
+      "current_vertex_capacity_bytes": 25722848,
+      "direct_gpu_surface_bytes": 49638652,
+      "direct_incremental_cpu_bytes": 36984148,
+      "direct_marker_incremental_cpu_bytes": 51828528,
+      "direct_with_marker_identity_bytes": 64483032,
+      "equivalent_direct_gpu_surface_bytes": 49638652,
+      "equivalent_marker_direct_gpu_bytes": 64483032,
+      "equivalent_representative_direct_gpu_bytes": 51828528,
+      "equivalent_representative_incremental_cpu_bytes": 39174024,
+      "fetch_samples": [
+        {
+          "separate_cpu_fetch_ms": 101.9264,
+          "unified_cpu_fetch_ms": 62.0375
+        },
+        {
+          "separate_cpu_fetch_ms": 102.0274,
+          "unified_cpu_fetch_ms": 62.1769
+        },
+        {
+          "separate_cpu_fetch_ms": 102.1733,
+          "unified_cpu_fetch_ms": 62.3262
+        },
+        {
+          "separate_cpu_fetch_ms": 103.8616,
+          "unified_cpu_fetch_ms": 62.2003
+        },
+        {
+          "separate_cpu_fetch_ms": 102.3311,
+          "unified_cpu_fetch_ms": 62.6121
+        }
+      ],
+      "marker_generation_temp_keys_bytes": 6569628,
+      "normal_records": 110180,
+      "ok": true,
+      "parse_ms": 62.3402,
+      "path": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "position_indexing": "mapped",
+      "render_vertices": 547469,
+      "samples": [
+        {
+          "bare_corner_packing_ms": 35.8237,
+          "current_mapping_ms": 81.622,
+          "marker_compatible_packing_ms": 81.694
+        },
+        {
+          "bare_corner_packing_ms": 31.6958,
+          "current_mapping_ms": 81.5377,
+          "marker_compatible_packing_ms": 76.3096
+        },
+        {
+          "bare_corner_packing_ms": 33.4209,
+          "current_mapping_ms": 86.0027,
+          "marker_compatible_packing_ms": 78.2996
+        },
+        {
+          "bare_corner_packing_ms": 32.5886,
+          "current_mapping_ms": 82.7873,
+          "marker_compatible_packing_ms": 79.695
+        },
+        {
+          "bare_corner_packing_ms": 31.5102,
+          "current_mapping_ms": 82.6217,
+          "marker_compatible_packing_ms": 77.3409
+        }
+      ],
+      "scope": "Current production tuple-index helper and mapping representation versus separate attributes/corners. Parse and triangulate once. No generated normals, mixed primitives, application load total, GPU or frames.",
+      "source_positions": 535893,
+      "triangulation_ms": 7.3597,
+      "used_attributes_representative_direct_gpu_bytes": 51828192,
+      "used_normals": 110180,
+      "used_positions": 535865,
+      "used_uvs": 490283,
+      "uv_records": 490283,
+      "sha256": "9ac38b16814658cee4d52415796e7c8a1cfffa70549f9b7f0eb0c1f1704e4977",
+      "input_bytes": 75585857
+    },
+    {
+      "checksum": 11370557357514321273,
+      "complete_authored_normals": true,
+      "corners": 38277738,
+      "current_gpu_surface_bytes": 503627016,
+      "current_incremental_cpu_bytes": 547441524,
+      "current_vertex_capacity_bytes": 430853952,
+      "direct_gpu_surface_bytes": 540670644,
+      "direct_incremental_cpu_bytes": 387559692,
+      "direct_marker_incremental_cpu_bytes": 584485152,
+      "direct_with_marker_identity_bytes": 737596104,
+      "equivalent_direct_gpu_surface_bytes": 540670644,
+      "equivalent_marker_direct_gpu_bytes": 737596104,
+      "equivalent_representative_direct_gpu_bytes": 584485152,
+      "equivalent_representative_incremental_cpu_bytes": 431374200,
+      "fetch_samples": [
+        {
+          "separate_cpu_fetch_ms": 1216.8838,
+          "unified_cpu_fetch_ms": 735.9308
+        },
+        {
+          "separate_cpu_fetch_ms": 1225.6785,
+          "unified_cpu_fetch_ms": 758.4745
+        },
+        {
+          "separate_cpu_fetch_ms": 1221.5486,
+          "unified_cpu_fetch_ms": 754.8624
+        },
+        {
+          "separate_cpu_fetch_ms": 1217.7978,
+          "unified_cpu_fetch_ms": 734.5513
+        },
+        {
+          "separate_cpu_fetch_ms": 1217.7304,
+          "unified_cpu_fetch_ms": 743.7711
+        }
+      ],
+      "marker_generation_temp_keys_bytes": 131443524,
+      "normal_records": 794066,
+      "ok": true,
+      "parse_ms": 763.1617,
+      "path": "D:\\temp\\obj_tests\\powerplant.obj",
+      "position_indexing": "mapped",
+      "render_vertices": 10953627,
+      "samples": [
+        {
+          "bare_corner_packing_ms": 364.1527,
+          "current_mapping_ms": 2796.2225,
+          "marker_compatible_packing_ms": 2391.0637
+        },
+        {
+          "bare_corner_packing_ms": 354.1128,
+          "current_mapping_ms": 2877.1701,
+          "marker_compatible_packing_ms": 2661.5432
+        },
+        {
+          "bare_corner_packing_ms": 349.5015,
+          "current_mapping_ms": 2724.4744,
+          "marker_compatible_packing_ms": 2405.4538
+        },
+        {
+          "bare_corner_packing_ms": 349.4476,
+          "current_mapping_ms": 2802.301,
+          "marker_compatible_packing_ms": 2389.248
+        },
+        {
+          "bare_corner_packing_ms": 355.2224,
+          "current_mapping_ms": 2712.479,
+          "marker_compatible_packing_ms": 2390.6287
+        }
+      ],
+      "scope": "Current production tuple-index helper and mapping representation versus separate attributes/corners. Parse and triangulate once. No generated normals, mixed primitives, application load total, GPU or frames.",
+      "source_positions": 5984083,
+      "triangulation_ms": 60.4738,
+      "used_attributes_representative_direct_gpu_bytes": 584485152,
+      "used_normals": 794066,
+      "used_positions": 5984083,
+      "used_uvs": 0,
+      "uv_records": 0,
+      "sha256": "1bda60ac06a11a6299799c95f4caac63b5c2a3654464040ff5b7d4bb8db190a8",
+      "input_bytes": 817891724
+    },
+    {
+      "checksum": 1484997936490644273,
+      "complete_authored_normals": true,
+      "corners": 29942097,
+      "current_gpu_surface_bytes": 408452900,
+      "current_incremental_cpu_bytes": 444538464,
+      "current_vertex_capacity_bytes": 427192736,
+      "direct_gpu_surface_bytes": 528935696,
+      "direct_incremental_cpu_bytes": 409167308,
+      "direct_marker_incremental_cpu_bytes": 565021260,
+      "direct_with_marker_identity_bytes": 684789648,
+      "equivalent_direct_gpu_surface_bytes": 528935696,
+      "equivalent_marker_direct_gpu_bytes": 684789648,
+      "equivalent_representative_direct_gpu_bytes": 565021260,
+      "equivalent_representative_incremental_cpu_bytes": 445252872,
+      "fetch_samples": [
+        {
+          "separate_cpu_fetch_ms": 1019.258,
+          "unified_cpu_fetch_ms": 592.8587
+        },
+        {
+          "separate_cpu_fetch_ms": 1003.8223,
+          "unified_cpu_fetch_ms": 743.2409
+        },
+        {
+          "separate_cpu_fetch_ms": 967.958,
+          "unified_cpu_fetch_ms": 597.7592
+        },
+        {
+          "separate_cpu_fetch_ms": 974.6753,
+          "unified_cpu_fetch_ms": 567.3262
+        },
+        {
+          "separate_cpu_fetch_ms": 969.5518,
+          "unified_cpu_fetch_ms": 574.962
+        }
+      ],
+      "marker_generation_temp_keys_bytes": 108256692,
+      "normal_records": 6721532,
+      "ok": true,
+      "parse_ms": 827.021,
+      "path": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "position_indexing": "mapped",
+      "render_vertices": 9021391,
+      "samples": [
+        {
+          "bare_corner_packing_ms": 335.7963,
+          "current_mapping_ms": 1991.4979,
+          "marker_compatible_packing_ms": 1786.9845
+        },
+        {
+          "bare_corner_packing_ms": 336.24,
+          "current_mapping_ms": 1981.4549,
+          "marker_compatible_packing_ms": 1769.4776
+        },
+        {
+          "bare_corner_packing_ms": 352.265,
+          "current_mapping_ms": 1971.4171,
+          "marker_compatible_packing_ms": 1764.1137
+        },
+        {
+          "bare_corner_packing_ms": 338.9786,
+          "current_mapping_ms": 1981.4984,
+          "marker_compatible_packing_ms": 1784.3815
+        },
+        {
+          "bare_corner_packing_ms": 352.0094,
+          "current_mapping_ms": 2047.1425,
+          "marker_compatible_packing_ms": 1760.5102
+        }
+      ],
+      "scope": "Current production tuple-index helper and mapping representation versus separate attributes/corners. Parse and triangulate once. No generated normals, mixed primitives, application load total, GPU or frames.",
+      "source_positions": 5933233,
+      "triangulation_ms": 32.7044,
+      "used_attributes_representative_direct_gpu_bytes": 565021236,
+      "used_normals": 6721532,
+      "used_positions": 5933231,
+      "used_uvs": 2221669,
+      "uv_records": 2221669,
+      "sha256": "22533258be1d94aa1ece29053e98f11c91ebc17a8a3626545dee3cecf90b71e3",
+      "input_bytes": 1143041382
+    },
+    {
+      "checksum": 435988946178388745,
+      "complete_authored_normals": false,
+      "corners": 53600508,
+      "current_gpu_surface_bytes": 500274800,
+      "current_incremental_cpu_bytes": 536008896,
+      "current_vertex_capacity_bytes": 285872768,
+      "direct_gpu_surface_bytes": 750408384,
+      "direct_incremental_cpu_bytes": 536006352,
+      "direct_marker_incremental_cpu_bytes": 786142480,
+      "direct_with_marker_identity_bytes": 1000544512,
+      "equivalent_direct_gpu_surface_bytes": 857610672,
+      "equivalent_marker_direct_gpu_bytes": 1107746800,
+      "equivalent_representative_direct_gpu_bytes": 893344768,
+      "equivalent_representative_incremental_cpu_bytes": 678942736,
+      "fetch_samples": [
+        {
+          "separate_cpu_fetch_ms": 1866.4989,
+          "unified_cpu_fetch_ms": 1459.4255
+        },
+        {
+          "separate_cpu_fetch_ms": 1860.7094,
+          "unified_cpu_fetch_ms": 1467.9216
+        },
+        {
+          "separate_cpu_fetch_ms": 1848.0186,
+          "unified_cpu_fetch_ms": 1483.2349
+        },
+        {
+          "separate_cpu_fetch_ms": 1864.6925,
+          "unified_cpu_fetch_ms": 1454.9637
+        },
+        {
+          "separate_cpu_fetch_ms": 1846.4267,
+          "unified_cpu_fetch_ms": 1459.5754
+        }
+      ],
+      "marker_generation_temp_keys_bytes": 107202288,
+      "normal_records": 0,
+      "ok": true,
+      "parse_ms": 839.8111,
+      "path": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "position_indexing": "mapped",
+      "render_vertices": 8933524,
+      "samples": [
+        {
+          "bare_corner_packing_ms": 491.015,
+          "current_mapping_ms": 1352.2451,
+          "marker_compatible_packing_ms": 1366.935
+        },
+        {
+          "bare_corner_packing_ms": 503.9903,
+          "current_mapping_ms": 1354.234,
+          "marker_compatible_packing_ms": 1360.8695
+        },
+        {
+          "bare_corner_packing_ms": 503.173,
+          "current_mapping_ms": 1364.098,
+          "marker_compatible_packing_ms": 1364.9202
+        },
+        {
+          "bare_corner_packing_ms": 495.0283,
+          "current_mapping_ms": 1371.9991,
+          "marker_compatible_packing_ms": 1361.7269
+        },
+        {
+          "bare_corner_packing_ms": 506.8929,
+          "current_mapping_ms": 1356.6489,
+          "marker_compatible_packing_ms": 1364.8216
+        }
+      ],
+      "scope": "Current production tuple-index helper and mapping representation versus separate attributes/corners. Parse and triangulate once. No generated normals, mixed primitives, application load total, GPU or frames.",
+      "source_positions": 8933524,
+      "triangulation_ms": 60.2781,
+      "used_attributes_representative_direct_gpu_bytes": 893344768,
+      "used_normals": 0,
+      "used_positions": 8933524,
+      "used_uvs": 0,
+      "uv_records": 0,
+      "sha256": "3890221318a2b059d8236c618903b0ea16710172651ba22f1013f9b6ad585882",
+      "input_bytes": 815866103
+    },
+    {
+      "checksum": 11537436635220620813,
+      "complete_authored_normals": false,
+      "corners": 227315958,
+      "current_gpu_surface_bytes": 2138524344,
+      "current_incremental_cpu_bytes": 2292181908,
+      "current_vertex_capacity_bytes": 1818750944,
+      "direct_gpu_surface_bytes": 3489793516,
+      "direct_incremental_cpu_bytes": 2580529684,
+      "direct_marker_incremental_cpu_bytes": 3643451080,
+      "direct_with_marker_identity_bytes": 4552714912,
+      "equivalent_direct_gpu_surface_bytes": 3950766208,
+      "equivalent_marker_direct_gpu_bytes": 5013687604,
+      "equivalent_representative_direct_gpu_bytes": 4104423772,
+      "equivalent_representative_incremental_cpu_bytes": 3195159940,
+      "fetch_samples": [
+        {
+          "separate_cpu_fetch_ms": 8990.7247,
+          "unified_cpu_fetch_ms": 4648.6398
+        },
+        {
+          "separate_cpu_fetch_ms": 8947.5918,
+          "unified_cpu_fetch_ms": 4645.1
+        },
+        {
+          "separate_cpu_fetch_ms": 8962.4711,
+          "unified_cpu_fetch_ms": 4703.2068
+        },
+        {
+          "separate_cpu_fetch_ms": 9231.797,
+          "unified_cpu_fetch_ms": 4690.0775
+        },
+        {
+          "separate_cpu_fetch_ms": 8959.3349,
+          "unified_cpu_fetch_ms": 4621.2311
+        }
+      ],
+      "marker_generation_temp_keys_bytes": 460972692,
+      "normal_records": 0,
+      "ok": true,
+      "parse_ms": 6407.0114,
+      "path": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "position_indexing": "mapped",
+      "render_vertices": 38414391,
+      "samples": [
+        {
+          "bare_corner_packing_ms": 2572.808,
+          "current_mapping_ms": 10711.2025,
+          "marker_compatible_packing_ms": 7317.4008
+        },
+        {
+          "bare_corner_packing_ms": 2298.7999,
+          "current_mapping_ms": 11140.4118,
+          "marker_compatible_packing_ms": 6763.9824
+        },
+        {
+          "bare_corner_packing_ms": 2243.1459,
+          "current_mapping_ms": 10443.5587,
+          "marker_compatible_packing_ms": 6306.4205
+        },
+        {
+          "bare_corner_packing_ms": 2348.7087,
+          "current_mapping_ms": 10442.6929,
+          "marker_compatible_packing_ms": 6275.2574
+        },
+        {
+          "bare_corner_packing_ms": 2275.6422,
+          "current_mapping_ms": 10560.306,
+          "marker_compatible_packing_ms": 6382.9484
+        }
+      ],
+      "scope": "Current production tuple-index helper and mapping representation versus separate attributes/corners. Parse and triangulate once. No generated normals, mixed primitives, application load total, GPU or frames.",
+      "source_positions": 37890645,
+      "triangulation_ms": 234.4872,
+      "used_attributes_representative_direct_gpu_bytes": 4104423772,
+      "used_normals": 0,
+      "used_positions": 37890645,
+      "used_uvs": 38414285,
+      "uv_records": 38414285,
+      "sha256": "7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329",
+      "input_bytes": 7108991827
+    }
+  ],
+  "method": "Serial fresh process per model; five rotated in-process packing runs; validation untimed; SHA256 pre-read warms input."
+}

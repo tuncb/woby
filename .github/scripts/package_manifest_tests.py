@@ -33,6 +33,9 @@ def test_portable_paths():
 
 
 def test_manifest_and_archive_validation():
+    # CPU freeform tessellation no longer stages a compute shader. Packages must
+    # validate without it, while the marker compute shaders remain required.
+    assert 'cs_freeform' not in package.NATIVE_SHADERS
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary) / 'package'
         names = ['woby.exe', 'woby-update-helper.exe', 'assets/fonts/RobotoMonoNerdFont-Regular.ttf']
@@ -61,7 +64,7 @@ def test_manifest_and_archive_validation():
         expect_error(package.verify_archive, archive, 'windows-x64', '1.2.3')
         # Correctly hashed archives must still contain the native renderer assets.
         for missing in ('assets/shaders/spirv/cs_marker_lookup_msaa.bin',
-                        'assets/shaders/spirv/cs_freeform.bin', 'woby.exe',
+                        'assets/shaders/spirv/vs_annotation.bin', 'woby.exe',
                         'woby-update-helper.exe', 'assets/fonts/RobotoMonoNerdFont-Regular.ttf'):
             original_files = manifest['files']
             manifest['files'] = [file for file in original_files if file['path'] != missing]

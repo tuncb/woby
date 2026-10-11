@@ -1,0 +1,911 @@
+{
+  "schema_version": 1,
+  "captured_utc": "2026-10-11T00:34:28.261245Z",
+  "base_commit": "46a27585c5bc8638a8bde5d601e5cead71376631",
+  "scope": "Investigation of simplification items 10 through 19; no production optimization algorithm changed.",
+  "file_hash_scope": "Final changed and new repository files, excluding this manifest. Run-time hashes and preserved pilots remain in the per-experiment records.",
+  "release_binary_hash_scope": "Current final Release artifacts after the serial campaigns. These are not substitutes for each run record.",
+  "host": {
+    "os": "Windows 11 Home 10.0.26300",
+    "processor": "AMD Ryzen 7 5800H",
+    "physical_cores": 8,
+    "logical_processors": 16,
+    "reported_physical_memory_bytes": 68564348928,
+    "compiler": "MSVC 19.51.36243.0",
+    "toolset": "14.51.36231",
+    "cmake": "4.3.2",
+    "release_flags": "/O2 /Ob2 /DNDEBUG",
+    "preset": "vs2026-vcpkg"
+  },
+  "options": {
+    "WOBY_BUILD_BENCHMARKS": "ON",
+    "WOBY_BUILD_HASH_BENCHMARKS": "ON",
+    "WOBY_BUILD_MESH_MEMORY_LAB": "ON",
+    "WOBY_BUILD_SIMPLIFICATION_FMA_CONTRACT": "ON",
+    "WOBY_BUILD_SIMPLIFICATION_PROBES": "ON",
+    "WOBY_TEST_HEADLESS": "ON"
+  },
+  "final_debug_validation": {
+    "build_exit_code": 0,
+    "build_warning_or_error_lines": 0,
+    "ctest_exit_code": 0,
+    "tests": 127,
+    "failures": 0,
+    "skipped": 0,
+    "disabled": 0,
+    "elapsed_seconds": 508.78,
+    "ctest_jobs": 2,
+    "junit_timestamp_local": "2026-10-11T02:24:16",
+    "timezone": "Europe/Amsterdam",
+    "build_log": "doc/benchmarks/simplifications-10-19-validation/debug-build.log",
+    "ctest_log": "doc/benchmarks/simplifications-10-19-validation/debug-ctest.log",
+    "junit": "doc/benchmarks/simplifications-10-19-validation/debug-ctest.xml",
+    "production_optimization_changes": false,
+    "packaging_fix": "Remove the obsolete cs_freeform asset requirement; update its regression test."
+  },
+  "repository_files": [
+    {
+      "path": ".github/scripts/package_manifest_tests.py",
+      "bytes": 8652,
+      "sha256": "8e4bb2bfcfb84f9e09c3e8284b65904f5883fc4fcdeaa5f81166fc8f93901c4f"
+    },
+    {
+      "path": ".github/scripts/package_manifest.py",
+      "bytes": 8072,
+      "sha256": "d746ad1be84215355d9004570c1970e123b4640047f0dedf0b596725492a1b3a"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "bytes": 43147,
+      "sha256": "cbc1d483b0b8b0978e6d2ce0804fc7284f8bd0dcf8ae0b52bc9279642c56217a"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set-pilot/pilot-provenance.json",
+      "bytes": 4960,
+      "sha256": "4f1c68839d4cb93f421a7fde14e39f1e2d4bc21e88c5c03720d95f11107ba78b"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set-pilot/release-contract-detail.txt",
+      "bytes": 1161,
+      "sha256": "9b0f11bac1d95aec1b78a7e492df3c9a10496e5989a4a7cec34ce662f338d1e6"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set-pilot/uploads_files_2720101_BusGameMap-0-custom.csv",
+      "bytes": 289,
+      "sha256": "2d8ff42cbf7accd07a881a7692c8551d59736183f352ea5641b3bae3be93ddfb"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set-pilot/uploads_files_2720101_BusGameMap-0-custom.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/build-validation.json",
+      "bytes": 796,
+      "sha256": "f07d14705baaca0a600a22f1c46ec0d2d41fbb142a524512dc77dbbf31d11822"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/debug-contract.txt",
+      "bytes": 508,
+      "sha256": "bc881b3039c8156adaa6c8dd644a9d2988c35a0443edc469fccf7e64bfec29dc"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/powerplant-0-custom.csv",
+      "bytes": 365,
+      "sha256": "6e6777d520f632d54baeeddaac6cb5e719fc70795965f3dc88ca3c853bc1254d"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/powerplant-0-custom.stderr.txt",
+      "bytes": 149,
+      "sha256": "6f52c3393631b7db47e322d2817708d5f59c1e130ec2e18371d197569c31369e"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/powerplant-0-dense_set.csv",
+      "bytes": 364,
+      "sha256": "78a282f1e6c66588599c73e97184ff9458f34ffdbd735b27807b3cc13af621c0"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/powerplant-0-dense_set.stderr.txt",
+      "bytes": 149,
+      "sha256": "d89ef1af7c2b19097ae1cd9b8468acee7e03699b060d5e9685b9e19df4a2480c"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/powerplant-1-custom.csv",
+      "bytes": 361,
+      "sha256": "573d664384291c3a45824290fe68b645d87e47428994013a54c94e56179f3b4a"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/powerplant-1-custom.stderr.txt",
+      "bytes": 149,
+      "sha256": "6f52c3393631b7db47e322d2817708d5f59c1e130ec2e18371d197569c31369e"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/powerplant-1-dense_set.csv",
+      "bytes": 366,
+      "sha256": "f8aedde8bdcdac8692dc69d71707597510ba83d1b29eef48f176732b5d252137"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/powerplant-1-dense_set.stderr.txt",
+      "bytes": 149,
+      "sha256": "d89ef1af7c2b19097ae1cd9b8468acee7e03699b060d5e9685b9e19df4a2480c"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/preserved-count-comparison.json",
+      "bytes": 733,
+      "sha256": "b8bc8cb53dd82accab75f4b105deece617ea832073ce8e2aa4159030dbe24697"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/release-contract-detail.txt",
+      "bytes": 2594,
+      "sha256": "e6b5aaf66603aefb7078e8bef61ef3f406164496decf33e1660bc5df39a774ae"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/release-contract.txt",
+      "bytes": 508,
+      "sha256": "223b764285ac4ef5330ec54b7377799729362864fc06b671375b1d623cae83bd"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/summary.json",
+      "bytes": 12761,
+      "sha256": "15af83f07f5e55cb20e55ee0b6970fe79a610b21380621bc7b06979cfa7b8f15"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/uploads_files_2720101_BusGameMap-0-custom.csv",
+      "bytes": 293,
+      "sha256": "45d6ee9f00e3f1d816f37f5449c486c26824a736d99b99a279f6753bbad0a4d1"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/uploads_files_2720101_BusGameMap-0-custom.stderr.txt",
+      "bytes": 147,
+      "sha256": "eb5ce02c201ee4d193aa7d346e8c322b5518fed7fe18e37c30522b80a75a1e51"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/uploads_files_2720101_BusGameMap-0-dense_set.csv",
+      "bytes": 292,
+      "sha256": "a2a95bc9d702c7bd7724696f38c88b687fc5368c8a803d21c4bc0243e8bb7b33"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/uploads_files_2720101_BusGameMap-0-dense_set.stderr.txt",
+      "bytes": 147,
+      "sha256": "46de75ad2f38daf12fe2ebc2d51ffda690c305a718d64597faaf2bc7831ada10"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/uploads_files_2720101_BusGameMap-1-custom.csv",
+      "bytes": 292,
+      "sha256": "cfdac12cede39f27655d60d7ecad143bc0e2edda04ae5b391b3c5415344a8898"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/uploads_files_2720101_BusGameMap-1-custom.stderr.txt",
+      "bytes": 147,
+      "sha256": "eb5ce02c201ee4d193aa7d346e8c322b5518fed7fe18e37c30522b80a75a1e51"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/uploads_files_2720101_BusGameMap-1-dense_set.csv",
+      "bytes": 292,
+      "sha256": "d9f47d173457e81b6475ca4bf978ac7ef0f2c598d390e1372b1bf6f482a2f97a"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/uploads_files_2720101_BusGameMap-1-dense_set.stderr.txt",
+      "bytes": 147,
+      "sha256": "46de75ad2f38daf12fe2ebc2d51ffda690c305a718d64597faaf2bc7831ada10"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/powerplant-0-ankerl.csv",
+      "bytes": 367,
+      "sha256": "fc5719afd59df6f95ae21fc0815b4d54e64e51703b5e23695b3ca2a663517aa0"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/powerplant-0-boost.csv",
+      "bytes": 367,
+      "sha256": "e1a6baf8a13467185121c21c6533fb1a40d74d305cfdf6f9ffc965dd48a586a7"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/powerplant-0-custom.csv",
+      "bytes": 363,
+      "sha256": "af5f196ec015a7b45c1cdb4f254f4c5d6fbf6c295891996345da8f3d2aded52f"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/powerplant-1-ankerl.csv",
+      "bytes": 362,
+      "sha256": "27d54891bf6b9fcc964c331baefbed45d13f76fd51258609a2041e497fe13edb"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/powerplant-1-boost.csv",
+      "bytes": 362,
+      "sha256": "198ea3459e3e1a6f3695343a146adb9da0a73753c0ac9e9d61f1ef9e69a28068"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/powerplant-1-custom.csv",
+      "bytes": 365,
+      "sha256": "f5d789efc61b857e432f5048db63593982aa5c4c6020cce74d11a6a638d0460c"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-0-ankerl.csv",
+      "bytes": 292,
+      "sha256": "52c17d2c40ff73d24c3a2fdb0db2df8291376dcaabe96382f3fccd599c24c237"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-0-boost.csv",
+      "bytes": 290,
+      "sha256": "f5ffa9b07d4e0b4a31d7d56c208de8957369b056a07c2d89cd816a6f86bd8964"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-0-custom.csv",
+      "bytes": 292,
+      "sha256": "61e396e4e6db1048ad33fe5028ec9781ec97adfe9ea94c52166a93a885e1e7fa"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-1-ankerl.csv",
+      "bytes": 292,
+      "sha256": "1341a948bc952eeecb53e8b7d47d398af010387224961b58fb47886141f76523"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-1-boost.csv",
+      "bytes": 292,
+      "sha256": "1e07e5a6da760dee9bd4d3b2138c2c3a905ac12adc6b2ec6bd2a9b52c939262d"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-1-custom.csv",
+      "bytes": 292,
+      "sha256": "ca9d21eddc1c6ae46288e95f833168d7d7135edef2e487cbb286abb18aaa5e65"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/debug-ctest.xml",
+      "bytes": 113063,
+      "sha256": "9a97ee40a2ff1443dc131521e98fbb01646727f812993bfd8f1fa4cc91bb1afe"
+    },
+    {
+      "path": "doc/data-structure-algorithm-simplifications.md",
+      "bytes": 39261,
+      "sha256": "9b2e10eaf06ce20431dfeb6837858b8788b00aa23f4b5b2205763e61a072060a"
+    },
+    {
+      "path": "doc/simplification-10-predicates-investigation.md",
+      "bytes": 17687,
+      "sha256": "61205578546e7dde1c204848e53cf8f20bf62ee547950e0e884f07129e83a189"
+    },
+    {
+      "path": "doc/simplification-10-predicates-results.json",
+      "bytes": 99716,
+      "sha256": "a24f8c72d940275a5998c15d4c3c9e4dc61f696d10788b85b48e046ccca9e850"
+    },
+    {
+      "path": "doc/simplification-11-results.json",
+      "bytes": 119717,
+      "sha256": "f07acfb21c227a39ce4c7128db2d12b1fe44fe7f97de75ad3ff5ebd91938c2a4"
+    },
+    {
+      "path": "doc/simplification-11-scene-investigation.md",
+      "bytes": 15636,
+      "sha256": "08924a7955522229afe9decaa45ace8b94510a8ae97bf29bb75254e76c9001c1"
+    },
+    {
+      "path": "doc/simplification-12-14-15-run-metadata.json",
+      "bytes": 11972,
+      "sha256": "dd4e8b04b98bb84e55d725b494b7e86cf5308025aea4c0421147e9334dfe38c7"
+    },
+    {
+      "path": "doc/simplification-12-graphics-investigation.md",
+      "bytes": 7839,
+      "sha256": "e5e5816b262151f77907cbe3d62e4d529250996f0c470d668eed9b32a3c4d974"
+    },
+    {
+      "path": "doc/simplification-12-results.json",
+      "bytes": 2467,
+      "sha256": "ba6f9f3a8ed1ce67c97f51f9bde8d685a09ec2be0423a734f9278b9c84e0263e"
+    },
+    {
+      "path": "doc/simplification-13-instances-investigation.md",
+      "bytes": 9933,
+      "sha256": "70f869fd8ef9c7a1d455cc96161796b7ca63d50204a6eb338c1d935c15677419"
+    },
+    {
+      "path": "doc/simplification-13-results.json",
+      "bytes": 33289,
+      "sha256": "b2ebc28a8463519dac1f068a76d0540613c3250c225f00f432c97aafa9940046"
+    },
+    {
+      "path": "doc/simplification-14-capacity-results.json",
+      "bytes": 15036,
+      "sha256": "1ccad07c7a8be53f58f0694705d532e22bd43c0be21f18261ffef2c618ce07a7"
+    },
+    {
+      "path": "doc/simplification-14-derived-payloads.json",
+      "bytes": 3806,
+      "sha256": "3bab5fbb1985c6a2551e1a63bfb6ec816b265d39b72741aa7846bcfe516b8c6d"
+    },
+    {
+      "path": "doc/simplification-14-obj-investigation.md",
+      "bytes": 20016,
+      "sha256": "f9314bd7ae6686fc02d15425d98e7567fbd9c96b237b0609ac228a942b3e68a1"
+    },
+    {
+      "path": "doc/simplification-14-results.json",
+      "bytes": 15496,
+      "sha256": "29d4863f09a68501d7e20efc814611c74309a49ce35f31d2f4a934f21e2e3a5d"
+    },
+    {
+      "path": "doc/simplification-15-annotations-investigation.md",
+      "bytes": 14586,
+      "sha256": "b25c595b5369662a04876b537abd08cb27770a2a3a911de2c7ed2bc068856972"
+    },
+    {
+      "path": "doc/simplification-15-results.json",
+      "bytes": 48172,
+      "sha256": "f987ed7c3f9f4259f57fcbac346af317e1fcc771f49374200d4fd90a45cc6f3e"
+    },
+    {
+      "path": "doc/simplification-16-checked-results.json",
+      "bytes": 84797,
+      "sha256": "400b98068797bab6987df75c69ce2f4b48f91e7a31f8482082d789c5cd2e28e9"
+    },
+    {
+      "path": "doc/simplification-16-envelope-results.json",
+      "bytes": 14162,
+      "sha256": "f2d911a343e61f244774316d1ed63a82ab4fee55da892563ad04e0a2b653f250"
+    },
+    {
+      "path": "doc/simplification-16-proved-results.json",
+      "bytes": 31913,
+      "sha256": "280c863a4c373a17f1c64e50d4519b3b79b94e039fe87a1464e51ce9abb3cc72"
+    },
+    {
+      "path": "doc/simplification-16-results.json",
+      "bytes": 84797,
+      "sha256": "400b98068797bab6987df75c69ce2f4b48f91e7a31f8482082d789c5cd2e28e9"
+    },
+    {
+      "path": "doc/simplification-16-topology-investigation.md",
+      "bytes": 24036,
+      "sha256": "926e3a0cfed46e57af5a00b8ff35ab768b15bcee260be0f4e52774399becb0b3"
+    },
+    {
+      "path": "doc/simplification-17-spatial-investigation.md",
+      "bytes": 5759,
+      "sha256": "6ad65b457fc0feb1a0bfbf20b888a583a0ce2cb6add943a27cab583e18466db5"
+    },
+    {
+      "path": "doc/simplification-18-library-investigation.md",
+      "bytes": 5727,
+      "sha256": "91b8440299e9ce4a60af2eb171cc8873db0f1a6a8e581b59111b027911baa99d"
+    },
+    {
+      "path": "doc/simplification-19-dense-set-investigation.md",
+      "bytes": 16246,
+      "sha256": "1883758079ae9e9e0cf40f562e931e8167a38d735fade503897afbecb4751b41"
+    },
+    {
+      "path": "doc/simplification-19-dense-set-results.json",
+      "bytes": 95248,
+      "sha256": "f49de049e96103dd9c71da2286e4f24b709bfe1b07f6d6b6164edf905ce2609f"
+    },
+    {
+      "path": "doc/simplification-19-hash-investigation.md",
+      "bytes": 8804,
+      "sha256": "a4f079ad579c5027871e1de0df0414a2aa63a60945f1a44d252fc5d92669e6f7"
+    },
+    {
+      "path": "doc/simplification-19-results.json",
+      "bytes": 73341,
+      "sha256": "411232d271268369aaab14eada93fd5bbfaeb389c7139ae121dd9ba97eb2f0a1"
+    },
+    {
+      "path": "doc/simplifications-10-19-investigation.md",
+      "bytes": 16389,
+      "sha256": "34ea06afebeae00ce2aec44a8ef9fdadbfc93300e95f78fc4126a448c86136e8"
+    },
+    {
+      "path": "experiments/simplification-10/adaptive_predicates.h",
+      "bytes": 248,
+      "sha256": "0358b2d93af0fc8361f7af5808dcb599cee79731af10c6a40bbb3ed5a32025e2"
+    },
+    {
+      "path": "experiments/simplification-10/CMakeLists.txt",
+      "bytes": 5193,
+      "sha256": "8a245dd255aac830dc5eb44f25ab03a37e5f4c560b6f2e3eaa69154363e6ed5e"
+    },
+    {
+      "path": "experiments/simplification-10/main.cpp",
+      "bytes": 23074,
+      "sha256": "3ae67972f7ee59333c0f40cf12cebb2f218a6f8722a0f60b37a9a67f49a4d41d"
+    },
+    {
+      "path": "experiments/simplification-10/predicate.cpp",
+      "bytes": 6398,
+      "sha256": "7561b0fd84cc4d1975f50c0c0e37206690e15ee0087d7c01eb3425108fce1089"
+    },
+    {
+      "path": "experiments/simplification-10/probe.h",
+      "bytes": 1159,
+      "sha256": "0b4dada9b61958d9a4796ba9e7a4bbb3f59d05d81c1485340d263df5a9b7d664"
+    },
+    {
+      "path": "experiments/simplification-10/README.md",
+      "bytes": 3154,
+      "sha256": "0dc20c4f6ab2e825d4804110e3105d7178644a9b4400d1ce95da3ffe95156c4a"
+    },
+    {
+      "path": "experiments/simplification-10/run.ps1",
+      "bytes": 2328,
+      "sha256": "edb70ec8f1e1f3aa9ebe410bd5d1c5289fc22b5b53185a0c5f4da3449ea657be"
+    },
+    {
+      "path": "experiments/simplification-11/CMakeLists.txt",
+      "bytes": 591,
+      "sha256": "42c0022a2922d9ef5688e6047177e0a1b2691a8e40ab47054475e6042f69d5c9"
+    },
+    {
+      "path": "experiments/simplification-11/main.cpp",
+      "bytes": 22800,
+      "sha256": "6b808d39ec15e8e13d32f3d60c6f812184951828ccb8ca117c2b61ce4933a8b0"
+    },
+    {
+      "path": "experiments/simplification-11/run.ps1",
+      "bytes": 2338,
+      "sha256": "f87084964cfbd92bdb2747e7e065bc5fbb67872b5aa7598be3c69e40a446e92d"
+    },
+    {
+      "path": "experiments/simplification-12/CMakeLists.txt",
+      "bytes": 401,
+      "sha256": "b879a1f9832c79100e37729884785fdf053d1d6c718f4df4fd4c11a4f9dac5c1"
+    },
+    {
+      "path": "experiments/simplification-12/main.cpp",
+      "bytes": 6797,
+      "sha256": "4b1aa42975396b0c10f0d34076d0b60da3c1d1a21fa4110316e1395068cafbf4"
+    },
+    {
+      "path": "experiments/simplification-12/run.ps1",
+      "bytes": 613,
+      "sha256": "abe80a46285c502927fd225c6d526d97585c3b60a1b8e6c8b0633b227193ce57"
+    },
+    {
+      "path": "experiments/simplification-13/CMakeLists.txt",
+      "bytes": 407,
+      "sha256": "40ff1aab737e954b0c0f1adf6776f9f81890c4c40cb8c1196410ad20902f99b7"
+    },
+    {
+      "path": "experiments/simplification-13/main.cpp",
+      "bytes": 12309,
+      "sha256": "f75760730b9b44409f4a1dfcef54ca097645b8f05ffd6069e34c10d2ba0a2e95"
+    },
+    {
+      "path": "experiments/simplification-13/run.ps1",
+      "bytes": 1677,
+      "sha256": "408571bb04f85af289c7b60ae328ed43f9698738eb8dee5449ee389890c007a5"
+    },
+    {
+      "path": "experiments/simplification-14-capacity/CMakeLists.txt",
+      "bytes": 455,
+      "sha256": "b20e161cbec58b4eafbb963eed8d176376e1090b6d6e71e0e361a4f9c02da905"
+    },
+    {
+      "path": "experiments/simplification-14-capacity/main.cpp",
+      "bytes": 6230,
+      "sha256": "c9e38486c130d903988c4fa11eb177a5e9834d9f30eb7196fa58b020fd8d8e20"
+    },
+    {
+      "path": "experiments/simplification-14-capacity/run.ps1",
+      "bytes": 929,
+      "sha256": "523f94650003579c9a18e3ff06b8e2ce427a7033970e34b81742f04bf9602d43"
+    },
+    {
+      "path": "experiments/simplification-14/CMakeLists.txt",
+      "bytes": 1344,
+      "sha256": "4f4fc998be971fcb0b286a6576bd04690dd88c3c19ad92311e0c03a888eea3d5"
+    },
+    {
+      "path": "experiments/simplification-14/main.cpp",
+      "bytes": 12506,
+      "sha256": "8696933624e55f3896e48fb324c848d39a4cf183eff14624d41c34f7f2e6aec5"
+    },
+    {
+      "path": "experiments/simplification-14/run.ps1",
+      "bytes": 1594,
+      "sha256": "e78db6795e605fb3a77919b14db1083d2d90cec1a5838282866c2079170e56be"
+    },
+    {
+      "path": "experiments/simplification-14/summarize.ps1",
+      "bytes": 2836,
+      "sha256": "db9688e738ebb91908a095882aedc8d850d60f0da18db68772645fcdcca4cd6c"
+    },
+    {
+      "path": "experiments/simplification-15/CMakeLists.txt",
+      "bytes": 4059,
+      "sha256": "8dc10144b3bc2fa7170241c308d7f0a6e987724fe97362ac76e1ad467d20d255"
+    },
+    {
+      "path": "experiments/simplification-15/main.cpp",
+      "bytes": 12903,
+      "sha256": "4c6c5a5c03cfc42a2db568b198a06d99eda0d36da890d28f4c6aa79d04a086b3"
+    },
+    {
+      "path": "experiments/simplification-15/run.ps1",
+      "bytes": 616,
+      "sha256": "6fcf578bce8aeeef5dd0c9f73ccf17f4c7039194aed00cfb1de1d30930df7a5d"
+    },
+    {
+      "path": "experiments/simplification-16/allocation_probe.h",
+      "bytes": 2742,
+      "sha256": "c3b71c87908a6b45ca85209ae4afecc6cbbeac182c1eb5d82eba4182d5ae4b70"
+    },
+    {
+      "path": "experiments/simplification-16/checked-main.cpp",
+      "bytes": 23447,
+      "sha256": "fe2621b40a9eb0173dc1933209cca137504227f950f7ba002bfd6f81fedc50f6"
+    },
+    {
+      "path": "experiments/simplification-16/CMakeLists.txt",
+      "bytes": 591,
+      "sha256": "a66a606b9d9a02fb8142fda9a6d782c78b2796896597155629dee948391d77b4"
+    },
+    {
+      "path": "experiments/simplification-16/main.cpp",
+      "bytes": 25704,
+      "sha256": "da4a6f98f8289c486b1e8f97c3392d1d3f0feff77ef953ec60d96a7f2736a434"
+    },
+    {
+      "path": "experiments/simplification-16/provenance.ps1",
+      "bytes": 917,
+      "sha256": "755bfa93587e6499cfdf3118308fc244e2c4de44e3811f8d380b5b4c1b234263"
+    },
+    {
+      "path": "experiments/simplification-16/run-envelope.ps1",
+      "bytes": 3505,
+      "sha256": "94b744dded515f8be5b36d131279a03e586d9164511652b54487b1ee70a85bb1"
+    },
+    {
+      "path": "experiments/simplification-16/run-proved.ps1",
+      "bytes": 3597,
+      "sha256": "c4c7baa44902f18e94e369895e9c3ad35fdad569530bd784cd97cee827d22b58"
+    },
+    {
+      "path": "experiments/simplification-16/run.ps1",
+      "bytes": 2134,
+      "sha256": "914c15a356e67e816b5991961bdcb83c475ee3b4ee4e4a76edcfb8a903687c31"
+    },
+    {
+      "path": "experiments/simplification-19-dense-set/CMakeLists.txt",
+      "bytes": 7221,
+      "sha256": "c373e631588594cb060b987b90bb6e84de645ce19c50ec19a991acfab8e4b7f1"
+    },
+    {
+      "path": "experiments/simplification-19-dense-set/dense_set_index.h",
+      "bytes": 3715,
+      "sha256": "e569d767dd992052d98313885eff8e2b0468c0ddd3ce8095ef1c2b1a5acbc7ca"
+    },
+    {
+      "path": "experiments/simplification-19-dense-set/dense_set_pipeline_index.h",
+      "bytes": 163,
+      "sha256": "d454ffe5a33d7d2eda4bf14883ec54a46862dcb5ca2418df7de1fff5b8f58ca3"
+    },
+    {
+      "path": "experiments/simplification-19-dense-set/exit-report-contract.ps1",
+      "bytes": 2846,
+      "sha256": "11cc0c95d85f0f93d75563307e81131ec71c8724b25471dff4d137e982505e9d"
+    },
+    {
+      "path": "experiments/simplification-19-dense-set/index_allocation.h",
+      "bytes": 2588,
+      "sha256": "f29828cc7a97dbda63e12438b4a79a3f60816ddbc186714495e366f78a03c19e"
+    },
+    {
+      "path": "experiments/simplification-19-dense-set/main.cpp",
+      "bytes": 11467,
+      "sha256": "36b8290e9ac55567dbb42bdde85ace9b879135f2ef080164b5ad06a89b3562fe"
+    },
+    {
+      "path": "experiments/simplification-19-dense-set/provenance.ps1",
+      "bytes": 4933,
+      "sha256": "703cf05dc0518ee850734f6cb809e128b36c1bccd22736290cafad8abc75c3a6"
+    },
+    {
+      "path": "experiments/simplification-19-dense-set/README.md",
+      "bytes": 5907,
+      "sha256": "d79fd716764b13a7e136c3cf3512a19bab6af46509cad4beadeb505ff5bbfc0c"
+    },
+    {
+      "path": "experiments/simplification-19-dense-set/run.ps1",
+      "bytes": 7411,
+      "sha256": "1e5c2545feb42c345d3967bb1e028902ede2a76072c515fb295d4ab2af06c2ad"
+    },
+    {
+      "path": "experiments/simplification-19-dense-set/tracked_custom_pipeline_index.h",
+      "bytes": 165,
+      "sha256": "4e08a7ea17fcfc36ce399acef8e4f426f6b9c20f322993e98a3de176128de2f0"
+    },
+    {
+      "path": "experiments/simplification-19/CMakeLists.txt",
+      "bytes": 843,
+      "sha256": "5ec1ab42322436680e2365bab65fa085eb8d6b3e2205fd762333d985da3d5a9b"
+    },
+    {
+      "path": "experiments/simplification-19/main.cpp",
+      "bytes": 7369,
+      "sha256": "801e9d2914add970552a5543be3990bcc1de7d66f23243377dd1f892afc8ff76"
+    },
+    {
+      "path": "experiments/simplification-19/run.ps1",
+      "bytes": 5194,
+      "sha256": "d38a547e3aebee84b2e6865a5d593f8ecf37e8d2332ddb848b50c6c3dbf4d9a0"
+    }
+  ],
+  "release_binaries": [
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_simplification_10_probe.exe",
+      "bytes": 854016,
+      "sha256": "8be05e8ab2ce3be3c00d3120e0fd0f21567011450fd1469b6cc992d3e72acffc"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_simplification_10_fma_contract.exe",
+      "bytes": 875008,
+      "sha256": "8c21faede17a3c5660748aa005849fb1e691c31338402fddac236b06ae2d1c0a"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_simplification_11_probe.exe",
+      "bytes": 985088,
+      "sha256": "2889ca6eb239cd0b7b88ec274faae4119d891e6a5c46a211ef8c95adcf8948d8"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_simplification_12.exe",
+      "bytes": 162816,
+      "sha256": "26a0977b77b81fc90aa8cc7ff0f84cc67205b8cb822e6424d088b9deedc462b7"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_instance_query_probe.exe",
+      "bytes": 800256,
+      "sha256": "0e6d02ae48bfe0351a9e4d724da105bb0d572d9bd9d0d1808f19ebc00cef5342"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_simplification_14.exe",
+      "bytes": 632320,
+      "sha256": "eb64d2ae2bed78d5a4d5ad16f20752ba63875423e1397a4305011a35884d4988"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_simplification_14_capacity.exe",
+      "bytes": 146432,
+      "sha256": "8578604ada44cd4602778f9488213da6598251c8021a4f9fa987125a8f6ad77d"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_simplification_15.exe",
+      "bytes": 136704,
+      "sha256": "4a5e0d7634b5f59cd027902bfc7607b8d3c5c39beacccd4caf82392af5546b2a"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_simplification_16_probe.exe",
+      "bytes": 825856,
+      "sha256": "569dcf02726388d1eab59436b70a2baae44971518b2995d05a6396eb3cf128da"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_analysis_index_probe.exe",
+      "bytes": 124928,
+      "sha256": "25e1d23a862f2470b3b3a5c9ac63d469ac40c3ec1c7591c1a626a52d407844f6"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_analysis_index_dense_set_probe.exe",
+      "bytes": 200192,
+      "sha256": "f866fe250e214b988459208ee3c6ae661509ec9d423c424402ba8e4b6dd10c33"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_benchmarks.exe",
+      "bytes": 1250304,
+      "sha256": "e9392161228acbb947a702c536db84bb6ed500ef3e033f3faf9b6186455376db"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_benchmarks_boost.exe",
+      "bytes": 1257984,
+      "sha256": "e00056343247c7d423a5f4cbe8528fd3e45b05ae09f79f75107fde6f3566d1e5"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_benchmarks_ankerl.exe",
+      "bytes": 1253376,
+      "sha256": "b7d596ce566aae238832edf7273fafbc3aef06b518998d4c080305867dd29911"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_benchmarks_dense_set_custom.exe",
+      "bytes": 1253888,
+      "sha256": "71018b270169d00d8f3267c3e849f13e7f22edf5d04da55f381522f3900af821"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_benchmarks_dense_set.exe",
+      "bytes": 1262592,
+      "sha256": "736fb09ff67f92f5893f1ac752a54e8d77ad2393ca7eefaa25680ee8dcdc51a9"
+    }
+  ],
+  "artifact_validation": {
+    "reports_checked": 12,
+    "local_links_checked": 99,
+    "json_files_parsed": 20,
+    "repository_hashes_verified": 117,
+    "diff_whitespace_errors": 0,
+    "production_src_include_shader_changes": 0,
+    "independent_report_reviews": "Items 12/14/15 and the final item 19 dense-set decision were checked against detailed reports, raw records and source."
+  },
+  "preserved_log_files": [
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set-pilot/debug-contract.log",
+      "bytes": 356,
+      "sha256": "93049b3307ded523ffce1698af6aae073aff3aa1c6999efc08dc9feb3d27c6ba"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set-pilot/release-contract-detail.log",
+      "bytes": 1161,
+      "sha256": "9b0f11bac1d95aec1b78a7e492df3c9a10496e5989a4a7cec34ce662f338d1e6"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set-pilot/release-contract.log",
+      "bytes": 356,
+      "sha256": "86da9efd45fe7a2e29d92b77fe4e79aa2a58396d039b2001545f1a4353003a43"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set-pilot/uploads_files_2720101_BusGameMap-0-custom.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/powerplant-0-custom.log",
+      "bytes": 149,
+      "sha256": "6f52c3393631b7db47e322d2817708d5f59c1e130ec2e18371d197569c31369e"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/powerplant-0-dense_set.log",
+      "bytes": 149,
+      "sha256": "d89ef1af7c2b19097ae1cd9b8468acee7e03699b060d5e9685b9e19df4a2480c"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/powerplant-1-custom.log",
+      "bytes": 149,
+      "sha256": "6f52c3393631b7db47e322d2817708d5f59c1e130ec2e18371d197569c31369e"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/powerplant-1-dense_set.log",
+      "bytes": 149,
+      "sha256": "d89ef1af7c2b19097ae1cd9b8468acee7e03699b060d5e9685b9e19df4a2480c"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/uploads_files_2720101_BusGameMap-0-custom.log",
+      "bytes": 147,
+      "sha256": "eb5ce02c201ee4d193aa7d346e8c322b5518fed7fe18e37c30522b80a75a1e51"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/uploads_files_2720101_BusGameMap-0-dense_set.log",
+      "bytes": 147,
+      "sha256": "46de75ad2f38daf12fe2ebc2d51ffda690c305a718d64597faaf2bc7831ada10"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/uploads_files_2720101_BusGameMap-1-custom.log",
+      "bytes": 147,
+      "sha256": "eb5ce02c201ee4d193aa7d346e8c322b5518fed7fe18e37c30522b80a75a1e51"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19-dense-set/uploads_files_2720101_BusGameMap-1-dense_set.log",
+      "bytes": 147,
+      "sha256": "46de75ad2f38daf12fe2ebc2d51ffda690c305a718d64597faaf2bc7831ada10"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/powerplant-0-ankerl.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/powerplant-0-boost.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/powerplant-0-custom.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/powerplant-1-ankerl.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/powerplant-1-boost.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/powerplant-1-custom.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-0-ankerl.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-0-boost.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-0-custom.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-1-ankerl.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-1-boost.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-1-custom.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/capacity-debug-build.log",
+      "bytes": 7279,
+      "sha256": "8869593979f0c6054dedb5469a6fd5f2116f44f5e397a12f2e4135955398939e"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/capacity-release-build.log",
+      "bytes": 1427,
+      "sha256": "68918f54b2cda369a3d38adf4d15eef7a4c7b91de49151a6215ee8ec76f337f6"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/debug-build.log",
+      "bytes": 6818,
+      "sha256": "a13a66643cedce9809ce864f8286536412b98d0a9ec6a2ce3fc67e1f9ded5ffc"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/debug-ctest.log",
+      "bytes": 22450,
+      "sha256": "2ed71943be037008f8addbe6630e79f9b9db9b9f71c740f6ba6f02a4fdc2a3bf"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/dense-set-contracts-debug.log",
+      "bytes": 508,
+      "sha256": "bc881b3039c8156adaa6c8dd644a9d2988c35a0443edc469fccf7e64bfec29dc"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/dense-set-contracts-release.log",
+      "bytes": 508,
+      "sha256": "223b764285ac4ef5330ec54b7377799729362864fc06b671375b1d623cae83bd"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/dense-set-debug-build.log",
+      "bytes": 6732,
+      "sha256": "c6dbc631d271484aa37b03165287bbc3e4ea47f3c3117dee3b2077a15acabcf6"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/dense-set-release-build.log",
+      "bytes": 741,
+      "sha256": "08b72924aa295a7b057b267f8d9bbc131d27b6a902c510e52eec99b1e45ba3a0"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/extra-probe-contracts-release.log",
+      "bytes": 684,
+      "sha256": "57f76e469e40dd2a93416e1c4d666286cf53eb75714ad66dd797af4e4daaea43"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/initial-probe-contracts-debug.log",
+      "bytes": 1346,
+      "sha256": "27feb0a3d46481aff5b30d48a182763521ab146ec0d3289a7ec3bf5f54e44837"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/predicates-contracts-release.log",
+      "bytes": 464,
+      "sha256": "e5314aa22be4c782a5c6c4d28c2517fb95547837f53184bc37955a1af4dc9a9f"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/topology-debug-build.log",
+      "bytes": 1284,
+      "sha256": "7825416184a35a466446a1a085b7cdf19904ee9512b81026cfbf4e2646dd6ad9"
+    },
+    {
+      "path": "doc/benchmarks/simplifications-10-19-validation/topology-release-build.log",
+      "bytes": 1308,
+      "sha256": "41fc55fe1beeebc81b85fa4d824a0bc0ee1c4dade788bfebbaf1b6367d3c00ca"
+    }
+  ]
+}

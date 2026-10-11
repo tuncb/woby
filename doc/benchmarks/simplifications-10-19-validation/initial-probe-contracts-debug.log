@@ -1,0 +1,27 @@
+Test project D:/woby/build/vs2026-vcpkg
+    Start 105: woby_simplification_10_contract
+    Start 106: woby_simplification_10_fma_contract
+1/9 Test #106: woby_simplification_10_fma_contract ...   Passed   55.67 sec
+    Start 107: woby_simplification_11_contract
+2/9 Test #107: woby_simplification_11_contract .......   Passed    0.18 sec
+    Start 108: woby_simplification_12_contract
+3/9 Test #108: woby_simplification_12_contract .......   Passed    0.15 sec
+    Start 109: woby_instance_query_contract
+4/9 Test #109: woby_instance_query_contract ..........   Passed    0.16 sec
+    Start 110: woby_simplification_14_contract
+5/9 Test #110: woby_simplification_14_contract .......   Passed    0.14 sec
+    Start 111: woby_simplification_15_contract
+6/9 Test #105: woby_simplification_10_contract .......   Passed   56.55 sec
+    Start 112: woby_simplification_16_contract
+7/9 Test #111: woby_simplification_15_contract .......   Passed    0.25 sec
+    Start 113: woby_analysis_index_contract
+8/9 Test #112: woby_simplification_16_contract .......   Passed    0.22 sec
+9/9 Test #113: woby_analysis_index_contract ..........   Passed    0.14 sec
+
+100% tests passed, 0 tests failed out of 9
+
+Label Time Summary:
+cpu     = 113.46 sec*proc (9 tests)
+unit    = 113.46 sec*proc (9 tests)
+
+Total Test time (real) =  56.85 sec

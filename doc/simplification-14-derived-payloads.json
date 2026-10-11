@@ -1,0 +1,79 @@
+{
+  "scope": "Exact payload calculations from raw counts; layouts are unimplemented and untimed. Generated-normal equivalence replaces declared normals with one 12-byte record per render ID. Source data, marker/node arrays, CPU retention and buffer allocation overhead are excluded.",
+  "indexed_tuple_formula": "12S+12N+8U+12R+4C; generated normals substitute R for N",
+  "implicit_generated_normal_formula": "12S+8U+20R+4C",
+  "no_uv_vertex_formula": "24R+4C",
+  "no_uv_generated_position_tuple_formula": "12S+16R+4C",
+  "rows": [
+    {
+      "name": "uploads_files_2720101_BusGameMap.obj",
+      "corners_per_render_vertex": 5.778639521141836,
+      "current_gpu_bytes": 30173512,
+      "equivalent_corner_representatives_gpu_bytes": 51828528,
+      "equivalent_indexed_tuple_gpu_bytes": 30899272,
+      "indexed_tuple_saved_bytes": -725760,
+      "indexed_tuple_saved_percent": -2.405288452998113,
+      "generated_implicit_normal_index_gpu_bytes": null,
+      "no_uv_24_byte_vertex_gpu_bytes": null,
+      "no_uv_generated_4_byte_position_tuple_gpu_bytes": null,
+      "declared_raw_attributes_bytes": 11675140,
+      "equivalent_attributes_bytes": 11675140
+    },
+    {
+      "name": "powerplant.obj",
+      "corners_per_render_vertex": 3.494526333606211,
+      "current_gpu_bytes": 503627016,
+      "equivalent_corner_representatives_gpu_bytes": 584485152,
+      "equivalent_indexed_tuple_gpu_bytes": 365892264,
+      "indexed_tuple_saved_bytes": 137734752,
+      "indexed_tuple_saved_percent": 27.34856304849222,
+      "generated_implicit_normal_index_gpu_bytes": null,
+      "no_uv_24_byte_vertex_gpu_bytes": 415998000,
+      "no_uv_generated_4_byte_position_tuple_gpu_bytes": null,
+      "declared_raw_attributes_bytes": 81337788,
+      "equivalent_attributes_bytes": 81337788
+    },
+    {
+      "name": "san-miguel.obj",
+      "corners_per_render_vertex": 3.3190111148048014,
+      "current_gpu_bytes": 408452900,
+      "equivalent_corner_representatives_gpu_bytes": 565021260,
+      "equivalent_indexed_tuple_gpu_bytes": 397655612,
+      "indexed_tuple_saved_bytes": 10797288,
+      "indexed_tuple_saved_percent": 2.643459747745701,
+      "generated_implicit_normal_index_gpu_bytes": null,
+      "no_uv_24_byte_vertex_gpu_bytes": null,
+      "no_uv_generated_4_byte_position_tuple_gpu_bytes": null,
+      "declared_raw_attributes_bytes": 169630532,
+      "equivalent_attributes_bytes": 169630532
+    },
+    {
+      "name": "bennu_OLA_v21_PTM_very-high.obj",
+      "corners_per_render_vertex": 5.999928807489631,
+      "current_gpu_bytes": 500274800,
+      "equivalent_corner_representatives_gpu_bytes": 893344768,
+      "equivalent_indexed_tuple_gpu_bytes": 536008896,
+      "indexed_tuple_saved_bytes": -35734096,
+      "indexed_tuple_saved_percent": -7.142893465751223,
+      "generated_implicit_normal_index_gpu_bytes": 500274800,
+      "no_uv_24_byte_vertex_gpu_bytes": 428806608,
+      "no_uv_generated_4_byte_position_tuple_gpu_bytes": 464540704,
+      "declared_raw_attributes_bytes": 107202288,
+      "equivalent_attributes_bytes": 214404576
+    },
+    {
+      "name": "20190810_BearTrap_Ground_Model.obj",
+      "corners_per_render_vertex": 5.917468742378345,
+      "current_gpu_bytes": 2138524344,
+      "equivalent_corner_representatives_gpu_bytes": 4104423772,
+      "equivalent_indexed_tuple_gpu_bytes": 2593211236,
+      "indexed_tuple_saved_bytes": -454686892,
+      "indexed_tuple_saved_percent": -21.26171223047812,
+      "generated_implicit_normal_index_gpu_bytes": 2439553672,
+      "no_uv_24_byte_vertex_gpu_bytes": null,
+      "no_uv_generated_4_byte_position_tuple_gpu_bytes": null,
+      "declared_raw_attributes_bytes": 762002020,
+      "equivalent_attributes_bytes": 1222974712
+    }
+  ]
+}

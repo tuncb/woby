@@ -1,0 +1,11 @@
+Test project D:/woby/build/vs2026-vcpkg
+    Start 114: woby_analysis_index_dense_set_contract
+1/1 Test #114: woby_analysis_index_dense_set_contract ...   Passed    0.22 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Label Time Summary:
+cpu     =   0.22 sec*proc (1 test)
+unit    =   0.22 sec*proc (1 test)
+
+Total Test time (real) =   0.26 sec

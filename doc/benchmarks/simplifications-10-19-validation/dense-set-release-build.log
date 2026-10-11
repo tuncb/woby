@@ -1,0 +1,19 @@
+MSBuild version 18.6.3+84d3e95b4 for .NET Framework
+
+  Checking File Globs
+  main.cpp
+  woby_analysis_index_dense_set_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_analysis_index_dense_set_probe.exe
+MSBuild version 18.6.3+84d3e95b4 for .NET Framework
+
+  Checking File Globs
+  mesh_duplicates.cpp
+  mesh_topology.cpp
+  mesh_comparison.cpp
+  woby_benchmarks_dense_set_custom.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_benchmarks_dense_set_custom.exe
+MSBuild version 18.6.3+84d3e95b4 for .NET Framework
+
+  Checking File Globs
+  mesh_duplicates.cpp
+  mesh_comparison.cpp
+  mesh_topology.cpp
+  woby_benchmarks_dense_set.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_benchmarks_dense_set.exe

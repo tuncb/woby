@@ -320,6 +320,27 @@ if(WOBY_BUILD_NOGRAPHICSAPI_PROTOTYPE)
 endif()
 
 option(WOBY_BUILD_BENCHMARKS "Build standalone CPU performance workloads" OFF)
+option(WOBY_BUILD_SIMPLIFICATION_PROBES "Build the items 10-19 investigation probes" OFF)
+if(WOBY_BUILD_SIMPLIFICATION_PROBES)
+    foreach(item RANGE 10 16)
+        add_subdirectory(experiments/simplification-${item})
+    endforeach()
+    add_subdirectory(experiments/simplification-19)
+    add_subdirectory(experiments/simplification-19-dense-set)
+    add_subdirectory(experiments/simplification-14-capacity)
+    list(APPEND woby_runtime_targets
+        woby_simplification_10_probe woby_simplification_11_probe
+        woby_simplification_12 woby_instance_query_probe
+        woby_simplification_14 woby_simplification_14_capacity woby_simplification_15
+        woby_simplification_16_probe woby_analysis_index_probe)
+    if(TARGET woby_simplification_10_fma_contract)
+        list(APPEND woby_runtime_targets woby_simplification_10_fma_contract)
+    endif()
+    if(TARGET woby_analysis_index_dense_set_probe)
+        list(APPEND woby_runtime_targets woby_analysis_index_dense_set_probe
+            woby_benchmarks_dense_set_custom woby_benchmarks_dense_set)
+    endif()
+endif()
 option(WOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK "Build the RapidOBJ prototype/reference CPU comparison" OFF)
 if(WOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK)
     add_subdirectory(experiments/parser-throughput)

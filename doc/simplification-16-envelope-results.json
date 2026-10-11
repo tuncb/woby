@@ -1,0 +1,369 @@
+{
+  "executable_sha256": "569dcf02726388d1eab59436b70a2baae44971518b2995d05a6396eb3cf128da",
+  "probe_source_sha256": "da4a6f98f8289c486b1e8f97c3392d1d3f0feff77ef953ec60d96a7f2736a434",
+  "configuration": "Release",
+  "started_utc": "2026-10-10T23:47:08.3078968Z",
+  "ended_utc": "2026-10-10T23:49:49.6233665Z",
+  "timing_envelope": "Production and proved compact retained; same executable as the all-four trial",
+  "matches_prior_executable_source_counts_and_capacities": true,
+  "model": {
+    "path": "D:/temp/obj_tests/powerplant.obj",
+    "sha256": "1bda60ac06a11a6299799c95f4caac63b5c2a3654464040ff5b7d4bb8db190a8"
+  },
+  "provenance": {
+    "base_commit": "46a27585c5bc8638a8bde5d601e5cead71376631",
+    "measurement_completed_utc": "2026-10-10T23:49:49.6233665Z",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics",
+    "physical_cores": 8,
+    "logical_processors": 16,
+    "file_sha256": {
+      "CMakeLists.txt": "4cc6aab571b82515ff2dadb34f5a5ed673e0cd64b8168e184737b886d518e366",
+      "experiments/simplification-16/CMakeLists.txt": "a66a606b9d9a02fb8142fda9a6d782c78b2796896597155629dee948391d77b4",
+      "experiments/simplification-16/main.cpp": "da4a6f98f8289c486b1e8f97c3392d1d3f0feff77ef953ec60d96a7f2736a434",
+      "experiments/simplification-16/checked-main.cpp": "fe2621b40a9eb0173dc1933209cca137504227f950f7ba002bfd6f81fedc50f6",
+      "experiments/simplification-16/run-envelope.ps1": "94b744dded515f8be5b36d131279a03e586d9164511652b54487b1ee70a85bb1",
+      "experiments/simplification-16/run-proved.ps1": "c4c7baa44902f18e94e369895e9c3ad35fdad569530bd784cd97cee827d22b58",
+      "experiments/simplification-16/allocation_probe.h": "c3b71c87908a6b45ca85209ae4afecc6cbbeac182c1eb5d82eba4182d5ae4b70",
+      "experiments/simplification-16/provenance.ps1": "755bfa93587e6499cfdf3118308fc244e2c4de44e3811f8d380b5b4c1b234263",
+      "doc/simplification-16-proved-results.json": "280c863a4c373a17f1c64e50d4519b3b79b94e039fe87a1464e51ce9abb3cc72",
+      "src/mesh_topology.h": "a969478456ba8602b65f89add56cbe4a18cb6fadbad1e060b5f42f490c41de4a",
+      "src/mesh_topology.cpp": "2d6098dffe5b2c13c36d31443e127fac6e4b6870218d26824e7b130dca6cc12f",
+      "src/obj_mesh.h": "4793b2b40e7118a431adaf3a89c468a4bf01245a130594086a000ae6332de50b",
+      "src/obj_mesh.cpp": "de63423cb2999ff144f3d142b8e6457c06073a47171160a922daac3e0c0ce153",
+      "src/model_mesh.h": "c047499e6f2d885a71b26204bea38e87b7a66276a1cd205d631a5c2e57f658eb",
+      "src/model_mesh.cpp": "c4c8c94ba0aab33fd60af39910f22869f89da16eedd266f0e9ed0718d6286eac"
+    }
+  },
+  "runs": [
+    {
+      "backends": "wide_vs_compact_proved",
+      "exact_position": [
+        {
+          "array_capacity_bytes": {
+            "compact_proved_graph": 1384261232,
+            "geometry": 895203128,
+            "wide_graph": 2765204344
+          },
+          "compact_proved_build": {
+            "allocation_calls": 6184356,
+            "live_requested_bytes": 1384403439,
+            "ms": 5572.8352,
+            "peak_requested_bytes": 1573305854,
+            "total_requested_bytes": 2124256282
+          },
+          "compact_proved_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1705.0249,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 121001,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 451049,
+            "edge_uses": 38276850,
+            "edges": 17162306,
+            "faces": 12758950,
+            "max_edge_incidence": 122,
+            "multi_reference_vertices": 557516,
+            "non_manifold_edges": 1981753,
+            "orientation_contradictions": 0,
+            "point_references": 5984052,
+            "vertices": 5424561,
+            "winding_conflicts": 192
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 6184358,
+            "live_requested_bytes": 2765451683,
+            "ms": 4834.9465,
+            "peak_requested_bytes": 3146611254,
+            "total_requested_bytes": 4183738505
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 2141.2667,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_proved_graph": 1384261232,
+            "geometry": 895203128,
+            "wide_graph": 2765204344
+          },
+          "compact_proved_build": {
+            "allocation_calls": 6184356,
+            "live_requested_bytes": 1384403439,
+            "ms": 5528.3281,
+            "peak_requested_bytes": 1573305854,
+            "total_requested_bytes": 2124256282
+          },
+          "compact_proved_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1675.4426,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 121001,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 451049,
+            "edge_uses": 38276850,
+            "edges": 17162306,
+            "faces": 12758950,
+            "max_edge_incidence": 122,
+            "multi_reference_vertices": 557516,
+            "non_manifold_edges": 1981753,
+            "orientation_contradictions": 0,
+            "point_references": 5984052,
+            "vertices": 5424561,
+            "winding_conflicts": 192
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 6184358,
+            "live_requested_bytes": 2765451683,
+            "ms": 4979.0594,
+            "peak_requested_bytes": 3146611254,
+            "total_requested_bytes": 4183738505
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 2200.7744,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_proved_graph": 1384261232,
+            "geometry": 895203128,
+            "wide_graph": 2765204344
+          },
+          "compact_proved_build": {
+            "allocation_calls": 6184356,
+            "live_requested_bytes": 1384403439,
+            "ms": 5595.358,
+            "peak_requested_bytes": 1573305854,
+            "total_requested_bytes": 2124256282
+          },
+          "compact_proved_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1675.569,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 121001,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 451049,
+            "edge_uses": 38276850,
+            "edges": 17162306,
+            "faces": 12758950,
+            "max_edge_incidence": 122,
+            "multi_reference_vertices": 557516,
+            "non_manifold_edges": 1981753,
+            "orientation_contradictions": 0,
+            "point_references": 5984052,
+            "vertices": 5424561,
+            "winding_conflicts": 192
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 6184358,
+            "live_requested_bytes": 2765451683,
+            "ms": 4780.3965,
+            "peak_requested_bytes": 3146611254,
+            "total_requested_bytes": 4183738505
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 2165.2763,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        }
+      ],
+      "model": "D:/temp/obj_tests/powerplant.obj",
+      "notes": "Release, requested C++ allocation sizes with global new header and atomic counters. Source mesh and shared analysis geometry loaded before graph timings. All arrays, adjacency order, components and flags verified. Findings, serialization, GPU and UI are outside this prototype.",
+      "original_index": [
+        {
+          "array_capacity_bytes": {
+            "compact_proved_graph": 1428758168,
+            "geometry": 899679056,
+            "wide_graph": 2852539168
+          },
+          "compact_proved_build": {
+            "allocation_calls": 5723894,
+            "live_requested_bytes": 1428841212,
+            "ms": 5300.6669,
+            "peak_requested_bytes": 1619165382,
+            "total_requested_bytes": 2182053384
+          },
+          "compact_proved_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1784.1315,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 175887,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 58099,
+            "edge_uses": 38276850,
+            "edges": 18112504,
+            "faces": 12758950,
+            "max_edge_incidence": 120,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1079616,
+            "orientation_contradictions": 0,
+            "point_references": 5984052,
+            "vertices": 5984052,
+            "winding_conflicts": 192
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 5723896,
+            "live_requested_bytes": 2852639204,
+            "ms": 4658.7828,
+            "peak_requested_bytes": 3238330310,
+            "total_requested_bytes": 4294160212
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 2230.8304,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_proved_graph": 1428758168,
+            "geometry": 899679056,
+            "wide_graph": 2852539168
+          },
+          "compact_proved_build": {
+            "allocation_calls": 5723894,
+            "live_requested_bytes": 1428841212,
+            "ms": 5281.793,
+            "peak_requested_bytes": 1619165382,
+            "total_requested_bytes": 2182053384
+          },
+          "compact_proved_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1718.932,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 175887,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 58099,
+            "edge_uses": 38276850,
+            "edges": 18112504,
+            "faces": 12758950,
+            "max_edge_incidence": 120,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1079616,
+            "orientation_contradictions": 0,
+            "point_references": 5984052,
+            "vertices": 5984052,
+            "winding_conflicts": 192
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 5723896,
+            "live_requested_bytes": 2852639204,
+            "ms": 4711.0533,
+            "peak_requested_bytes": 3238330310,
+            "total_requested_bytes": 4294160212
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 2254.6291,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_proved_graph": 1428758168,
+            "geometry": 899679056,
+            "wide_graph": 2852539168
+          },
+          "compact_proved_build": {
+            "allocation_calls": 5723894,
+            "live_requested_bytes": 1428841212,
+            "ms": 5251.7854,
+            "peak_requested_bytes": 1619165382,
+            "total_requested_bytes": 2182053384
+          },
+          "compact_proved_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1722.4718,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 175887,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 58099,
+            "edge_uses": 38276850,
+            "edges": 18112504,
+            "faces": 12758950,
+            "max_edge_incidence": 120,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1079616,
+            "orientation_contradictions": 0,
+            "point_references": 5984052,
+            "vertices": 5984052,
+            "winding_conflicts": 192
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 5723896,
+            "live_requested_bytes": 2852639204,
+            "ms": 4658.0117,
+            "peak_requested_bytes": 3238330310,
+            "total_requested_bytes": 4294160212
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 2213.2543,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        }
+      ],
+      "render_faces": 12759246,
+      "sizes": {
+        "compact_edge": 20,
+        "compact_face": 16,
+        "compact_use": 8,
+        "compact_vertex": 32,
+        "slices_edge": 32,
+        "slices_face": 32,
+        "slices_use": 16,
+        "slices_vertex": 32,
+        "wide_edge": 40,
+        "wide_face": 32,
+        "wide_use": 16,
+        "wide_vertex": 64
+      }
+    }
+  ]
+}

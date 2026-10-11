@@ -1,0 +1,766 @@
+{
+  "base_commit": "46a27585c5bc8638a8bde5d601e5cead71376631",
+  "date": "2026-10-11T01:43:32+02:00",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+  "executable_sha256": "0E6D02AE48BFE0351A9E4D724DA105BB0D572D9BD9D0D1808F19EBC00CEF5342",
+  "sources": {
+    "main.cpp": "F75760730B9B44409F4A1DFCEF54CA097645B8F05FFD6069E34C10D2BA0A2E95",
+    "CMakeLists.txt": "40FF1AAB737E954B0C0F1ADF6776F9F81890C4C40CB8C1196410AD20902F99B7",
+    "run.ps1": "408571BB04F85AF289C7B60AE328ED43F9698738EB8DEE5449EE389890C007A5",
+    "../../src/mesh_comparison.cpp": "FAAF4339B37272328680B2C8DC28D5F87E33495E218A29AD2F11B663616F4DEC",
+    "../../src/comparison_scene.cpp": "59C3A12AA211747C94E124F3E655CDBA1CBC224FC17F7BE8DDA54EA862BF836C"
+  },
+  "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977",
+  "model_input_bytes": 75585857,
+  "synthetic": {
+    "cases": [
+      {
+        "candidate_top_level": "linear padded experimental world box scan; no TLAS build",
+        "initial_uncached_instance_metadata_ms": 0.1577,
+        "instances": 1,
+        "queries": 4096,
+        "rotation_radians": 0.0,
+        "samples": [
+          {
+            "bake_ms": 0.957,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3629,
+              "max_absolute_error": 3.885780586188048E-16,
+              "max_relative_to_max_1_distance_error": 3.885780586188048E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.5327,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.4481,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 6.6255,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 11.3262
+          },
+          {
+            "bake_ms": 1.0804,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3629,
+              "max_absolute_error": 3.885780586188048E-16,
+              "max_relative_to_max_1_distance_error": 3.885780586188048E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.5412,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.1992,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 6.5996,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 10.7878
+          },
+          {
+            "bake_ms": 1.0972,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3629,
+              "max_absolute_error": 3.885780586188048E-16,
+              "max_relative_to_max_1_distance_error": 3.885780586188048E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.4272,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.0571,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 6.7676,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 11.2095
+          },
+          {
+            "bake_ms": 1.0449,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3629,
+              "max_absolute_error": 3.885780586188048E-16,
+              "max_relative_to_max_1_distance_error": 3.885780586188048E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.8889,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.8368,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 6.0912,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 11.3577
+          },
+          {
+            "bake_ms": 1.0888,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3629,
+              "max_absolute_error": 3.885780586188048E-16,
+              "max_relative_to_max_1_distance_error": 3.885780586188048E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.264,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.274,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 6.4824,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 11.2873
+          },
+          {
+            "bake_ms": 1.0187,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3629,
+              "max_absolute_error": 3.885780586188048E-16,
+              "max_relative_to_max_1_distance_error": 3.885780586188048E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.3033,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.2389,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 6.2974,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 11.4934
+          },
+          {
+            "bake_ms": 1.055,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3629,
+              "max_absolute_error": 3.885780586188048E-16,
+              "max_relative_to_max_1_distance_error": 3.885780586188048E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.1778,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.55,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 6.1865,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 11.2745
+          }
+        ],
+        "scale": 1.0,
+        "source_faces": 12800
+      },
+      {
+        "candidate_top_level": "linear padded experimental world box scan; no TLAS build",
+        "initial_uncached_instance_metadata_ms": 0.0872,
+        "instances": 1,
+        "queries": 4096,
+        "rotation_radians": 0.731,
+        "samples": [
+          {
+            "bake_ms": 1.1951,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3899,
+              "max_absolute_error": 5.273559366969494E-16,
+              "max_relative_to_max_1_distance_error": 5.273559366969494E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.3632,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 10.9421,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 8.2182,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 10.6009
+          },
+          {
+            "bake_ms": 0.9755,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3899,
+              "max_absolute_error": 5.273559366969494E-16,
+              "max_relative_to_max_1_distance_error": 5.273559366969494E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.3414,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.1421,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 8.1586,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 10.5831
+          },
+          {
+            "bake_ms": 1.1503,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3899,
+              "max_absolute_error": 5.273559366969494E-16,
+              "max_relative_to_max_1_distance_error": 5.273559366969494E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.8176,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 10.864,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 8.141,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 10.662
+          },
+          {
+            "bake_ms": 0.9762,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3899,
+              "max_absolute_error": 5.273559366969494E-16,
+              "max_relative_to_max_1_distance_error": 5.273559366969494E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.2319,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.3605,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 8.2166,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 10.9623
+          },
+          {
+            "bake_ms": 1.1241,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3899,
+              "max_absolute_error": 5.273559366969494E-16,
+              "max_relative_to_max_1_distance_error": 5.273559366969494E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.2387,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 10.9761,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 8.0845,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 10.6208
+          },
+          {
+            "bake_ms": 0.9767,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3899,
+              "max_absolute_error": 5.273559366969494E-16,
+              "max_relative_to_max_1_distance_error": 5.273559366969494E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.3268,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.0129,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 8.0808,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 10.4013
+          },
+          {
+            "bake_ms": 1.0826,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3899,
+              "max_absolute_error": 5.273559366969494E-16,
+              "max_relative_to_max_1_distance_error": 5.273559366969494E-16,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 6.2748,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.3929,
+            "world_mesh_array_capacity_bytes": 547260,
+            "world_query_ms": 8.1861,
+            "world_tree_array_capacity_bytes": 1382656,
+            "world_tree_build_ms": 10.9005
+          }
+        ],
+        "scale": 0.5,
+        "source_faces": 12800
+      },
+      {
+        "candidate_top_level": "linear padded experimental world box scan; no TLAS build",
+        "initial_uncached_instance_metadata_ms": 0.6989,
+        "instances": 8,
+        "queries": 4096,
+        "rotation_radians": 0.731,
+        "samples": [
+          {
+            "bake_ms": 7.7218,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3822,
+              "max_absolute_error": 1.8318679906315083E-15,
+              "max_relative_to_max_1_distance_error": 1.8318679906315083E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 1656,
+            "local_query_ms": 17.5256,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 12.0706,
+            "world_mesh_array_capacity_bytes": 4433844,
+            "world_query_ms": 8.7331,
+            "world_tree_array_capacity_bytes": 9011456,
+            "world_tree_build_ms": 97.3558
+          },
+          {
+            "bake_ms": 8.1282,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3822,
+              "max_absolute_error": 1.8318679906315083E-15,
+              "max_relative_to_max_1_distance_error": 1.8318679906315083E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 1656,
+            "local_query_ms": 17.0638,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.0312,
+            "world_mesh_array_capacity_bytes": 4433844,
+            "world_query_ms": 8.6634,
+            "world_tree_array_capacity_bytes": 9011456,
+            "world_tree_build_ms": 96.6362
+          },
+          {
+            "bake_ms": 7.6251,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3822,
+              "max_absolute_error": 1.8318679906315083E-15,
+              "max_relative_to_max_1_distance_error": 1.8318679906315083E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 1656,
+            "local_query_ms": 18.5809,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 10.9216,
+            "world_mesh_array_capacity_bytes": 4433844,
+            "world_query_ms": 9.1353,
+            "world_tree_array_capacity_bytes": 9011456,
+            "world_tree_build_ms": 97.6686
+          },
+          {
+            "bake_ms": 8.1165,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3822,
+              "max_absolute_error": 1.8318679906315083E-15,
+              "max_relative_to_max_1_distance_error": 1.8318679906315083E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 1656,
+            "local_query_ms": 18.6701,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.8642,
+            "world_mesh_array_capacity_bytes": 4433844,
+            "world_query_ms": 8.951,
+            "world_tree_array_capacity_bytes": 9011456,
+            "world_tree_build_ms": 99.939
+          },
+          {
+            "bake_ms": 7.5865,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3822,
+              "max_absolute_error": 1.8318679906315083E-15,
+              "max_relative_to_max_1_distance_error": 1.8318679906315083E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 1656,
+            "local_query_ms": 16.9467,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.1668,
+            "world_mesh_array_capacity_bytes": 4433844,
+            "world_query_ms": 8.6787,
+            "world_tree_array_capacity_bytes": 9011456,
+            "world_tree_build_ms": 96.3598
+          },
+          {
+            "bake_ms": 7.4308,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3822,
+              "max_absolute_error": 1.8318679906315083E-15,
+              "max_relative_to_max_1_distance_error": 1.8318679906315083E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 1656,
+            "local_query_ms": 16.9384,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 10.9372,
+            "world_mesh_array_capacity_bytes": 4433844,
+            "world_query_ms": 9.045,
+            "world_tree_array_capacity_bytes": 9011456,
+            "world_tree_build_ms": 96.1562
+          },
+          {
+            "bake_ms": 7.867,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3822,
+              "max_absolute_error": 1.8318679906315083E-15,
+              "max_relative_to_max_1_distance_error": 1.8318679906315083E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 1656,
+            "local_query_ms": 17.0671,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 10.9413,
+            "world_mesh_array_capacity_bytes": 4433844,
+            "world_query_ms": 8.7143,
+            "world_tree_array_capacity_bytes": 9011456,
+            "world_tree_build_ms": 99.5913
+          }
+        ],
+        "scale": 1.0,
+        "source_faces": 12800
+      },
+      {
+        "candidate_top_level": "linear padded experimental world box scan; no TLAS build",
+        "initial_uncached_instance_metadata_ms": 2.7375,
+        "instances": 32,
+        "queries": 4096,
+        "rotation_radians": 0.731,
+        "samples": [
+          {
+            "bake_ms": 29.894,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3982,
+              "max_absolute_error": 6.800116025829084E-15,
+              "max_relative_to_max_1_distance_error": 6.800116025829084E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 7728,
+            "local_query_ms": 51.5618,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.2251,
+            "world_mesh_array_capacity_bytes": 17569296,
+            "world_query_ms": 9.7682,
+            "world_tree_array_capacity_bytes": 36045056,
+            "world_tree_build_ms": 420.4595
+          },
+          {
+            "bake_ms": 29.8954,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3982,
+              "max_absolute_error": 6.800116025829084E-15,
+              "max_relative_to_max_1_distance_error": 6.800116025829084E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 7728,
+            "local_query_ms": 51.9998,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 10.9845,
+            "world_mesh_array_capacity_bytes": 17569296,
+            "world_query_ms": 10.0248,
+            "world_tree_array_capacity_bytes": 36045056,
+            "world_tree_build_ms": 420.8162
+          },
+          {
+            "bake_ms": 30.459,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3982,
+              "max_absolute_error": 6.800116025829084E-15,
+              "max_relative_to_max_1_distance_error": 6.800116025829084E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 7728,
+            "local_query_ms": 51.9823,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.1232,
+            "world_mesh_array_capacity_bytes": 17569296,
+            "world_query_ms": 10.1657,
+            "world_tree_array_capacity_bytes": 36045056,
+            "world_tree_build_ms": 420.0539
+          },
+          {
+            "bake_ms": 29.9753,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3982,
+              "max_absolute_error": 6.800116025829084E-15,
+              "max_relative_to_max_1_distance_error": 6.800116025829084E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 7728,
+            "local_query_ms": 52.1374,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 10.9743,
+            "world_mesh_array_capacity_bytes": 17569296,
+            "world_query_ms": 9.785,
+            "world_tree_array_capacity_bytes": 36045056,
+            "world_tree_build_ms": 422.8328
+          },
+          {
+            "bake_ms": 30.1072,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3982,
+              "max_absolute_error": 6.800116025829084E-15,
+              "max_relative_to_max_1_distance_error": 6.800116025829084E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 7728,
+            "local_query_ms": 56.3406,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.6797,
+            "world_mesh_array_capacity_bytes": 17569296,
+            "world_query_ms": 10.9508,
+            "world_tree_array_capacity_bytes": 36045056,
+            "world_tree_build_ms": 425.2715
+          },
+          {
+            "bake_ms": 30.1774,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3982,
+              "max_absolute_error": 6.800116025829084E-15,
+              "max_relative_to_max_1_distance_error": 6.800116025829084E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 7728,
+            "local_query_ms": 52.3264,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.3212,
+            "world_mesh_array_capacity_bytes": 17569296,
+            "world_query_ms": 10.2144,
+            "world_tree_array_capacity_bytes": 36045056,
+            "world_tree_build_ms": 421.3218
+          },
+          {
+            "bake_ms": 29.8781,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 3982,
+              "max_absolute_error": 6.800116025829084E-15,
+              "max_relative_to_max_1_distance_error": 6.800116025829084E-15,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 7728,
+            "local_query_ms": 55.778,
+            "local_tree_array_capacity_bytes": 1382656,
+            "local_tree_build_ms": 11.4106,
+            "world_mesh_array_capacity_bytes": 17569296,
+            "world_query_ms": 9.887,
+            "world_tree_array_capacity_bytes": 36045056,
+            "world_tree_build_ms": 421.7358
+          }
+        ],
+        "scale": 1.0,
+        "source_faces": 12800
+      }
+    ],
+    "extreme_counterexample": {
+      "local_distance": 1.0,
+      "reason": "World bake rounds distinct unit vertices to the same position. The local tree retains the unit triangle.",
+      "translation": 10000000000000000.0,
+      "world_distance": 2.0
+    },
+    "notes": "Release stage timings, one warmup per case, alternating build/query order, no concurrent work. CPU capacity payload excludes input mesh, metadata, allocator overhead and process RSS. Linear instance broad phase is a feasibility prototype. This is not a full distance-comparison or renderer benchmark.",
+    "sizeof": {
+      "annotation_projection_node": 64,
+      "distance_node": 256,
+      "distance_triangle": 72,
+      "hypothetical_generic_point_record": 120,
+      "mesh_annotation_node": 72,
+      "point_cloud_node": 76
+    }
+  },
+  "model": {
+    "cases": [
+      {
+        "candidate_top_level": "linear padded experimental world box scan; no TLAS build",
+        "initial_uncached_instance_metadata_ms": 7.8567,
+        "instances": 1,
+        "queries": 2048,
+        "rotation_radians": 0.731,
+        "samples": [
+          {
+            "bake_ms": 78.314,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 2035,
+              "max_absolute_error": 5.52440905521312E-12,
+              "max_relative_to_max_1_distance_error": 5.52440905521312E-12,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 12.1662,
+            "local_tree_array_capacity_bytes": 101235952,
+            "local_tree_build_ms": 1236.8872,
+            "world_mesh_array_capacity_bytes": 82240696,
+            "world_query_ms": 15.3064,
+            "world_tree_array_capacity_bytes": 101235952,
+            "world_tree_build_ms": 1237.4146
+          },
+          {
+            "bake_ms": 78.4172,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 2035,
+              "max_absolute_error": 5.52440905521312E-12,
+              "max_relative_to_max_1_distance_error": 5.52440905521312E-12,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 11.9145,
+            "local_tree_array_capacity_bytes": 101235952,
+            "local_tree_build_ms": 1253.487,
+            "world_mesh_array_capacity_bytes": 82240696,
+            "world_query_ms": 13.8422,
+            "world_tree_array_capacity_bytes": 101235952,
+            "world_tree_build_ms": 1264.7071
+          },
+          {
+            "bake_ms": 77.4784,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 2035,
+              "max_absolute_error": 5.52440905521312E-12,
+              "max_relative_to_max_1_distance_error": 5.52440905521312E-12,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 11.9081,
+            "local_tree_array_capacity_bytes": 101235952,
+            "local_tree_build_ms": 1244.7793,
+            "world_mesh_array_capacity_bytes": 82240696,
+            "world_query_ms": 14.2834,
+            "world_tree_array_capacity_bytes": 101235952,
+            "world_tree_build_ms": 1335.5438
+          },
+          {
+            "bake_ms": 78.1348,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 2035,
+              "max_absolute_error": 5.52440905521312E-12,
+              "max_relative_to_max_1_distance_error": 5.52440905521312E-12,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 12.1416,
+            "local_tree_array_capacity_bytes": 101235952,
+            "local_tree_build_ms": 1231.9582,
+            "world_mesh_array_capacity_bytes": 82240696,
+            "world_query_ms": 13.9899,
+            "world_tree_array_capacity_bytes": 101235952,
+            "world_tree_build_ms": 1249.3108
+          },
+          {
+            "bake_ms": 78.3676,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 2035,
+              "max_absolute_error": 5.52440905521312E-12,
+              "max_relative_to_max_1_distance_error": 5.52440905521312E-12,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 11.8254,
+            "local_tree_array_capacity_bytes": 101235952,
+            "local_tree_build_ms": 1228.0707,
+            "world_mesh_array_capacity_bytes": 82240696,
+            "world_query_ms": 14.4045,
+            "world_tree_array_capacity_bytes": 101235952,
+            "world_tree_build_ms": 1239.7275
+          }
+        ],
+        "scale": 1.0,
+        "source_faces": 1054542
+      },
+      {
+        "candidate_top_level": "linear padded experimental world box scan; no TLAS build",
+        "initial_uncached_instance_metadata_ms": 7.8239,
+        "instances": 1,
+        "queries": 2048,
+        "rotation_radians": 0.731,
+        "samples": [
+          {
+            "bake_ms": 83.3894,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 2047,
+              "max_absolute_error": 8.356737610931697E-14,
+              "max_relative_to_max_1_distance_error": 8.356737610931697E-14,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 11.7974,
+            "local_tree_array_capacity_bytes": 101235952,
+            "local_tree_build_ms": 1237.6429,
+            "world_mesh_array_capacity_bytes": 82240696,
+            "world_query_ms": 13.859,
+            "world_tree_array_capacity_bytes": 101235952,
+            "world_tree_build_ms": 1228.2299
+          },
+          {
+            "bake_ms": 79.6429,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 2047,
+              "max_absolute_error": 8.356737610931697E-14,
+              "max_relative_to_max_1_distance_error": 8.356737610931697E-14,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 12.4199,
+            "local_tree_array_capacity_bytes": 101235952,
+            "local_tree_build_ms": 1233.2722,
+            "world_mesh_array_capacity_bytes": 82240696,
+            "world_query_ms": 14.1564,
+            "world_tree_array_capacity_bytes": 101235952,
+            "world_tree_build_ms": 1245.7047
+          },
+          {
+            "bake_ms": 79.8367,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 2047,
+              "max_absolute_error": 8.356737610931697E-14,
+              "max_relative_to_max_1_distance_error": 8.356737610931697E-14,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 11.7356,
+            "local_tree_array_capacity_bytes": 101235952,
+            "local_tree_build_ms": 1235.8894,
+            "world_mesh_array_capacity_bytes": 82240696,
+            "world_query_ms": 14.1041,
+            "world_tree_array_capacity_bytes": 101235952,
+            "world_tree_build_ms": 1265.1841
+          },
+          {
+            "bake_ms": 78.3712,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 2047,
+              "max_absolute_error": 8.356737610931697E-14,
+              "max_relative_to_max_1_distance_error": 8.356737610931697E-14,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 12.6668,
+            "local_tree_array_capacity_bytes": 101235952,
+            "local_tree_build_ms": 1225.9852,
+            "world_mesh_array_capacity_bytes": 82240696,
+            "world_query_ms": 14.3475,
+            "world_tree_array_capacity_bytes": 101235952,
+            "world_tree_build_ms": 1248.3673
+          },
+          {
+            "bake_ms": 82.3039,
+            "distance_equivalence": {
+              "bitwise_unequal_queries": 2047,
+              "max_absolute_error": 8.356737610931697E-14,
+              "max_relative_to_max_1_distance_error": 8.356737610931697E-14,
+              "tolerance_0_25_classification_changes": 0
+            },
+            "instance_array_capacity_bytes": 184,
+            "local_query_ms": 11.8435,
+            "local_tree_array_capacity_bytes": 101235952,
+            "local_tree_build_ms": 1232.4008,
+            "world_mesh_array_capacity_bytes": 82240696,
+            "world_query_ms": 14.0279,
+            "world_tree_array_capacity_bytes": 101235952,
+            "world_tree_build_ms": 1241.4868
+          }
+        ],
+        "scale": 0.01,
+        "source_faces": 1054542
+      }
+    ],
+    "extreme_counterexample": {
+      "local_distance": 1.0,
+      "reason": "World bake rounds distinct unit vertices to the same position. The local tree retains the unit triangle.",
+      "translation": 10000000000000000.0,
+      "world_distance": 2.0
+    },
+    "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+    "notes": "Release stage timings, one warmup per case, alternating build/query order, no concurrent work. CPU capacity payload excludes input mesh, metadata, allocator overhead and process RSS. Linear instance broad phase is a feasibility prototype. This is not a full distance-comparison or renderer benchmark.",
+    "sizeof": {
+      "annotation_projection_node": 64,
+      "distance_node": 256,
+      "distance_triangle": 72,
+      "hypothetical_generic_point_record": 120,
+      "mesh_annotation_node": 72,
+      "point_cloud_node": 76
+    }
+  }
+}

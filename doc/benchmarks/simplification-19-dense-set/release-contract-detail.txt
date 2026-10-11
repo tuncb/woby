@@ -1,0 +1,40 @@
+Start testing: Oct 11 02:17 W. Europe Daylight Time
+----------------------------------------------------------
+113/126 Testing: woby_analysis_index_dense_set_contract
+113/126 Test: woby_analysis_index_dense_set_contract
+Command: "D:/woby/build/vs2026-vcpkg/bin/Release/woby_analysis_index_dense_set_probe.exe" "--self-test"
+Directory: D:/woby/build/vs2026-vcpkg/experiments/simplification-19-dense-set
+"woby_analysis_index_dense_set_contract" start time: Oct 11 02:17 W. Europe Daylight Time
+Output:
+----------------------------------------------------------
+{"big_capacity_limit":4611686018427387903,"default_capacity_limit":4294967295,"growth_records_compared":9000,"ok":true,"signed_zero_and_finite_contracts":2}
+<end of output>
+Test time =   0.34 sec
+----------------------------------------------------------
+Test Passed.
+"woby_analysis_index_dense_set_contract" end time: Oct 11 02:17 W. Europe Daylight Time
+"woby_analysis_index_dense_set_contract" time elapsed: 00:00:00
+----------------------------------------------------------
+
+114/126 Testing: woby_analysis_index_dense_set_exit_contract
+114/126 Test: woby_analysis_index_dense_set_exit_contract
+Command: "C:/Program Files/PowerShell/7/pwsh.exe" "-NoProfile" "-File" "D:/woby/experiments/simplification-19-dense-set/exit-report-contract.ps1" "-CustomExe" "D:/woby/build/vs2026-vcpkg/bin/Release/woby_benchmarks_dense_set_custom.exe" "-DenseExe" "D:/woby/build/vs2026-vcpkg/bin/Release/woby_benchmarks_dense_set.exe"
+Directory: D:/woby/build/vs2026-vcpkg/experiments/simplification-19-dense-set
+"woby_analysis_index_dense_set_exit_contract" start time: Oct 11 02:17 W. Europe Daylight Time
+Output:
+----------------------------------------------------------
+{"ok":true,"detector_processes":2,"fixture_contract":"triangles=3 source_points=4 parts=1|run,stage,milliseconds,counts|0,1,|0,78,2,1,2,0,1,0,0,0,1|0,total,","allocations":{"custom":{"live_requested_bytes":0,"peak_requested_bytes":2304,"total_requested_bytes":2784,"allocation_calls":6},"dense_set":{"live_requested_bytes":0,"peak_requested_bytes":512,"total_requested_bytes":984,"allocation_calls":12}}}
+<end of output>
+Test time =   2.09 sec
+----------------------------------------------------------
+Test Passed.
+"woby_analysis_index_dense_set_exit_contract" end time: Oct 11 02:17 W. Europe Daylight Time
+"woby_analysis_index_dense_set_exit_contract" time elapsed: 00:00:02
+----------------------------------------------------------
+
+End testing: Oct 11 02:17 W. Europe Daylight Time
+
+cpu =   2.42 sec*proc
+
+unit =   2.42 sec*proc
+

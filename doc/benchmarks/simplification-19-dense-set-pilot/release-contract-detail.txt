@@ -1,0 +1,24 @@
+Start testing: Oct 11 02:12 W. Europe Daylight Time
+----------------------------------------------------------
+113/125 Testing: woby_analysis_index_dense_set_contract
+113/125 Test: woby_analysis_index_dense_set_contract
+Command: "D:/woby/build/vs2026-vcpkg/bin/Release/woby_analysis_index_dense_set_probe.exe" "--self-test"
+Directory: D:/woby/build/vs2026-vcpkg/experiments/simplification-19-dense-set
+"woby_analysis_index_dense_set_contract" start time: Oct 11 02:12 W. Europe Daylight Time
+Output:
+----------------------------------------------------------
+{"big_capacity_limit":4611686018427387903,"default_capacity_limit":4294967295,"growth_records_compared":9000,"ok":true,"signed_zero_and_finite_contracts":2}
+<end of output>
+Test time =   0.38 sec
+----------------------------------------------------------
+Test Passed.
+"woby_analysis_index_dense_set_contract" end time: Oct 11 02:12 W. Europe Daylight Time
+"woby_analysis_index_dense_set_contract" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Oct 11 02:12 W. Europe Daylight Time
+
+cpu =   0.38 sec*proc
+
+unit =   0.38 sec*proc
+

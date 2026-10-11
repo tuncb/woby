@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "preserved_results_sha256": "411232d271268369aaab14eada93fd5bbfaeb389c7139ae121dd9ba97eb2f0a1",
+  "new_results_sha256": "f49de049e96103dd9c71da2286e4f24b709bfe1b07f6d6b6164edf905ce2609f",
+  "new_processes": 8,
+  "new_total_samples": 24,
+  "preserved_processes": 12,
+  "preserved_total_samples": 36,
+  "input_header_identity_comparisons": 48,
+  "stage_row_comparisons": 432,
+  "individual_count_field_comparisons": 1296,
+  "same_production_index_and_driver_hash": true,
+  "method": "For every new process compare model path, input bytes/hash/header and each run/stage/count field to all six preserved processes of that model. Includes empty vectors on stage1/total. Timings deliberately not pooled."
+}

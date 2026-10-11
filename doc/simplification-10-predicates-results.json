@@ -1,0 +1,3159 @@
+{
+  "schema_version": 1,
+  "investigation": "Item 10: guarded predicate-only exact triangle intersection classifier",
+  "base_commit": "46a27585c5bc8638a8bde5d601e5cead71376631",
+  "date": "2026-10-11",
+  "timing_method": "One process per campaign; exclusive CPU measurement window; unmeasured frequency/oracle warm-up, alternating instrumented baseline/candidate order, then production API each repeat; JSON comparisons and allocation passes outside timing",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics",
+  "model_bytes": 75585857,
+  "model_render_faces": 1054542,
+  "full_model_limits": {
+    "pairs": 10000,
+    "candidates": 1000000,
+    "observed_truncation": "pair_limit"
+  },
+  "prefix": "First 25,000 faces of the one identity-transform analysis source; unlimited pairs and candidates; complete findings",
+  "allocation_scope": "C++ global new/new[] requested payload only. Excludes malloc internals, allocator headers, aligned new, DLL-internal allocations, source geometry, caller input, and stack. All timed variants use replacement allocator with recording disabled. No process working-set claim.",
+  "pilot_strict_wrapper": {
+    "build": {
+      "scope": "Pilot: entire probe /fp:strict, /O2 /Ob2, x64 Release, no AVX2 timing",
+      "generated_wrapper_sha256": "5456A6B2449490C766F023F02AB6A0A330F442A52CA6E1506892DFB69F961C34",
+      "vcxproj_sha256": "0C03AE613000B5BE820D4D513D8FE5FA097942EF4868B141B3B2406E7EE6A704",
+      "cmake_sha256": "733E3261CDC309E423466EC2B08357F6E89DB21661BBA9C48DCA5315ED626B50",
+      "cmake_source": "# This target instruments a build-directory copy. It does not edit production.\nfile(READ \"${PROJECT_SOURCE_DIR}/src/mesh_intersections.cpp\" probe_source)\nset(probe_filter_anchor \"    if (definitelyDisjoint(aPoints, bPoints, aIds, bIds)) { return false; }\")\nstring(FIND \"${probe_source}\" \"${probe_filter_anchor}\" probe_filter_position)\nif(probe_filter_position EQUAL -1)\n    message(FATAL_ERROR \"Item 10 probe expects exactly one disjoint-filter anchor; source changed\")\nendif()\nstring(LENGTH \"${probe_filter_anchor}\" probe_filter_length)\nmath(EXPR probe_filter_end \"${probe_filter_position}+${probe_filter_length}\")\nstring(SUBSTRING \"${probe_source}\" ${probe_filter_end} -1 probe_remainder)\nstring(FIND \"${probe_remainder}\" \"${probe_filter_anchor}\" probe_second_filter)\nif(NOT probe_second_filter EQUAL -1)\n    message(FATAL_ERROR \"Item 10 probe disjoint-filter anchor occurs more than once; source changed\")\nendif()\nstring(FIND \"${probe_source}\" \"const auto a = exact(aPoints), b = exact(bPoints);\" probe_rational_anchor)\nif(probe_rational_anchor EQUAL -1)\n    message(FATAL_ERROR \"Item 10 probe rational oracle anchor is missing; source changed\")\nendif()\nforeach(symbol IN ITEMS exactTriangleCollapsed trianglesSelfIntersect intersectionStatus inspectIntersections)\n    if(symbol STREQUAL \"exactTriangleCollapsed\")\n        set(replacement probeCollapsed)\n    elseif(symbol STREQUAL \"trianglesSelfIntersect\")\n        set(replacement probeBaseline)\n    elseif(symbol STREQUAL \"intersectionStatus\")\n        set(replacement probeStatus)\n    else()\n        set(replacement probeInspect)\n    endif()\n    string(REPLACE \"${symbol}\" \"${replacement}\" probe_source \"${probe_source}\")\nendforeach()\nstring(REPLACE \"#include \\\"mesh_intersections.h\\\"\" \"#include \\\"probe.h\\\"\" probe_source \"${probe_source}\")\nstring(REPLACE\n    \"    if (definitelyDisjoint(aPoints, bPoints, aIds, bIds)) { return false; }\"\n    \"    ++intersection_probe::counters.calls;\\n    if (!intersection_probe::forceRational && definitelyDisjoint(aPoints, bPoints, aIds, bIds)) { ++intersection_probe::counters.filtered; return false; }\\n    if (intersection_probe::useCandidate) { return intersection_probe::predicate(aPoints,bPoints,aIds,bIds); }\\n    intersection_probe::enteredRational(aPoints,bPoints,aIds,bIds);\"\n    probe_source \"${probe_source}\")\nstring(FIND \"${probe_source}\" \"++intersection_probe::counters.calls;\" probe_inserted_counter)\nstring(FIND \"${probe_source}\" \"intersection_probe::enteredRational(aPoints,bPoints,aIds,bIds);\" probe_inserted_oracle)\nif(probe_inserted_counter EQUAL -1 OR probe_inserted_oracle EQUAL -1)\n    message(FATAL_ERROR \"Item 10 probe instrumentation substitution failed\")\nendif()\nfile(CONFIGURE OUTPUT \"${CMAKE_CURRENT_BINARY_DIR}/production_instrumented.cpp\" CONTENT \"${probe_source}\" @ONLY)\nadd_executable(woby_simplification_10_probe main.cpp predicate.cpp \"${CMAKE_CURRENT_BINARY_DIR}/production_instrumented.cpp\")\ntarget_include_directories(woby_simplification_10_probe PRIVATE \"${CMAKE_CURRENT_SOURCE_DIR}\")\ntarget_link_libraries(woby_simplification_10_probe PRIVATE woby_core CDT::CDT Boost::multiprecision nlohmann_json::nlohmann_json)\nwoby_enable_project_warnings(woby_simplification_10_probe)\nif(MSVC)\n    target_compile_options(woby_simplification_10_probe PRIVATE /WX /fp:strict)\nelse()\n    target_compile_options(woby_simplification_10_probe PRIVATE -Werror -ffp-contract=off -fno-fast-math)\nendif()\nif(BUILD_TESTING)\n    add_test(NAME woby_simplification_10_contract COMMAND woby_simplification_10_probe --self-test)\n    set_tests_properties(woby_simplification_10_contract PROPERTIES LABELS \"unit;cpu\" TIMEOUT 600)\nendif()\noption(WOBY_BUILD_SIMPLIFICATION_FMA_CONTRACT \"Build AVX2 exact-predicate contract; requires an AVX2 CPU\" OFF)\nif(WOBY_BUILD_SIMPLIFICATION_FMA_CONTRACT AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_VS_PLATFORM_NAME STREQUAL \"x64\")\n    add_executable(woby_simplification_10_fma_contract main.cpp predicate.cpp \"${CMAKE_CURRENT_BINARY_DIR}/production_instrumented.cpp\")\n    target_include_directories(woby_simplification_10_fma_contract PRIVATE \"${CMAKE_CURRENT_SOURCE_DIR}\")\n    target_link_libraries(woby_simplification_10_fma_contract PRIVATE woby_core CDT::CDT Boost::multiprecision nlohmann_json::nlohmann_json)\n    woby_enable_project_warnings(woby_simplification_10_fma_contract)\n    target_compile_options(woby_simplification_10_fma_contract PRIVATE /WX /fp:strict /arch:AVX2)\n    target_compile_definitions(woby_simplification_10_fma_contract PRIVATE WOBY_EXPECT_FMA_PATH=1)\n    if(BUILD_TESTING)\n        add_test(NAME woby_simplification_10_fma_contract COMMAND woby_simplification_10_fma_contract --self-test)\n        set_tests_properties(woby_simplification_10_fma_contract PROPERTIES LABELS \"unit;cpu\" TIMEOUT 600)\n    endif()\nendif()\n",
+      "compiler": "MSVC 19.51.36243.0, Visual Studio 2026 v145"
+    },
+    "synthetic_metadata": {
+      "base_commit": "46a27585c5bc8638a8bde5d601e5cead71376631",
+      "date": "2026-10-11",
+      "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+      "executable_sha256": "6210363966E4A82B6B970F176B8E7D7B1ED1FDFA2557EDFA3A749E5B5FB1721D",
+      "production_source_sha256": "7CB536A5FD7C2A9AEB19D00790EC27943967BF9E424CA382D2AEEC71BE70B73B",
+      "installed_predicates_sha256": "8C188601672F6752FAD906953CF68E7322B1B63EF77E4DADFAAF9653992A89EC",
+      "sources": {
+        "main.cpp": "3AE67972F7EE59333C0F40CF12CEBB2F218A6F8722A0F60B37A9A67F49A4D41D",
+        "predicate.cpp": "7561B0FD84CC4D1975F50C0C0E37206690E15EE0087D7C01EB3425108FCE1089",
+        "adaptive_predicates.h": "0358B2D93AF0FC8361F7AF5808DCB599CEE79731AF10C6A40BBB3ED5A32025E2",
+        "probe.h": "0B4DADA9B61958D9A4796BA9E7A4BBB3F59D05D81C1485340D263DF5A9B7D664",
+        "CMakeLists.txt": "733E3261CDC309E423466EC2B08357F6E89DB21661BBA9C48DCA5315ED626B50",
+        "run.ps1": "EDB70EC8F1E1F3AA9EBE410BD5D1C5289FC22B5B53185A0C5F4DA3449EA657BE"
+      },
+      "runs": 5,
+      "allocation_scope": "C++ global new/new[] requested payload only. Excludes malloc internals, allocator headers, aligned new, DLL-internal allocations, source geometry and caller input. Timings use the same replacement allocator with recording disabled."
+    },
+    "model_metadata": {
+      "base_commit": "46a27585c5bc8638a8bde5d601e5cead71376631",
+      "date": "2026-10-11",
+      "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+      "executable_sha256": "6210363966E4A82B6B970F176B8E7D7B1ED1FDFA2557EDFA3A749E5B5FB1721D",
+      "production_source_sha256": "7CB536A5FD7C2A9AEB19D00790EC27943967BF9E424CA382D2AEEC71BE70B73B",
+      "installed_predicates_sha256": "8C188601672F6752FAD906953CF68E7322B1B63EF77E4DADFAAF9653992A89EC",
+      "sources": {
+        "main.cpp": "3AE67972F7EE59333C0F40CF12CEBB2F218A6F8722A0F60B37A9A67F49A4D41D",
+        "predicate.cpp": "7561B0FD84CC4D1975F50C0C0E37206690E15EE0087D7C01EB3425108FCE1089",
+        "adaptive_predicates.h": "0358B2D93AF0FC8361F7AF5808DCB599CEE79731AF10C6A40BBB3ED5A32025E2",
+        "probe.h": "0B4DADA9B61958D9A4796BA9E7A4BBB3F59D05D81C1485340D263DF5A9B7D664",
+        "CMakeLists.txt": "733E3261CDC309E423466EC2B08357F6E89DB21661BBA9C48DCA5315ED626B50",
+        "run.ps1": "EDB70EC8F1E1F3AA9EBE410BD5D1C5289FC22B5B53185A0C5F4DA3449EA657BE"
+      },
+      "runs": 3,
+      "allocation_scope": "C++ global new/new[] requested payload only. Excludes malloc internals, allocator headers, aligned new, DLL-internal allocations, source geometry and caller input. Timings use the same replacement allocator with recording disabled.",
+      "model": "C:\\work\\temp\\uploads_files_2720101_BusGameMap.obj",
+      "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977"
+    },
+    "synthetic": {
+      "curved_grid": {
+        "allocations": [
+          {
+            "calls": 5,
+            "candidate": false,
+            "peak_live_requested_bytes": 623277,
+            "requested_bytes": 623277,
+            "retained_requested_bytes": 0
+          },
+          {
+            "calls": 5,
+            "candidate": true,
+            "peak_live_requested_bytes": 623277,
+            "requested_bytes": 623277,
+            "retained_requested_bytes": 0
+          }
+        ],
+        "candidate_tests": 60285,
+        "finding_signature_fnv1a64": "fa51a7d3b1310979",
+        "findings": 0,
+        "frequency": {
+          "calls": 60285,
+          "filtered": 60285,
+          "guarded": 0,
+          "rational": 0,
+          "rational_shared": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 0,
+        "reason": "",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 52.5332,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 56.5196,
+            "variant": "candidate"
+          },
+          {
+            "ms": 35.483,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 43.9863,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 37.5088,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 23.9178,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 36.5941,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 36.7839,
+            "variant": "candidate"
+          },
+          {
+            "ms": 23.5382,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 36.7267,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 36.6629,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 24.3054,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 36.4952,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 38.157,
+            "variant": "candidate"
+          },
+          {
+            "ms": 25.3294,
+            "variant": "production"
+          }
+        ],
+        "truncated": false
+      },
+      "duplicate_faces": {
+        "allocations": [
+          {
+            "calls": 34678,
+            "candidate": false,
+            "peak_live_requested_bytes": 1525501,
+            "requested_bytes": 6612769,
+            "retained_requested_bytes": 906399
+          },
+          {
+            "calls": 9928,
+            "candidate": true,
+            "peak_live_requested_bytes": 1525501,
+            "requested_bytes": 3286369,
+            "retained_requested_bytes": 906399
+          }
+        ],
+        "candidate_tests": 4950,
+        "finding_signature_fnv1a64": "7691c4e8a86aef57",
+        "findings": 4950,
+        "frequency": {
+          "calls": 4950,
+          "filtered": 0,
+          "guarded": 0,
+          "rational": 4950,
+          "rational_shared": [
+            4950,
+            0,
+            0,
+            0
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 4950,
+        "reason": "",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 4950,
+              "rational_shared": [
+                4950,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 167.9399,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 49500,
+              "signs_3d": 9900
+            },
+            "ms": 9.6936,
+            "variant": "candidate"
+          },
+          {
+            "ms": 139.191,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 49500,
+              "signs_3d": 9900
+            },
+            "ms": 9.8152,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 4950,
+              "rational_shared": [
+                4950,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 142.2234,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 139.2846,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 4950,
+              "rational_shared": [
+                4950,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 145.9255,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 49500,
+              "signs_3d": 9900
+            },
+            "ms": 9.7813,
+            "variant": "candidate"
+          },
+          {
+            "ms": 150.9706,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 49500,
+              "signs_3d": 9900
+            },
+            "ms": 10.0423,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 4950,
+              "rational_shared": [
+                4950,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 146.6327,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 139.8925,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 4950,
+              "rational_shared": [
+                4950,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 142.0315,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 49500,
+              "signs_3d": 9900
+            },
+            "ms": 9.7603,
+            "variant": "candidate"
+          },
+          {
+            "ms": 139.8621,
+            "variant": "production"
+          }
+        ],
+        "truncated": false
+      },
+      "flat_grid": {
+        "allocations": [
+          {
+            "calls": 201920,
+            "candidate": false,
+            "peak_live_requested_bytes": 623853,
+            "requested_bytes": 31449933,
+            "retained_requested_bytes": 0
+          },
+          {
+            "calls": 5,
+            "candidate": true,
+            "peak_live_requested_bytes": 623277,
+            "requested_bytes": 623277,
+            "retained_requested_bytes": 0
+          }
+        ],
+        "candidate_tests": 68104,
+        "finding_signature_fnv1a64": "30923f4cff53e6eb",
+        "findings": 0,
+        "frequency": {
+          "calls": 68104,
+          "filtered": 56197,
+          "guarded": 0,
+          "rational": 11907,
+          "rational_shared": [
+            0,
+            11907,
+            0,
+            0
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 11907,
+        "reason": "",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 11907,
+              "rational_shared": [
+                0,
+                11907,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 1492.8026,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 1405026,
+              "signs_3d": 142884
+            },
+            "ms": 147.9812,
+            "variant": "candidate"
+          },
+          {
+            "ms": 1429.2945,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 1405026,
+              "signs_3d": 142884
+            },
+            "ms": 147.5494,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 11907,
+              "rational_shared": [
+                0,
+                11907,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 1492.4754,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 1462.0457,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 11907,
+              "rational_shared": [
+                0,
+                11907,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 1517.3786,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 1405026,
+              "signs_3d": 142884
+            },
+            "ms": 148.4348,
+            "variant": "candidate"
+          },
+          {
+            "ms": 1449.043,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 1405026,
+              "signs_3d": 142884
+            },
+            "ms": 150.2579,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 11907,
+              "rational_shared": [
+                0,
+                11907,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 1590.581,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 1483.5083,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 11907,
+              "rational_shared": [
+                0,
+                11907,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 1509.9533,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 1405026,
+              "signs_3d": 142884
+            },
+            "ms": 152.2868,
+            "variant": "candidate"
+          },
+          {
+            "ms": 1445.0951,
+            "variant": "production"
+          }
+        ],
+        "truncated": false
+      },
+      "notes": "Release; unmeasured frequency/oracle pass, then alternating baseline/candidate; allocation pass separate. Same BVH/filters/budgets/order. Model uses all parts in one identity-transform source batch.",
+      "sizeof_cpp_rational": 64,
+      "sizeof_rational_triangle": 576
+    },
+    "model": {
+      "exact_position": {
+        "allocations": [
+          {
+            "calls": 9783894,
+            "candidate": false,
+            "peak_live_requested_bytes": 111756548,
+            "requested_bytes": 894106604,
+            "retained_requested_bytes": 2039223
+          },
+          {
+            "calls": 20030,
+            "candidate": true,
+            "peak_live_requested_bytes": 111756548,
+            "requested_bytes": 118996580,
+            "retained_requested_bytes": 2039223
+          }
+        ],
+        "candidate_tests": 576805,
+        "finding_signature_fnv1a64": "c1cfae9fc3f21ebb",
+        "findings": 10000,
+        "frequency": {
+          "calls": 576805,
+          "filtered": 564403,
+          "guarded": 0,
+          "rational": 12402,
+          "rational_shared": [
+            12269,
+            131,
+            0,
+            2
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 12402,
+        "reason": "pair_limit",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 576805,
+              "filtered": 564403,
+              "guarded": 0,
+              "rational": 12402,
+              "rational_shared": [
+                12269,
+                131,
+                0,
+                2
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 3779.6737,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 576805,
+              "filtered": 564403,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 90997,
+              "signs_3d": 138398
+            },
+            "ms": 1182.3991,
+            "variant": "candidate"
+          },
+          {
+            "ms": 3612.1432,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 576805,
+              "filtered": 564403,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 90997,
+              "signs_3d": 138398
+            },
+            "ms": 1185.73,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 576805,
+              "filtered": 564403,
+              "guarded": 0,
+              "rational": 12402,
+              "rational_shared": [
+                12269,
+                131,
+                0,
+                2
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 3772.3713,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 3661.4457,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 576805,
+              "filtered": 564403,
+              "guarded": 0,
+              "rational": 12402,
+              "rational_shared": [
+                12269,
+                131,
+                0,
+                2
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 3753.6686,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 576805,
+              "filtered": 564403,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 90997,
+              "signs_3d": 138398
+            },
+            "ms": 1204.5813,
+            "variant": "candidate"
+          },
+          {
+            "ms": 3697.574,
+            "variant": "production"
+          }
+        ],
+        "truncated": true
+      },
+      "exact_position_first_25000_faces_complete": {
+        "allocations": [
+          {
+            "calls": 1078026,
+            "candidate": false,
+            "peak_live_requested_bytes": 2650212,
+            "requested_bytes": 89658170,
+            "retained_requested_bytes": 179127
+          },
+          {
+            "calls": 1688,
+            "candidate": true,
+            "peak_live_requested_bytes": 2650212,
+            "requested_bytes": 3282402,
+            "retained_requested_bytes": 179127
+          }
+        ],
+        "candidate_tests": 212998,
+        "finding_signature_fnv1a64": "27539871028d39aa",
+        "findings": 832,
+        "frequency": {
+          "calls": 212998,
+          "filtered": 211926,
+          "guarded": 0,
+          "rational": 1072,
+          "rational_shared": [
+            988,
+            84,
+            0,
+            0
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 1072,
+        "reason": "",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 212998,
+              "filtered": 211926,
+              "guarded": 0,
+              "rational": 1072,
+              "rational_shared": [
+                988,
+                84,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 448.8856,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 212998,
+              "filtered": 211926,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 4360,
+              "signs_3d": 13670
+            },
+            "ms": 163.8909,
+            "variant": "candidate"
+          },
+          {
+            "ms": 379.0875,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 212998,
+              "filtered": 211926,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 4360,
+              "signs_3d": 13670
+            },
+            "ms": 167.681,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 212998,
+              "filtered": 211926,
+              "guarded": 0,
+              "rational": 1072,
+              "rational_shared": [
+                988,
+                84,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 430.6535,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 408.7017,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 212998,
+              "filtered": 211926,
+              "guarded": 0,
+              "rational": 1072,
+              "rational_shared": [
+                988,
+                84,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 441.0408,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 212998,
+              "filtered": 211926,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 4360,
+              "signs_3d": 13670
+            },
+            "ms": 169.1873,
+            "variant": "candidate"
+          },
+          {
+            "ms": 376.3875,
+            "variant": "production"
+          }
+        ],
+        "truncated": false
+      },
+      "faces": 1054542,
+      "model": "C:\\work\\temp\\uploads_files_2720101_BusGameMap.obj",
+      "notes": "Release; unmeasured frequency/oracle pass, then alternating baseline/candidate; allocation pass separate. Same BVH/filters/budgets/order. Model uses all parts in one identity-transform source batch.",
+      "original_index": {
+        "allocations": [
+          {
+            "calls": 8824568,
+            "candidate": false,
+            "peak_live_requested_bytes": 111756548,
+            "requested_bytes": 822199060,
+            "retained_requested_bytes": 2039223
+          },
+          {
+            "calls": 20030,
+            "candidate": true,
+            "peak_live_requested_bytes": 111756548,
+            "requested_bytes": 118996580,
+            "retained_requested_bytes": 2039223
+          }
+        ],
+        "candidate_tests": 538195,
+        "finding_signature_fnv1a64": "fd43e968bee7104d",
+        "findings": 10000,
+        "frequency": {
+          "calls": 538195,
+          "filtered": 526424,
+          "guarded": 0,
+          "rational": 11771,
+          "rational_shared": [
+            11691,
+            78,
+            2,
+            0
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 11771,
+        "reason": "pair_limit",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 538195,
+              "filtered": 526424,
+              "guarded": 0,
+              "rational": 11771,
+              "rational_shared": [
+                11691,
+                78,
+                2,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 3580.3731,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 538195,
+              "filtered": 526424,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 52695,
+              "signs_3d": 100411
+            },
+            "ms": 1129.31,
+            "variant": "candidate"
+          },
+          {
+            "ms": 3257.7657,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 538195,
+              "filtered": 526424,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 52695,
+              "signs_3d": 100411
+            },
+            "ms": 1134.6628,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 538195,
+              "filtered": 526424,
+              "guarded": 0,
+              "rational": 11771,
+              "rational_shared": [
+                11691,
+                78,
+                2,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 3420.5535,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 3228.8369,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 538195,
+              "filtered": 526424,
+              "guarded": 0,
+              "rational": 11771,
+              "rational_shared": [
+                11691,
+                78,
+                2,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 3388.1653,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 538195,
+              "filtered": 526424,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 52695,
+              "signs_3d": 100411
+            },
+            "ms": 1144.2896,
+            "variant": "candidate"
+          },
+          {
+            "ms": 3254.455,
+            "variant": "production"
+          }
+        ],
+        "truncated": true
+      },
+      "original_index_first_25000_faces_complete": {
+        "allocations": [
+          {
+            "calls": 2572508,
+            "candidate": false,
+            "peak_live_requested_bytes": 3742115,
+            "requested_bytes": 210132518,
+            "retained_requested_bytes": 906399
+          },
+          {
+            "calls": 8488,
+            "candidate": true,
+            "peak_live_requested_bytes": 3742115,
+            "requested_bytes": 5845286,
+            "retained_requested_bytes": 906399
+          }
+        ],
+        "candidate_tests": 212998,
+        "finding_signature_fnv1a64": "8c9c35f63952e774",
+        "findings": 4230,
+        "frequency": {
+          "calls": 212998,
+          "filtered": 208528,
+          "guarded": 0,
+          "rational": 4470,
+          "rational_shared": [
+            4424,
+            46,
+            0,
+            0
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 4470,
+        "reason": "",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 212998,
+              "filtered": 208528,
+              "guarded": 0,
+              "rational": 4470,
+              "rational_shared": [
+                4424,
+                46,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 868.0497,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 212998,
+              "filtered": 208528,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 24596,
+              "signs_3d": 22785
+            },
+            "ms": 187.9567,
+            "variant": "candidate"
+          },
+          {
+            "ms": 802.1554,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 212998,
+              "filtered": 208528,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 24596,
+              "signs_3d": 22785
+            },
+            "ms": 175.7915,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 212998,
+              "filtered": 208528,
+              "guarded": 0,
+              "rational": 4470,
+              "rational_shared": [
+                4424,
+                46,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 875.993,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 814.5676,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 212998,
+              "filtered": 208528,
+              "guarded": 0,
+              "rational": 4470,
+              "rational_shared": [
+                4424,
+                46,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 861.358,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 212998,
+              "filtered": 208528,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 24596,
+              "signs_3d": 22785
+            },
+            "ms": 175.4973,
+            "variant": "candidate"
+          },
+          {
+            "ms": 804.0326,
+            "variant": "production"
+          }
+        ],
+        "truncated": false
+      },
+      "sizeof_cpp_rational": 64,
+      "sizeof_rational_triangle": 576
+    },
+    "release_contracts": [
+      {
+        "checked_orientation_signs": 12000,
+        "checked_pairs": 30256,
+        "predicates_fma_path": false,
+        "rational_sat_cases": 1000,
+        "status": "pass",
+        "unsupported_range_examples": [
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": -1074,
+            "raw_orient2_finite": true,
+            "raw_orient2_sign": 0,
+            "raw_orient3_finite": true,
+            "raw_orient3_sign": 0
+          },
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": -530,
+            "raw_orient2_finite": true,
+            "raw_orient2_sign": 1,
+            "raw_orient3_finite": true,
+            "raw_orient3_sign": 0
+          },
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": 510,
+            "raw_orient2_finite": true,
+            "raw_orient2_sign": 1,
+            "raw_orient3_finite": false,
+            "raw_orient3_sign": -1
+          },
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": 1000,
+            "raw_orient2_finite": false,
+            "raw_orient2_sign": 1,
+            "raw_orient3_finite": false,
+            "raw_orient3_sign": -1
+          }
+        ]
+      },
+      {
+        "checked_orientation_signs": 12000,
+        "checked_pairs": 30256,
+        "predicates_fma_path": true,
+        "rational_sat_cases": 1000,
+        "status": "pass",
+        "unsupported_range_examples": [
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": -1074,
+            "raw_orient2_finite": true,
+            "raw_orient2_sign": 0,
+            "raw_orient3_finite": true,
+            "raw_orient3_sign": 0
+          },
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": -530,
+            "raw_orient2_finite": true,
+            "raw_orient2_sign": 1,
+            "raw_orient3_finite": true,
+            "raw_orient3_sign": 0
+          },
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": 510,
+            "raw_orient2_finite": true,
+            "raw_orient2_sign": 1,
+            "raw_orient3_finite": false,
+            "raw_orient3_sign": -1
+          },
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": 1000,
+            "raw_orient2_finite": false,
+            "raw_orient2_sign": 1,
+            "raw_orient3_finite": false,
+            "raw_orient3_sign": -1
+          }
+        ]
+      }
+    ]
+  },
+  "final_selective_fp": {
+    "build": {
+      "scope": "Final: main.cpp and predicate.cpp /fp:strict; generated production wrapper /fp:precise; x64 Release /O2 /Ob2; no AVX2 timing",
+      "compiler": "MSVC 19.51.36243.0, Visual Studio 2026 v145",
+      "cmake": "4.3.2",
+      "generated_wrapper_sha256": "5456A6B2449490C766F023F02AB6A0A330F442A52CA6E1506892DFB69F961C34",
+      "vcxproj_sha256": "5BC9E7830D13B80CF37DAE922F4C55E2927D044C9B99176B35F179E86A1A39B2",
+      "cmake_sha256": "B1F771886D41BAD7BAE28528A4EEAB2089F40F01A42C75D576F190FAE4631B68",
+      "cmake_source": "# This target instruments a build-directory copy. It does not edit production.\nfile(READ \"${PROJECT_SOURCE_DIR}/src/mesh_intersections.cpp\" probe_source)\nset(probe_filter_anchor \"    if (definitelyDisjoint(aPoints, bPoints, aIds, bIds)) { return false; }\")\nstring(FIND \"${probe_source}\" \"${probe_filter_anchor}\" probe_filter_position)\nif(probe_filter_position EQUAL -1)\n    message(FATAL_ERROR \"Item 10 probe expects exactly one disjoint-filter anchor; source changed\")\nendif()\nstring(LENGTH \"${probe_filter_anchor}\" probe_filter_length)\nmath(EXPR probe_filter_end \"${probe_filter_position}+${probe_filter_length}\")\nstring(SUBSTRING \"${probe_source}\" ${probe_filter_end} -1 probe_remainder)\nstring(FIND \"${probe_remainder}\" \"${probe_filter_anchor}\" probe_second_filter)\nif(NOT probe_second_filter EQUAL -1)\n    message(FATAL_ERROR \"Item 10 probe disjoint-filter anchor occurs more than once; source changed\")\nendif()\nstring(FIND \"${probe_source}\" \"const auto a = exact(aPoints), b = exact(bPoints);\" probe_rational_anchor)\nif(probe_rational_anchor EQUAL -1)\n    message(FATAL_ERROR \"Item 10 probe rational oracle anchor is missing; source changed\")\nendif()\nforeach(symbol IN ITEMS exactTriangleCollapsed trianglesSelfIntersect intersectionStatus inspectIntersections)\n    if(symbol STREQUAL \"exactTriangleCollapsed\")\n        set(replacement probeCollapsed)\n    elseif(symbol STREQUAL \"trianglesSelfIntersect\")\n        set(replacement probeBaseline)\n    elseif(symbol STREQUAL \"intersectionStatus\")\n        set(replacement probeStatus)\n    else()\n        set(replacement probeInspect)\n    endif()\n    string(REPLACE \"${symbol}\" \"${replacement}\" probe_source \"${probe_source}\")\nendforeach()\nstring(REPLACE \"#include \\\"mesh_intersections.h\\\"\" \"#include \\\"probe.h\\\"\" probe_source \"${probe_source}\")\nstring(REPLACE\n    \"    if (definitelyDisjoint(aPoints, bPoints, aIds, bIds)) { return false; }\"\n    \"    ++intersection_probe::counters.calls;\\n    if (!intersection_probe::forceRational && definitelyDisjoint(aPoints, bPoints, aIds, bIds)) { ++intersection_probe::counters.filtered; return false; }\\n    if (intersection_probe::useCandidate) { return intersection_probe::predicate(aPoints,bPoints,aIds,bIds); }\\n    intersection_probe::enteredRational(aPoints,bPoints,aIds,bIds);\"\n    probe_source \"${probe_source}\")\nstring(FIND \"${probe_source}\" \"++intersection_probe::counters.calls;\" probe_inserted_counter)\nstring(FIND \"${probe_source}\" \"intersection_probe::enteredRational(aPoints,bPoints,aIds,bIds);\" probe_inserted_oracle)\nif(probe_inserted_counter EQUAL -1 OR probe_inserted_oracle EQUAL -1)\n    message(FATAL_ERROR \"Item 10 probe instrumentation substitution failed\")\nendif()\nfile(CONFIGURE OUTPUT \"${CMAKE_CURRENT_BINARY_DIR}/production_instrumented.cpp\" CONTENT \"${probe_source}\" @ONLY)\nadd_executable(woby_simplification_10_probe main.cpp predicate.cpp \"${CMAKE_CURRENT_BINARY_DIR}/production_instrumented.cpp\")\ntarget_include_directories(woby_simplification_10_probe PRIVATE \"${CMAKE_CURRENT_SOURCE_DIR}\")\ntarget_link_libraries(woby_simplification_10_probe PRIVATE woby_core CDT::CDT Boost::multiprecision nlohmann_json::nlohmann_json)\nwoby_enable_project_warnings(woby_simplification_10_probe)\nif(MSVC)\n    target_compile_options(woby_simplification_10_probe PRIVATE /WX)\n    set_source_files_properties(main.cpp predicate.cpp PROPERTIES COMPILE_OPTIONS /fp:strict)\n    set_source_files_properties(\"${CMAKE_CURRENT_BINARY_DIR}/production_instrumented.cpp\" PROPERTIES COMPILE_OPTIONS /fp:precise)\nelse()\n    target_compile_options(woby_simplification_10_probe PRIVATE -Werror)\n    set_source_files_properties(main.cpp predicate.cpp PROPERTIES COMPILE_OPTIONS \"-ffp-contract=off;-fno-fast-math\")\nendif()\nif(BUILD_TESTING)\n    add_test(NAME woby_simplification_10_contract COMMAND woby_simplification_10_probe --self-test)\n    set_tests_properties(woby_simplification_10_contract PROPERTIES LABELS \"unit;cpu\" TIMEOUT 600)\nendif()\noption(WOBY_BUILD_SIMPLIFICATION_FMA_CONTRACT \"Build AVX2 exact-predicate contract; requires an AVX2 CPU\" OFF)\nif(WOBY_BUILD_SIMPLIFICATION_FMA_CONTRACT AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_VS_PLATFORM_NAME STREQUAL \"x64\")\n    add_executable(woby_simplification_10_fma_contract main.cpp predicate.cpp \"${CMAKE_CURRENT_BINARY_DIR}/production_instrumented.cpp\")\n    target_include_directories(woby_simplification_10_fma_contract PRIVATE \"${CMAKE_CURRENT_SOURCE_DIR}\")\n    target_link_libraries(woby_simplification_10_fma_contract PRIVATE woby_core CDT::CDT Boost::multiprecision nlohmann_json::nlohmann_json)\n    woby_enable_project_warnings(woby_simplification_10_fma_contract)\n    target_compile_options(woby_simplification_10_fma_contract PRIVATE /WX /arch:AVX2)\n    target_compile_definitions(woby_simplification_10_fma_contract PRIVATE WOBY_EXPECT_FMA_PATH=1)\n    if(BUILD_TESTING)\n        add_test(NAME woby_simplification_10_fma_contract COMMAND woby_simplification_10_fma_contract --self-test)\n        set_tests_properties(woby_simplification_10_fma_contract PROPERTIES LABELS \"unit;cpu\" TIMEOUT 600)\n    endif()\nendif()\n",
+      "release_configuration": "MaxSpeed; AnySuitable inline; stdcpp20; /WX; /W4",
+      "fma_contract": "Separate opt-in target /arch:AVX2; no FMA benchmark claims"
+    },
+    "synthetic_metadata": {
+      "base_commit": "46a27585c5bc8638a8bde5d601e5cead71376631",
+      "date": "2026-10-11",
+      "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+      "executable_sha256": "8BE05E8AB2CE3BE3C00D3120E0FD0F21567011450FD1469B6CC992D3E72ACFFC",
+      "production_source_sha256": "7CB536A5FD7C2A9AEB19D00790EC27943967BF9E424CA382D2AEEC71BE70B73B",
+      "installed_predicates_sha256": "8C188601672F6752FAD906953CF68E7322B1B63EF77E4DADFAAF9653992A89EC",
+      "sources": {
+        "main.cpp": "3AE67972F7EE59333C0F40CF12CEBB2F218A6F8722A0F60B37A9A67F49A4D41D",
+        "predicate.cpp": "7561B0FD84CC4D1975F50C0C0E37206690E15EE0087D7C01EB3425108FCE1089",
+        "adaptive_predicates.h": "0358B2D93AF0FC8361F7AF5808DCB599CEE79731AF10C6A40BBB3ED5A32025E2",
+        "probe.h": "0B4DADA9B61958D9A4796BA9E7A4BBB3F59D05D81C1485340D263DF5A9B7D664",
+        "CMakeLists.txt": "B1F771886D41BAD7BAE28528A4EEAB2089F40F01A42C75D576F190FAE4631B68",
+        "run.ps1": "EDB70EC8F1E1F3AA9EBE410BD5D1C5289FC22B5B53185A0C5F4DA3449EA657BE"
+      },
+      "runs": 5,
+      "allocation_scope": "C++ global new/new[] requested payload only. Excludes malloc internals, allocator headers, aligned new, DLL-internal allocations, source geometry and caller input. Timings use the same replacement allocator with recording disabled."
+    },
+    "model_metadata": {
+      "base_commit": "46a27585c5bc8638a8bde5d601e5cead71376631",
+      "date": "2026-10-11",
+      "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+      "executable_sha256": "8BE05E8AB2CE3BE3C00D3120E0FD0F21567011450FD1469B6CC992D3E72ACFFC",
+      "production_source_sha256": "7CB536A5FD7C2A9AEB19D00790EC27943967BF9E424CA382D2AEEC71BE70B73B",
+      "installed_predicates_sha256": "8C188601672F6752FAD906953CF68E7322B1B63EF77E4DADFAAF9653992A89EC",
+      "sources": {
+        "main.cpp": "3AE67972F7EE59333C0F40CF12CEBB2F218A6F8722A0F60B37A9A67F49A4D41D",
+        "predicate.cpp": "7561B0FD84CC4D1975F50C0C0E37206690E15EE0087D7C01EB3425108FCE1089",
+        "adaptive_predicates.h": "0358B2D93AF0FC8361F7AF5808DCB599CEE79731AF10C6A40BBB3ED5A32025E2",
+        "probe.h": "0B4DADA9B61958D9A4796BA9E7A4BBB3F59D05D81C1485340D263DF5A9B7D664",
+        "CMakeLists.txt": "B1F771886D41BAD7BAE28528A4EEAB2089F40F01A42C75D576F190FAE4631B68",
+        "run.ps1": "EDB70EC8F1E1F3AA9EBE410BD5D1C5289FC22B5B53185A0C5F4DA3449EA657BE"
+      },
+      "runs": 3,
+      "allocation_scope": "C++ global new/new[] requested payload only. Excludes malloc internals, allocator headers, aligned new, DLL-internal allocations, source geometry and caller input. Timings use the same replacement allocator with recording disabled.",
+      "model": "C:\\work\\temp\\uploads_files_2720101_BusGameMap.obj",
+      "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977"
+    },
+    "synthetic": {
+      "curved_grid": {
+        "allocations": [
+          {
+            "calls": 5,
+            "candidate": false,
+            "peak_live_requested_bytes": 623277,
+            "requested_bytes": 623277,
+            "retained_requested_bytes": 0
+          },
+          {
+            "calls": 5,
+            "candidate": true,
+            "peak_live_requested_bytes": 623277,
+            "requested_bytes": 623277,
+            "retained_requested_bytes": 0
+          }
+        ],
+        "candidate_tests": 60285,
+        "finding_signature_fnv1a64": "fa51a7d3b1310979",
+        "findings": 0,
+        "frequency": {
+          "calls": 60285,
+          "filtered": 60285,
+          "guarded": 0,
+          "rational": 0,
+          "rational_shared": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 0,
+        "reason": "",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 23.9422,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 24.4074,
+            "variant": "candidate"
+          },
+          {
+            "ms": 25.8168,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 25.3446,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 25.897,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 24.3241,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 23.7824,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 24.0134,
+            "variant": "candidate"
+          },
+          {
+            "ms": 23.7189,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 23.9164,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 23.8951,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 24.5157,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 24.0078,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 60285,
+              "filtered": 60285,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 24.4457,
+            "variant": "candidate"
+          },
+          {
+            "ms": 24.7485,
+            "variant": "production"
+          }
+        ],
+        "truncated": false
+      },
+      "duplicate_faces": {
+        "allocations": [
+          {
+            "calls": 34678,
+            "candidate": false,
+            "peak_live_requested_bytes": 1525501,
+            "requested_bytes": 6612769,
+            "retained_requested_bytes": 906399
+          },
+          {
+            "calls": 9928,
+            "candidate": true,
+            "peak_live_requested_bytes": 1525501,
+            "requested_bytes": 3286369,
+            "retained_requested_bytes": 906399
+          }
+        ],
+        "candidate_tests": 4950,
+        "finding_signature_fnv1a64": "7691c4e8a86aef57",
+        "findings": 4950,
+        "frequency": {
+          "calls": 4950,
+          "filtered": 0,
+          "guarded": 0,
+          "rational": 4950,
+          "rational_shared": [
+            4950,
+            0,
+            0,
+            0
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 4950,
+        "reason": "",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 4950,
+              "rational_shared": [
+                4950,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 140.6752,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 49500,
+              "signs_3d": 9900
+            },
+            "ms": 7.3491,
+            "variant": "candidate"
+          },
+          {
+            "ms": 144.3977,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 49500,
+              "signs_3d": 9900
+            },
+            "ms": 7.3927,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 4950,
+              "rational_shared": [
+                4950,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 144.3707,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 144.6347,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 4950,
+              "rational_shared": [
+                4950,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 144.3639,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 49500,
+              "signs_3d": 9900
+            },
+            "ms": 7.3754,
+            "variant": "candidate"
+          },
+          {
+            "ms": 143.4341,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 49500,
+              "signs_3d": 9900
+            },
+            "ms": 7.1585,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 4950,
+              "rational_shared": [
+                4950,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 143.8372,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 144.2201,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 4950,
+              "rational_shared": [
+                4950,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 144.4534,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 4950,
+              "filtered": 0,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 49500,
+              "signs_3d": 9900
+            },
+            "ms": 7.2731,
+            "variant": "candidate"
+          },
+          {
+            "ms": 143.9639,
+            "variant": "production"
+          }
+        ],
+        "truncated": false
+      },
+      "flat_grid": {
+        "allocations": [
+          {
+            "calls": 201920,
+            "candidate": false,
+            "peak_live_requested_bytes": 623853,
+            "requested_bytes": 31449933,
+            "retained_requested_bytes": 0
+          },
+          {
+            "calls": 5,
+            "candidate": true,
+            "peak_live_requested_bytes": 623277,
+            "requested_bytes": 623277,
+            "retained_requested_bytes": 0
+          }
+        ],
+        "candidate_tests": 68104,
+        "finding_signature_fnv1a64": "30923f4cff53e6eb",
+        "findings": 0,
+        "frequency": {
+          "calls": 68104,
+          "filtered": 56197,
+          "guarded": 0,
+          "rational": 11907,
+          "rational_shared": [
+            0,
+            11907,
+            0,
+            0
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 11907,
+        "reason": "",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 11907,
+              "rational_shared": [
+                0,
+                11907,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 1488.0314,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 1405026,
+              "signs_3d": 142884
+            },
+            "ms": 92.6508,
+            "variant": "candidate"
+          },
+          {
+            "ms": 1495.7944,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 1405026,
+              "signs_3d": 142884
+            },
+            "ms": 92.5992,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 11907,
+              "rational_shared": [
+                0,
+                11907,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 1478.4804,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 1457.6305,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 11907,
+              "rational_shared": [
+                0,
+                11907,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 1493.898,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 1405026,
+              "signs_3d": 142884
+            },
+            "ms": 95.0658,
+            "variant": "candidate"
+          },
+          {
+            "ms": 1488.3561,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 1405026,
+              "signs_3d": 142884
+            },
+            "ms": 94.2861,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 11907,
+              "rational_shared": [
+                0,
+                11907,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 1480.7725,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 1475.9262,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 11907,
+              "rational_shared": [
+                0,
+                11907,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 1475.4471,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 68104,
+              "filtered": 56197,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 1405026,
+              "signs_3d": 142884
+            },
+            "ms": 93.8468,
+            "variant": "candidate"
+          },
+          {
+            "ms": 1472.1488,
+            "variant": "production"
+          }
+        ],
+        "truncated": false
+      },
+      "notes": "Release; unmeasured frequency/oracle pass, then alternating baseline/candidate; allocation pass separate. Same BVH/filters/budgets/order. Model uses all parts in one identity-transform source batch.",
+      "sizeof_cpp_rational": 64,
+      "sizeof_rational_triangle": 576
+    },
+    "model": {
+      "exact_position": {
+        "allocations": [
+          {
+            "calls": 9783894,
+            "candidate": false,
+            "peak_live_requested_bytes": 111756548,
+            "requested_bytes": 894106604,
+            "retained_requested_bytes": 2039223
+          },
+          {
+            "calls": 20030,
+            "candidate": true,
+            "peak_live_requested_bytes": 111756548,
+            "requested_bytes": 118996580,
+            "retained_requested_bytes": 2039223
+          }
+        ],
+        "candidate_tests": 576805,
+        "finding_signature_fnv1a64": "c1cfae9fc3f21ebb",
+        "findings": 10000,
+        "frequency": {
+          "calls": 576805,
+          "filtered": 564403,
+          "guarded": 0,
+          "rational": 12402,
+          "rational_shared": [
+            12269,
+            131,
+            0,
+            2
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 12402,
+        "reason": "pair_limit",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 576805,
+              "filtered": 564403,
+              "guarded": 0,
+              "rational": 12402,
+              "rational_shared": [
+                12269,
+                131,
+                0,
+                2
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 3843.2603,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 576805,
+              "filtered": 564403,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 90997,
+              "signs_3d": 138398
+            },
+            "ms": 1027.1185,
+            "variant": "candidate"
+          },
+          {
+            "ms": 3960.4863,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 576805,
+              "filtered": 564403,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 90997,
+              "signs_3d": 138398
+            },
+            "ms": 1021.3587,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 576805,
+              "filtered": 564403,
+              "guarded": 0,
+              "rational": 12402,
+              "rational_shared": [
+                12269,
+                131,
+                0,
+                2
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 3895.6296,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 3891.0726,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 576805,
+              "filtered": 564403,
+              "guarded": 0,
+              "rational": 12402,
+              "rational_shared": [
+                12269,
+                131,
+                0,
+                2
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 3990.4024,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 576805,
+              "filtered": 564403,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 90997,
+              "signs_3d": 138398
+            },
+            "ms": 1018.2015,
+            "variant": "candidate"
+          },
+          {
+            "ms": 3950.7845,
+            "variant": "production"
+          }
+        ],
+        "truncated": true
+      },
+      "exact_position_first_25000_faces_complete": {
+        "allocations": [
+          {
+            "calls": 1078026,
+            "candidate": false,
+            "peak_live_requested_bytes": 2650212,
+            "requested_bytes": 89658170,
+            "retained_requested_bytes": 179127
+          },
+          {
+            "calls": 1688,
+            "candidate": true,
+            "peak_live_requested_bytes": 2650212,
+            "requested_bytes": 3282402,
+            "retained_requested_bytes": 179127
+          }
+        ],
+        "candidate_tests": 212998,
+        "finding_signature_fnv1a64": "27539871028d39aa",
+        "findings": 832,
+        "frequency": {
+          "calls": 212998,
+          "filtered": 211926,
+          "guarded": 0,
+          "rational": 1072,
+          "rational_shared": [
+            988,
+            84,
+            0,
+            0
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 1072,
+        "reason": "",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 212998,
+              "filtered": 211926,
+              "guarded": 0,
+              "rational": 1072,
+              "rational_shared": [
+                988,
+                84,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 394.65,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 212998,
+              "filtered": 211926,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 4360,
+              "signs_3d": 13670
+            },
+            "ms": 113.3567,
+            "variant": "candidate"
+          },
+          {
+            "ms": 392.628,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 212998,
+              "filtered": 211926,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 4360,
+              "signs_3d": 13670
+            },
+            "ms": 112.5152,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 212998,
+              "filtered": 211926,
+              "guarded": 0,
+              "rational": 1072,
+              "rational_shared": [
+                988,
+                84,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 387.8177,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 389.9366,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 212998,
+              "filtered": 211926,
+              "guarded": 0,
+              "rational": 1072,
+              "rational_shared": [
+                988,
+                84,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 398.6861,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 212998,
+              "filtered": 211926,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 4360,
+              "signs_3d": 13670
+            },
+            "ms": 113.33,
+            "variant": "candidate"
+          },
+          {
+            "ms": 390.6457,
+            "variant": "production"
+          }
+        ],
+        "truncated": false
+      },
+      "faces": 1054542,
+      "model": "C:\\work\\temp\\uploads_files_2720101_BusGameMap.obj",
+      "notes": "Release; unmeasured frequency/oracle pass, then alternating baseline/candidate; allocation pass separate. Same BVH/filters/budgets/order. Model uses all parts in one identity-transform source batch.",
+      "original_index": {
+        "allocations": [
+          {
+            "calls": 8824568,
+            "candidate": false,
+            "peak_live_requested_bytes": 111756548,
+            "requested_bytes": 822199060,
+            "retained_requested_bytes": 2039223
+          },
+          {
+            "calls": 20030,
+            "candidate": true,
+            "peak_live_requested_bytes": 111756548,
+            "requested_bytes": 118996580,
+            "retained_requested_bytes": 2039223
+          }
+        ],
+        "candidate_tests": 538195,
+        "finding_signature_fnv1a64": "fd43e968bee7104d",
+        "findings": 10000,
+        "frequency": {
+          "calls": 538195,
+          "filtered": 526424,
+          "guarded": 0,
+          "rational": 11771,
+          "rational_shared": [
+            11691,
+            78,
+            2,
+            0
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 11771,
+        "reason": "pair_limit",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 538195,
+              "filtered": 526424,
+              "guarded": 0,
+              "rational": 11771,
+              "rational_shared": [
+                11691,
+                78,
+                2,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 3452.4953,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 538195,
+              "filtered": 526424,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 52695,
+              "signs_3d": 100411
+            },
+            "ms": 1005.914,
+            "variant": "candidate"
+          },
+          {
+            "ms": 3357.0909,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 538195,
+              "filtered": 526424,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 52695,
+              "signs_3d": 100411
+            },
+            "ms": 983.2856,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 538195,
+              "filtered": 526424,
+              "guarded": 0,
+              "rational": 11771,
+              "rational_shared": [
+                11691,
+                78,
+                2,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 3321.7645,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 3429.227,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 538195,
+              "filtered": 526424,
+              "guarded": 0,
+              "rational": 11771,
+              "rational_shared": [
+                11691,
+                78,
+                2,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 3388.0651,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 538195,
+              "filtered": 526424,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 52695,
+              "signs_3d": 100411
+            },
+            "ms": 990.0532,
+            "variant": "candidate"
+          },
+          {
+            "ms": 3333.1243,
+            "variant": "production"
+          }
+        ],
+        "truncated": true
+      },
+      "original_index_first_25000_faces_complete": {
+        "allocations": [
+          {
+            "calls": 2572508,
+            "candidate": false,
+            "peak_live_requested_bytes": 3742115,
+            "requested_bytes": 210132518,
+            "retained_requested_bytes": 906399
+          },
+          {
+            "calls": 8488,
+            "candidate": true,
+            "peak_live_requested_bytes": 3742115,
+            "requested_bytes": 5845286,
+            "retained_requested_bytes": 906399
+          }
+        ],
+        "candidate_tests": 212998,
+        "finding_signature_fnv1a64": "8c9c35f63952e774",
+        "findings": 4230,
+        "frequency": {
+          "calls": 212998,
+          "filtered": 208528,
+          "guarded": 0,
+          "rational": 4470,
+          "rational_shared": [
+            4424,
+            46,
+            0,
+            0
+          ],
+          "signs_2d": 0,
+          "signs_3d": 0
+        },
+        "oracle_pairs": 4470,
+        "reason": "",
+        "runs": [
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 212998,
+              "filtered": 208528,
+              "guarded": 0,
+              "rational": 4470,
+              "rational_shared": [
+                4424,
+                46,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 826.4069,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 212998,
+              "filtered": 208528,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 24596,
+              "signs_3d": 22785
+            },
+            "ms": 119.8165,
+            "variant": "candidate"
+          },
+          {
+            "ms": 829.6872,
+            "variant": "production"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 212998,
+              "filtered": 208528,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 24596,
+              "signs_3d": 22785
+            },
+            "ms": 120.7519,
+            "variant": "candidate"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 212998,
+              "filtered": 208528,
+              "guarded": 0,
+              "rational": 4470,
+              "rational_shared": [
+                4424,
+                46,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 842.2475,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "ms": 839.6234,
+            "variant": "production"
+          },
+          {
+            "candidate": false,
+            "counters": {
+              "calls": 212998,
+              "filtered": 208528,
+              "guarded": 0,
+              "rational": 4470,
+              "rational_shared": [
+                4424,
+                46,
+                0,
+                0
+              ],
+              "signs_2d": 0,
+              "signs_3d": 0
+            },
+            "ms": 842.1552,
+            "variant": "instrumented_baseline"
+          },
+          {
+            "candidate": true,
+            "counters": {
+              "calls": 212998,
+              "filtered": 208528,
+              "guarded": 0,
+              "rational": 0,
+              "rational_shared": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "signs_2d": 24596,
+              "signs_3d": 22785
+            },
+            "ms": 122.2171,
+            "variant": "candidate"
+          },
+          {
+            "ms": 862.1629,
+            "variant": "production"
+          }
+        ],
+        "truncated": false
+      },
+      "sizeof_cpp_rational": 64,
+      "sizeof_rational_triangle": 576
+    },
+    "release_contracts": [
+      {
+        "checked_orientation_signs": 12000,
+        "checked_pairs": 30256,
+        "predicates_fma_path": true,
+        "rational_sat_cases": 1000,
+        "status": "pass",
+        "unsupported_range_examples": [
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": -1074,
+            "raw_orient2_finite": true,
+            "raw_orient2_sign": 0,
+            "raw_orient3_finite": true,
+            "raw_orient3_sign": 0
+          },
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": -530,
+            "raw_orient2_finite": true,
+            "raw_orient2_sign": 1,
+            "raw_orient3_finite": true,
+            "raw_orient3_sign": 0
+          },
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": 510,
+            "raw_orient2_finite": true,
+            "raw_orient2_sign": 1,
+            "raw_orient3_finite": false,
+            "raw_orient3_sign": -1
+          },
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": 1000,
+            "raw_orient2_finite": false,
+            "raw_orient2_sign": 1,
+            "raw_orient3_finite": false,
+            "raw_orient3_sign": -1
+          }
+        ]
+      },
+      {
+        "checked_orientation_signs": 12000,
+        "checked_pairs": 30256,
+        "predicates_fma_path": false,
+        "rational_sat_cases": 1000,
+        "status": "pass",
+        "unsupported_range_examples": [
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": -1074,
+            "raw_orient2_finite": true,
+            "raw_orient2_sign": 0,
+            "raw_orient3_finite": true,
+            "raw_orient3_sign": 0
+          },
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": -530,
+            "raw_orient2_finite": true,
+            "raw_orient2_sign": 1,
+            "raw_orient3_finite": true,
+            "raw_orient3_sign": 0
+          },
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": 510,
+            "raw_orient2_finite": true,
+            "raw_orient2_sign": 1,
+            "raw_orient3_finite": false,
+            "raw_orient3_sign": -1
+          },
+          {
+            "exact_orient2_sign": 1,
+            "exact_orient3_sign": -1,
+            "exponent": 1000,
+            "raw_orient2_finite": false,
+            "raw_orient2_sign": 1,
+            "raw_orient3_finite": false,
+            "raw_orient3_sign": -1
+          }
+        ]
+      }
+    ]
+  },
+  "post_measurement_build_dependency": {
+    "change": "Added CMAKE_CONFIGURE_DEPENDS for src/mesh_intersections.cpp so incremental builds regenerate the wrapper",
+    "current_cmake_sha256": "8A245DD255AAC830DC5EB44F25AB03A37E5F4C560B6F2E3EAA69154363E6ED5E",
+    "measured_cmake_sha256": "B1F771886D41BAD7BAE28528A4EEAB2089F40F01A42C75D576F190FAE4631B68",
+    "binary_changed": false,
+    "timings_repeated": false
+  }
+}

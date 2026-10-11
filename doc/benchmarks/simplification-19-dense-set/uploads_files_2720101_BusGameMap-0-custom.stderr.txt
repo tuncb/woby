@@ -1,0 +1,1 @@
+{"analysis_index_allocations":{"live_requested_bytes":0,"peak_requested_bytes":25907616,"total_requested_bytes":141479880,"allocation_calls":18}}

@@ -1,0 +1,24 @@
+{
+  "debug_contracts": "2/2 passed",
+  "release_contracts": "2/2 passed",
+  "release_actual_output": {
+    "default_capacity_limit": 4294967295,
+    "big_capacity_limit": 4611686018427387903,
+    "growth_records_compared": 9000,
+    "exit_fixture_processes": 2,
+    "signed_zero_and_finite_contracts": 2,
+    "ok": true
+  },
+  "build_logs": {
+    "debug": {
+      "path": "build/simplification-19-dense-set-final-debug-build.log",
+      "sha256": "c6dbc631d271484aa37b03165287bbc3e4ea47f3c3117dee3b2077a15acabcf6",
+      "warning_error_lines": 0
+    },
+    "release": {
+      "path": "build/simplification-19-dense-set-final-release-build.log",
+      "sha256": "08b72924aa295a7b057b267f8d9bbc131d27b6a902c510e52eec99b1e45ba3a0",
+      "warning_error_lines": 0
+    }
+  }
+}

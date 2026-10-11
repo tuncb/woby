@@ -1,0 +1,16 @@
+MSBuild version 18.6.3+84d3e95b4 for .NET Framework
+
+  Checking File Globs
+  NoGraphicsAPI.vcxproj -> D:\woby\build\vs2026-vcpkg\_deps\woby_ngapi-build\Release\NoGraphicsAPI.lib
+  NoGraphicsAPIUtility_uploads.vcxproj -> D:\woby\build\vs2026-vcpkg\_deps\woby_ngapi-build\utility\Release\NoGraphicsAPIUtility_uploads.lib
+  woby_core.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_core.lib
+  woby_automation.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_automation.lib
+  NoGraphicsAPIUtility_allocators.vcxproj -> D:\woby\build\vs2026-vcpkg\_deps\woby_ngapi-build\utility\Release\NoGraphicsAPIUtility_allocators.lib
+  woby_math.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_math.lib
+  woby_recent_files.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_recent_files.lib
+  NoGraphicsAPIUtility_textures.vcxproj -> D:\woby\build\vs2026-vcpkg\_deps\woby_ngapi-build\utility\Release\NoGraphicsAPIUtility_textures.lib
+  woby_update_core.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_update_core.lib
+  woby_graphics.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_graphics.lib
+  woby_update.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_update.lib
+  main.cpp
+  woby_simplification_16_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_simplification_16_probe.exe

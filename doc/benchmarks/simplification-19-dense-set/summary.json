@@ -1,0 +1,400 @@
+{
+  "source_results_sha256": "f49de049e96103dd9c71da2286e4f24b709bfe1b07f6d6b6164edf905ce2609f",
+  "micro": [
+    {
+      "family": "coordinate",
+      "entries": 4096,
+      "backend": "custom",
+      "median_ms": 0.5932,
+      "min_ms": 0.5829,
+      "max_ms": 0.6625,
+      "median_change_from_custom_percent": 0.0,
+      "memory": {
+        "allocation_calls": 2,
+        "bucket_capacity": 8192,
+        "bucket_record_bytes": 8,
+        "build_plus_3_hit_passes_ms": 0.5829,
+        "checksum": 33546240,
+        "key_capacity": 4096,
+        "peak_requested_bytes": 163840,
+        "retained_requested_bytes": 163840,
+        "total_requested_bytes": 163840
+      }
+    },
+    {
+      "family": "coordinate",
+      "entries": 4096,
+      "backend": "dense_set",
+      "median_ms": 0.7919,
+      "min_ms": 0.78,
+      "max_ms": 0.8123,
+      "median_change_from_custom_percent": 33.49629130141607,
+      "memory": {
+        "allocation_calls": 3,
+        "bucket_capacity": 8192,
+        "bucket_record_bytes": 8,
+        "build_plus_3_hit_passes_ms": 0.78,
+        "checksum": 33546240,
+        "key_capacity": 4097,
+        "peak_requested_bytes": 163864,
+        "retained_requested_bytes": 163864,
+        "total_requested_bytes": 163896
+      }
+    },
+    {
+      "family": "coordinate",
+      "entries": 4096,
+      "backend": "dense_set_big",
+      "median_ms": 0.8412,
+      "min_ms": 0.7846,
+      "max_ms": 0.9126,
+      "median_change_from_custom_percent": 41.80714767363454,
+      "memory": {
+        "allocation_calls": 3,
+        "bucket_capacity": 8192,
+        "bucket_record_bytes": 12,
+        "build_plus_3_hit_passes_ms": 0.7846,
+        "checksum": 33546240,
+        "key_capacity": 4097,
+        "peak_requested_bytes": 196632,
+        "retained_requested_bytes": 196632,
+        "total_requested_bytes": 196680
+      }
+    },
+    {
+      "family": "coordinate",
+      "entries": 4096,
+      "backend": "dense_set_find_first",
+      "median_ms": 0.7507,
+      "min_ms": 0.7195,
+      "max_ms": 0.79,
+      "median_change_from_custom_percent": 26.550910316925158,
+      "memory": {
+        "allocation_calls": 3,
+        "bucket_capacity": 8192,
+        "bucket_record_bytes": 8,
+        "build_plus_3_hit_passes_ms": 0.7195,
+        "checksum": 33546240,
+        "key_capacity": 4096,
+        "peak_requested_bytes": 163840,
+        "retained_requested_bytes": 163840,
+        "total_requested_bytes": 163872
+      }
+    },
+    {
+      "family": "coordinate",
+      "entries": 524288,
+      "backend": "custom",
+      "median_ms": 212.635,
+      "min_ms": 197.6063,
+      "max_ms": 271.9884,
+      "median_change_from_custom_percent": 0.0,
+      "memory": {
+        "allocation_calls": 2,
+        "bucket_capacity": 1048576,
+        "bucket_record_bytes": 8,
+        "build_plus_3_hit_passes_ms": 213.3785,
+        "checksum": 549754765312,
+        "key_capacity": 524288,
+        "peak_requested_bytes": 20971520,
+        "retained_requested_bytes": 20971520,
+        "total_requested_bytes": 20971520
+      }
+    },
+    {
+      "family": "coordinate",
+      "entries": 524288,
+      "backend": "dense_set",
+      "median_ms": 238.2919,
+      "min_ms": 216.3729,
+      "max_ms": 256.0897,
+      "median_change_from_custom_percent": 12.066169727467258,
+      "memory": {
+        "allocation_calls": 3,
+        "bucket_capacity": 1048576,
+        "bucket_record_bytes": 8,
+        "build_plus_3_hit_passes_ms": 254.8234,
+        "checksum": 549754765312,
+        "key_capacity": 524289,
+        "peak_requested_bytes": 20971544,
+        "retained_requested_bytes": 20971544,
+        "total_requested_bytes": 20971576
+      }
+    },
+    {
+      "family": "coordinate",
+      "entries": 524288,
+      "backend": "dense_set_big",
+      "median_ms": 286.1875,
+      "min_ms": 271.1729,
+      "max_ms": 323.9215,
+      "median_change_from_custom_percent": 34.5909657394126,
+      "memory": {
+        "allocation_calls": 3,
+        "bucket_capacity": 1048576,
+        "bucket_record_bytes": 12,
+        "build_plus_3_hit_passes_ms": 291.1044,
+        "checksum": 549754765312,
+        "key_capacity": 524289,
+        "peak_requested_bytes": 25165848,
+        "retained_requested_bytes": 25165848,
+        "total_requested_bytes": 25165896
+      }
+    },
+    {
+      "family": "coordinate",
+      "entries": 524288,
+      "backend": "dense_set_find_first",
+      "median_ms": 205.5837,
+      "min_ms": 193.3592,
+      "max_ms": 297.9358,
+      "median_change_from_custom_percent": -3.31615209161239,
+      "memory": {
+        "allocation_calls": 3,
+        "bucket_capacity": 1048576,
+        "bucket_record_bytes": 8,
+        "build_plus_3_hit_passes_ms": 205.6867,
+        "checksum": 549754765312,
+        "key_capacity": 524288,
+        "peak_requested_bytes": 20971520,
+        "retained_requested_bytes": 20971520,
+        "total_requested_bytes": 20971552
+      }
+    },
+    {
+      "family": "integer_tuple",
+      "entries": 4096,
+      "backend": "custom",
+      "median_ms": 0.4554,
+      "min_ms": 0.4365,
+      "max_ms": 0.5118,
+      "median_change_from_custom_percent": 0.0,
+      "memory": {
+        "allocation_calls": 2,
+        "bucket_capacity": 8192,
+        "bucket_record_bytes": 8,
+        "build_plus_3_hit_passes_ms": 0.4528,
+        "checksum": 33546240,
+        "key_capacity": 4096,
+        "peak_requested_bytes": 163840,
+        "retained_requested_bytes": 163840,
+        "total_requested_bytes": 163840
+      }
+    },
+    {
+      "family": "integer_tuple",
+      "entries": 4096,
+      "backend": "dense_set",
+      "median_ms": 0.7323,
+      "min_ms": 0.712,
+      "max_ms": 0.7664,
+      "median_change_from_custom_percent": 60.80368906455862,
+      "memory": {
+        "allocation_calls": 3,
+        "bucket_capacity": 8192,
+        "bucket_record_bytes": 8,
+        "build_plus_3_hit_passes_ms": 0.7358,
+        "checksum": 33546240,
+        "key_capacity": 4097,
+        "peak_requested_bytes": 163864,
+        "retained_requested_bytes": 163864,
+        "total_requested_bytes": 163896
+      }
+    },
+    {
+      "family": "integer_tuple",
+      "entries": 4096,
+      "backend": "dense_set_big",
+      "median_ms": 0.7859,
+      "min_ms": 0.7609,
+      "max_ms": 0.905,
+      "median_change_from_custom_percent": 72.57356170399649,
+      "memory": {
+        "allocation_calls": 3,
+        "bucket_capacity": 8192,
+        "bucket_record_bytes": 12,
+        "build_plus_3_hit_passes_ms": 0.8102,
+        "checksum": 33546240,
+        "key_capacity": 4097,
+        "peak_requested_bytes": 196632,
+        "retained_requested_bytes": 196632,
+        "total_requested_bytes": 196680
+      }
+    },
+    {
+      "family": "integer_tuple",
+      "entries": 4096,
+      "backend": "dense_set_find_first",
+      "median_ms": 0.6049,
+      "min_ms": 0.5949,
+      "max_ms": 0.6197,
+      "median_change_from_custom_percent": 32.82828282828283,
+      "memory": {
+        "allocation_calls": 3,
+        "bucket_capacity": 8192,
+        "bucket_record_bytes": 8,
+        "build_plus_3_hit_passes_ms": 0.6197,
+        "checksum": 33546240,
+        "key_capacity": 4096,
+        "peak_requested_bytes": 163840,
+        "retained_requested_bytes": 163840,
+        "total_requested_bytes": 163872
+      }
+    },
+    {
+      "family": "integer_tuple",
+      "entries": 524288,
+      "backend": "custom",
+      "median_ms": 178.208,
+      "min_ms": 164.617,
+      "max_ms": 205.1007,
+      "median_change_from_custom_percent": 0.0,
+      "memory": {
+        "allocation_calls": 2,
+        "bucket_capacity": 1048576,
+        "bucket_record_bytes": 8,
+        "build_plus_3_hit_passes_ms": 178.208,
+        "checksum": 549754765312,
+        "key_capacity": 524288,
+        "peak_requested_bytes": 20971520,
+        "retained_requested_bytes": 20971520,
+        "total_requested_bytes": 20971520
+      }
+    },
+    {
+      "family": "integer_tuple",
+      "entries": 524288,
+      "backend": "dense_set",
+      "median_ms": 182.1921,
+      "min_ms": 167.2051,
+      "max_ms": 194.6114,
+      "median_change_from_custom_percent": 2.2356459867121536,
+      "memory": {
+        "allocation_calls": 3,
+        "bucket_capacity": 1048576,
+        "bucket_record_bytes": 8,
+        "build_plus_3_hit_passes_ms": 184.5574,
+        "checksum": 549754765312,
+        "key_capacity": 524289,
+        "peak_requested_bytes": 20971544,
+        "retained_requested_bytes": 20971544,
+        "total_requested_bytes": 20971576
+      }
+    },
+    {
+      "family": "integer_tuple",
+      "entries": 524288,
+      "backend": "dense_set_big",
+      "median_ms": 220.6929,
+      "min_ms": 213.7049,
+      "max_ms": 242.0988,
+      "median_change_from_custom_percent": 23.84006329682169,
+      "memory": {
+        "allocation_calls": 3,
+        "bucket_capacity": 1048576,
+        "bucket_record_bytes": 12,
+        "build_plus_3_hit_passes_ms": 221.6594,
+        "checksum": 549754765312,
+        "key_capacity": 524289,
+        "peak_requested_bytes": 25165848,
+        "retained_requested_bytes": 25165848,
+        "total_requested_bytes": 25165896
+      }
+    },
+    {
+      "family": "integer_tuple",
+      "entries": 524288,
+      "backend": "dense_set_find_first",
+      "median_ms": 174.6397,
+      "min_ms": 162.6302,
+      "max_ms": 208.0838,
+      "median_change_from_custom_percent": -2.002323128030159,
+      "memory": {
+        "allocation_calls": 3,
+        "bucket_capacity": 1048576,
+        "bucket_record_bytes": 8,
+        "build_plus_3_hit_passes_ms": 172.7739,
+        "checksum": 549754765312,
+        "key_capacity": 524288,
+        "peak_requested_bytes": 20971520,
+        "retained_requested_bytes": 20971520,
+        "total_requested_bytes": 20971552
+      }
+    }
+  ],
+  "detectors": [
+    {
+      "model": "D:\\temp\\obj_tests\\powerplant.obj",
+      "backend": "custom",
+      "median_ms": 18215.65,
+      "min_ms": 18137.1,
+      "max_ms": 18453.2,
+      "median_change_from_custom_percent": 0.0,
+      "first_median_ms": 18295.15,
+      "later_median_ms": 18215.65,
+      "paired_min_percent": 0.0,
+      "paired_max_percent": 0.0,
+      "memory": {
+        "live_requested_bytes": 0,
+        "peak_requested_bytes": 484733792,
+        "total_requested_bytes": 2287715448,
+        "allocation_calls": 18
+      }
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\powerplant.obj",
+      "backend": "dense_set",
+      "median_ms": 18752.449999999997,
+      "min_ms": 18579.1,
+      "max_ms": 18936.0,
+      "median_change_from_custom_percent": 2.946916525075949,
+      "first_median_ms": 18856.4,
+      "later_median_ms": 18727.5,
+      "paired_min_percent": 1.6773748672876287,
+      "paired_max_percent": 4.404783565178572,
+      "memory": {
+        "live_requested_bytes": 0,
+        "peak_requested_bytes": 484733824,
+        "total_requested_bytes": 2086383840,
+        "allocation_calls": 36
+      }
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "backend": "custom",
+      "median_ms": 1492.145,
+      "min_ms": 1409.24,
+      "max_ms": 1506.48,
+      "median_change_from_custom_percent": 0.0,
+      "first_median_ms": 1503.415,
+      "later_median_ms": 1459.5749999999998,
+      "paired_min_percent": 0.0,
+      "paired_max_percent": 0.0,
+      "memory": {
+        "live_requested_bytes": 0,
+        "peak_requested_bytes": 25907616,
+        "total_requested_bytes": 141479880,
+        "allocation_calls": 18
+      }
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "backend": "dense_set",
+      "median_ms": 1601.62,
+      "min_ms": 1548.52,
+      "max_ms": 1696.74,
+      "median_change_from_custom_percent": 7.336753465648438,
+      "first_median_ms": 1643.995,
+      "later_median_ms": 1592.04,
+      "paired_min_percent": 4.355185598215705,
+      "paired_max_percent": 18.063527444970752,
+      "memory": {
+        "live_requested_bytes": 0,
+        "peak_requested_bytes": 25907648,
+        "total_requested_bytes": 141474864,
+        "allocation_calls": 36
+      }
+    }
+  ],
+  "method": "Median sorts all samples, uses middle value for nine and average middle two for six. Ranges include every sample. First medians use run0 in two processes, later use run1/run2 in those processes. Matched pipeline pairs use the same model/order/run; no claim that samples are independent or confidence intervals."
+}

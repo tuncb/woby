@@ -1,0 +1,17 @@
+Test project D:/woby/build/vs2026-vcpkg
+    Start 108: woby_instance_query_contract
+    Start 110: woby_simplification_15_contract
+1/4 Test #108: woby_instance_query_contract ......   Passed    0.27 sec
+    Start 109: woby_simplification_14_contract
+2/4 Test #110: woby_simplification_15_contract ...   Passed    0.26 sec
+    Start 112: woby_analysis_index_contract
+3/4 Test #109: woby_simplification_14_contract ...   Passed    0.23 sec
+4/4 Test #112: woby_analysis_index_contract ......   Passed    0.13 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Label Time Summary:
+cpu     =   0.90 sec*proc (4 tests)
+unit    =   0.90 sec*proc (4 tests)
+
+Total Test time (real) =   0.56 sec

@@ -1,0 +1,90 @@
+{
+  "candidate_packet_size": 72,
+  "checksum": 24444883,
+  "legacy_payload_bytes_per_packet": 96,
+  "ok": true,
+  "rows": [
+    {
+      "draw_packets": 10,
+      "rounds": 400000,
+      "samples": [
+        {
+          "production_five_writes_ms": 0.00173140375,
+          "typed_packet_ms": 4.738175E-05
+        },
+        {
+          "production_five_writes_ms": 0.0017603087500000002,
+          "typed_packet_ms": 4.6887999999999996E-05
+        },
+        {
+          "production_five_writes_ms": 0.0017488727499999999,
+          "typed_packet_ms": 4.762425E-05
+        },
+        {
+          "production_five_writes_ms": 0.001728152,
+          "typed_packet_ms": 4.706125E-05
+        },
+        {
+          "production_five_writes_ms": 0.00173739525,
+          "typed_packet_ms": 4.696675E-05
+        }
+      ],
+      "writes_per_packet": 5
+    },
+    {
+      "draw_packets": 1000,
+      "rounds": 4000,
+      "samples": [
+        {
+          "production_five_writes_ms": 0.17075047499999998,
+          "typed_packet_ms": 0.0048705
+        },
+        {
+          "production_five_writes_ms": 0.17055975,
+          "typed_packet_ms": 0.00467575
+        },
+        {
+          "production_five_writes_ms": 0.17052202500000002,
+          "typed_packet_ms": 0.0046978
+        },
+        {
+          "production_five_writes_ms": 0.17168905,
+          "typed_packet_ms": 0.004706425
+        },
+        {
+          "production_five_writes_ms": 0.170869775,
+          "typed_packet_ms": 0.0046688
+        }
+      ],
+      "writes_per_packet": 5
+    },
+    {
+      "draw_packets": 20000,
+      "rounds": 200,
+      "samples": [
+        {
+          "production_five_writes_ms": 3.433809,
+          "typed_packet_ms": 0.09871650000000001
+        },
+        {
+          "production_five_writes_ms": 3.4563015000000004,
+          "typed_packet_ms": 0.0965395
+        },
+        {
+          "production_five_writes_ms": 3.4735895,
+          "typed_packet_ms": 0.097133
+        },
+        {
+          "production_five_writes_ms": 3.6303425,
+          "typed_packet_ms": 0.1145905
+        },
+        {
+          "production_five_writes_ms": 4.148614,
+          "typed_packet_ms": 0.098954
+        }
+      ],
+      "writes_per_packet": 5
+    }
+  ],
+  "scope": "Actual production Noop setUniform versus an isolated typed packet setter; no draws, GPU work, root staging or complete frame."
+}

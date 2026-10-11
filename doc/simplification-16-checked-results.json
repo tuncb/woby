@@ -1,0 +1,2514 @@
+{
+  "executable_sha256": "6d0802af7ef6a57d3254e41b0ccbb20a4be747080d4c503ec150c6eb23c7ffe8",
+  "configuration": "Release",
+  "probe_source_sha256": "fe2621b40a9eb0173dc1933209cca137504227f950f7ba002bfd6f81fedc50f6",
+  "models": [
+    {
+      "path": "D:/temp/obj_tests/uploads_files_2720101_BusGameMap.obj",
+      "sha256": "9ac38b16814658cee4d52415796e7c8a1cfffa70549f9b7f0eb0c1f1704e4977"
+    },
+    {
+      "path": "D:\\woby\\experiments\\simplification-16/../../assets/samples/surface-mesh-quality/topology.obj",
+      "sha256": "935ec479d1a850d313c04fd380e667643f9260468c072c6385a700ec7171cb8a"
+    },
+    {
+      "path": "D:\\woby\\experiments\\simplification-16/../../assets/samples/fin-candidates/attached-fin.obj",
+      "sha256": "6a3deead42689a9440e76b85eda06dd8d5b8cb5da00015f78b1e7baab11ac9b2"
+    },
+    {
+      "path": "D:/temp/obj_tests/powerplant.obj",
+      "sha256": "1bda60ac06a11a6299799c95f4caac63b5c2a3654464040ff5b7d4bb8db190a8"
+    }
+  ],
+  "runs": [
+    {
+      "exact_position": [
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 121122916,
+            "geometry": 76335192,
+            "slices_graph": 212393888,
+            "wide_graph": 242242448
+          },
+          "compact_build": {
+            "allocation_calls": 4332,
+            "live_requested_bytes": 121125464,
+            "ms": 499.3542,
+            "peak_requested_bytes": 137617454,
+            "total_requested_bytes": 182101596
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 153.2656,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 140,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 2,
+            "edge_uses": 3162918,
+            "edges": 1589594,
+            "faces": 1054306,
+            "max_edge_incidence": 4,
+            "multi_reference_vertices": 399,
+            "non_manifold_edges": 116,
+            "orientation_contradictions": 0,
+            "point_references": 535799,
+            "vertices": 535369,
+            "winding_conflicts": 24
+          },
+          "slices_build": {
+            "allocation_calls": 4332,
+            "live_requested_bytes": 212396436,
+            "ms": 531.7609,
+            "peak_requested_bytes": 245385750,
+            "total_requested_bytes": 329780362
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 146.9397,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 4334,
+            "live_requested_bytes": 242245140,
+            "ms": 488.7953,
+            "peak_requested_bytes": 275234454,
+            "total_requested_bytes": 359629066
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 149.131,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 121122916,
+            "geometry": 76335192,
+            "slices_graph": 212393888,
+            "wide_graph": 242242448
+          },
+          "compact_build": {
+            "allocation_calls": 4332,
+            "live_requested_bytes": 121125464,
+            "ms": 498.2299,
+            "peak_requested_bytes": 137617454,
+            "total_requested_bytes": 182101596
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 145.4889,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 140,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 2,
+            "edge_uses": 3162918,
+            "edges": 1589594,
+            "faces": 1054306,
+            "max_edge_incidence": 4,
+            "multi_reference_vertices": 399,
+            "non_manifold_edges": 116,
+            "orientation_contradictions": 0,
+            "point_references": 535799,
+            "vertices": 535369,
+            "winding_conflicts": 24
+          },
+          "slices_build": {
+            "allocation_calls": 4332,
+            "live_requested_bytes": 212396436,
+            "ms": 560.4326,
+            "peak_requested_bytes": 245385750,
+            "total_requested_bytes": 329780362
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 145.6496,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 4334,
+            "live_requested_bytes": 242245140,
+            "ms": 491.7891,
+            "peak_requested_bytes": 275234454,
+            "total_requested_bytes": 359629066
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 136.9258,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 121122916,
+            "geometry": 76335192,
+            "slices_graph": 212393888,
+            "wide_graph": 242242448
+          },
+          "compact_build": {
+            "allocation_calls": 4332,
+            "live_requested_bytes": 121125464,
+            "ms": 503.0706,
+            "peak_requested_bytes": 137617454,
+            "total_requested_bytes": 182101596
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 144.9526,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 140,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 2,
+            "edge_uses": 3162918,
+            "edges": 1589594,
+            "faces": 1054306,
+            "max_edge_incidence": 4,
+            "multi_reference_vertices": 399,
+            "non_manifold_edges": 116,
+            "orientation_contradictions": 0,
+            "point_references": 535799,
+            "vertices": 535369,
+            "winding_conflicts": 24
+          },
+          "slices_build": {
+            "allocation_calls": 4332,
+            "live_requested_bytes": 212396436,
+            "ms": 550.8685,
+            "peak_requested_bytes": 245385750,
+            "total_requested_bytes": 329780362
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 149.2504,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 4334,
+            "live_requested_bytes": 242245140,
+            "ms": 496.2442,
+            "peak_requested_bytes": 275234454,
+            "total_requested_bytes": 359629066
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 134.5683,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 121122916,
+            "geometry": 76335192,
+            "slices_graph": 212393888,
+            "wide_graph": 242242448
+          },
+          "compact_build": {
+            "allocation_calls": 4332,
+            "live_requested_bytes": 121125464,
+            "ms": 513.1078,
+            "peak_requested_bytes": 137617454,
+            "total_requested_bytes": 182101596
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 145.0604,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 140,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 2,
+            "edge_uses": 3162918,
+            "edges": 1589594,
+            "faces": 1054306,
+            "max_edge_incidence": 4,
+            "multi_reference_vertices": 399,
+            "non_manifold_edges": 116,
+            "orientation_contradictions": 0,
+            "point_references": 535799,
+            "vertices": 535369,
+            "winding_conflicts": 24
+          },
+          "slices_build": {
+            "allocation_calls": 4332,
+            "live_requested_bytes": 212396436,
+            "ms": 540.7273,
+            "peak_requested_bytes": 245385750,
+            "total_requested_bytes": 329780362
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 145.8633,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 4334,
+            "live_requested_bytes": 242245140,
+            "ms": 493.2674,
+            "peak_requested_bytes": 275234454,
+            "total_requested_bytes": 359629066
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 136.7194,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 121122916,
+            "geometry": 76335192,
+            "slices_graph": 212393888,
+            "wide_graph": 242242448
+          },
+          "compact_build": {
+            "allocation_calls": 4332,
+            "live_requested_bytes": 121125464,
+            "ms": 495.4146,
+            "peak_requested_bytes": 137617454,
+            "total_requested_bytes": 182101596
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 146.818,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 140,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 2,
+            "edge_uses": 3162918,
+            "edges": 1589594,
+            "faces": 1054306,
+            "max_edge_incidence": 4,
+            "multi_reference_vertices": 399,
+            "non_manifold_edges": 116,
+            "orientation_contradictions": 0,
+            "point_references": 535799,
+            "vertices": 535369,
+            "winding_conflicts": 24
+          },
+          "slices_build": {
+            "allocation_calls": 4332,
+            "live_requested_bytes": 212396436,
+            "ms": 531.9314,
+            "peak_requested_bytes": 245385750,
+            "total_requested_bytes": 329780362
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 154.9246,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 4334,
+            "live_requested_bytes": 242245140,
+            "ms": 487.8995,
+            "peak_requested_bytes": 275234454,
+            "total_requested_bytes": 359629066
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 141.856,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        }
+      ],
+      "model": "D:/temp/obj_tests/uploads_files_2720101_BusGameMap.obj",
+      "notes": "Release, requested C++ allocation sizes with global new header and atomic counters. Source mesh and shared analysis geometry loaded before graph timings. All arrays, adjacency order, components and flags verified. Findings, serialization, GPU and UI are outside this prototype.",
+      "original_index": [
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 121137896,
+            "geometry": 76338632,
+            "slices_graph": 212405256,
+            "wide_graph": 242270728
+          },
+          "compact_build": {
+            "allocation_calls": 2369,
+            "live_requested_bytes": 121140717,
+            "ms": 428.9715,
+            "peak_requested_bytes": 137645974,
+            "total_requested_bytes": 164382262
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 147.8976,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 156,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 3162918,
+            "edges": 1589988,
+            "faces": 1054306,
+            "max_edge_incidence": 2,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 0,
+            "orientation_contradictions": 0,
+            "point_references": 535799,
+            "vertices": 535799,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 2369,
+            "live_requested_bytes": 212408077,
+            "ms": 445.5665,
+            "peak_requested_bytes": 245425878,
+            "total_requested_bytes": 298544651
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 147.0521,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 2371,
+            "live_requested_bytes": 242273693,
+            "ms": 406.6947,
+            "peak_requested_bytes": 275291494,
+            "total_requested_bytes": 328410267
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 135.0349,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 121137896,
+            "geometry": 76338632,
+            "slices_graph": 212405256,
+            "wide_graph": 242270728
+          },
+          "compact_build": {
+            "allocation_calls": 2369,
+            "live_requested_bytes": 121140717,
+            "ms": 426.9025,
+            "peak_requested_bytes": 137645974,
+            "total_requested_bytes": 164382262
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 150.29,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 156,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 3162918,
+            "edges": 1589988,
+            "faces": 1054306,
+            "max_edge_incidence": 2,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 0,
+            "orientation_contradictions": 0,
+            "point_references": 535799,
+            "vertices": 535799,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 2369,
+            "live_requested_bytes": 212408077,
+            "ms": 443.3396,
+            "peak_requested_bytes": 245425878,
+            "total_requested_bytes": 298544651
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 147.2676,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 2371,
+            "live_requested_bytes": 242273693,
+            "ms": 406.9886,
+            "peak_requested_bytes": 275291494,
+            "total_requested_bytes": 328410267
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 141.7272,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 121137896,
+            "geometry": 76338632,
+            "slices_graph": 212405256,
+            "wide_graph": 242270728
+          },
+          "compact_build": {
+            "allocation_calls": 2369,
+            "live_requested_bytes": 121140717,
+            "ms": 423.6799,
+            "peak_requested_bytes": 137645974,
+            "total_requested_bytes": 164382262
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 145.2944,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 156,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 3162918,
+            "edges": 1589988,
+            "faces": 1054306,
+            "max_edge_incidence": 2,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 0,
+            "orientation_contradictions": 0,
+            "point_references": 535799,
+            "vertices": 535799,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 2369,
+            "live_requested_bytes": 212408077,
+            "ms": 443.2928,
+            "peak_requested_bytes": 245425878,
+            "total_requested_bytes": 298544651
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 146.1175,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 2371,
+            "live_requested_bytes": 242273693,
+            "ms": 397.899,
+            "peak_requested_bytes": 275291494,
+            "total_requested_bytes": 328410267
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 136.594,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 121137896,
+            "geometry": 76338632,
+            "slices_graph": 212405256,
+            "wide_graph": 242270728
+          },
+          "compact_build": {
+            "allocation_calls": 2369,
+            "live_requested_bytes": 121140717,
+            "ms": 428.4206,
+            "peak_requested_bytes": 137645974,
+            "total_requested_bytes": 164382262
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 144.5441,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 156,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 3162918,
+            "edges": 1589988,
+            "faces": 1054306,
+            "max_edge_incidence": 2,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 0,
+            "orientation_contradictions": 0,
+            "point_references": 535799,
+            "vertices": 535799,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 2369,
+            "live_requested_bytes": 212408077,
+            "ms": 438.2336,
+            "peak_requested_bytes": 245425878,
+            "total_requested_bytes": 298544651
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 148.9553,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 2371,
+            "live_requested_bytes": 242273693,
+            "ms": 399.3637,
+            "peak_requested_bytes": 275291494,
+            "total_requested_bytes": 328410267
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 138.3774,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 121137896,
+            "geometry": 76338632,
+            "slices_graph": 212405256,
+            "wide_graph": 242270728
+          },
+          "compact_build": {
+            "allocation_calls": 2369,
+            "live_requested_bytes": 121140717,
+            "ms": 425.341,
+            "peak_requested_bytes": 137645974,
+            "total_requested_bytes": 164382262
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 145.6655,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 156,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 3162918,
+            "edges": 1589988,
+            "faces": 1054306,
+            "max_edge_incidence": 2,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 0,
+            "orientation_contradictions": 0,
+            "point_references": 535799,
+            "vertices": 535799,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 2369,
+            "live_requested_bytes": 212408077,
+            "ms": 448.052,
+            "peak_requested_bytes": 245425878,
+            "total_requested_bytes": 298544651
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 146.1423,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 2371,
+            "live_requested_bytes": 242273693,
+            "ms": 402.2306,
+            "peak_requested_bytes": 275291494,
+            "total_requested_bytes": 328410267
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 138.2904,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        }
+      ],
+      "render_faces": 1054542,
+      "sizes": {
+        "compact_edge": 20,
+        "compact_face": 16,
+        "compact_use": 8,
+        "compact_vertex": 32,
+        "slices_edge": 32,
+        "slices_face": 32,
+        "slices_use": 16,
+        "slices_vertex": 32,
+        "wide_edge": 40,
+        "wide_face": 32,
+        "wide_use": 16,
+        "wide_vertex": 64
+      }
+    },
+    {
+      "exact_position": [
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 2092,
+            "geometry": 1568,
+            "slices_graph": 3248,
+            "wide_graph": 4040
+          },
+          "compact_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 2300,
+            "ms": 0.0098,
+            "peak_requested_bytes": 2404,
+            "total_requested_bytes": 3216
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0025,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 5,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 1,
+            "edge_uses": 30,
+            "edges": 23,
+            "faces": 10,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 19,
+            "vertices": 19,
+            "winding_conflicts": 1
+          },
+          "slices_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 3456,
+            "ms": 0.0109,
+            "peak_requested_bytes": 3696,
+            "total_requested_bytes": 5000
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 43,
+            "live_requested_bytes": 4392,
+            "ms": 0.0115,
+            "peak_requested_bytes": 4632,
+            "total_requested_bytes": 5936
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.002,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 2092,
+            "geometry": 1568,
+            "slices_graph": 3248,
+            "wide_graph": 4040
+          },
+          "compact_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 2300,
+            "ms": 0.0092,
+            "peak_requested_bytes": 2404,
+            "total_requested_bytes": 3216
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 5,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 1,
+            "edge_uses": 30,
+            "edges": 23,
+            "faces": 10,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 19,
+            "vertices": 19,
+            "winding_conflicts": 1
+          },
+          "slices_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 3456,
+            "ms": 0.0106,
+            "peak_requested_bytes": 3696,
+            "total_requested_bytes": 5000
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 43,
+            "live_requested_bytes": 4392,
+            "ms": 0.0102,
+            "peak_requested_bytes": 4632,
+            "total_requested_bytes": 5936
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0021,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 2092,
+            "geometry": 1568,
+            "slices_graph": 3248,
+            "wide_graph": 4040
+          },
+          "compact_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 2300,
+            "ms": 0.0146,
+            "peak_requested_bytes": 2404,
+            "total_requested_bytes": 3216
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 5,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 1,
+            "edge_uses": 30,
+            "edges": 23,
+            "faces": 10,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 19,
+            "vertices": 19,
+            "winding_conflicts": 1
+          },
+          "slices_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 3456,
+            "ms": 0.0095,
+            "peak_requested_bytes": 3696,
+            "total_requested_bytes": 5000
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 43,
+            "live_requested_bytes": 4392,
+            "ms": 0.0094,
+            "peak_requested_bytes": 4632,
+            "total_requested_bytes": 5936
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0019,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 2092,
+            "geometry": 1568,
+            "slices_graph": 3248,
+            "wide_graph": 4040
+          },
+          "compact_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 2300,
+            "ms": 0.0086,
+            "peak_requested_bytes": 2404,
+            "total_requested_bytes": 3216
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 5,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 1,
+            "edge_uses": 30,
+            "edges": 23,
+            "faces": 10,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 19,
+            "vertices": 19,
+            "winding_conflicts": 1
+          },
+          "slices_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 3456,
+            "ms": 0.01,
+            "peak_requested_bytes": 3696,
+            "total_requested_bytes": 5000
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 43,
+            "live_requested_bytes": 4392,
+            "ms": 0.0109,
+            "peak_requested_bytes": 4632,
+            "total_requested_bytes": 5936
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.002,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 2092,
+            "geometry": 1568,
+            "slices_graph": 3248,
+            "wide_graph": 4040
+          },
+          "compact_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 2300,
+            "ms": 0.0161,
+            "peak_requested_bytes": 2404,
+            "total_requested_bytes": 3216
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 5,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 1,
+            "edge_uses": 30,
+            "edges": 23,
+            "faces": 10,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 19,
+            "vertices": 19,
+            "winding_conflicts": 1
+          },
+          "slices_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 3456,
+            "ms": 0.0098,
+            "peak_requested_bytes": 3696,
+            "total_requested_bytes": 5000
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 43,
+            "live_requested_bytes": 4392,
+            "ms": 0.0158,
+            "peak_requested_bytes": 4632,
+            "total_requested_bytes": 5936
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.002,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        }
+      ],
+      "model": "D:\\woby\\experiments\\simplification-16/../../assets/samples/surface-mesh-quality/topology.obj",
+      "notes": "Release, requested C++ allocation sizes with global new header and atomic counters. Source mesh and shared analysis geometry loaded before graph timings. All arrays, adjacency order, components and flags verified. Findings, serialization, GPU and UI are outside this prototype.",
+      "original_index": [
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 2092,
+            "geometry": 1568,
+            "slices_graph": 3248,
+            "wide_graph": 4040
+          },
+          "compact_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 2300,
+            "ms": 0.0262,
+            "peak_requested_bytes": 2404,
+            "total_requested_bytes": 3216
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0035,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 5,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 1,
+            "edge_uses": 30,
+            "edges": 23,
+            "faces": 10,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 19,
+            "vertices": 19,
+            "winding_conflicts": 1
+          },
+          "slices_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 3456,
+            "ms": 0.0196,
+            "peak_requested_bytes": 3696,
+            "total_requested_bytes": 5000
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0035,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 43,
+            "live_requested_bytes": 4392,
+            "ms": 0.0205,
+            "peak_requested_bytes": 4632,
+            "total_requested_bytes": 5936
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0031,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 2092,
+            "geometry": 1568,
+            "slices_graph": 3248,
+            "wide_graph": 4040
+          },
+          "compact_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 2300,
+            "ms": 0.0113,
+            "peak_requested_bytes": 2404,
+            "total_requested_bytes": 3216
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0025,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 5,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 1,
+            "edge_uses": 30,
+            "edges": 23,
+            "faces": 10,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 19,
+            "vertices": 19,
+            "winding_conflicts": 1
+          },
+          "slices_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 3456,
+            "ms": 0.013,
+            "peak_requested_bytes": 3696,
+            "total_requested_bytes": 5000
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 43,
+            "live_requested_bytes": 4392,
+            "ms": 0.0123,
+            "peak_requested_bytes": 4632,
+            "total_requested_bytes": 5936
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0021,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 2092,
+            "geometry": 1568,
+            "slices_graph": 3248,
+            "wide_graph": 4040
+          },
+          "compact_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 2300,
+            "ms": 0.0094,
+            "peak_requested_bytes": 2404,
+            "total_requested_bytes": 3216
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 5,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 1,
+            "edge_uses": 30,
+            "edges": 23,
+            "faces": 10,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 19,
+            "vertices": 19,
+            "winding_conflicts": 1
+          },
+          "slices_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 3456,
+            "ms": 0.0103,
+            "peak_requested_bytes": 3696,
+            "total_requested_bytes": 5000
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 43,
+            "live_requested_bytes": 4392,
+            "ms": 0.0104,
+            "peak_requested_bytes": 4632,
+            "total_requested_bytes": 5936
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.002,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 2092,
+            "geometry": 1568,
+            "slices_graph": 3248,
+            "wide_graph": 4040
+          },
+          "compact_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 2300,
+            "ms": 0.0156,
+            "peak_requested_bytes": 2404,
+            "total_requested_bytes": 3216
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0047,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 5,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 1,
+            "edge_uses": 30,
+            "edges": 23,
+            "faces": 10,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 19,
+            "vertices": 19,
+            "winding_conflicts": 1
+          },
+          "slices_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 3456,
+            "ms": 0.0175,
+            "peak_requested_bytes": 3696,
+            "total_requested_bytes": 5000
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0047,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 43,
+            "live_requested_bytes": 4392,
+            "ms": 0.0168,
+            "peak_requested_bytes": 4632,
+            "total_requested_bytes": 5936
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.002,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 2092,
+            "geometry": 1568,
+            "slices_graph": 3248,
+            "wide_graph": 4040
+          },
+          "compact_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 2300,
+            "ms": 0.0116,
+            "peak_requested_bytes": 2404,
+            "total_requested_bytes": 3216
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0024,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 5,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 1,
+            "edge_uses": 30,
+            "edges": 23,
+            "faces": 10,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 19,
+            "vertices": 19,
+            "winding_conflicts": 1
+          },
+          "slices_build": {
+            "allocation_calls": 41,
+            "live_requested_bytes": 3456,
+            "ms": 0.0113,
+            "peak_requested_bytes": 3696,
+            "total_requested_bytes": 5000
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0025,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 43,
+            "live_requested_bytes": 4392,
+            "ms": 0.0121,
+            "peak_requested_bytes": 4632,
+            "total_requested_bytes": 5936
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0019,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        }
+      ],
+      "render_faces": 12,
+      "sizes": {
+        "compact_edge": 20,
+        "compact_face": 16,
+        "compact_use": 8,
+        "compact_vertex": 32,
+        "slices_edge": 32,
+        "slices_face": 32,
+        "slices_use": 16,
+        "slices_vertex": 32,
+        "wide_edge": 40,
+        "wide_face": 32,
+        "wide_use": 16,
+        "wide_vertex": 64
+      }
+    },
+    {
+      "exact_position": [
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 708,
+            "geometry": 488,
+            "slices_graph": 1168,
+            "wide_graph": 1392
+          },
+          "compact_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 916,
+            "ms": 0.0094,
+            "peak_requested_bytes": 996,
+            "total_requested_bytes": 1172
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0015,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 1,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 15,
+            "edges": 8,
+            "faces": 5,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 5,
+            "vertices": 5,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 1376,
+            "ms": 0.0122,
+            "peak_requested_bytes": 1560,
+            "total_requested_bytes": 1880
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0017,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 23,
+            "live_requested_bytes": 1744,
+            "ms": 0.01,
+            "peak_requested_bytes": 1928,
+            "total_requested_bytes": 2248
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0016,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 708,
+            "geometry": 488,
+            "slices_graph": 1168,
+            "wide_graph": 1392
+          },
+          "compact_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 916,
+            "ms": 0.0104,
+            "peak_requested_bytes": 996,
+            "total_requested_bytes": 1172
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0015,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 1,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 15,
+            "edges": 8,
+            "faces": 5,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 5,
+            "vertices": 5,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 1376,
+            "ms": 0.0097,
+            "peak_requested_bytes": 1560,
+            "total_requested_bytes": 1880
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0015,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 23,
+            "live_requested_bytes": 1744,
+            "ms": 0.0126,
+            "peak_requested_bytes": 1928,
+            "total_requested_bytes": 2248
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0018,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 708,
+            "geometry": 488,
+            "slices_graph": 1168,
+            "wide_graph": 1392
+          },
+          "compact_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 916,
+            "ms": 0.0059,
+            "peak_requested_bytes": 996,
+            "total_requested_bytes": 1172
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0021,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 1,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 15,
+            "edges": 8,
+            "faces": 5,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 5,
+            "vertices": 5,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 1376,
+            "ms": 0.0072,
+            "peak_requested_bytes": 1560,
+            "total_requested_bytes": 1880
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0017,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 23,
+            "live_requested_bytes": 1744,
+            "ms": 0.0074,
+            "peak_requested_bytes": 1928,
+            "total_requested_bytes": 2248
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0019,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 708,
+            "geometry": 488,
+            "slices_graph": 1168,
+            "wide_graph": 1392
+          },
+          "compact_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 916,
+            "ms": 0.0047,
+            "peak_requested_bytes": 996,
+            "total_requested_bytes": 1172
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0009,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 1,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 15,
+            "edges": 8,
+            "faces": 5,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 5,
+            "vertices": 5,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 1376,
+            "ms": 0.0047,
+            "peak_requested_bytes": 1560,
+            "total_requested_bytes": 1880
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0009,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 23,
+            "live_requested_bytes": 1744,
+            "ms": 0.0057,
+            "peak_requested_bytes": 1928,
+            "total_requested_bytes": 2248
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0007,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 708,
+            "geometry": 488,
+            "slices_graph": 1168,
+            "wide_graph": 1392
+          },
+          "compact_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 916,
+            "ms": 0.0049,
+            "peak_requested_bytes": 996,
+            "total_requested_bytes": 1172
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.001,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 1,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 15,
+            "edges": 8,
+            "faces": 5,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 5,
+            "vertices": 5,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 1376,
+            "ms": 0.0135,
+            "peak_requested_bytes": 1560,
+            "total_requested_bytes": 1880
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0009,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 23,
+            "live_requested_bytes": 1744,
+            "ms": 0.0047,
+            "peak_requested_bytes": 1928,
+            "total_requested_bytes": 2248
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0008,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        }
+      ],
+      "model": "D:\\woby\\experiments\\simplification-16/../../assets/samples/fin-candidates/attached-fin.obj",
+      "notes": "Release, requested C++ allocation sizes with global new header and atomic counters. Source mesh and shared analysis geometry loaded before graph timings. All arrays, adjacency order, components and flags verified. Findings, serialization, GPU and UI are outside this prototype.",
+      "original_index": [
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 708,
+            "geometry": 488,
+            "slices_graph": 1168,
+            "wide_graph": 1392
+          },
+          "compact_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 916,
+            "ms": 0.0095,
+            "peak_requested_bytes": 996,
+            "total_requested_bytes": 1172
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0021,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 1,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 15,
+            "edges": 8,
+            "faces": 5,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 5,
+            "vertices": 5,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 1376,
+            "ms": 0.0178,
+            "peak_requested_bytes": 1560,
+            "total_requested_bytes": 1880
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0022,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 23,
+            "live_requested_bytes": 1744,
+            "ms": 0.0118,
+            "peak_requested_bytes": 1928,
+            "total_requested_bytes": 2248
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0019,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 708,
+            "geometry": 488,
+            "slices_graph": 1168,
+            "wide_graph": 1392
+          },
+          "compact_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 916,
+            "ms": 0.01,
+            "peak_requested_bytes": 996,
+            "total_requested_bytes": 1172
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0018,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 1,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 15,
+            "edges": 8,
+            "faces": 5,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 5,
+            "vertices": 5,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 1376,
+            "ms": 0.0097,
+            "peak_requested_bytes": 1560,
+            "total_requested_bytes": 1880
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0016,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 23,
+            "live_requested_bytes": 1744,
+            "ms": 0.01,
+            "peak_requested_bytes": 1928,
+            "total_requested_bytes": 2248
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0016,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 708,
+            "geometry": 488,
+            "slices_graph": 1168,
+            "wide_graph": 1392
+          },
+          "compact_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 916,
+            "ms": 0.0093,
+            "peak_requested_bytes": 996,
+            "total_requested_bytes": 1172
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0015,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 1,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 15,
+            "edges": 8,
+            "faces": 5,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 5,
+            "vertices": 5,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 1376,
+            "ms": 0.0096,
+            "peak_requested_bytes": 1560,
+            "total_requested_bytes": 1880
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0017,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 23,
+            "live_requested_bytes": 1744,
+            "ms": 0.0101,
+            "peak_requested_bytes": 1928,
+            "total_requested_bytes": 2248
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0015,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 708,
+            "geometry": 488,
+            "slices_graph": 1168,
+            "wide_graph": 1392
+          },
+          "compact_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 916,
+            "ms": 0.0097,
+            "peak_requested_bytes": 996,
+            "total_requested_bytes": 1172
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0017,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 1,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 15,
+            "edges": 8,
+            "faces": 5,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 5,
+            "vertices": 5,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 1376,
+            "ms": 0.009,
+            "peak_requested_bytes": 1560,
+            "total_requested_bytes": 1880
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0015,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 23,
+            "live_requested_bytes": 1744,
+            "ms": 0.0099,
+            "peak_requested_bytes": 1928,
+            "total_requested_bytes": 2248
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0014,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 708,
+            "geometry": 488,
+            "slices_graph": 1168,
+            "wide_graph": 1392
+          },
+          "compact_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 916,
+            "ms": 0.0094,
+            "peak_requested_bytes": 996,
+            "total_requested_bytes": 1172
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0013,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 1,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 0,
+            "edge_uses": 15,
+            "edges": 8,
+            "faces": 5,
+            "max_edge_incidence": 3,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1,
+            "orientation_contradictions": 0,
+            "point_references": 5,
+            "vertices": 5,
+            "winding_conflicts": 0
+          },
+          "slices_build": {
+            "allocation_calls": 21,
+            "live_requested_bytes": 1376,
+            "ms": 0.0106,
+            "peak_requested_bytes": 1560,
+            "total_requested_bytes": 1880
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0015,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 23,
+            "live_requested_bytes": 1744,
+            "ms": 0.0088,
+            "peak_requested_bytes": 1928,
+            "total_requested_bytes": 2248
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 0.0012,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        }
+      ],
+      "render_faces": 5,
+      "sizes": {
+        "compact_edge": 20,
+        "compact_face": 16,
+        "compact_use": 8,
+        "compact_vertex": 32,
+        "slices_edge": 32,
+        "slices_face": 32,
+        "slices_use": 16,
+        "slices_vertex": 32,
+        "wide_edge": 40,
+        "wide_face": 32,
+        "wide_use": 16,
+        "wide_vertex": 64
+      }
+    },
+    {
+      "exact_position": [
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 1384261232,
+            "geometry": 895203128,
+            "slices_graph": 2454319944,
+            "wide_graph": 2765204344
+          },
+          "compact_build": {
+            "allocation_calls": 6184356,
+            "live_requested_bytes": 1384403439,
+            "ms": 5633.0705,
+            "peak_requested_bytes": 1573305854,
+            "total_requested_bytes": 2124256282
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1607.6401,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 121001,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 451049,
+            "edge_uses": 38276850,
+            "edges": 17162306,
+            "faces": 12758950,
+            "max_edge_incidence": 122,
+            "multi_reference_vertices": 557516,
+            "non_manifold_edges": 1981753,
+            "orientation_contradictions": 0,
+            "point_references": 5984052,
+            "vertices": 5424561,
+            "winding_conflicts": 192
+          },
+          "slices_build": {
+            "allocation_calls": 6184356,
+            "live_requested_bytes": 2454567139,
+            "ms": 5641.5445,
+            "peak_requested_bytes": 2835726710,
+            "total_requested_bytes": 3872853961
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1633.0886,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 6184358,
+            "live_requested_bytes": 2765451683,
+            "ms": 4954.3996,
+            "peak_requested_bytes": 3146611254,
+            "total_requested_bytes": 4183738505
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1509.9306,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 1384261232,
+            "geometry": 895203128,
+            "slices_graph": 2454319944,
+            "wide_graph": 2765204344
+          },
+          "compact_build": {
+            "allocation_calls": 6184356,
+            "live_requested_bytes": 1384403439,
+            "ms": 5593.3074,
+            "peak_requested_bytes": 1573305854,
+            "total_requested_bytes": 2124256282
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1587.9468,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 121001,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 451049,
+            "edge_uses": 38276850,
+            "edges": 17162306,
+            "faces": 12758950,
+            "max_edge_incidence": 122,
+            "multi_reference_vertices": 557516,
+            "non_manifold_edges": 1981753,
+            "orientation_contradictions": 0,
+            "point_references": 5984052,
+            "vertices": 5424561,
+            "winding_conflicts": 192
+          },
+          "slices_build": {
+            "allocation_calls": 6184356,
+            "live_requested_bytes": 2454567139,
+            "ms": 5633.8733,
+            "peak_requested_bytes": 2835726710,
+            "total_requested_bytes": 3872853961
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1609.7906,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 6184358,
+            "live_requested_bytes": 2765451683,
+            "ms": 4734.3585,
+            "peak_requested_bytes": 3146611254,
+            "total_requested_bytes": 4183738505
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1510.1506,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 1384261232,
+            "geometry": 895203128,
+            "slices_graph": 2454319944,
+            "wide_graph": 2765204344
+          },
+          "compact_build": {
+            "allocation_calls": 6184356,
+            "live_requested_bytes": 1384403439,
+            "ms": 5723.5085,
+            "peak_requested_bytes": 1573305854,
+            "total_requested_bytes": 2124256282
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1596.4183,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 121001,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 451049,
+            "edge_uses": 38276850,
+            "edges": 17162306,
+            "faces": 12758950,
+            "max_edge_incidence": 122,
+            "multi_reference_vertices": 557516,
+            "non_manifold_edges": 1981753,
+            "orientation_contradictions": 0,
+            "point_references": 5984052,
+            "vertices": 5424561,
+            "winding_conflicts": 192
+          },
+          "slices_build": {
+            "allocation_calls": 6184356,
+            "live_requested_bytes": 2454567139,
+            "ms": 5657.5484,
+            "peak_requested_bytes": 2835726710,
+            "total_requested_bytes": 3872853961
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1668.6017,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 6184358,
+            "live_requested_bytes": 2765451683,
+            "ms": 4751.2807,
+            "peak_requested_bytes": 3146611254,
+            "total_requested_bytes": 4183738505
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1492.0481,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        }
+      ],
+      "model": "D:/temp/obj_tests/powerplant.obj",
+      "notes": "Release, requested C++ allocation sizes with global new header and atomic counters. Source mesh and shared analysis geometry loaded before graph timings. All arrays, adjacency order, components and flags verified. Findings, serialization, GPU and UI are outside this prototype.",
+      "original_index": [
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 1428758168,
+            "geometry": 899679056,
+            "slices_graph": 2516149472,
+            "wide_graph": 2852539168
+          },
+          "compact_build": {
+            "allocation_calls": 5723894,
+            "live_requested_bytes": 1428841212,
+            "ms": 6023.5723,
+            "peak_requested_bytes": 1619165382,
+            "total_requested_bytes": 2182053384
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1648.5311,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 175887,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 58099,
+            "edge_uses": 38276850,
+            "edges": 18112504,
+            "faces": 12758950,
+            "max_edge_incidence": 120,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1079616,
+            "orientation_contradictions": 0,
+            "point_references": 5984052,
+            "vertices": 5984052,
+            "winding_conflicts": 192
+          },
+          "slices_build": {
+            "allocation_calls": 5723894,
+            "live_requested_bytes": 2516249364,
+            "ms": 6551.0993,
+            "peak_requested_bytes": 2901940470,
+            "total_requested_bytes": 3957770372
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1685.9557,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 5723896,
+            "live_requested_bytes": 2852639204,
+            "ms": 5144.5725,
+            "peak_requested_bytes": 3238330310,
+            "total_requested_bytes": 4294160212
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1525.7671,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 1428758168,
+            "geometry": 899679056,
+            "slices_graph": 2516149472,
+            "wide_graph": 2852539168
+          },
+          "compact_build": {
+            "allocation_calls": 5723894,
+            "live_requested_bytes": 1428841212,
+            "ms": 5450.6022,
+            "peak_requested_bytes": 1619165382,
+            "total_requested_bytes": 2182053384
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1676.0592,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 175887,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 58099,
+            "edge_uses": 38276850,
+            "edges": 18112504,
+            "faces": 12758950,
+            "max_edge_incidence": 120,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1079616,
+            "orientation_contradictions": 0,
+            "point_references": 5984052,
+            "vertices": 5984052,
+            "winding_conflicts": 192
+          },
+          "slices_build": {
+            "allocation_calls": 5723894,
+            "live_requested_bytes": 2516249364,
+            "ms": 5799.4928,
+            "peak_requested_bytes": 2901940470,
+            "total_requested_bytes": 3957770372
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1657.2868,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 5723896,
+            "live_requested_bytes": 2852639204,
+            "ms": 4794.4546,
+            "peak_requested_bytes": 3238330310,
+            "total_requested_bytes": 4294160212
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1566.729,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        },
+        {
+          "array_capacity_bytes": {
+            "compact_graph": 1428758168,
+            "geometry": 899679056,
+            "slices_graph": 2516149472,
+            "wide_graph": 2852539168
+          },
+          "compact_build": {
+            "allocation_calls": 5723894,
+            "live_requested_bytes": 1428841212,
+            "ms": 5454.5867,
+            "peak_requested_bytes": 1619165382,
+            "total_requested_bytes": 2182053384
+          },
+          "compact_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1661.135,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "counts": {
+            "components": 175887,
+            "duplicate_face_references": 0,
+            "duplicate_face_vertex_sets": 58099,
+            "edge_uses": 38276850,
+            "edges": 18112504,
+            "faces": 12758950,
+            "max_edge_incidence": 120,
+            "multi_reference_vertices": 0,
+            "non_manifold_edges": 1079616,
+            "orientation_contradictions": 0,
+            "point_references": 5984052,
+            "vertices": 5984052,
+            "winding_conflicts": 192
+          },
+          "slices_build": {
+            "allocation_calls": 5723894,
+            "live_requested_bytes": 2516249364,
+            "ms": 5442.1209,
+            "peak_requested_bytes": 2901940470,
+            "total_requested_bytes": 3957770372
+          },
+          "slices_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1675.2615,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          },
+          "verified": true,
+          "wide_build": {
+            "allocation_calls": 5723896,
+            "live_requested_bytes": 2852639204,
+            "ms": 4740.2622,
+            "peak_requested_bytes": 3238330310,
+            "total_requested_bytes": 4294160212
+          },
+          "wide_scan_10": {
+            "allocation_calls": 0,
+            "live_requested_bytes": 0,
+            "ms": 1565.7275,
+            "peak_requested_bytes": 0,
+            "total_requested_bytes": 0
+          }
+        }
+      ],
+      "render_faces": 12759246,
+      "sizes": {
+        "compact_edge": 20,
+        "compact_face": 16,
+        "compact_use": 8,
+        "compact_vertex": 32,
+        "slices_edge": 32,
+        "slices_face": 32,
+        "slices_use": 16,
+        "slices_vertex": 32,
+        "wide_edge": 40,
+        "wide_face": 32,
+        "wide_use": 16,
+        "wide_vertex": 64
+      }
+    }
+  ],
+  "provenance": {
+    "base_commit": "46a27585c5bc8638a8bde5d601e5cead71376631",
+    "measurement_completed_utc": "2026-10-10T23:23:59.8819935Z",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics",
+    "physical_cores": 8,
+    "logical_processors": 16,
+    "file_sha256": {
+      "CMakeLists.txt": "a257a0fcd02d2dcc025d491284d6c145668bbf74743c7e6b56c5d8be7f796b88",
+      "experiments/simplification-16/CMakeLists.txt": "a66a606b9d9a02fb8142fda9a6d782c78b2796896597155629dee948391d77b4",
+      "experiments/simplification-16/main.cpp": "fe2621b40a9eb0173dc1933209cca137504227f950f7ba002bfd6f81fedc50f6",
+      "experiments/simplification-16/run.ps1": "914c15a356e67e816b5991961bdcb83c475ee3b4ee4e4a76edcfb8a903687c31",
+      "experiments/simplification-16/allocation_probe.h": "c3b71c87908a6b45ca85209ae4afecc6cbbeac182c1eb5d82eba4182d5ae4b70",
+      "experiments/simplification-16/provenance.ps1": "755bfa93587e6499cfdf3118308fc244e2c4de44e3811f8d380b5b4c1b234263",
+      "src/mesh_topology.h": "a969478456ba8602b65f89add56cbe4a18cb6fadbad1e060b5f42f490c41de4a",
+      "src/mesh_topology.cpp": "2d6098dffe5b2c13c36d31443e127fac6e4b6870218d26824e7b130dca6cc12f",
+      "src/obj_mesh.h": "4793b2b40e7118a431adaf3a89c468a4bf01245a130594086a000ae6332de50b",
+      "src/obj_mesh.cpp": "de63423cb2999ff144f3d142b8e6457c06073a47171160a922daac3e0c0ce153",
+      "src/model_mesh.h": "c047499e6f2d885a71b26204bea38e87b7a66276a1cd205d631a5c2e57f658eb",
+      "src/model_mesh.cpp": "c4c8c94ba0aab33fd60af39910f22869f89da16eedd266f0e9ed0718d6286eac"
+    }
+  }
+}

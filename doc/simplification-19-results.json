@@ -1,0 +1,2321 @@
+{
+  "base_commit": "46a27585c5bc8638a8bde5d601e5cead71376631",
+  "date": "2026-10-11T01:57:29+02:00",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+  "executables": {
+    "micro": "25E1D23A862F2470B3B3A5C9AC63D469AC40C3EC1C7591C1A626A52D407844F6",
+    "custom": "E9392161228ACBB947A702C536DB84BB6ED500EF3E033F3FAF9B6186455376DB",
+    "boost": "E00056343247C7D423A5F4CBE8528FD3E45B05AE09F79F75107FDE6F3566D1E5",
+    "ankerl": "B7D596CE566AAE238832EDF7273FAFBC3AEF06B518998D4C080305867DD29911"
+  },
+  "sources": {
+    "main.cpp": "801E9D2914ADD970552A5543BE3990BCC1DE7D66F23243377DD1F892AFC8FF76",
+    "CMakeLists.txt": "5EC1AB42322436680E2365BAB65FA085EB8D6B3E2205FD762333D985DA3D5A9B",
+    "run.ps1": "D38A547E3AEBEE84B2E6865A5D593F8ECF37E8D2332DDB848B50C6C3DBF4D9A0",
+    "../../src/analysis_index.h": "78300EB34714E67CEF4EE1379B15F125B7394BFD12EFFF930AB9FB5571D1389B",
+    "../../tests/performance_benchmarks.cpp": "0EF78D1B51D1108455C4751286A95F50E8314E6CA26678049FA7D9CD696DB50D",
+    "../../tests/benchmark_analysis_index.h": "5219E5216CDEE762324731837DED5EA288D346A07185DCE342B0C65E8F2F319C",
+    "../../build/vs2026-vcpkg/hash-probe/mesh_comparison.cpp": "8A5D3FF628767049536AD75A788883F3509A65D57C0137752296E3029A714DF0",
+    "../../build/vs2026-vcpkg/hash-probe/mesh_duplicates.cpp": "7E56959FA00E383C7C47C6BA1DCFB67BE12FDBEDFB516415548537EA40502DE1",
+    "../../build/vs2026-vcpkg/hash-probe/mesh_topology.cpp": "CCF0968B48FF5961316909B1AFCC95A2FD70E0FDF6066425E44E220F4078B77E"
+  },
+  "micro": {
+    "coordinate": [
+      {
+        "entries": 4096,
+        "samples": [
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 1.1175,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 1.0727,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.9745,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 1.1184,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 1.0311,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 1.0972,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 1.3252,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 1.0546,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.9713,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 1.0758,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 1.0935,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.9499,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.6262,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.6102,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.5764,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.7054,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.6721,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.5478,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.6339,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.7145,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.509,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.617,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.5969,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.5771,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.709,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.6728,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.5541,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          }
+        ]
+      },
+      {
+        "entries": 524288,
+        "samples": [
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 196.2552,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 304.9724,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 224.1835,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 184.9999,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 207.6901,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 235.7355,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 179.1724,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 243.4527,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 215.9794,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 188.8802,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 207.6017,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 213.6685,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 179.2319,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 210.6507,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 211.3208,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 182.715,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 206.6357,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 211.2189,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 160.4749,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 204.9182,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 195.8899,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 169.3801,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 203.0479,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 202.7115,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 168.8679,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 202.8576,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 196.9345,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          }
+        ]
+      }
+    ],
+    "integer_tuple": [
+      {
+        "entries": 4096,
+        "samples": [
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.4527,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.559,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.5565,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.4123,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.5066,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.5576,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.5439,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.6254,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.5652,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.4343,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.5583,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.5374,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.4177,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.5259,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.5588,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.5384,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.5956,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.5523,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.4716,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.5755,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.6953,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.4551,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.4829,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.5617,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 0.5389,
+              "checksum": 33546240,
+              "map_bucket_count": 8192,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 294912,
+              "retained_requested_bytes": 294912,
+              "total_requested_bytes": 294944,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 0.5676,
+              "checksum": 33546240,
+              "map_bucket_count": 7679,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 4096,
+              "peak_requested_bytes": 352256,
+              "retained_requested_bytes": 352256,
+              "total_requested_bytes": 352256,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 8192,
+              "build_plus_3_hit_passes_ms": 0.5559,
+              "checksum": 33546240,
+              "key_capacity": 4096,
+              "retained_requested_bytes": 163840
+            }
+          }
+        ]
+      },
+      {
+        "entries": 524288,
+        "samples": [
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 151.4342,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 190.6018,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 197.407,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 143.1818,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 194.7501,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 203.8511,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 149.2171,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 200.0772,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 206.0171,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 143.2213,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 196.5613,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 205.0063,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 151.8352,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 196.8425,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 220.0755,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 141.8652,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 193.1336,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 199.5667,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 148.1067,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 219.9431,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 207.5476,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 147.0551,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 200.6268,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 196.8295,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          },
+          {
+            "ankerl_adapter": {
+              "build_plus_3_hit_passes_ms": 153.5059,
+              "checksum": 549754765312,
+              "map_bucket_count": 1048576,
+              "map_max_load_factor": 0.800000011920929,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 37748736,
+              "retained_requested_bytes": 37748736,
+              "total_requested_bytes": 37748768,
+              "tracked_allocations": 4
+            },
+            "boost_adapter": {
+              "build_plus_3_hit_passes_ms": 193.8034,
+              "checksum": 549754765312,
+              "map_bucket_count": 983039,
+              "map_max_load_factor": 0.875,
+              "ordered_key_capacity": 524288,
+              "peak_requested_bytes": 45088768,
+              "retained_requested_bytes": 45088768,
+              "total_requested_bytes": 45088768,
+              "tracked_allocations": 2
+            },
+            "custom": {
+              "bucket_capacity": 1048576,
+              "build_plus_3_hit_passes_ms": 204.5157,
+              "checksum": 549754765312,
+              "key_capacity": 524288,
+              "retained_requested_bytes": 20971520
+            }
+          }
+        ]
+      }
+    ],
+    "notes": "MSVC Release, one warmup, rotated order with three backends or alternating with two. Same production hasher, fixed shuffled input, one insertion and three hit passes. Destruction excluded from timings. Adapters retain insertion-order keys as required by AnalysisIndex consumers. Map plus ordered-vector allocation byte counts are allocator requests, not process RSS or allocator overhead. Input keys excluded. Custom memory is vector capacity; reserve prevents growth."
+  },
+  "detectors": [
+    {
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "input_bytes": 75585857,
+      "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977",
+      "backend": "custom",
+      "order": 0,
+      "header": "triangles=1054542 source_points=535893 parts=65",
+      "csv": "uploads_files_2720101_BusGameMap-0-custom.csv",
+      "csv_sha256": "61E396E4E6DB1048AD33FE5028EC9781EC97ADFE9EA94C52166A93A885E1E7FA",
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0387,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 1381.74,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 1381.78,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0138,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 1630.1,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 1630.11,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0102,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 1422.84,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 1422.85,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "input_bytes": 75585857,
+      "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977",
+      "backend": "boost",
+      "order": 0,
+      "header": "triangles=1054542 source_points=535893 parts=65",
+      "csv": "uploads_files_2720101_BusGameMap-0-boost.csv",
+      "csv_sha256": "F5FFA9B07D4E0B4A31D7D56C208DE8957369B056A07C2D89CD816A6F86BD8964",
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.039,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 1566.11,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 1566.15,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0113,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 1517.89,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 1517.9,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0119,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 1489.79,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 1489.8,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "input_bytes": 75585857,
+      "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977",
+      "backend": "ankerl",
+      "order": 0,
+      "header": "triangles=1054542 source_points=535893 parts=65",
+      "csv": "uploads_files_2720101_BusGameMap-0-ankerl.csv",
+      "csv_sha256": "52C17D2C40FF73D24C3A2FDB0DB2DF8291376DCAABE96382F3FCCD599C24C237",
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0607,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 1508.77,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 1508.83,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0115,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 1440.12,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 1440.14,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0113,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 1396.09,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 1396.1,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "input_bytes": 75585857,
+      "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977",
+      "backend": "ankerl",
+      "order": 1,
+      "header": "triangles=1054542 source_points=535893 parts=65",
+      "csv": "uploads_files_2720101_BusGameMap-1-ankerl.csv",
+      "csv_sha256": "1341A948BC952EEECB53E8B7D47D398AF010387224961B58FB47886141F76523",
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0231,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 1403.78,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 1403.81,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0115,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 1523.2,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 1523.21,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0114,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 1417.11,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 1417.12,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "input_bytes": 75585857,
+      "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977",
+      "backend": "boost",
+      "order": 1,
+      "header": "triangles=1054542 source_points=535893 parts=65",
+      "csv": "uploads_files_2720101_BusGameMap-1-boost.csv",
+      "csv_sha256": "1E07E5A6DA760DEE9BD4D3B2138C2C3A905AC12ADC6B2EC6BD2A9B52C939262D",
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0271,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 1554.33,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 1554.35,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0182,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 1624.8,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 1624.82,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0107,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 1647.07,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 1647.09,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "input_bytes": 75585857,
+      "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977",
+      "backend": "custom",
+      "order": 1,
+      "header": "triangles=1054542 source_points=535893 parts=65",
+      "csv": "uploads_files_2720101_BusGameMap-1-custom.csv",
+      "csv_sha256": "CA9D21EDDC1C6AE46288E95F833168D7D7135EDEF2E487CBB286ABB18AAA5E65",
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0238,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 1392.27,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 1392.3,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0167,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 1563.15,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 1563.16,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0106,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 1444.54,
+          "counts": [
+            17058,
+            0,
+            0,
+            510,
+            0,
+            270,
+            4,
+            22,
+            21
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 1444.55,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\powerplant.obj",
+      "input_bytes": 817891724,
+      "model_sha256": "1BDA60AC06A11A6299799C95F4CAAC63B5C2A3654464040FF5B7D4BB8DB190A8",
+      "backend": "custom",
+      "order": 0,
+      "header": "triangles=12759246 source_points=5984083 parts=21",
+      "csv": "powerplant-0-custom.csv",
+      "csv_sha256": "AF5F196EC015A7B45C1CDB4F254F4C5D6FBF6C295891996345DA8F3D2ADED52F",
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0416,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 18318.0,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 18318.0,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0114,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 18178.7,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 18178.7,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0144,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 18347.2,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 18347.3,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\powerplant.obj",
+      "input_bytes": 817891724,
+      "model_sha256": "1BDA60AC06A11A6299799C95F4CAAC63B5C2A3654464040FF5B7D4BB8DB190A8",
+      "backend": "boost",
+      "order": 0,
+      "header": "triangles=12759246 source_points=5984083 parts=21",
+      "csv": "powerplant-0-boost.csv",
+      "csv_sha256": "E1A6BAF8A13467185121C21C6533FB1A40D74D305CFDF6F9FFC965DD48A586A7",
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0368,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 21340.5,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 21340.5,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0168,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 19728.8,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 19728.8,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0159,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 19995.4,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 19995.4,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\powerplant.obj",
+      "input_bytes": 817891724,
+      "model_sha256": "1BDA60AC06A11A6299799C95F4CAAC63B5C2A3654464040FF5B7D4BB8DB190A8",
+      "backend": "ankerl",
+      "order": 0,
+      "header": "triangles=12759246 source_points=5984083 parts=21",
+      "csv": "powerplant-0-ankerl.csv",
+      "csv_sha256": "FC5719AFD59DF6F95AE21FC0815B4D54E64E51703B5E23695B3CA2A663517AA0",
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0302,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 18388.5,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 18388.5,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0157,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 18713.6,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 18713.6,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0224,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 18431.9,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 18431.9,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\powerplant.obj",
+      "input_bytes": 817891724,
+      "model_sha256": "1BDA60AC06A11A6299799C95F4CAAC63B5C2A3654464040FF5B7D4BB8DB190A8",
+      "backend": "ankerl",
+      "order": 1,
+      "header": "triangles=12759246 source_points=5984083 parts=21",
+      "csv": "powerplant-1-ankerl.csv",
+      "csv_sha256": "27D54891BF6B9FCC964C331BAEFBED45D13F76FD51258609A2041E497FE13EDB",
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0232,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 20347.9,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 20347.9,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.012,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 18409.6,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 18409.6,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0213,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 18380.0,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 18380.0,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\powerplant.obj",
+      "input_bytes": 817891724,
+      "model_sha256": "1BDA60AC06A11A6299799C95F4CAAC63B5C2A3654464040FF5B7D4BB8DB190A8",
+      "backend": "boost",
+      "order": 1,
+      "header": "triangles=12759246 source_points=5984083 parts=21",
+      "csv": "powerplant-1-boost.csv",
+      "csv_sha256": "198EA3459E3E1A6F3695343A146ADB9DA0A73753C0AC9E9D61F1EF9E69A28068",
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.024,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 20113.0,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 20113.0,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0153,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 20718.5,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 20718.6,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0133,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 21300.1,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 21300.2,
+          "counts": []
+        }
+      ]
+    },
+    {
+      "model": "D:\\temp\\obj_tests\\powerplant.obj",
+      "input_bytes": 817891724,
+      "model_sha256": "1BDA60AC06A11A6299799C95F4CAAC63B5C2A3654464040FF5B7D4BB8DB190A8",
+      "backend": "custom",
+      "order": 1,
+      "header": "triangles=12759246 source_points=5984083 parts=21",
+      "csv": "powerplant-1-custom.csv",
+      "csv_sha256": "F5D789EFC61B857E432F5048DB63593982AA5C4C6020CCE74D11A6A638D0460C",
+      "rows": [
+        {
+          "run": 0,
+          "stage": "1",
+          "milliseconds": 0.0241,
+          "counts": []
+        },
+        {
+          "run": 0,
+          "stage": "78",
+          "milliseconds": 18334.9,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 0,
+          "stage": "total",
+          "milliseconds": 18335.0,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "1",
+          "milliseconds": 0.0229,
+          "counts": []
+        },
+        {
+          "run": 1,
+          "stage": "78",
+          "milliseconds": 18301.5,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 1,
+          "stage": "total",
+          "milliseconds": 18301.5,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "1",
+          "milliseconds": 0.0122,
+          "counts": []
+        },
+        {
+          "run": 2,
+          "stage": "78",
+          "milliseconds": 18192.8,
+          "counts": [
+            119819,
+            1079616,
+            364,
+            559509,
+            58099,
+            60814,
+            67687,
+            19,
+            3261
+          ]
+        },
+        {
+          "run": 2,
+          "stage": "total",
+          "milliseconds": 18192.8,
+          "counts": []
+        }
+      ]
+    }
+  ],
+  "all_detector_count_vectors_equal": true,
+  "method": "Serial Release runs. Microbenchmark warms all paths and rotates/alternates order. Real-model stage batches use three runs in each fresh process, then reverse backend order; load/render excluded. Every trailing detector count is retained and validated across all runs/backends. No concurrent builds or tests."
+}

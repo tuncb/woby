@@ -1,0 +1,7 @@
+add_executable(woby_simplification_12 main.cpp)
+target_link_libraries(woby_simplification_12 PRIVATE woby_core nlohmann_json::nlohmann_json)
+woby_enable_project_warnings(woby_simplification_12)
+if(BUILD_TESTING)
+    add_test(NAME woby_simplification_12_contract COMMAND woby_simplification_12 --self-test)
+    set_tests_properties(woby_simplification_12_contract PROPERTIES LABELS "unit;cpu")
+endif()

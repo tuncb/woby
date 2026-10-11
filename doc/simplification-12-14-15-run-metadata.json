@@ -1,0 +1,287 @@
+{
+  "baseline_commit": "46a27585c5bc8638a8bde5d601e5cead71376631",
+  "captured_utc": "2026-10-10T23:27:29.6345025Z",
+  "configuration": "Release",
+  "preset": "vs2026-vcpkg",
+  "generator": "Visual Studio 18 2026",
+  "compiler": "MSVC 19.51.36243.0",
+  "compiler_toolset": "14.51.36231",
+  "cmake": "4.3.2",
+  "compile_flags": "/DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG",
+  "warnings": "Level4",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+  "physical_cores": 8,
+  "logical_processors": 16,
+  "physical_ram_bytes": 68564348928,
+  "os": "Microsoft Windows 11 Home",
+  "os_version": "10.0.26300",
+  "measurement_policy": "Exclusive serial timing window coordinated with root; no other builds/tests/benchmarks scheduled; five in-process samples; raw scripts record boundary-specific scope.",
+  "files": [
+    {
+      "path": "experiments/simplification-12/main.cpp",
+      "bytes": 6797,
+      "sha256": "4b1aa42975396b0c10f0d34076d0b60da3c1d1a21fa4110316e1395068cafbf4",
+      "last_write_utc": "2026-10-10T22:54:53.5110946Z"
+    },
+    {
+      "path": "experiments/simplification-12/CMakeLists.txt",
+      "bytes": 401,
+      "sha256": "b879a1f9832c79100e37729884785fdf053d1d6c718f4df4fd4c11a4f9dac5c1",
+      "last_write_utc": "2026-10-10T22:50:12.4524111Z"
+    },
+    {
+      "path": "experiments/simplification-12/run.ps1",
+      "bytes": 613,
+      "sha256": "abe80a46285c502927fd225c6d526d97585c3b60a1b8e6c8b0633b227193ce57",
+      "last_write_utc": "2026-10-10T22:58:42.5234236Z"
+    },
+    {
+      "path": "experiments/simplification-14/main.cpp",
+      "bytes": 12506,
+      "sha256": "8696933624e55f3896e48fb324c848d39a4cf183eff14624d41c34f7f2e6aec5",
+      "last_write_utc": "2026-10-10T23:05:12.5300893Z"
+    },
+    {
+      "path": "experiments/simplification-14/CMakeLists.txt",
+      "bytes": 1344,
+      "sha256": "4f4fc998be971fcb0b286a6576bd04690dd88c3c19ad92311e0c03a888eea3d5",
+      "last_write_utc": "2026-10-10T23:20:21.5967329Z"
+    },
+    {
+      "path": "experiments/simplification-14/run.ps1",
+      "bytes": 1594,
+      "sha256": "e78db6795e605fb3a77919b14db1083d2d90cec1a5838282866c2079170e56be",
+      "last_write_utc": "2026-10-10T22:58:42.5254252Z"
+    },
+    {
+      "path": "experiments/simplification-15/main.cpp",
+      "bytes": 12903,
+      "sha256": "4c6c5a5c03cfc42a2db568b198a06d99eda0d36da890d28f4c6aa79d04a086b3",
+      "last_write_utc": "2026-10-10T23:21:54.2303516Z"
+    },
+    {
+      "path": "experiments/simplification-15/CMakeLists.txt",
+      "bytes": 4059,
+      "sha256": "8dc10144b3bc2fa7170241c308d7f0a6e987724fe97362ac76e1ad467d20d255",
+      "last_write_utc": "2026-10-10T23:20:21.5978016Z"
+    },
+    {
+      "path": "experiments/simplification-15/run.ps1",
+      "bytes": 616,
+      "sha256": "6fcf578bce8aeeef5dd0c9f73ccf17f4c7039194aed00cfb1de1d30930df7a5d",
+      "last_write_utc": "2026-10-10T22:58:42.524428Z"
+    },
+    {
+      "path": "src/graphics.cpp",
+      "bytes": 88750,
+      "sha256": "89bb82fe103bf4dc1200bf277492b14f3582805f79f6ca270ac6a54308d0d60b",
+      "last_write_utc": "2026-10-10T20:46:49.6928754Z"
+    },
+    {
+      "path": "shaders/native/root.h",
+      "bytes": 1190,
+      "sha256": "49d7059466c4b4d545172e96eaf92d4a672e80c0fa4fb45c3202cb669c8551e6",
+      "last_write_utc": "2026-10-10T20:46:49.7078751Z"
+    },
+    {
+      "path": "src/obj_mesh.cpp",
+      "bytes": 31721,
+      "sha256": "de63423cb2999ff144f3d142b8e6457c06073a47171160a922daac3e0c0ce153",
+      "last_write_utc": "2026-10-10T18:39:05.6043497Z"
+    },
+    {
+      "path": "src/scene_queries.cpp",
+      "bytes": 26917,
+      "sha256": "a268bfb8edbca0e85aba4d76fae5c67b15f6e59eb13a4a18b403e1ccf1f496a6",
+      "last_write_utc": "2026-10-10T15:28:56.7660075Z"
+    },
+    {
+      "path": "src/annotation_ui.cpp",
+      "bytes": 41098,
+      "sha256": "8e9ce9799b2c7fe86bdfdb73d568cca7c0b1646b71cf4b2ebfc74921b9cd2116",
+      "last_write_utc": "2026-10-09T20:15:14.519359Z"
+    },
+    {
+      "path": "build/vs2026-vcpkg/experiments/simplification-14/mapping.inc",
+      "bytes": 3386,
+      "sha256": "53924504ff8fd8ded30f6c3fe81c28dc9d68857a6d8e5050a80678164d57b00c",
+      "last_write_utc": "2026-10-10T23:24:37.6130336Z"
+    },
+    {
+      "path": "build/vs2026-vcpkg/experiments/simplification-15/projection_float.inc",
+      "bytes": 5678,
+      "sha256": "d1008c51c3dc22f7fa6fa530ba790652d4cee83d0a1ff48d76b01fe0e9a3076d",
+      "last_write_utc": "2026-10-10T23:24:37.6160328Z"
+    },
+    {
+      "path": "build/vs2026-vcpkg/experiments/simplification-15/projection_cached.inc",
+      "bytes": 6713,
+      "sha256": "3af9c22eb4e36cf6715e507b8d22892855b9815ecb2535ed3834b34984c390b3",
+      "last_write_utc": "2026-10-10T23:24:37.6170327Z"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_simplification_12.exe",
+      "bytes": 162816,
+      "sha256": "26a0977b77b81fc90aa8cc7ff0f84cc67205b8cb822e6424d088b9deedc462b7",
+      "last_write_utc": "2026-10-10T23:02:04.4641264Z"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_simplification_14.exe",
+      "bytes": 632320,
+      "sha256": "eb64d2ae2bed78d5a4d5ad16f20752ba63875423e1397a4305011a35884d4988",
+      "last_write_utc": "2026-10-10T23:25:46.8762982Z"
+    },
+    {
+      "path": "build/vs2026-vcpkg/bin/Release/woby_simplification_15.exe",
+      "bytes": 136704,
+      "sha256": "4a5e0d7634b5f59cd027902bfc7607b8d3c5c39beacccd4caf82392af5546b2a",
+      "last_write_utc": "2026-10-10T23:26:02.3324563Z"
+    }
+  ],
+  "runs": [
+    {
+      "item": 12,
+      "start_utc": "2026-10-10T23:27:36.7912763Z",
+      "finish_utc": "2026-10-10T23:27:47.8819351Z",
+      "command": "experiments/simplification-12/run.ps1",
+      "output": "doc/simplification-12-results.json"
+    },
+    {
+      "item": 15,
+      "start_utc": "2026-10-10T23:27:56.9812174Z",
+      "finish_utc": "2026-10-10T23:29:29.272626Z",
+      "command": "experiments/simplification-15/run.ps1",
+      "output": "doc/simplification-15-results.json"
+    },
+    {
+      "item": 14,
+      "start_utc": "2026-10-10T23:29:39.3466294Z",
+      "finish_utc": "2026-10-10T23:36:49.5837361Z",
+      "command": "experiments/simplification-14/run.ps1",
+      "output": "doc/simplification-14-results.json"
+    },
+    {
+      "item": "14-capacity",
+      "start_utc": "2026-10-10T23:45:53.5556036Z",
+      "finish_utc": "2026-10-10T23:46:27.1155893Z",
+      "command": "experiments/simplification-14-capacity/run.ps1",
+      "output": "doc/simplification-14-capacity-results.json"
+    }
+  ],
+  "frozen_inputs_verified_utc": "2026-10-10T23:48:33.9369298Z",
+  "layout_scopes": {
+    "graphics_typed_packet_bytes": 72,
+    "graphics_legacy_packet_payload_bytes": 96,
+    "existing_native_root_bytes": 344,
+    "existing_native_root_arena_bytes": 352,
+    "hypothetical_root_layout_bytes": 320,
+    "hypothetical_layout_validation": "Uncompiled C++/Slang ABI estimate; requires reflection/render ID verification",
+    "vertex_bytes": 32,
+    "corner_bytes": 12,
+    "annotation_anchor_bytes": 48,
+    "annotation_world_edge_bytes": 24,
+    "annotation_projected_visible_segment_bytes": 72,
+    "obj_memory_scope": "Size-derived surface payloads and actual current-control Vertex capacity; excludes allocator overhead/process RSS; indexed variants unimplemented",
+    "annotation_allocation_scope": "Per-build slope-map requested allocation bytes; transient submit allocation/driver/GPU work excluded"
+  },
+  "measurement_limits": [
+    "No CPU affinity, fixed clock or temperature control; full five-sample ranges retained.",
+    "12/15 sample timings are normalized batched averages, not isolated call/frame latency.",
+    "14 CPU fetch order is unified then separate; every corner is validated outside timing."
+  ],
+  "result_and_calculation_files": [
+    {
+      "path": "experiments/simplification-14/summarize.ps1",
+      "bytes": 2836,
+      "sha256": "db9688e738ebb91908a095882aedc8d850d60f0da18db68772645fcdcca4cd6c",
+      "last_write_utc": "2026-10-10T23:38:07.2617031Z"
+    },
+    {
+      "path": "doc/simplification-12-results.json",
+      "bytes": 2467,
+      "sha256": "ba6f9f3a8ed1ce67c97f51f9bde8d685a09ec2be0423a734f9278b9c84e0263e",
+      "last_write_utc": "2026-10-10T23:27:47.8666296Z"
+    },
+    {
+      "path": "doc/simplification-14-results.json",
+      "bytes": 15496,
+      "sha256": "29d4863f09a68501d7e20efc814611c74309a49ce35f31d2f4a934f21e2e3a5d",
+      "last_write_utc": "2026-10-10T23:36:49.5682618Z"
+    },
+    {
+      "path": "doc/simplification-14-derived-payloads.json",
+      "bytes": 3806,
+      "sha256": "3bab5fbb1985c6a2551e1a63bfb6ec816b265d39b72741aa7846bcfe516b8c6d",
+      "last_write_utc": "2026-10-10T23:38:09.0414368Z"
+    },
+    {
+      "path": "doc/simplification-15-results.json",
+      "bytes": 48172,
+      "sha256": "f987ed7c3f9f4259f57fcbac346af317e1fcc771f49374200d4fd90a45cc6f3e",
+      "last_write_utc": "2026-10-10T23:29:29.259275Z"
+    },
+    {
+      "path": "doc/simplification-14-capacity-results.json",
+      "bytes": 15036,
+      "sha256": "1ccad07c7a8be53f58f0694705d532e22bd43c0be21f18261ffef2c618ce07a7",
+      "last_write_utc": "2026-10-10T23:46:27.1105170Z"
+    }
+  ],
+  "capacity_probe": {
+    "files": [
+      {
+        "path": "experiments/simplification-14-capacity/main.cpp",
+        "bytes": 6230,
+        "sha256": "c9e38486c130d903988c4fa11eb177a5e9834d9f30eb7196fa58b020fd8d8e20",
+        "last_write_utc": "2026-10-10T23:42:27.1781504Z"
+      },
+      {
+        "path": "experiments/simplification-14-capacity/CMakeLists.txt",
+        "bytes": 455,
+        "sha256": "b20e161cbec58b4eafbb963eed8d176376e1090b6d6e71e0e361a4f9c02da905",
+        "last_write_utc": "2026-10-10T23:42:27.1770219Z"
+      },
+      {
+        "path": "experiments/simplification-14-capacity/run.ps1",
+        "bytes": 929,
+        "sha256": "523f94650003579c9a18e3ff06b8e2ce427a7033970e34b81742f04bf9602d43",
+        "last_write_utc": "2026-10-10T23:42:27.1781504Z"
+      },
+      {
+        "path": "src/model_mesh.h",
+        "bytes": 8074,
+        "sha256": "c047499e6f2d885a71b26204bea38e87b7a66276a1cd205d631a5c2e57f658eb",
+        "last_write_utc": "2026-10-10T18:38:31.9104298Z"
+      },
+      {
+        "path": "CMakeLists.txt",
+        "bytes": 42868,
+        "sha256": "4cc6aab571b82515ff2dadb34f5a5ed673e0cd64b8168e184737b886d518e366",
+        "last_write_utc": "2026-10-10T23:42:54.8547757Z"
+      },
+      {
+        "path": "build/vs2026-vcpkg/bin/Release/woby_simplification_14_capacity.exe",
+        "bytes": 146432,
+        "sha256": "8578604ada44cd4602778f9488213da6598251c8021a4f9fa987125a8f6ad77d",
+        "last_write_utc": "2026-10-10T23:44:51.2583767Z"
+      },
+      {
+        "path": "doc/simplification-14-results.json",
+        "bytes": 15496,
+        "sha256": "29d4863f09a68501d7e20efc814611c74309a49ce35f31d2f4a934f21e2e3a5d",
+        "last_write_utc": "2026-10-10T23:36:49.5682618Z"
+      },
+      {
+        "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\include\\vector",
+        "bytes": 169028,
+        "sha256": "b254d6fc250164a9f4e71ea66e2c1e9401cb2bf8b0056550fd92135518450b51",
+        "last_write_utc": "2026-05-16T10:47:00.6493362Z"
+      }
+    ],
+    "validation": "Warning-free Debug/Release builds; Debug/Release shrink/no-op/empty contracts passed",
+    "allocation_scope": "Exact requested custom allocator bytes including rebinding; excludes heap overhead, process RSS, parser and total loader work",
+    "content_scope": "Deterministic finite synthetic Vertex buffers at actual raw model size/capacity; every byte and full checksum validated outside timer before/after trim",
+    "configuration": "Release",
+    "sizeof_vertex": 32
+  }
+}

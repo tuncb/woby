@@ -1,0 +1,13 @@
+Test project D:/woby/build/vs2026-vcpkg
+    Start 104: woby_simplification_10_contract
+    Start 105: woby_simplification_10_fma_contract
+1/2 Test #105: woby_simplification_10_fma_contract ...   Passed    7.51 sec
+2/2 Test #104: woby_simplification_10_contract .......   Passed    7.68 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Label Time Summary:
+cpu     =  15.19 sec*proc (2 tests)
+unit    =  15.19 sec*proc (2 tests)
+
+Total Test time (real) =   7.71 sec
