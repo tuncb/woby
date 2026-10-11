@@ -11,8 +11,8 @@ namespace {
 bool validAttachments(const UiState& state, const UiAnnotation& item)
 {
     const auto count = std::max(size_t{1}, item.targetIds.size());
-    if ((!item.geometry.sources.empty() && item.geometry.sources.size() != count)
-        || (item.geometry.sources.empty() != item.targetIds.empty())
+    if ((!item.geometry->sources.empty() && item.geometry->sources.size() != count)
+        || (item.geometry->sources.empty() != item.targetIds.empty())
         || (!item.targetIds.empty() && item.targetIds.front() != item.targetId)) { return false; }
     for (size_t i = 0; i < count; ++i) {
         const auto id = item.targetIds.empty() ? item.targetId : item.targetIds[i];
@@ -21,9 +21,9 @@ bool validAttachments(const UiState& state, const UiAnnotation& item)
             for (size_t g = 0; g < file.groupSettings.size() && g < meshGeometry(file.mesh).nodes.size(); ++g) {
                 if (!id || file.groupSettings[g].objectId != id) { continue; }
                 const auto& node = meshGeometry(file.mesh).nodes[g];
-                const auto& fingerprint = item.geometry.sources.empty() ? item.geometry.fingerprint : item.geometry.sources[i].fingerprint;
+                const auto& fingerprint = item.geometry->sources.empty() ? item.geometry->fingerprint : item.geometry->sources[i].fingerprint;
                 if (fingerprint != gestureFingerprint(file.mesh, node.indexOffset, node.indexCount)) { return false; }
-                for (const auto& segment : item.geometry.segments) {
+                for (const auto& segment : item.geometry->segments) {
                     if ((segment.source == i && segment.triangle >= node.indexCount / 3)
                         || (segment.endSource.value_or(segment.source) == i
                             && segment.endTriangle.value_or(segment.triangle) >= node.indexCount / 3)) { return false; }
@@ -60,9 +60,17 @@ SceneObjectId loadedTarget(const UiState& state, const SceneDocument& document, 
 void migrateAnnotationFrame(UiAnnotation& item, const SceneAnnotationRecord& record,
     const UiState& state, const SceneDocument& document, std::map<size_t, Mesh>& legacyMeshes)
 {
-    auto geometry = item.geometry;
     const auto targets = record.targets.empty()
         ? std::vector<SceneAnnotationTarget>{{record.fileIndex, record.groupIndex}} : record.targets;
+    // Current scenes keep their owner. Only legacy coordinate migration needs
+    // a new geometry value, and it must not alter clean or historical owners.
+    if (std::none_of(targets.begin(), targets.end(), [&](const auto& target) {
+        if (target.fileIndex < 0) { return false; }
+        const auto index = static_cast<size_t>(target.fileIndex);
+        return index < document.files.size() && index < state.files.size()
+            && !document.files[index].coordinateOrigin && state.files[index].mesh.origin != Coordinate{};
+    })) { return; }
+    auto geometry = *item.geometry;
     std::vector<Coordinate> offsets(targets.size());
     bool changed = false;
     for (size_t i = 0; i < targets.size(); ++i) {
@@ -105,7 +113,7 @@ void migrateAnnotationFrame(UiAnnotation& item, const SceneAnnotationRecord& rec
         geometry.fingerprint = geometry.sources[0].fingerprint;
     }
     validateAnnotationGeometry(geometry);
-    item.geometry = std::move(geometry);
+    item.geometry = shareAnnotationGeometry(std::move(geometry));
 }
 } // namespace
 std::vector<SceneObjectId> annotationGroupTargets(const UiState& state, SceneObjectId target)
@@ -145,7 +153,7 @@ std::vector<std::array<float, 3>> annotationVertices(const UiState& state, const
     for (const auto& file : state.files) {
         for (size_t g = 0; g < file.groupSettings.size() && g < meshGeometry(file.mesh).nodes.size(); ++g) {
             if (file.groupSettings[g].objectId == item.targetId) {
-                return annotationControlPositions(file.mesh, meshGeometry(file.mesh).nodes[g].indexOffset, item.geometry);
+                return annotationControlPositions(file.mesh, meshGeometry(file.mesh).nodes[g].indexOffset, *item.geometry);
             }
         }
     }
@@ -186,7 +194,11 @@ void validateAnnotationTargets(UiState& state)
 }
 SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationGeometry geometry, std::vector<SceneObjectId> targets)
 {
-    validateAnnotationGeometry(geometry);
+    return createAnnotation(state, target, shareAnnotationGeometry(std::move(geometry)), std::move(targets));
+}
+SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationGeometryOwner geometry, std::vector<SceneObjectId> targets)
+{
+    validateAnnotationGeometry(*geometry);
     const auto object = findSceneObject(state, target);
     if (!object || object->kind != SceneObjectKind::group) { throw std::runtime_error("Choose a model part for the annotation."); }
     UiAnnotation item;
@@ -194,7 +206,7 @@ SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationG
     item.targetIds = std::move(targets);
     item.targetName = object->name;
     if (const auto file = findSceneObject(state, object->fileId)) { item.targetName = file->name + " / " + item.targetName; }
-    item.settings.name = (geometry.shape == AnnotationShape::line ? "Surface line " : "Surface rectangle ") + std::to_string(state.annotations.size() + 1);
+    item.settings.name = (geometry->shape == AnnotationShape::line ? "Surface line " : "Surface rectangle ") + std::to_string(state.annotations.size() + 1);
     item.geometry = std::move(geometry);
     // Validate before mutating the scene, including untrusted operation callers.
     if (!item.targetIds.empty()) {
@@ -264,12 +276,16 @@ void setAllAnnotationsVisible(UiState& state, bool visible)
 
 void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometry geometry)
 {
-    validateAnnotationGeometry(geometry);
+    reshapeAnnotation(state, id, shareAnnotationGeometry(std::move(geometry)));
+}
+void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometryOwner geometry)
+{
+    validateAnnotationGeometry(*geometry);
     for (auto& item : state.annotations) {
         if (item.objectId != id) { continue; }
         if (item.settings.locked || !item.targetValid || !findSceneObject(state, item.targetId)) { throw std::runtime_error("This annotation is locked or its target is unavailable."); }
-        if (geometry.fingerprint != item.geometry.fingerprint || geometry.projector != item.geometry.projector
-            || geometry.sources != item.geometry.sources) { throw std::runtime_error("Annotation attachment cannot change while reshaping."); }
+        if (geometry->fingerprint != item.geometry->fingerprint || geometry->projector != item.geometry->projector
+            || geometry->sources != item.geometry->sources) { throw std::runtime_error("Annotation attachment cannot change while reshaping."); }
         auto candidate = item;
         candidate.geometry = geometry;
         if (!validAttachments(state, candidate)) { throw std::runtime_error("Invalid annotation triangle."); }
@@ -299,20 +315,22 @@ std::vector<SceneAnnotationRecord> sceneAnnotationRecords(const UiState& state)
 }
 void loadSceneAnnotations(UiState& state, const SceneDocument& document)
 {
-    state.annotations.clear();
+    std::vector<UiAnnotation> annotations;
+    annotations.reserve(document.annotations.size());
     std::map<size_t, Mesh> legacyMeshes;
     for (const auto& record : document.annotations) {
-        validateAnnotationGeometry(record.geometry);
+        validateAnnotationGeometry(*record.geometry);
         UiAnnotation item;
         item.targetName = record.targetName;
         item.settings = normalizedAnnotationSettings(record.settings);
         item.geometry = record.geometry;
-        if (record.targets.size() != record.geometry.sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
+        if (record.targets.size() != record.geometry->sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
         item.targetId = loadedTarget(state, document, {record.fileIndex, record.groupIndex});
         for (const auto& target : record.targets) { item.targetIds.push_back(loadedTarget(state, document, target)); }
         migrateAnnotationFrame(item, record, state, document, legacyMeshes);
-        state.annotations.push_back(std::move(item));
+        annotations.push_back(std::move(item));
     }
+    state.annotations = std::move(annotations);
     assignSceneObjectIds(state);
     validateAnnotationTargets(state);
 }

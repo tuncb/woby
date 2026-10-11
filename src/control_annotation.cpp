@@ -25,16 +25,16 @@ Json controlAnnotationDetails(const UiState& state, const UiAnnotation& item)
 {
     const auto& settings = item.settings;
     const auto parts = scenePickParts(state);
-    return {{"shape", item.geometry.shape == AnnotationShape::line ? "line" : "rectangle"},
+    return {{"shape", item.geometry->shape == AnnotationShape::line ? "line" : "rectangle"},
         {"settings", {{"name", settings.name}, {"comments", settings.note}, {"visible", settings.visible},
             {"locked", settings.locked}, {"width", settings.width}, {"color", settings.color}}},
         {"sourceName", item.targetName}, {"targetValid", item.targetValid && findSceneObject(state, item.targetId).has_value()},
         {"targetPending", item.targetPending},
         {"effectiveVisible", !annotationWorldLines(item, parts).empty()},
         {"vertices", annotationOriginalVertices(state, item)}, {"vertexSpace", item.targetIds.empty() ? "model" : "world"},
-        {"start", item.geometry.start}, {"end", item.geometry.end}, {"controlSpace", "original-projector-ndc"},
-        {"projector", item.geometry.projector}, {"homogeneousDepth", item.geometry.homogeneousDepth},
-        {"segmentCount", item.geometry.segments.size()}};
+        {"start", item.geometry->start}, {"end", item.geometry->end}, {"controlSpace", "original-projector-ndc"},
+        {"projector", item.geometry->projector}, {"homogeneousDepth", item.geometry->homogeneousDepth},
+        {"segmentCount", item.geometry->segments.size()}};
 }
 
 Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanDocument,
@@ -66,8 +66,8 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
             depth.nearPlane, depth.farPlane, true);
         AnnotationProjection projection;
         if (!computed) { projection = annotationProjection(scenePickParts(state), view, id, annotationGroupTargets(state, id), annotationRegion(*command.start, *command.end)); }
-        auto geometry = computed ? computed->geometry : projectAnnotation(projection,
-            *command.shape == "line" ? AnnotationShape::line : AnnotationShape::rectangle, *command.start, *command.end);
+        auto geometry = computed ? computed->geometry : shareAnnotationGeometry(projectAnnotation(projection,
+            *command.shape == "line" ? AnnotationShape::line : AnnotationShape::rectangle, *command.start, *command.end));
         // CLI commands name their target explicitly; preserve the user's selection.
         const auto selection = state.selectedSceneObjects;
         id = createAnnotation(state, id, std::move(geometry), computed ? computed->targets : projection.targetIds);
@@ -86,14 +86,14 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
             const auto parts = scenePickParts(state);
             const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& part) { return part.objectId == item->targetId; });
             if (target == parts.end()) { throw std::invalid_argument("Make the annotation source model visible before editing its geometry."); }
-            auto start = command.start.value_or(item->geometry.start), end = command.end.value_or(item->geometry.end);
+            auto start = command.start.value_or(item->geometry->start), end = command.end.value_or(item->geometry->end);
             if (command.delta) {
                 for (size_t axis = 0; axis < 2; ++axis) { start[axis] += (*command.delta)[axis]; end[axis] += (*command.delta)[axis]; }
             }
             if (computed) { reshapeAnnotation(state, id, computed->geometry); }
             else {
                 const auto projection = annotationEditProjection(parts, *item, annotationRegion(start, end));
-                reshapeAnnotation(state, id, projectAnnotation(projection, item->geometry.shape, start, end));
+                reshapeAnnotation(state, id, projectAnnotation(projection, item->geometry->shape, start, end));
             }
         } else if (command.action != A::annotationSet && command.action != A::visibility
             && command.action != A::colorSet && command.action != A::colorReset && command.action != A::opacity) {

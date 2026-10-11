@@ -36,7 +36,7 @@ struct Content {
 std::vector<std::shared_ptr<const AnnotationGeometry>> publishGeometry(const UiState& state) {
     std::vector<std::shared_ptr<const AnnotationGeometry>> result;
     result.reserve(state.annotations.size());
-    for(const auto& item:state.annotations){result.push_back(std::make_shared<const AnnotationGeometry>(item.geometry));}
+    for(const auto& item:state.annotations){result.push_back(std::make_shared<const AnnotationGeometry>(*item.geometry));}
     return result;
 }
 Content capture(const UiState& state,const std::vector<std::shared_ptr<const AnnotationGeometry>>& published,bool share) {
@@ -53,7 +53,7 @@ Content capture(const UiState& state,const std::vector<std::shared_ptr<const Ann
     for(size_t i=0;i<state.annotations.size();++i) {
         const auto& item=state.annotations[i];UiAnnotation copy;
         copy.objectId=item.objectId;copy.targetId=item.targetId;copy.targetIds=item.targetIds;copy.targetName=item.targetName;copy.settings=item.settings;
-        m.annotations.push_back(std::move(copy));result.annotationGeometry.push_back(share?published.at(i):std::make_shared<const AnnotationGeometry>(item.geometry));
+        m.annotations.push_back(std::move(copy));result.annotationGeometry.push_back(share?published.at(i):std::make_shared<const AnnotationGeometry>(*item.geometry));
     }
     m.files.reserve(state.files.size());result.fileParts.reserve(state.files.size());
     for(const auto& file:state.files) {
@@ -113,7 +113,7 @@ UiState materialize(const Content& content) {
     for(size_t f=0;f<result.files.size();++f){auto& nodes=editMeshGeometry(result.files[f].mesh).nodes;
         for(const auto& descriptor:content.fileParts[f]){MeshNode node;node.name=descriptor.name;node.lineIndexCount=descriptor.line?1u:0u;node.pointIndexCount=descriptor.point?1u:0u;nodes.push_back(std::move(node));}
         publishMeshGeometry(result.files[f].mesh);}
-    for(size_t i=0;i<result.annotations.size();++i){result.annotations[i].geometry=*content.annotationGeometry[i];}
+    for(size_t i=0;i<result.annotations.size();++i){result.annotations[i].geometry={content.annotationGeometry[i]};}
     return result;
 }
 struct History {
@@ -157,9 +157,10 @@ UiState fixture(size_t segments,size_t groups,const std::filesystem::path& fixtu
     appendDefaultSceneNodesForFiles(state,0);assignSceneObjectIds(state);
     if(segments) {
         UiAnnotation annotation;annotation.objectId=state.nextObjectId++;annotation.targetId=state.files[0].groupSettings[0].objectId;
-        annotation.targetName="history-source.obj / part 0";annotation.geometry.fingerprint="synthetic-history-fixture";annotation.geometryRevision=1;
-        annotation.geometry.segments.resize(segments);
-        for(size_t i=0;i<segments;++i){auto& segment=annotation.geometry.segments[i];segment.a={1,0,0};segment.b={0,1,0};if(i%17==0){segment.endTriangle=0;}}
+        annotation.targetName="history-source.obj / part 0";AnnotationGeometry geometry;geometry.fingerprint="synthetic-history-fixture";annotation.geometryRevision=1;
+        geometry.segments.resize(segments);
+        for(size_t i=0;i<segments;++i){auto& segment=geometry.segments[i];segment.a={1,0,0};segment.b={0,1,0};if(i%17==0){segment.endTriangle=0;}}
+        annotation.geometry=shareAnnotationGeometry(std::move(geometry));
         state.annotations.push_back(std::move(annotation));
     }
     return state;
@@ -175,7 +176,7 @@ void selfTest() {
     edit(9,0);edit(11,0);baseline.cursor=1;shared.cursor=1;setMasterVertexPointSize(state,15);recordSceneHistory(baseline,state);record(shared,state,published,true);compare();
     const auto first=capture(state,published,true);auto equivalent=publishGeometry(state);const auto separate=capture(state,equivalent,true);
     require(equalContent(first,separate),"Equal geometry with another owner changed content");
-    state.annotations[0].geometry.segments.back().b={0,0,1};++state.annotations[0].geometryRevision;published=publishGeometry(state);
+    auto changedGeometry=*state.annotations[0].geometry;changedGeometry.segments.back().b={0,0,1};state.annotations[0].geometry=shareAnnotationGeometry(std::move(changedGeometry));++state.annotations[0].geometryRevision;published=publishGeometry(state);
     require(!equalContent(first,capture(state,published,true)),"Geometry replacement was lost");
     markSceneDirty(state);recordSceneHistory(baseline,state);record(shared,state,published,true);compare();
     const auto persistent=capture(state,published,true);state.camera.yawRadians+=1;state.uiScale=1.5f;state.selectedSceneObjects={state.files[0].objectId};
@@ -211,8 +212,9 @@ Json sample(UiState& state,int actions,int run) {
     for(size_t i=0;i<shared.snapshots.size();++i){require(sceneContentEqual(createSceneDocument(materialize(shared.snapshots[i])),wide.snapshots[i].document),"Benchmark content changed");}
     result["snapshots"]=wide.snapshots.size();
     size_t productionSegmentBytes=0,singleSegmentBytes=0,sharedUniqueSegmentBytes=0;
-    for(const auto& snapshot:wide.snapshots){for(const auto& item:snapshot.content.annotations){productionSegmentBytes+=item.geometry.segments.capacity()*sizeof(AnnotationSegment);}
-        for(const auto& item:snapshot.document.annotations){productionSegmentBytes+=item.geometry.segments.capacity()*sizeof(AnnotationSegment);}}
+    std::set<const AnnotationGeometry*> productionOwners;
+    for(const auto& snapshot:wide.snapshots){for(const auto& item:snapshot.content.annotations){if(productionOwners.insert(item.geometry.storage.get()).second){productionSegmentBytes+=item.geometry->segments.capacity()*sizeof(AnnotationSegment);}}
+        for(const auto& item:snapshot.document.annotations){if(productionOwners.insert(item.geometry.storage.get()).second){productionSegmentBytes+=item.geometry->segments.capacity()*sizeof(AnnotationSegment);}}}
     for(const auto& snapshot:one.snapshots){for(const auto& geometry:snapshot.annotationGeometry){singleSegmentBytes+=geometry->segments.capacity()*sizeof(AnnotationSegment);}}
     std::set<const AnnotationGeometry*> seenGeometry;
     for(const auto& snapshot:shared.snapshots){for(const auto& geometry:snapshot.annotationGeometry){if(seenGeometry.insert(geometry.get()).second){sharedUniqueSegmentBytes+=geometry->segments.capacity()*sizeof(AnnotationSegment);}}}
@@ -257,7 +259,7 @@ int main(int argc,char** argv) {
             const size_t segments=std::stoull(argv[1]),groups=std::stoull(argv[2]);
             require(segments<=1000000&&groups>0&&groups<=100000,"Invalid dimensions");state=fixture(segments,groups,root.path);
         }
-        size_t segments=0,groups=0;for(const auto& a:state.annotations){segments+=a.geometry.segments.size();}for(const auto& file:state.files){groups+=file.groupSettings.size();}
+        size_t segments=0,groups=0;for(const auto& a:state.annotations){segments+=a.geometry->segments.size();}for(const auto& file:state.files){groups+=file.groupSettings.size();}
         Json output{{"workload",workload},{"segments",segments},{"groups",groups},{"actions",actions},{"sizeof_segment",sizeof(AnnotationSegment)},
             {"notes","Release requested C++ allocation sizes, global new header and atomic counters. Synthetic valid barycentric segments; annotation attachment is not exercised. Live source and published geometry owners are outside measured snapshot storage. Single-content candidate uses one geometry value per snapshot. Shared candidate uses one immutable published owner; migration must also replace the live value. Oracle persistence checks run outside timing. Apply View/reload/stale worker tests remain production implementation gates."}};
         Json runs=Json::array();for(int i=0;i<repeats;++i){std::cerr<<"sample "<<i<<'\n';runs.push_back(sample(state,actions,i));}output["samples"]=std::move(runs);std::cout<<output.dump(2)<<'\n';

@@ -5,6 +5,7 @@
 #include "ui_operations.h"
 #include "automation_registry.h"
 #include "control_scene.h"
+#include "surface_annotation.h"
 
 #include <doctest/doctest.h>
 #include <nlohmann/json.hpp>
@@ -56,6 +57,18 @@ struct HistoryFixture {
         woby::commitSceneHistoryStep(history, state, std::move(*prepared), redo);
     }
 };
+
+woby::SceneObjectId addHistoryAnnotation(HistoryFixture& fixture, size_t fileIndex = 0)
+{
+    const auto& file = fixture.state.files[fileIndex];
+    woby::AnnotationGeometry geometry;
+    geometry.projector = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+    geometry.fingerprint = woby::annotationFingerprint(file.mesh, 0, 3);
+    geometry.end = {1,0};
+    woby::AnnotationSegment segment; segment.a = {1,0,0}; segment.b = {0,1,0};
+    geometry.segments.push_back(segment);
+    return woby::createAnnotation(fixture.state, file.groupSettings[0].objectId, std::move(geometry));
+}
 
 } // namespace
 
@@ -514,6 +527,43 @@ TEST_CASE("scene history reload accepts changed source geometry and refreshes bo
     CHECK(woby::canRedoScene(f.history));
 }
 
+TEST_CASE("annotation history retains shared outlines and target identities across source reload")
+{
+    HistoryFixture f;
+    const auto id = addHistoryAnnotation(f);
+    const auto target = woby::findAnnotation(f.state, id)->targetId;
+    const auto geometry = woby::findAnnotation(f.state, id)->geometry;
+    f.clean = woby::createSceneDocument(f.state);
+    woby::resetSceneHistory(f.history, f.state);
+    REQUIRE(woby::removeFileFromState(f.state, 0));
+    REQUIRE(woby::recordSceneHistory(f.history, f.state));
+    CHECK(woby::findAnnotation(f.state, id)->geometry.storage == geometry.storage);
+    CHECK(woby::findAnnotation(f.state, id)->targetId == target);
+    CHECK_FALSE(woby::findAnnotation(f.state, id)->targetValid);
+    bool changed = false;
+    SUBCASE("unchanged source restores attachment") {}
+    SUBCASE("changed source preserves the unresolved annotation") { writeHistoryModel(f.source, 9); changed = true; }
+    SUBCASE("missing source leaves the live state and owners intact") {
+        std::filesystem::remove(f.source);
+        CHECK_THROWS((void)woby::loadSceneHistoryStep(f.history, f.state, f.clean, false));
+        CHECK(f.state.files.empty());
+        CHECK(f.history.cursor == 1);
+        CHECK(woby::findAnnotation(f.state, id)->geometry.storage == geometry.storage);
+        CHECK(woby::findAnnotation(f.state, id)->targetId == target);
+        return;
+    }
+    f.step();
+    const auto* restored = woby::findAnnotation(f.state, id);
+    REQUIRE(restored);
+    CHECK(restored->geometry.storage == geometry.storage);
+    CHECK(restored->targetId == target);
+    CHECK(restored->targetValid == !changed);
+    CHECK_FALSE(f.state.isDirty);
+    f.step(true);
+    CHECK(woby::findAnnotation(f.state, id)->geometry.storage == geometry.storage);
+    CHECK_FALSE(woby::findAnnotation(f.state, id)->targetValid);
+}
+
 TEST_CASE("scene history edits reuse loaded geometry even when its source disappears")
 {
     HistoryFixture f;
@@ -584,6 +634,10 @@ TEST_CASE("scene history preparation does not partly restore a batch when one so
     f.state.files.push_back(woby::createUiFileState(f.root / "second.obj",
         woby::loadModelMesh(f.root / "second.obj"), 1));
     woby::appendDefaultSceneNodesForFiles(f.state, 1);
+    const auto firstAnnotation = addHistoryAnnotation(f);
+    const auto secondAnnotation = addHistoryAnnotation(f, 1);
+    const auto firstGeometry = woby::findAnnotation(f.state, firstAnnotation)->geometry;
+    const auto secondGeometry = woby::findAnnotation(f.state, secondAnnotation)->geometry;
     woby::UiState empty;
     woby::resetSceneHistory(f.history, empty);
     woby::recordSceneHistory(f.history, f.state);
@@ -591,6 +645,9 @@ TEST_CASE("scene history preparation does not partly restore a batch when one so
     std::filesystem::remove(f.root / "second.obj");
     CHECK_THROWS((void)woby::loadSceneHistoryStep(f.history, f.state, f.clean, true));
     CHECK(f.state.files.empty());
+    CHECK(f.state.annotations.empty());
+    CHECK(f.history.snapshots[1].content.annotations[0].geometry.storage == firstGeometry.storage);
+    CHECK(f.history.snapshots[1].content.annotations[1].geometry.storage == secondGeometry.storage);
     woby::skipSceneHistoryStep(f.history, f.state, true);
     CHECK_FALSE(woby::canRedoScene(f.history));
     CHECK(f.state.files.empty());

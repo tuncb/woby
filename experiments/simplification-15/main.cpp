@@ -46,12 +46,14 @@ Fixture fixture(size_t count,bool oblique,bool bridges,bool nearClip,bool unique
         g.indices.insert(g.indices.end(),{first,first+1,first+2});
     }
     f.item.objectId=2; f.item.targetId=1; f.item.targetValid=true;
-    f.item.geometry.segments.reserve(count);
+    AnnotationGeometry geometry;
+    geometry.segments.reserve(count);
     for(size_t i=0;i<count;++i) {
         AnnotationSegment s; s.triangle=uint32_t(i%cells); s.a={.8f,.1f,.1f}; s.b={.1f,.8f,.1f};
         if(bridges && i%2==0) s.endTriangle=(s.triangle+1)%cells;
-        f.item.geometry.segments.push_back(s);
+        geometry.segments.push_back(s);
     }
+    f.item.geometry=shareAnnotationGeometry(std::move(geometry));
     ScenePickPart part; part.objectId=1; part.mesh=&f.mesh; part.indexCount=g.indices.size(); identityMatrix(part.model.data());
     f.parts.push_back(part); f.query.builds=1;
     identityMatrix(f.view.view.data()); identityMatrix(f.view.renderProjection.data());
@@ -100,10 +102,12 @@ void selfTest() {
     auto multi=fixture(128,true,true,false); repair(multi);
     auto second=multi.parts.front(); second.objectId=3; second.model[12]=.025f; multi.parts.push_back(second);
     multi.item.targetIds={1,3};
-    for(size_t i=0;i<multi.item.geometry.segments.size();++i) {
-        auto& s=multi.item.geometry.segments[i]; s.source=uint32_t(i%2);
+    auto multiGeometry=*multi.item.geometry;
+    for(size_t i=0;i<multiGeometry.segments.size();++i) {
+        auto& s=multiGeometry.segments[i]; s.source=uint32_t(i%2);
         if(s.endTriangle) s.endSource=uint32_t((i+1)%2);
     }
+    multi.item.geometry=shareAnnotationGeometry(std::move(multiGeometry));
     repair(multi); AnnotationQuery multiCached; multiCached.lines=multi.query.lines; multiCached.builds=1;
     updateAnnotationProjection(multi.query,multi.item,multi.parts,multi.view);
     slopeCachedProjection(multiCached,multi.item,multi.parts,multi.view); equalProjection(multi.query,multiCached);
@@ -190,7 +194,7 @@ int main(int argc,char** argv) {
                     {"world_cache_bytes",f.query.lines.capacity()*sizeof(DiagnosticEdge)},
                     {"projection_capacity_bytes",f.query.projected.capacity()*sizeof(f.query.projected.front())},
                     {"submitted_bytes",f.query.projected.size()*sizeof(f.query.projected.front())},
-                    {"anchor_bytes",f.item.geometry.segments.size()*sizeof(AnnotationSegment)},
+                    {"anchor_bytes",f.item.geometry->segments.size()*sizeof(AnnotationSegment)},
                     {"slope_cache_entries",slopeMetrics.entries},{"slope_cache_requested_bytes",slopeMetrics.requestedBytes},
                     {"slope_cache_allocations",slopeMetrics.allocations},
                     {"rounds",rounds},{"samples",samples}});

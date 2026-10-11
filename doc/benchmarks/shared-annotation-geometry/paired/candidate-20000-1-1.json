@@ -1,0 +1,31 @@
+{
+  "actions": 12,
+  "discrete": [
+    {
+      "allocation_calls": 385,
+      "allocation_traffic_bytes": 65120,
+      "extra_peak_bytes": 42184,
+      "extra_retained_bytes": 41248,
+      "geometry_owners_live_clean_history": 1,
+      "ms": 0.0825,
+      "segment_capacity_bytes_live_clean_history": 960000,
+      "snapshots": 13,
+      "verified": true
+    }
+  ],
+  "drag": [
+    {
+      "allocation_calls": 373,
+      "allocation_traffic_bytes": 51176,
+      "extra_peak_bytes": 5608,
+      "extra_retained_bytes": 3432,
+      "geometry_owners_live_clean_history": 1,
+      "ms": 0.0744,
+      "segment_capacity_bytes_live_clean_history": 960000,
+      "snapshots": 2,
+      "verified": true
+    }
+  ],
+  "groups": 1,
+  "segments": 20000
+}

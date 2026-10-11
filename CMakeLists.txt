@@ -331,7 +331,7 @@ if(WOBY_BUILD_SIMPLIFICATION_PROBES)
     add_subdirectory(experiments/simplification-19-dense-set)
     add_subdirectory(experiments/simplification-14-capacity)
     list(APPEND woby_runtime_targets
-        woby_simplification_10_probe woby_simplification_11_probe
+        woby_simplification_10_probe woby_simplification_11_probe woby_annotation_history_benchmark
         woby_intersection_adoption_benchmark
         woby_simplification_12 woby_instance_query_probe
         woby_simplification_14 woby_simplification_14_capacity woby_simplification_15

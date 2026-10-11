@@ -4,7 +4,7 @@
 
 namespace woby {
 struct AnnotationCommandResult {
-    AnnotationGeometry geometry;
+    AnnotationGeometryOwner geometry;
     std::vector<SceneObjectId> targets;
     size_t projectedTriangles = 0, projectedVertices = 0;
     double snapshotMilliseconds = 0, projectionMilliseconds = 0, exactMilliseconds = 0;

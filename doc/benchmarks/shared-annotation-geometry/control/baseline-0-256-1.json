@@ -1,0 +1,207 @@
+{
+  "actions": 12,
+  "discrete": [
+    {
+      "allocation_calls": 901,
+      "allocation_traffic_bytes": 4996220,
+      "extra_peak_bytes": 1923493,
+      "extra_retained_bytes": 1843888,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 2.6894,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 901,
+      "allocation_traffic_bytes": 4996220,
+      "extra_peak_bytes": 1923493,
+      "extra_retained_bytes": 1843888,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 2.5904,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 901,
+      "allocation_traffic_bytes": 4996220,
+      "extra_peak_bytes": 1923493,
+      "extra_retained_bytes": 1843888,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 2.4389,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 901,
+      "allocation_traffic_bytes": 4996220,
+      "extra_peak_bytes": 1923493,
+      "extra_retained_bytes": 1843888,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 2.5351,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 901,
+      "allocation_traffic_bytes": 4996220,
+      "extra_peak_bytes": 1923493,
+      "extra_retained_bytes": 1843888,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 2.3777,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 901,
+      "allocation_traffic_bytes": 4996220,
+      "extra_peak_bytes": 1923493,
+      "extra_retained_bytes": 1843888,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 2.2523,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 901,
+      "allocation_traffic_bytes": 4996220,
+      "extra_peak_bytes": 1923493,
+      "extra_retained_bytes": 1843888,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 2.2742,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 901,
+      "allocation_traffic_bytes": 4996220,
+      "extra_peak_bytes": 1923493,
+      "extra_retained_bytes": 1843888,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 2.4871,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    },
+    {
+      "allocation_calls": 901,
+      "allocation_traffic_bytes": 4996220,
+      "extra_peak_bytes": 1923493,
+      "extra_retained_bytes": 1843888,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 2.2516,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 13,
+      "verified": true
+    }
+  ],
+  "drag": [
+    {
+      "allocation_calls": 889,
+      "allocation_traffic_bytes": 4982276,
+      "extra_peak_bytes": 306048,
+      "extra_retained_bytes": 153652,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 3.9625,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 889,
+      "allocation_traffic_bytes": 4982276,
+      "extra_peak_bytes": 306048,
+      "extra_retained_bytes": 153652,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 4.0429,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 889,
+      "allocation_traffic_bytes": 4982276,
+      "extra_peak_bytes": 306048,
+      "extra_retained_bytes": 153652,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 3.8592,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 889,
+      "allocation_traffic_bytes": 4982276,
+      "extra_peak_bytes": 306048,
+      "extra_retained_bytes": 153652,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 3.7019,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 889,
+      "allocation_traffic_bytes": 4982276,
+      "extra_peak_bytes": 306048,
+      "extra_retained_bytes": 153652,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 3.4173,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 889,
+      "allocation_traffic_bytes": 4982276,
+      "extra_peak_bytes": 306048,
+      "extra_retained_bytes": 153652,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 2.9417,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 889,
+      "allocation_traffic_bytes": 4982276,
+      "extra_peak_bytes": 306048,
+      "extra_retained_bytes": 153652,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 3.2181,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 889,
+      "allocation_traffic_bytes": 4982276,
+      "extra_peak_bytes": 306048,
+      "extra_retained_bytes": 153652,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 3.8202,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    },
+    {
+      "allocation_calls": 889,
+      "allocation_traffic_bytes": 4982276,
+      "extra_peak_bytes": 306048,
+      "extra_retained_bytes": 153652,
+      "geometry_owners_live_clean_history": 0,
+      "ms": 2.8359,
+      "segment_capacity_bytes_live_clean_history": 0,
+      "snapshots": 2,
+      "verified": true
+    }
+  ],
+  "groups": 256,
+  "segments": 0
+}

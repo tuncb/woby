@@ -966,8 +966,7 @@ AnnotationProjection annotationEditProjection(const ScenePickPart& target, const
     AnnotationProjection result;
     result.region = region; result.stop = stop; result.editing = true;
     result.targetId = target.objectId;
-    result.definition = geometry;
-    result.definition.segments.clear();
+    result.definition = annotationGeometryDefinition(geometry);
     ProjectionVertexCache cache;
     appendRegion(result, target, geometry.projector, geometry.homogeneousDepth, cache);
     finishProjection(result);
@@ -1006,17 +1005,17 @@ AnnotationProjection annotationEditProjection(std::span<const ScenePickPart> par
 {
     const auto* primary = annotationSourcePart(item, parts, 0);
     if (!primary) { throw std::runtime_error("Make the annotation source model visible before editing its geometry."); }
-    if (item.targetIds.empty()) { return annotationEditProjection(*primary, item.geometry, region, stop); }
+    if (item.targetIds.empty()) { return annotationEditProjection(*primary, *item.geometry, region, stop); }
     AnnotationProjection result;
     result.region = region; result.stop = stop; result.editing = true;
     result.targetId = item.targetId; result.targetIds = item.targetIds;
-    result.definition = item.geometry; result.definition.segments.clear();
+    result.definition = annotationGeometryDefinition(*item.geometry);
     ProjectionVertexCache cache;
     for (size_t i = 0; i < item.targetIds.size(); ++i) {
         const auto* part = annotationSourcePart(item, parts, static_cast<uint32_t>(i));
         if (!part || !part->mesh) { throw std::runtime_error("Make all annotation source parts visible before editing."); }
-        const auto& projector = annotationSourceProjector(item.geometry, static_cast<uint32_t>(i));
-        appendRegion(result, *part, projector, item.geometry.homogeneousDepth, cache);
+        const auto& projector = annotationSourceProjector(*item.geometry, static_cast<uint32_t>(i));
+        appendRegion(result, *part, projector, item.geometry->homogeneousDepth, cache);
     }
     finishProjection(result);
     return result;
@@ -1242,7 +1241,7 @@ std::vector<std::array<float, 3>> annotationControlWorldPositions(const UiAnnota
         if (!part || !part->mesh) { return {}; }
         sources.push_back(part);
     }
-    const auto& geometry = item.geometry;
+    const auto& geometry = *item.geometry;
     const auto controls = outlinePoints(geometry.shape, geometry.start, geometry.end);
     std::vector<std::array<float, 3>> result;
     const size_t count = geometry.shape == AnnotationShape::line ? 2 : 4;
@@ -1293,8 +1292,8 @@ void annotationWorldLines(const UiAnnotation& item, std::span<const ScenePickPar
         if (!part || !part->mesh || part->opacity <= 0) { sources.clear(); return; }
         sources.push_back(part);
     }
-    lines.reserve(item.geometry.segments.size());
-    for (const auto& segment : item.geometry.segments) {
+    lines.reserve(item.geometry->segments.size());
+    for (const auto& segment : item.geometry->segments) {
         DiagnosticEdge edge;
         size_t k = 0;
         for (const auto& bary : {segment.a, segment.b}) {

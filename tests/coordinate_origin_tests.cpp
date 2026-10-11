@@ -200,11 +200,12 @@ TEST_CASE("coordinate origin preserves annotation attachments and original verte
     SUBCASE("legacy projectors migrate after matching the old fingerprint") {
         auto legacy = mesh;
         woby::rebaseMesh(legacy,{});
-        auto& old = document.annotations[0].geometry;
+        auto old = *document.annotations[0].geometry;
         old.fingerprint = woby::annotationFingerprint(legacy,0,3);
         for (size_t row = 0; row < 4; ++row) {
             for (size_t k = 0; k < 3; ++k) { old.projector[12+row] -= old.projector[k*4+row]*mesh.origin[k]; }
         }
+        document.annotations[0].geometry = woby::shareAnnotationGeometry(std::move(old));
         document.coordinateOrigin.reset();
         for (auto& file : document.files) { file.coordinateOrigin.reset(); }
     }

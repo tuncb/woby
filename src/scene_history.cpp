@@ -42,6 +42,11 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     content.masterVertexPointSize = state.masterVertexPointSize;
     content.views = state.views;
     content.annotations = state.annotations;
+    for (auto& annotation : content.annotations) {
+        annotation.targetValid = false;
+        annotation.targetPending = false;
+        annotation.geometryRevision = 0;
+    }
     content.comparisons = state.comparisons;
     for (auto& comparison : content.comparisons) {
         comparison.diagnosticFocus.reset();
@@ -180,6 +185,11 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
             comparison.intersectionRequestRevision = live->intersectionRequestRevision;
             comparison.cancelIntersections = live->cancelIntersections;
             comparison.detectorRequests = live->detectorRequests;
+        }
+    }
+    for (auto& annotation : prepared.annotations) {
+        if (const auto* live = findAnnotation(current, annotation.objectId)) {
+            annotation.geometryRevision = live->geometryRevision + (annotation.geometry != live->geometry ? 1u : 0u);
         }
     }
     validateAnnotationTargets(prepared);

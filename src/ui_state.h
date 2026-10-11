@@ -199,7 +199,7 @@ struct UiAnnotation {
     std::vector<SceneObjectId> targetIds;
     std::string targetName;
     AnnotationSettings settings;
-    AnnotationGeometry geometry;
+    AnnotationGeometryOwner geometry;
     // Derived at load/geometry replacement boundaries, never serialized.
     uint64_t geometryRevision = 0; // Session-only attachment/outline identity.
     bool targetValid = false;

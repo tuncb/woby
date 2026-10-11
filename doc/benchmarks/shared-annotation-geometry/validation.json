@@ -1,0 +1,178 @@
+{
+  "base_commit": "9db20ba6ac34ad11679fe037e4bce148866fe76f",
+  "captured_utc": "2026-10-11T12:18:42.0144052Z",
+  "preset": "vs2026-vcpkg",
+  "compiler": "MSVC 19.51.36243.0",
+  "cpu": "AMD Ryzen 7 5800H",
+  "debug_build_exit_code": 0,
+  "debug_build_warning_count": 0,
+  "release_probe_build_exit_code": 0,
+  "release_probe_build_warning_count": 0,
+  "release_probe_contracts": "2/2 passed",
+  "debug_ctest": {
+    "tests": 129,
+    "failures": 0,
+    "skipped": 0,
+    "disabled": 0,
+    "seconds": 530.14,
+    "jobs": 2
+  },
+  "source_hashes": [
+    {
+      "path": "CMakeLists.txt",
+      "bytes": 45325,
+      "sha256": "79048f76d0e43bfd8134bb0dda4abfb4b62b6a062589cd7a9032bef22198bee0"
+    },
+    {
+      "path": "doc/shared-annotation-geometry-implementation.md",
+      "bytes": 11324,
+      "sha256": "db5bb8b35995941a1fe58286e5588a488984afc2d2fab96a150cf3c3337cdfd6"
+    },
+    {
+      "path": "doc/simplification-11-scene-investigation.md",
+      "bytes": 15897,
+      "sha256": "b0319ea2468cc70623f19600664541f265271dc00e140a5947961fc50900b0e7"
+    },
+    {
+      "path": "experiments/simplification-11/CMakeLists.txt",
+      "bytes": 824,
+      "sha256": "f0b46ebe38f7504a3d5f956a74f34fbda1aabc1f87d8fd1856f2ec0581a146ac"
+    },
+    {
+      "path": "experiments/simplification-11/main.cpp",
+      "bytes": 23450,
+      "sha256": "6a19cb04aa5e2288d9a56412016ee52084e598a170016aaf5ae1fe05208374ca"
+    },
+    {
+      "path": "experiments/simplification-11/production.cpp",
+      "bytes": 5665,
+      "sha256": "fb1f2838293761a575d0c47cddf90c4400743925dd5cfd1ee18fa0d5530b306b"
+    },
+    {
+      "path": "experiments/simplification-11/run-production.ps1",
+      "bytes": 4831,
+      "sha256": "e049001194403a59ce56a5038f02a107229bc34aa79084ab1bb343fab0815345"
+    },
+    {
+      "path": "experiments/simplification-15/main.cpp",
+      "bytes": 13306,
+      "sha256": "e0a3451e67ba90db7be219d96044bb5aa277a02a7c1beedf3b6db9ad35c52923"
+    },
+    {
+      "path": "src/annotation_command.cpp",
+      "bytes": 4809,
+      "sha256": "57ca04cb4798ca14807e89979f9bbace4dcb5fc4c70dff63468c9ef7cd2e2233"
+    },
+    {
+      "path": "src/annotation_command.h",
+      "bytes": 877,
+      "sha256": "db70ff70b7cc0374cb9db8f164655042207d59282bed2250992535934afa3a7f"
+    },
+    {
+      "path": "src/annotation_types.h",
+      "bytes": 4986,
+      "sha256": "68bc9c6fb9f3762ba08ee46eb1cd23aaf3d74047f8d117f4f6f5bf42de2c4358"
+    },
+    {
+      "path": "src/annotation_ui.cpp",
+      "bytes": 41391,
+      "sha256": "7b65b8d55e6ac6034c719cc0ccbb6455a7bb16f7f29456f1bdc170e812ce68ba"
+    },
+    {
+      "path": "src/control_annotation.cpp",
+      "bytes": 7860,
+      "sha256": "7ec23d61d425da5c4b6884209f18fc3dd6c88b2e0ce830c86a795306c44ae498"
+    },
+    {
+      "path": "src/scene_file.cpp",
+      "bytes": 78468,
+      "sha256": "8575b4427c897c87d5c63dab5872acac1d7ff7d7f882f8cfc4e909d875683e7b"
+    },
+    {
+      "path": "src/scene_history.cpp",
+      "bytes": 12049,
+      "sha256": "bc7366b93987681e96f3d4ae1c15066057d34d9419c9ec37214f224f422f8f0c"
+    },
+    {
+      "path": "src/scene_history.h",
+      "bytes": 2146,
+      "sha256": "4a40fc23d4f36bad62b8de02e09958bbc9afab5ee884dd649558ed66d403a68b"
+    },
+    {
+      "path": "src/scene_queries.cpp",
+      "bytes": 27386,
+      "sha256": "c9217f4d138fab1f70199887b1d17b9496bf10a0d54c59590499909546506ab2"
+    },
+    {
+      "path": "src/surface_annotation.cpp",
+      "bytes": 73401,
+      "sha256": "564477b27825f95a902dbdaf350e2c85f1a47ce14ae99e471e021c12646e1cf2"
+    },
+    {
+      "path": "src/ui_annotation_operations.cpp",
+      "bytes": 17934,
+      "sha256": "6d816139cf145c1b8559197597fd0f9cf7b61be2c702c068de918ae15ffa4d13"
+    },
+    {
+      "path": "src/ui_operations.h",
+      "bytes": 21300,
+      "sha256": "7d220049601eaae383262d4d5c8a1aff075671cc9c15c60abbf6aa6228e50998"
+    },
+    {
+      "path": "src/ui_state.h",
+      "bytes": 12971,
+      "sha256": "273038638846e13781ce4a884879d1815f9c9df91fb9c5bdeb426a8dd85b4a70"
+    },
+    {
+      "path": "tests/coordinate_origin_tests.cpp",
+      "bytes": 12833,
+      "sha256": "86d63684659c8000e4f613b588eac6e9f071480d541dba9ef0e7e4a2a80c33bc"
+    },
+    {
+      "path": "tests/loading_preparation_tests.cpp",
+      "bytes": 13394,
+      "sha256": "52a5da04cb38bdc00ca43f69a56351a34d31197834b0b30af3f5f4fc30d058e6"
+    },
+    {
+      "path": "tests/scene_history_tests.cpp",
+      "bytes": 30296,
+      "sha256": "71f34a167da459e85e8534c8a0ff0022d5c9f42463948e468846154aaa4cb78d"
+    },
+    {
+      "path": "tests/scene_queries_tests.cpp",
+      "bytes": 35131,
+      "sha256": "8576830f1814920174c610b7f72e321681f836e78ea11f7660b018087647355b"
+    },
+    {
+      "path": "tests/surface_annotation_tests.cpp",
+      "bytes": 161492,
+      "sha256": "9646a099f38de4888a8fd57ca4ccfb210baa4d46cb9b23e9e6b0cb198f4edd9c"
+    }
+  ],
+  "evidence_hashes": [
+    {
+      "path": "baseline-build.txt",
+      "sha256": "629db13aa9c8f8db969750a8a7565531497c8421f8aa758ac1546d3626c5f450"
+    },
+    {
+      "path": "debug-build.txt",
+      "sha256": "80033135d46acc8355d96de15afdecce1b508055c7131bdb1e23ca344ddc636d"
+    },
+    {
+      "path": "debug-ctest.txt",
+      "sha256": "75ceb36841fb383a56b5ba4c246f9d94c6f1e2c499532599b980d0d1c33f90e6"
+    },
+    {
+      "path": "debug-ctest.xml",
+      "sha256": "1604e0b0988aba5c05f92d1f55ce559963aaf670651a03bb25f657260f4b43b2"
+    },
+    {
+      "path": "release-build.txt",
+      "sha256": "e61fdeb65aa56c8005706971471431df7a12d79bb183817c78e7368e3bb75b06"
+    },
+    {
+      "path": "release-contracts.txt",
+      "sha256": "ad7c739a12d8bebe87323497262f4ab06021c76e08abbf8f6e13dd697568836e"
+    }
+  ]
+}
