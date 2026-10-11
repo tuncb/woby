@@ -2435,11 +2435,7 @@ int main(int argc, char** argv)
         const auto lineSpriteProgram = woby::loadProgram(assets, "vs_line_sprite.bin", "fs_color.bin");
         woby::graphics::ProgramHandle annotationProgram = woby::loadProgram(assets, "vs_annotation.bin", "fs_color.bin");
         woby::graphics::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
-        woby::graphics::UniformHandle uvGridUniform = woby::graphics::createUniform("u_uvGrid", woby::graphics::UniformType::Vec4);
-        woby::graphics::UniformHandle colorUniform = woby::graphics::createUniform("u_color", woby::graphics::UniformType::Vec4);
-        woby::graphics::UniformHandle pointParamsUniform = woby::graphics::createUniform("u_pointParams", woby::graphics::UniformType::Vec4, 2);
         comparison.program = woby::loadProgram(assets, "vs_comparison.bin", "fs_comparison.bin");
-        comparison.parameters = woby::graphics::createUniform("u_comparison", woby::graphics::UniformType::Vec4);
         woby::logDuration("startup_shaders", elapsedMilliseconds(shaderStart));
 
         const auto imguiStart = woby::PerformanceClock::now();
@@ -4027,29 +4023,26 @@ int main(int argc, char** argv)
                         renderScratch.drawCache.plan,
                         runtimes,
                         gpuHover ? markerPicker.mesh : meshProgram,
-                        uvGridUniform,
                         gpuHover ? markerPicker.line : colorProgram,
                         gpuHover ? markerPicker.point : pointSpriteProgram,
-                        colorUniform,
-                        pointParamsUniform,
                         triangleEdgePrograms,
                         sceneViewportWidth,
                         sceneViewportHeight,
                         gpuHover ? &markerPicker.context : nullptr, false, &adaptivePoints, &transparentSurfacePrograms);
                 }
                 woby::submitComparisonScenes(sceneView, ui, comparison,
-                    gpuHover ? markerPicker.line : colorProgram, colorUniform, renderScratch,
+                    gpuHover ? markerPicker.line : colorProgram, renderScratch,
                     gpuHover ? markerPicker.comparison : woby::graphics::ProgramHandle{woby::graphics::kInvalidHandle});
                 submitSceneFiles(sceneView, renderScratch.drawCache.plan, runtimes,
-                    meshProgram, uvGridUniform, gpuHover ? markerPicker.lineSprite : lineSpriteProgram,
-                    gpuHover ? markerPicker.point : pointSpriteProgram, colorUniform, pointParamsUniform,
+                    meshProgram, gpuHover ? markerPicker.lineSprite : lineSpriteProgram,
+                    gpuHover ? markerPicker.point : pointSpriteProgram,
                     triangleEdgePrograms, sceneViewportWidth, sceneViewportHeight, gpuHover ? &markerPicker.context : nullptr, true);
                 woby::submitGpuMarkerPicking(markerPicker, viewport);
                 recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
-                submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
+                submitSceneHelpers(helperView, ui, helperLayout, colorProgram);
                 woby::prepareSceneAnnotations(ui, currentPickView, renderScratch, &annotationInteraction);
-                woby::submitSceneAnnotations(helperView, ui, helperLayout, annotationProgram, colorUniform, renderScratch, &annotationInteraction);
+                woby::submitSceneAnnotations(helperView, ui, helperLayout, annotationProgram, renderScratch, &annotationInteraction);
                 const float annotationMessageBottom = woby::drawAnnotationOverlay(ui, annotationInteraction, currentPickView,
                     static_cast<float>(viewport.x) / currentPickView.pixelScale, 1.0f / currentPickView.pixelScale,
                     scenePointerAvailable && !cameraInteractionActive
@@ -4059,7 +4052,7 @@ int main(int argc, char** argv)
                     auto& selectedParts = renderScratch.parts;
                     woby::resolveSceneParts(renderScratch.queries, ui, selectedParts);
                     woby::appendVisibleComparisonPickParts(selectedParts, ui, comparison);
-                    woby::submitSceneSelection(helperView, selectedParts, ui, helperLayout, colorProgram, colorUniform, renderScratch);
+                    woby::submitSceneSelection(helperView, selectedParts, ui, helperLayout, colorProgram, renderScratch);
                     if (ui.showDimensions) {
                         woby::updateSceneSelectionQueries(renderScratch.queries, ui, &comparison);
                     }
@@ -4090,14 +4083,11 @@ int main(int argc, char** argv)
                     sceneScreenshot,
                     runtimes,
                     meshProgram,
-                    uvGridUniform,
                     colorProgram,
                     annotationProgram,
                     lineSpriteProgram,
                     pointSpriteProgram,
                     triangleEdgePrograms,
-                    colorUniform,
-                    pointParamsUniform,
                     ui,
                     helperLayout,
                     sceneBounds,
@@ -4202,10 +4192,7 @@ int main(int argc, char** argv)
 
         woby::destroyGpuMarkerPicker(markerPicker);
         woby::destroyAdaptivePoints(adaptivePoints);
-        woby::graphics::destroy(uvGridUniform);
-        woby::graphics::destroy(pointParamsUniform);
         woby::destroyComparisonRuntimes(comparison);
-        woby::graphics::destroy(colorUniform);
         woby::graphics::destroy(pointSpriteProgram);
         woby::graphics::destroy(colorProgram);
         woby::graphics::destroy(annotationProgram);

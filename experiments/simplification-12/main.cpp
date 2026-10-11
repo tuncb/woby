@@ -64,8 +64,7 @@ void selfTest() {
             "Legacy/typed parameter mismatch");
     }
     g::Init init; init.type=g::RendererType::Noop; check(g::init(init),"Noop init failed");
-    const auto color=g::createUniform("u_color",g::UniformType::Vec4);
-    const Vec4 v{}; g::setUniform(color,v.data()); g::destroy(color); g::shutdown();
+    const Vec4 v{}; g::setColor(v); g::shutdown();
 }
 }
 int main(int argc,char** argv) {
@@ -73,18 +72,11 @@ int main(int argc,char** argv) {
         selfTest();
         if(argc>1 && std::string_view(argv[1])=="--self-test") { std::cout<<"{\"ok\":true}\n"; return 0; }
         g::Init init; init.type=g::RendererType::Noop; check(g::init(init),"Noop init failed");
-        const auto color=g::createUniform("u_color",g::UniformType::Vec4);
-        const auto points=g::createUniform("u_pointParams",g::UniformType::Vec4,2);
-        const auto uv=g::createUniform("u_uvGrid",g::UniformType::Vec4);
-        const auto edges=g::createUniform("u_triangleEdges",g::UniformType::Vec4);
-        const auto marker=g::createUniform("u_markerBase",g::UniformType::Vec4);
         std::vector<TypedPacket> packets(20000);
-        std::vector<LegacyPacket> legacy; legacy.reserve(packets.size());
         for(size_t i=0;i<packets.size();++i) {
             auto& p=packets[i]; p.color={float(i%100)/100,.6f,.8f,1}; p.point={4,1920,1080,0};
             p.pointOffset=uint32_t(i*123457); p.markerFirst=uint32_t(i*123459+1); p.markerSourceFirst=uint32_t(i*123461);
             p.triangleOffset=uint32_t(i*123463); p.edgeHalfWidth=1.5f; p.fill=true; p.compact=true;
-            legacy.push_back(encode(p));
         }
         TypedRoot typed;
         nlohmann::json rows=nlohmann::json::array();
@@ -92,9 +84,9 @@ int main(int argc,char** argv) {
             const size_t rounds=std::max(size_t{30},size_t{4000000}/draws);
             const auto production=[&](size_t rotation) {
                 for(size_t i=0;i<draws;++i) {
-                    const auto& p=legacy[(i+rotation)%packets.size()];
-                    g::setUniform(color,p.color.data()); g::setUniform(points,p.points,2);
-                    g::setUniform(uv,p.uv.data()); g::setUniform(edges,p.edges.data()); g::setUniform(marker,p.marker.data());
+                    const auto& p=packets[(i+rotation)%packets.size()];
+                    g::setColor(p.color); g::setPointParameters({p.point[0], uint32_t(p.point[1]), uint32_t(p.point[2]), p.pointOffset, p.markerSourceFirst, p.compact});
+                    g::setUvGrid(p.uv); g::setTriangleEdges({p.edgeHalfWidth,p.fill,p.triangleOffset}); g::setMarkerBase(p.markerFirst);
                 }
             };
             const auto candidate=[&](size_t rotation) {
@@ -110,9 +102,11 @@ int main(int argc,char** argv) {
             }
             rows.push_back({{"draw_packets",draws},{"writes_per_packet",5},{"rounds",rounds},{"samples",samples}});
         }
-        std::cout<<nlohmann::json{{"ok",true},{"candidate_packet_size",sizeof(TypedPacket)},
-            {"legacy_payload_bytes_per_packet",sizeof(LegacyPacket)},{"checksum",typed.packet.markerFirst},{"rows",rows},
-            {"scope","Actual production Noop setUniform versus an isolated typed packet setter; no draws, GPU work, root staging or complete frame."}}.dump()<<'\n';
+        std::cout<<nlohmann::json{{"ok",true},{"production_api","typed_integer_root"},{"candidate_packet_size",sizeof(TypedPacket)},
+            {"historical_legacy_payload_bytes_per_packet",sizeof(LegacyPacket)},
+            {"production_payload_bytes_per_packet",2*sizeof(Vec4)+sizeof(g::PointParameters)+sizeof(g::TriangleEdgeParameters)+sizeof(uint32_t)},
+            {"checksum",typed.packet.markerFirst},{"rows",rows},
+            {"scope","Current production Noop typed setters versus an isolated typed packet setter; no draws, GPU work, root staging or complete frame."}}.dump()<<'\n';
         g::shutdown(); return 0;
     } catch(const std::exception& e) { std::cerr<<e.what()<<'\n'; return 1; }
 }

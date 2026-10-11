@@ -92,16 +92,12 @@ struct Shader
     std::string entry;
     uint32_t bytes = 0;
 };
+enum class VertexAccess { ordinary, points, lines, triangleEdges, triangleLines };
 struct Program
 {
     std::shared_ptr<Shader> vertex, fragment, compute;
     uint32_t id = 0;
-};
-struct Uniform
-{
-    std::string name;
-    UniformType::Enum type = UniformType::Vec4;
-    uint16_t count = 1;
+    VertexAccess access = VertexAccess::ordinary;
 };
 struct Geometry
 {
@@ -231,7 +227,6 @@ struct Context
     std::vector<std::shared_ptr<Framebuffer>> framebuffers;
     std::vector<std::shared_ptr<Shader>> shaders;
     std::vector<std::shared_ptr<Program>> programs;
-    std::vector<std::shared_ptr<Uniform>> uniforms;
     std::vector<std::shared_ptr<TexturePage>> pages;
     std::vector<uint32_t> freeDescriptors;
     std::vector<ReadRequest> reads;
@@ -858,9 +853,9 @@ void pointQuadOperation(gpu::CommandBuffer* commands,const Operation& op,const V
         matrix(root.modelViewProj,mvp);
         std::memcpy(&root.color,group.color.data(),sizeof(root.color));
         root.vertices=reinterpret_cast<float*>(task.points); root.stride=sizeof(OpaquePoint)/sizeof(float);
-        root.pointParams[0]={group.pointSize,float(view.width),float(view.height),1};
-        root.pointParams[1]={0,0,float(group.sourceFirstId&65535u),float(group.sourceFirstId>>16u)};
-        root.markerBase={float(group.firstId&65535u),float(group.firstId>>16u),0,0};
+        root.pointParams={group.pointSize,float(view.width),float(view.height),1};
+        root.pointOffset=0; root.pointSourceFirst=group.sourceFirstId;
+        root.markerBase=group.firstId;
         if (task.query) {
             const auto& q=packet.query;
             if (q[2]<=q[0] || q[3]<=q[1]) continue;
@@ -990,6 +985,38 @@ void ensureTransparencyTargets(Frame& frame, ViewId id, const Framebuffer& targe
 void resetEncoder()
 {
     state().encoder = Encoder{};
+}
+void validateDraw(const Encoder& encoder, const Program& program)
+{
+    const auto& root = encoder.root;
+    if (root.faceKind == 1) {
+        require(std::isfinite(root.comparison.x) && root.comparison.x >= 0 && root.comparison.x <= 3
+            && std::floor(root.comparison.x) == root.comparison.x, "Invalid surface quality metric");
+    }
+    if (program.access == VertexAccess::ordinary) { return; }
+    const uint32_t vertices = encoder.explicitVertexCount ? encoder.vertexCount : encoder.vertices.count;
+    if (vertices == 0 || encoder.instances == 0) { return; }
+    require(encoder.indices.count == 0, "Generated geometry must not use draw indices");
+    if (program.access == VertexAccess::points || program.access == VertexAccess::lines) {
+        require(vertices == 4 && root.pointParams.y > 0 && root.pointParams.z > 0,
+            "Invalid sprite draw parameters");
+        const bool compact = program.access == VertexAccess::points && root.pointParams.w != 0;
+        const uint64_t count = uint64_t{encoder.instances} * (program.access == VertexAccess::lines ? 2u : 1u);
+        require(encoder.vertices.stride >= (compact ? 16 : 12), "Invalid sprite vertex layout");
+        const auto available = compact ? encoder.vertices.count : encoder.points.count;
+        require((compact || encoder.points.index32) && uint64_t{root.pointOffset} + count <= available,
+            "Sprite storage range is out of bounds");
+        if (!compact && program.access == VertexAccess::points && root.markerBase) {
+            require(uint64_t{root.markerBase} + encoder.instances - 1 <= UINT32_MAX,
+                "Marker ID range is out of bounds");
+        }
+    } else {
+        const uint32_t corners = program.access == VertexAccess::triangleLines ? 6u : 3u;
+        require(vertices % corners == 0 && encoder.points.index32 && encoder.vertices.stride >= 12,
+            "Invalid triangle edge layout");
+        require(uint64_t{root.triangleOffset} + uint64_t{vertices / corners} * 3 <= encoder.points.count,
+            "Triangle edge storage range is out of bounds");
+    }
 }
 } // namespace
 
@@ -1289,6 +1316,11 @@ ProgramHandle createProgram(ShaderHandle vertex, ShaderHandle fragment, bool des
     auto program = std::make_shared<Program>();
     program->vertex = resource(state().shaders, vertex);
     program->fragment = resource(state().shaders, fragment);
+    const auto& entry = program->vertex->entry;
+    if (entry == "vs_point_sprite" || entry == "vs_marker_point") { program->access = VertexAccess::points; }
+    else if (entry == "vs_line_sprite") { program->access = VertexAccess::lines; }
+    else if (entry == "vs_mesh_edges") { program->access = VertexAccess::triangleEdges; }
+    else if (entry == "vs_triangle_lines") { program->access = VertexAccess::triangleLines; }
     program->id = static_cast<uint32_t>(state().programs.size());
     auto handle = insert<ProgramHandle>(state().programs, std::move(program));
     if (destroyShaders)
@@ -1307,10 +1339,6 @@ ProgramHandle createProgram(ShaderHandle compute, bool destroyShader)
     if (destroyShader)
         destroy(compute);
     return handle;
-}
-UniformHandle createUniform(const char *name, UniformType::Enum type, uint16_t count)
-{
-    return insert<UniformHandle>(state().uniforms, std::make_shared<Uniform>(Uniform{name, type, count}));
 }
 void destroy(VertexBufferHandle h)
 {
@@ -1331,10 +1359,6 @@ void destroy(ShaderHandle h)
 void destroy(ProgramHandle h)
 {
     release(state().programs, h);
-}
-void destroy(UniformHandle h)
-{
-    release(state().uniforms, h);
 }
 void destroy(FrameBufferHandle h)
 {
@@ -1459,34 +1483,57 @@ void setTransform(const float *value)
 {
     std::copy_n(value, 16, state().encoder.model.begin());
 }
-void setUniform(UniformHandle h, const void *data, uint16_t count)
+void setColor(const std::array<float, 4>& value)
 {
-    auto uniform = resource(state().uniforms, h);
-    require(uniform->type == UniformType::Vec4 && count <= uniform->count, "Invalid uniform write");
-    auto &root = state().encoder.root;
-    void *destination = nullptr;
-    if (uniform->name == "u_color")
-        destination = &root.color;
-    else if (uniform->name == "u_pointParams")
-        destination = root.pointParams;
-    else if (uniform->name == "u_comparison")
-        destination = &root.comparison;
-    else if (uniform->name == "u_uvGrid")
-        destination = &root.uvGrid;
-    else if (uniform->name == "u_triangleEdges")
-        destination = &root.triangleEdges;
-    else if (uniform->name == "u_markerBase")
-        destination = &root.markerBase;
-    else if (uniform->name == "u_markerQuery")
-        destination = &root.markerQuery;
-    else if (uniform->name == "u_markerOptions")
-        destination = &root.markerOptions;
-    require(destination != nullptr, "Unknown Woby shader uniform");
-    require(data && count > 0 && count <= (uniform->name == "u_pointParams" ? 2 : 1),
-            "Uniform write exceeds root field capacity");
-    std::memcpy(destination, data, size_t(count) * 16);
+    std::memcpy(&state().encoder.root.color, value.data(), sizeof(float) * 4);
 }
-void setTexture(uint8_t binding, UniformHandle, TextureHandle h, uint32_t flags)
+void setPointParameters(const PointParameters& value)
+{
+    require(std::isfinite(value.size) && value.size >= 0, "Invalid point size");
+    auto& root = state().encoder.root;
+    root.pointParams = {value.size, float(std::max(value.width, 1u)),
+        float(std::max(value.height, 1u)), value.compact ? 1.0f : 0.0f};
+    root.pointOffset = value.offset;
+    root.pointSourceFirst = value.sourceFirst;
+}
+void setComparison(const std::array<float, 4>& value)
+{
+    // The quality metric selects one of four values in each GPU face record.
+    require(std::isfinite(value[2]), "Invalid comparison mode");
+    if (value[2] > 1.5f && value[2] < 2.5f) {
+        require(std::isfinite(value[0]) && value[0] >= 0 && value[0] <= 3
+            && std::floor(value[0]) == value[0], "Invalid surface quality metric");
+    }
+    std::memcpy(&state().encoder.root.comparison, value.data(), sizeof(float) * 4);
+}
+void setUvGrid(const std::array<float, 4>& value)
+{
+    std::memcpy(&state().encoder.root.uvGrid, value.data(), sizeof(float) * 4);
+}
+void setTriangleEdges(const TriangleEdgeParameters& value)
+{
+    require(std::isfinite(value.halfWidth) && value.halfWidth >= 0, "Invalid triangle edge width");
+    auto& root = state().encoder.root;
+    root.triangleEdges = {value.halfWidth, value.fillSurface ? 1.0f : 0.0f};
+    root.triangleOffset = value.indexOffset;
+}
+void setMarkerBase(uint32_t firstId)
+{
+    state().encoder.root.markerBase = firstId;
+}
+void setMarkerQuery(const MarkerQuery& value)
+{
+    require(std::isfinite(value.x) && std::isfinite(value.y) && value.width && value.height,
+        "Invalid marker query");
+    state().encoder.root.markerQuery = {value.x, value.y, float(value.width), float(value.height)};
+}
+void setMarkerOptions(const MarkerOptions& value)
+{
+    require((value.samples == 1 || value.samples == 4) && std::isfinite(value.radius) && value.radius >= 0,
+        "Invalid marker options");
+    state().encoder.root.markerOptions = {float(value.samples), 0, value.radius, 0};
+}
+void setTexture(uint8_t binding, TextureHandle h, uint32_t flags)
 {
     require(binding < 2, "Unexpected texture binding");
     auto texture = resource(state().textures, h);
@@ -1559,21 +1606,25 @@ void touch(ViewId id)
 }
 void submit(ViewId id, ProgramHandle h)
 {
+    auto program = resource(state().programs, h);
+    validateDraw(state().encoder, *program);
     beginFrame();
     current().operations.push_back({.view = id,
                                     .type = OperationType::draw,
                                     .encoder = state().encoder,
-                                    .program = resource(state().programs, h)});
+                                    .program = std::move(program)});
     resetEncoder();
 }
 void submitTransparent(ViewId id, ProgramHandle accumulation, const std::array<ProgramHandle, 2>& resolve)
 {
+    auto program = resource(state().programs, accumulation);
+    validateDraw(state().encoder, *program);
     beginFrame();
     Operation op;
     op.view = id; op.type = OperationType::draw; op.encoder = state().encoder;
     op.encoder.state = (op.encoder.state & ~(WOBY_GPU_STATE_BLEND_ALPHA | WOBY_GPU_STATE_WRITE_Z))
         | WOBY_GPU_STATE_BLEND_WEIGHTED;
-    op.program = resource(state().programs, accumulation);
+    op.program = std::move(program);
     for (size_t i = 0; i < resolve.size(); ++i) { op.transparencyResolve[i] = resource(state().programs, resolve[i]); }
     current().operations.push_back(std::move(op));
     resetEncoder();
@@ -1951,7 +2002,6 @@ void shutdown()
     c.framebuffers.clear();
     c.shaders.clear();
     c.programs.clear();
-    c.uniforms.clear();
     for (auto &f : c.frames)
     {
         f.operations.clear();

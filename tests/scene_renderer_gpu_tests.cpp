@@ -78,7 +78,6 @@ struct TransparencyFixture {
     woby::TransparentSurfacePrograms transparency;
     woby::TriangleEdgePrograms edges, pulled;
     g::ProgramHandle mesh{}, point{};
-    g::UniformHandle color{}, uv{}, params{}, base{};
     g::TextureHandle output{}, depth{}, ids{};
     g::FrameBufferHandle target{};
     woby::SceneDrawPlan plan;
@@ -89,7 +88,6 @@ struct TransparencyFixture {
         woby::destroyTriangleEdgePrograms(edges);
         woby::destroyTriangleEdgePrograms(pulled);
         for (auto h : {mesh, point}) { if (g::isValid(h)) { g::destroy(h); } }
-        for (auto h : {color, uv, params, base}) { if (g::isValid(h)) { g::destroy(h); } }
         if (g::isValid(target)) { g::destroy(target); }
         for (auto h : {output, depth, ids}) { if (g::isValid(h)) { g::destroy(h); } }
         g::shutdown();
@@ -103,10 +101,6 @@ void initializeTransparency(TransparencyFixture& f, bool msaa)
     f.pulled = woby::createTriangleEdgePrograms(WOBY_TEST_ASSET_DIRECTORY, true);
     f.mesh = woby::loadProgram(WOBY_TEST_ASSET_DIRECTORY, "vs_mesh.bin", "fs_marker_mesh.bin");
     f.point = woby::loadProgram(WOBY_TEST_ASSET_DIRECTORY, "vs_point_sprite.bin", "fs_marker_point.bin");
-    f.color = g::createUniform("u_color", g::UniformType::Vec4);
-    f.uv = g::createUniform("u_uvGrid", g::UniformType::Vec4);
-    f.params = g::createUniform("u_pointParams", g::UniformType::Vec4, 2);
-    f.base = g::createUniform("u_markerBase", g::UniformType::Vec4);
     const auto flags = msaa ? WOBY_GPU_TEXTURE_RT_MSAA_X4 : WOBY_GPU_TEXTURE_RT;
     f.output = g::createTexture2D(96, 80, false, 1, g::TextureFormat::RGBA8, flags | WOBY_GPU_TEXTURE_READ_BACK);
     f.ids = g::createTexture2D(96, 80, false, 1, g::TextureFormat::RGBA8, flags | WOBY_GPU_TEXTURE_READ_BACK);
@@ -150,8 +144,8 @@ TransparencyImage captureTransparency(TransparencyFixture& f, const woby::SceneD
     }
     g::setViewTransform(0, nullptr, projection.data(), reversed);
     g::touch(0);
-    woby::MarkerDrawContext markers; markers.baseUniform = f.base;
-    woby::submitSceneFiles(0, plan, f.models, f.mesh, f.uv, f.mesh, f.point, f.color, f.params,
+    woby::MarkerDrawContext markers;
+    woby::submitSceneFiles(0, plan, f.models, f.mesh, f.mesh, f.point,
         pulled ? f.pulled : f.edges, 80, 64, &markers, false, nullptr, approximate ? &f.transparency : nullptr);
     TransparencyImage result{std::vector<uint8_t>(96*80*4),std::vector<uint8_t>(96*80*4)};
     g::readTexture(f.output, result.color.data());

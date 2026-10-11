@@ -16,7 +16,6 @@ struct Viewport {
     woby::graphics::TextureHandle color, depth;
     woby::graphics::FrameBufferHandle target;
     woby::graphics::ProgramHandle program, presentation;
-    woby::graphics::UniformHandle colorUniform;
     uint16_t width = 0, height = 0;
 };
 struct ViewMatrices {

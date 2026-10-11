@@ -10,7 +10,6 @@ namespace g = woby::graphics;
 struct DisplayFixture {
     bool initialized = false;
     g::ProgramHandle comparison{}, color{};
-    g::UniformHandle comparisonUniform{}, colorUniform{};
     g::TextureHandle output{}, depth{}, ids{};
     g::FrameBufferHandle target{};
     std::vector<g::VertexBufferHandle> vertices;
@@ -20,7 +19,6 @@ struct DisplayFixture {
         for (auto h : vertices) { g::destroy(h); }
         for (auto h : indices) { g::destroy(h); }
         for (auto h : {comparison, color}) { if (g::isValid(h)) { g::destroy(h); } }
-        for (auto h : {comparisonUniform, colorUniform}) { if (g::isValid(h)) { g::destroy(h); } }
         if (g::isValid(target)) { g::destroy(target); }
         for (auto h : {output, depth, ids}) { if (g::isValid(h)) { g::destroy(h); } }
         g::shutdown();
@@ -31,8 +29,6 @@ void initialize(DisplayFixture& f, bool msaa, bool markers) {
     const std::filesystem::path assets = WOBY_TEST_ASSET_DIRECTORY;
     f.comparison = woby::loadProgram(assets, "vs_comparison.bin", markers ? "fs_marker_comparison.bin" : "fs_comparison.bin");
     f.color = woby::loadProgram(assets, "vs_color.bin", markers ? "fs_marker_line.bin" : "fs_color.bin");
-    f.comparisonUniform = g::createUniform("u_comparison", g::UniformType::Vec4);
-    f.colorUniform = g::createUniform("u_color", g::UniformType::Vec4);
     const auto flags = msaa ? WOBY_GPU_TEXTURE_RT_MSAA_X4 : WOBY_GPU_TEXTURE_RT;
     f.output = g::createTexture2D(128, 96, false, 1, g::TextureFormat::RGBA8, flags | WOBY_GPU_TEXTURE_READ_BACK);
     f.depth = g::createTexture2D(128, 96, false, 1, g::TextureFormat::D24S8, flags);
@@ -57,8 +53,8 @@ std::vector<uint8_t> capture(DisplayFixture& f, g::VertexBufferHandle source, g:
     g::VertexBufferHandle faces, g::FaceDisplayKind kind, uint32_t first, uint32_t count,
     std::array<float,4> parameters, bool wire = false, bool release = false) {
     g::touch(0);
-    g::setUniform(f.comparisonUniform, parameters.data());
-    const std::array<float,4> color{.3f,.8f,.5f,.45f}; g::setUniform(f.colorUniform, color.data());
+    g::setComparison(parameters);
+    const std::array<float,4> color{.3f,.8f,.5f,.45f}; g::setColor(color);
     g::setVertexBuffer(0, source);
     if (wire) {
         if (g::isValid(faces)) { g::setTriangleWireframe(triangles); }

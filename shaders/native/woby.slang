@@ -89,16 +89,16 @@ VertexOutput vs_comparison(uint index : SV_VertexID) {
 }
 VertexOutput pointVertex(uint vertex, uint instance) {
     VertexOutput v = {};
-    uint base = uint(root.pointParams[1].x) + uint(root.pointParams[1].y)*65536u;
-    bool compact = root.pointParams[0].w != 0;
+    uint base = root.pointOffset;
+    bool compact = root.pointParams.w != 0;
     uint index = compact ? base+instance : root.pointIds[base+instance];
     float2 corner = float2(1.0-float((vertex>>1)&1),float(vertex&1))-0.5;
     float4 center = mul(root.modelViewProj,float4(positionAt(index),1));
-    center.xy += corner * root.pointParams[0].x * float2(2.0/root.pointParams[0].y,2.0/root.pointParams[0].z) * center.w;
+    center.xy += corner * root.pointParams.x * float2(2.0/root.pointParams.y,2.0/root.pointParams.z) * center.w;
     v.position = clipPosition(center);
     v.uv = corner;
-    uint first = uint(root.markerBase.x)|(uint(root.markerBase.y)<<16);
-    uint sourceFirst = uint(root.pointParams[1].z)|(uint(root.pointParams[1].w)<<16);
+    uint first = root.markerBase;
+    uint sourceFirst = root.pointSourceFirst;
     v.id = first == 0 ? 0 : compact ? first+asuint(root.vertices[index*root.stride+3])-sourceFirst : first+instance;
     return v;
 }
@@ -106,7 +106,7 @@ VertexOutput vs_point_sprite(uint vertex : SV_VertexID,uint instance : SV_Instan
 VertexOutput vs_line_sprite(uint vertex : SV_VertexID,uint instance : SV_InstanceID) {
     VertexOutput v = {};
     v.position = float4(2,2,2,1); // Rejected/zero-length segments emit no fragments.
-    uint base = uint(root.pointParams[1].x) + uint(root.pointParams[1].y)*65536u + instance*2;
+    uint base = root.pointOffset + instance*2;
     float4 a = mul(root.modelViewProj,float4(positionAt(root.pointIds[base]),1));
     float4 b = mul(root.modelViewProj,float4(positionAt(root.pointIds[base+1]),1));
     // Clip in homogeneous space before dividing by w. Native depth is [0,1],
@@ -122,14 +122,14 @@ VertexOutput vs_line_sprite(uint vertex : SV_VertexID,uint instance : SV_Instanc
         }
     }
     if (a.w<=0 || b.w<=0) return v;
-    float2 viewport=root.pointParams[0].yz;
+    float2 viewport=root.pointParams.yz;
     float2 delta=(b.xy/b.w-a.xy/a.w)*viewport;
     float pixelLength=length(delta);
     if (pixelLength<.000001) return v;
     float2 normal=float2(-delta.y,delta.x)/pixelLength;
     float side=(vertex&1)!=0 ? 1.0 : -1.0;
     float4 endpoint=(vertex&2)!=0 ? b : a;
-    endpoint.xy+=normal*side*root.pointParams[0].x/viewport*endpoint.w;
+    endpoint.xy+=normal*side*root.pointParams.x/viewport*endpoint.w;
     v.position=clipPosition(endpoint);
     return v;
 }
@@ -176,7 +176,7 @@ TransparencyOutput transparentMaterial(VertexOutput v, float4 color) {
 }
 TransparencyOutput fs_transparent_mesh(VertexOutput v) { return transparentMaterial(v,fs_mesh(v)); }
 uint triangleIndexOffset() {
-    return uint(root.triangleEdges.z) | (uint(root.triangleEdges.w) << 16);
+    return root.triangleOffset;
 }
 struct EdgeVertexOutput {
     VertexOutput mesh;

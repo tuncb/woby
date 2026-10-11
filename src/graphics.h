@@ -64,7 +64,6 @@ using TextureHandle = Handle<struct TextureTag>;
 using FrameBufferHandle = Handle<struct FramebufferTag>;
 using ShaderHandle = Handle<struct ShaderTag>;
 using ProgramHandle = Handle<struct ProgramTag>;
-using UniformHandle = Handle<struct UniformTag>;
 template <typename T> constexpr bool isValid(Handle<T> h)
 {
     return h.idx != kInvalidHandle;
@@ -89,14 +88,6 @@ enum Enum
     D24S8,
     RGBA16F,
     R16F
-};
-}
-namespace UniformType
-{
-enum Enum
-{
-    Vec4,
-    Sampler
 };
 }
 namespace Access
@@ -213,7 +204,6 @@ FrameBufferHandle createFrameBuffer(uint8_t count, const TextureHandle *attachme
 ShaderHandle createShader(const Memory *);
 ProgramHandle createProgram(ShaderHandle vertex, ShaderHandle fragment, bool destroyShaders = false);
 ProgramHandle createProgram(ShaderHandle compute, bool destroyShader = false);
-UniformHandle createUniform(const char *name, UniformType::Enum type, uint16_t count = 1);
 void setName(ShaderHandle, const char *name);
 template <typename T> void setName(Handle<T>, const char *) {}
 void destroy(VertexBufferHandle);
@@ -222,7 +212,6 @@ void destroy(TextureHandle);
 void destroy(FrameBufferHandle);
 void destroy(ShaderHandle);
 void destroy(ProgramHandle);
-void destroy(UniformHandle);
 
 uint32_t getAvailTransientVertexBuffer(uint32_t count, const VertexLayout &);
 uint32_t getAvailTransientIndexBuffer(uint32_t count, bool index32 = false);
@@ -243,8 +232,35 @@ void setTriangleWireframe(IndexBufferHandle triangles);
 void setVertexCount(uint32_t count);
 void setInstanceCount(uint32_t count);
 void setTransform(const float *matrix);
-void setUniform(UniformHandle, const void *data, uint16_t count = 1);
-void setTexture(uint8_t binding, UniformHandle sampler, TextureHandle, uint32_t flags = UINT32_MAX);
+// Runtime draw parameters. Setters copy values into the current encoder;
+// submit/dispatch capture them and reset the encoder for the next operation.
+struct PointParameters {
+    float size = 1;
+    uint32_t width = 1, height = 1, offset = 0, sourceFirst = 0;
+    bool compact = false;
+};
+struct TriangleEdgeParameters {
+    float halfWidth = .5f;
+    bool fillSurface = false;
+    uint32_t indexOffset = 0;
+};
+struct MarkerQuery {
+    float x = 0, y = 0;
+    uint32_t width = 1, height = 1;
+};
+struct MarkerOptions {
+    uint32_t samples = 1;
+    float radius = 0;
+};
+void setColor(const std::array<float, 4>&);
+void setPointParameters(const PointParameters&);
+void setComparison(const std::array<float, 4>&);
+void setUvGrid(const std::array<float, 4>&);
+void setTriangleEdges(const TriangleEdgeParameters&);
+void setMarkerBase(uint32_t firstId);
+void setMarkerQuery(const MarkerQuery&);
+void setMarkerOptions(const MarkerOptions&);
+void setTexture(uint8_t binding, TextureHandle, uint32_t flags = UINT32_MAX);
 void setImage(uint8_t binding, TextureHandle, uint8_t mip, Access::Enum, TextureFormat::Enum);
 void setState(uint64_t state, uint32_t independentBlend = 0);
 void setScissor(uint16_t x, uint16_t y, uint16_t width, uint16_t height);

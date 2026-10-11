@@ -18,7 +18,6 @@ struct RendererState {
     woby::graphics::ViewId viewId = 255;
     woby::graphics::VertexLayout layout{};
     woby::graphics::ProgramHandle program = WOBY_GPU_INVALID_HANDLE;
-    woby::graphics::UniformHandle textureSampler = WOBY_GPU_INVALID_HANDLE;
 };
 
 RendererState state;
@@ -213,7 +212,6 @@ void init(const std::filesystem::path& assetRoot, woby::graphics::ViewId viewId)
 
     state.layout = {static_cast<uint16_t>(sizeof(ImDrawVert))};
 
-    state.textureSampler = woby::graphics::createUniform("s_tex", woby::graphics::UniformType::Sampler);
     state.program = loadProgram(assetRoot, "vs_imgui.bin", "fs_imgui.bin");
 
     ImGuiIO& io = ImGui::GetIO();
@@ -238,9 +236,6 @@ void shutdown()
     io.BackendFlags &= ~(ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_RendererHasTextures);
     ImGui::GetPlatformIO().ClearRendererHandlers();
 
-    if (valid(state.textureSampler)) {
-        woby::graphics::destroy(state.textureSampler);
-    }
     if (valid(state.program)) {
         woby::graphics::destroy(state.program);
     }
@@ -337,7 +332,7 @@ void renderToView(ImDrawData* drawData, woby::graphics::ViewId viewId)
                 | WOBY_GPU_STATE_WRITE_A
                 | WOBY_GPU_STATE_MSAA
                 | WOBY_GPU_STATE_BLEND_FUNC(WOBY_GPU_STATE_BLEND_SRC_ALPHA, WOBY_GPU_STATE_BLEND_INV_SRC_ALPHA));
-            woby::graphics::setTexture(0, state.textureSampler, texture);
+            woby::graphics::setTexture(0, texture);
             woby::graphics::setVertexBuffer(0, &vertexBuffer, command.VtxOffset, vertexCount - command.VtxOffset);
             woby::graphics::setIndexBuffer(&indexBuffer, command.IdxOffset, command.ElemCount);
             woby::graphics::submit(viewId, state.program);

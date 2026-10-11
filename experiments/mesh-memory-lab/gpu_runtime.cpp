@@ -54,7 +54,6 @@ void initViewport(Viewport& view, const std::filesystem::path& assets)
 {
     view.program = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
     view.presentation = woby::loadProgram(assets, "vs_marker_screen.bin", "fs_marker_composite.bin");
-    view.colorUniform = g::createUniform("u_color", g::UniformType::Vec4);
 }
 void resizeViewport(Viewport& view, uint16_t width, uint16_t height)
 {
@@ -108,7 +107,7 @@ void renderViewport(const Viewport& view, const GpuCapture& gpu, const Trace& tr
         g::setTransform(model);
         g::setVertexBuffer(0, gpu.vertices);
         g::setIndexBuffer(gpu.indices, first, count);
-        g::setUniform(view.colorUniform, color.data());
+        g::setColor(color);
         g::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_WRITE_Z | WOBY_GPU_STATE_DEPTH_TEST_LEQUAL);
         g::submit(viewId, view.program);
     };
@@ -122,7 +121,6 @@ void destroy(Viewport& view)
     if (g::isValid(view.depth)) { g::destroy(view.depth); }
     if (g::isValid(view.program)) { g::destroy(view.program); }
     if (g::isValid(view.presentation)) { g::destroy(view.presentation); }
-    if (g::isValid(view.colorUniform)) { g::destroy(view.colorUniform); }
     view = {};
 }
 } // namespace mesh_lab

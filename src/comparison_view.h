@@ -15,7 +15,7 @@ void drawAnalysisCreationMenu(UiState& state, const std::vector<SceneObjectId>& 
 void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const ComparisonRuntimes& runtimes = {});
 void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes);
 void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
-    woby::graphics::ProgramHandle colorProgram, woby::graphics::UniformHandle colorUniform, SceneRenderScratch& scratch,
+    woby::graphics::ProgramHandle colorProgram, SceneRenderScratch& scratch,
     woby::graphics::ProgramHandle markerProgram = WOBY_GPU_INVALID_HANDLE);
 void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const UiState& state,
     const ComparisonRuntimes& runtimes);

@@ -459,8 +459,6 @@ TEST_CASE("analysis submission CPU benchmark" * doctest::skip()) {
     const auto program = graphics::createProgram(
         graphics::createShader(graphics::copy(&code, sizeof(code))),
         graphics::createShader(graphics::copy(&code, sizeof(code))), true);
-    const auto uniform = graphics::createUniform("u_color", graphics::UniformType::Vec4);
-    const auto parameters = graphics::createUniform("u_comparison", graphics::UniformType::Vec4);
     for (const size_t groups : {1u, 256u, 2203u}) {
         InspectorFixture f(groups);
         auto& runtime = f.runtimes.objects[f.id];
@@ -471,7 +469,6 @@ TEST_CASE("analysis submission CPU benchmark" * doctest::skip()) {
         runtime.gpu.original.triangles = gpu.triangleIndexBuffer;
         if (woby::graphics::isValid(gpu.lineIndexBuffer)) { woby::graphics::destroy(gpu.lineIndexBuffer); }
         f.runtimes.program = program;
-        f.runtimes.parameters = parameters;
         runtime.gpu.uploadedStages = runtime.results.cache.completed;
         f.queries();
         SceneRenderScratch scratch;
@@ -494,11 +491,11 @@ TEST_CASE("analysis submission CPU benchmark" * doctest::skip()) {
                     auto start = std::chrono::steady_clock::now();
                     (void)effectiveComparisonSettings(f.state, f.id);
                     const auto scene = std::chrono::steady_clock::now();
-                    submitComparisonScenes(0, f.state, f.runtimes, program, uniform, scratch);
+                    submitComparisonScenes(0, f.state, f.runtimes, program, scratch);
                     const auto helpers = std::chrono::steady_clock::now();
                     scratch.parts.clear();
                     appendVisibleComparisonPickParts(scratch.parts, f.state, f.runtimes);
-                    submitSceneSelection(0, scratch.parts, f.state, helperLineVertexLayout(), program, uniform, scratch);
+                    submitSceneSelection(0, scratch.parts, f.state, helperLineVertexLayout(), program, scratch);
                     const auto end = std::chrono::steady_clock::now();
                     if (i >= 5) {
                         times[0].push_back(std::chrono::duration<double, std::micro>(scene-start).count());
@@ -517,7 +514,5 @@ TEST_CASE("analysis submission CPU benchmark" * doctest::skip()) {
         }
         destroyGpuMesh(gpu);
     }
-    graphics::destroy(parameters);
-    graphics::destroy(uniform);
     graphics::destroy(program);
 }

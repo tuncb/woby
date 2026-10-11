@@ -9,7 +9,6 @@ namespace woby {
 // Explicit draw context keeps viewport picking out of screenshot submissions.
 struct MarkerDrawContext {
     MarkerDrawList list;
-    woby::graphics::UniformHandle baseUniform = WOBY_GPU_INVALID_HANDLE;
 };
 
 struct MarkerReadback {
@@ -32,7 +31,7 @@ struct GpuMarkerPicker {
     uint64_t resourceSignature = 0;
     SceneCamera camera;
     SceneUpAxis upAxis = SceneUpAxis::z;
-    std::array<float, 4> query{}, options{};
+    std::array<float, 4> query{};
     MarkerDrawContext context;
     std::array<MarkerReadback, 8> requests;
     std::optional<HoveredVertex> coordinates;
@@ -44,8 +43,6 @@ struct GpuMarkerPicker {
         comparison = WOBY_GPU_INVALID_HANDLE, composite = WOBY_GPU_INVALID_HANDLE;
     std::array<woby::graphics::ProgramHandle, 2> lookup = {{{woby::graphics::kInvalidHandle}, {woby::graphics::kInvalidHandle}}},
         highlight = {{{woby::graphics::kInvalidHandle}, {woby::graphics::kInvalidHandle}}};
-    woby::graphics::UniformHandle queryUniform = WOBY_GPU_INVALID_HANDLE, optionsUniform = WOBY_GPU_INVALID_HANDLE,
-        colorSampler = WOBY_GPU_INVALID_HANDLE, idSampler = WOBY_GPU_INVALID_HANDLE, resultSampler = WOBY_GPU_INVALID_HANDLE;
 };
 
 [[nodiscard]] bool supportsGpuMarkerPicking(const woby::graphics::Caps& caps);

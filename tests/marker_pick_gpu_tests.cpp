@@ -13,8 +13,6 @@ struct MarkerGpuFixture {
     woby::TransparentSurfacePrograms transparency;
     woby::UiState state;
     std::vector<woby::LoadedModelRuntime> runtimes;
-    woby::graphics::UniformHandle colorUniform = WOBY_GPU_INVALID_HANDLE, pointUniform = WOBY_GPU_INVALID_HANDLE;
-    woby::graphics::UniformHandle uvUniform = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::TextureHandle output = WOBY_GPU_INVALID_HANDLE, staging = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::FrameBufferHandle outputFramebuffer = WOBY_GPU_INVALID_HANDLE;
     std::vector<uint8_t> pixels = std::vector<uint8_t>(128 * 128 * 4);
@@ -34,9 +32,6 @@ struct MarkerGpuFixture {
         if (woby::graphics::isValid(outputFramebuffer)) { woby::graphics::destroy(outputFramebuffer); }
         if (woby::graphics::isValid(output)) { woby::graphics::destroy(output); }
         if (woby::graphics::isValid(staging)) { woby::graphics::destroy(staging); }
-        if (woby::graphics::isValid(colorUniform)) { woby::graphics::destroy(colorUniform); }
-        if (woby::graphics::isValid(pointUniform)) { woby::graphics::destroy(pointUniform); }
-        if (woby::graphics::isValid(uvUniform)) { woby::graphics::destroy(uvUniform); }
         woby::graphics::shutdown();
     }
 };
@@ -82,9 +77,6 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     for (const auto& file : state.files) {
         fixture.runtimes.push_back({woby::createGpuMesh(file.mesh, woby::meshVertexLayout(), woby::gpuMeshPoints), woby::gpuMeshPoints});
     }
-    fixture.colorUniform = woby::graphics::createUniform("u_color", woby::graphics::UniformType::Vec4);
-    fixture.pointUniform = woby::graphics::createUniform("u_pointParams", woby::graphics::UniformType::Vec4, 2);
-    fixture.uvUniform = woby::graphics::createUniform("u_uvGrid", woby::graphics::UniformType::Vec4);
     fixture.output = woby::graphics::createTexture2D(128, 128, false, 1, woby::graphics::TextureFormat::BGRA8, WOBY_GPU_TEXTURE_RT);
     fixture.staging = woby::graphics::createTexture2D(128, 128, false, 1, woby::graphics::TextureFormat::BGRA8,
         WOBY_GPU_TEXTURE_READ_BACK | WOBY_GPU_TEXTURE_BLIT_DST);
@@ -108,7 +100,7 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
         woby::graphics::setViewMode(1, woby::graphics::ViewMode::Sequential);
         woby::graphics::touch(1);
         woby::submitSceneFiles(1, woby::buildSceneDrawPlan(state), fixture.runtimes,
-            picker.mesh, fixture.uvUniform, picker.line, picker.point, fixture.colorUniform, fixture.pointUniform,
+            picker.mesh, picker.line, picker.point,
             fixture.edges, viewport.width, viewport.height, &picker.context, false, nullptr, &fixture.transparency);
         woby::submitGpuMarkerPicking(picker, viewport);
         // Test output replaces the window, using the production composite/highlight.

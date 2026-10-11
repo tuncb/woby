@@ -84,15 +84,14 @@ void destroyGpuMesh(GpuMesh& mesh);
 void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes);
 
 [[nodiscard]] uint32_t vertexPointSize(float masterSize, float groupScale);
-// Two vec4 uniforms; split the ID offset to preserve all 32 bits in float storage.
-[[nodiscard]] std::array<float, 8> pointSpriteParameters(
+// Runtime parameters preserve integer offsets and keep minimized viewports nonzero.
+[[nodiscard]] graphics::PointParameters pointSpriteParameters(
     float pointSize, uint32_t viewWidth, uint32_t viewHeight, uint32_t pointOffset);
 
 struct TriangleEdgePrograms {
     woby::graphics::ProgramHandle surface = WOBY_GPU_INVALID_HANDLE, markerSurface = WOBY_GPU_INVALID_HANDLE,
         transparentSurface = WOBY_GPU_INVALID_HANDLE,
         lines = WOBY_GPU_INVALID_HANDLE, markerLines = WOBY_GPU_INVALID_HANDLE;
-    woby::graphics::UniformHandle parameters = WOBY_GPU_INVALID_HANDLE;
     bool nativeBarycentrics = false;
 };
 [[nodiscard]] TriangleEdgePrograms createTriangleEdgePrograms(const std::filesystem::path& assets,
@@ -111,11 +110,8 @@ void submitSceneFiles(
     const SceneDrawPlan& plan,
     const std::vector<LoadedModelRuntime>& runtimes,
     woby::graphics::ProgramHandle meshProgram,
-    woby::graphics::UniformHandle uvGridUniform,
     woby::graphics::ProgramHandle colorProgram,
     woby::graphics::ProgramHandle pointSpriteProgram,
-    woby::graphics::UniformHandle colorUniform,
-    woby::graphics::UniformHandle pointParamsUniform,
     const TriangleEdgePrograms& edgePrograms,
     uint32_t sceneViewportWidth,
     uint32_t viewportHeight,
@@ -128,11 +124,10 @@ void submitSceneHelpers(
     woby::graphics::ViewId viewId,
     const UiState& state,
     const woby::graphics::VertexLayout& layout,
-    woby::graphics::ProgramHandle program,
-    woby::graphics::UniformHandle colorUniform);
+    woby::graphics::ProgramHandle program);
 
 void submitSceneSelection(woby::graphics::ViewId viewId, std::span<const ScenePickPart> parts, const UiState& state,
-    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
+    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program,
     SceneRenderScratch& scratch);
 
 } // namespace woby

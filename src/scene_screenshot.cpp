@@ -210,14 +210,11 @@ void submitSceneScreenshotCapture(
     SceneScreenshotRuntime& screenshot,
     const std::vector<LoadedModelRuntime>& runtimes,
     woby::graphics::ProgramHandle meshProgram,
-    woby::graphics::UniformHandle uvGridUniform,
     woby::graphics::ProgramHandle colorProgram,
     woby::graphics::ProgramHandle annotationProgram,
     woby::graphics::ProgramHandle lineSpriteProgram,
     woby::graphics::ProgramHandle pointSpriteProgram,
     const TriangleEdgePrograms& triangleEdgePrograms,
-    woby::graphics::UniformHandle colorUniform,
-    woby::graphics::UniformHandle pointParamsUniform,
     const UiState& ui,
     const woby::graphics::VertexLayout& helperLayout,
     const Bounds& sceneBounds,
@@ -329,26 +326,23 @@ void submitSceneScreenshotCapture(
             screenshot.renderScratch.drawCache.plan,
             runtimes,
             meshProgram,
-            uvGridUniform,
             colorProgram,
             pointSpriteProgram,
-            colorUniform,
-            pointParamsUniform,
             triangleEdgePrograms,
             sceneWidth,
             screenshot.height, nullptr, false, nullptr, transparency);
     }
-    if (comparison != nullptr) { submitComparisonScenes(screenshotSceneView, ui, *comparison, colorProgram, colorUniform, screenshot.renderScratch); }
+    if (comparison != nullptr) { submitComparisonScenes(screenshotSceneView, ui, *comparison, colorProgram, screenshot.renderScratch); }
     if (!options.resultsOnly) {
         submitSceneFiles(screenshotSceneView, screenshot.renderScratch.drawCache.plan, runtimes,
-            meshProgram, uvGridUniform, lineSpriteProgram, pointSpriteProgram, colorUniform, pointParamsUniform,
+            meshProgram, lineSpriteProgram, pointSpriteProgram,
             triangleEdgePrograms, sceneWidth, screenshot.height, nullptr, true);
     }
     if (!options.resultsOnly) {
-        submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
+        submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram);
         prepareSceneAnnotations(ui, captureView, screenshot.renderScratch);
         submitSceneAnnotations(screenshotHelperView, ui,
-            helperLayout, annotationProgram, colorUniform, screenshot.renderScratch);
+            helperLayout, annotationProgram, screenshot.renderScratch);
     }
     if (annotations || scaleOverlay) {
         // Export runs before ImGui::Render/EndFrame refreshes PlatformIO.Textures.

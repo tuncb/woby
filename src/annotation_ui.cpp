@@ -36,7 +36,7 @@ std::vector<PickPoint> handles(const UiAnnotation& item, std::span<const ScenePi
 }
 void submitLines(woby::graphics::ViewId viewId, const AnnotationSettings& settings,
     std::span<const std::array<float, 3>> vertices, const woby::graphics::VertexLayout& layout,
-    woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform, bool sampledPreview = false)
+    woby::graphics::ProgramHandle program, bool sampledPreview = false)
 {
     if (vertices.empty()) { return; }
     const auto count = static_cast<uint32_t>(vertices.size());
@@ -45,7 +45,7 @@ void submitLines(woby::graphics::ViewId viewId, const AnnotationSettings& settin
     woby::graphics::allocTransientVertexBuffer(&buffer, count, layout);
     std::memcpy(buffer.data, vertices.data(), vertices.size() * sizeof(vertices.front()));
     woby::graphics::setVertexBuffer(0, &buffer);
-    woby::graphics::setUniform(colorUniform, settings.color.data());
+    woby::graphics::setColor(settings.color);
     // Sampled chords can sink into curved surfaces. The temporary drag guide
     // stays visible; only the final, fully attached outline uses surface depth.
     woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | (sampledPreview ? 0 : WOBY_GPU_STATE_DEPTH_TEST_LEQUAL)
@@ -642,18 +642,18 @@ void prepareSceneAnnotations(const UiState& state, const ScenePickView& view,
 }
 
 void submitSceneAnnotations(woby::graphics::ViewId viewId, const UiState& state,
-    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
+    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program,
     const SceneRenderScratch& scratch, const AnnotationInteraction* interaction)
 {
     for (const auto& item : state.annotations) {
         if (interaction && interaction->dragging && interaction->editing == item.objectId && interaction->error.empty()
             && !interaction->preview.geometry.segments.empty()) { continue; }
         const auto& query = scratch.queries.annotations.objects.at(item.objectId);
-        submitLines(viewId, item.settings, query.projected, layout, program, colorUniform);
+        submitLines(viewId, item.settings, query.projected, layout, program);
     }
     if (interaction && interaction->dragging && interaction->error.empty()) {
         submitLines(viewId, interaction->preview.settings, scratch.annotationPreview.projected,
-            layout, program, colorUniform, interaction->sampledPreview);
+            layout, program, interaction->sampledPreview);
     }
 }
 } // namespace woby

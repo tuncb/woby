@@ -18,12 +18,12 @@ g::IndexBufferHandle uploadIndices(const std::vector<uint32_t>& data) {
     return g::createIndexBuffer(g::copy(data.data(),static_cast<uint32_t>(data.size()*sizeof(uint32_t))),WOBY_GPU_BUFFER_INDEX32);
 }
 Json measure(g::VertexBufferHandle vertices, g::IndexBufferHandle indices, g::VertexBufferHandle faces,
-    g::ProgramHandle program, g::FaceDisplayKind kind, bool wire, g::UniformHandle uniform, std::array<float,4> parameters) {
+    g::ProgramHandle program, g::FaceDisplayKind kind, bool wire, std::array<float,4> parameters) {
     std::vector<double> samples;
     // The renderer reports timestamps three frames late. Twelve warmup frames
     // remove the preceding variant and pipeline creation from the sample set.
     for (size_t frame=0;frame<43;++frame) {
-        g::touch(0); g::setUniform(uniform,parameters.data()); g::setVertexBuffer(0,vertices);
+        g::touch(0); if (wire) { g::setColor(parameters); } else { g::setComparison(parameters); } g::setVertexBuffer(0,vertices);
         if (wire) {
             if (g::isValid(faces)) { g::setTriangleWireframe(indices); }
             else { g::setIndexBuffer(indices); }
@@ -45,8 +45,6 @@ int main(int argc,char** argv) {
         if (!g::init({})) { throw std::runtime_error(g::initializationError()); }
         const auto comparison = woby::loadProgram(argv[1],"vs_comparison.bin","fs_comparison.bin");
         const auto color = woby::loadProgram(argv[1],"vs_color.bin","fs_color.bin");
-        const auto comparisonUniform = g::createUniform("u_comparison",g::UniformType::Vec4);
-        const auto colorUniform = g::createUniform("u_color",g::UniformType::Vec4);
         const auto output = g::createTexture2D(1024,768,false,1,g::TextureFormat::RGBA8,WOBY_GPU_TEXTURE_RT);
         const auto depth = g::createTexture2D(1024,768,false,1,g::TextureFormat::D24S8,WOBY_GPU_TEXTURE_RT);
         const std::array attachments{output,depth};
@@ -105,13 +103,12 @@ int main(int argc,char** argv) {
                 Json times=Json::array();
                 const auto kind=static_cast<g::FaceDisplayKind>(mode);
                 const auto program=mode==4?color:comparison;
-                const auto uniform=mode==4?colorUniform:comparisonUniform;
                 const std::array<float,4> parameters=mode==1?std::array<float,4>{0,0,2,0}:mode==2?std::array<float,4>{0,1,6,0}:std::array<float,4>{.2f,1,1,0};
                 for (size_t block=0;block<4;++block) {
                     Json pair;
                     for (size_t pass=0;pass<2;++pass) {
                         const bool compact=(block+pass)%2!=0;
-                        pair[compact?"compact":"expanded"]=measure(compact?source:reference,compact?triangles:referenceIndices,compact?faces:g::VertexBufferHandle{},program,kind,mode==4,uniform,parameters);
+                        pair[compact?"compact":"expanded"]=measure(compact?source:reference,compact?triangles:referenceIndices,compact?faces:g::VertexBufferHandle{},program,kind,mode==4,parameters);
                     }
                     times.push_back(pair);
                 }

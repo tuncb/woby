@@ -14,7 +14,6 @@ struct EdgeGpuFixture {
     std::vector<woby::LoadedModelRuntime> runtimes;
     woby::TriangleEdgePrograms native, pulled;
     g::ProgramHandle mesh{}, color{}, point{}, markerMesh{}, markerColor{}, markerPoint{};
-    g::UniformHandle colorUniform{}, pointUniform{}, uvUniform{}, baseUniform{};
     g::TextureHandle output{}, depth{}, ids{};
     g::IndexBufferHandle referenceEdges{};
     g::FrameBufferHandle target{};
@@ -24,7 +23,6 @@ struct EdgeGpuFixture {
         woby::destroyModelRuntimes(runtimes);
         woby::destroyTriangleEdgePrograms(native); woby::destroyTriangleEdgePrograms(pulled);
         for (auto handle : {mesh, color, point, markerMesh, markerColor, markerPoint}) { if (g::isValid(handle)) { g::destroy(handle); } }
-        for (auto handle : {colorUniform, pointUniform, uvUniform, baseUniform}) { if (g::isValid(handle)) { g::destroy(handle); } }
         if (g::isValid(target)) { g::destroy(target); }
         for (auto handle : {output, depth, ids}) { if (g::isValid(handle)) { g::destroy(handle); } }
         if (g::isValid(referenceEdges)) { g::destroy(referenceEdges); }
@@ -44,10 +42,6 @@ void initialize(EdgeGpuFixture& fixture, bool multisample, bool markerIds)
     fixture.markerMesh = woby::loadProgram(assets, "vs_mesh.bin", "fs_marker_mesh.bin");
     fixture.markerColor = woby::loadProgram(assets, "vs_color.bin", "fs_marker_line.bin");
     fixture.markerPoint = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_marker_point.bin");
-    fixture.colorUniform = g::createUniform("u_color", g::UniformType::Vec4);
-    fixture.pointUniform = g::createUniform("u_pointParams", g::UniformType::Vec4, 2);
-    fixture.uvUniform = g::createUniform("u_uvGrid", g::UniformType::Vec4);
-    fixture.baseUniform = g::createUniform("u_markerBase", g::UniformType::Vec4);
     const uint64_t flags = multisample ? WOBY_GPU_TEXTURE_RT_MSAA_X4 : WOBY_GPU_TEXTURE_RT;
     fixture.output = g::createTexture2D(128, 96, false, 1, g::TextureFormat::RGBA8, flags | WOBY_GPU_TEXTURE_READ_BACK);
     fixture.depth = g::createTexture2D(128, 96, false, 1, g::TextureFormat::D24S8, flags);
@@ -87,14 +81,14 @@ void initialize(EdgeGpuFixture& fixture, bool multisample, bool markerIds)
 }
 std::vector<uint8_t> capture(EdgeGpuFixture& fixture, woby::SceneDrawPlan plan, bool pulled = false, bool referenceLines = false)
 {
-    woby::MarkerDrawContext markers; markers.baseUniform = fixture.baseUniform;
+    woby::MarkerDrawContext markers;
     const auto reference = plan;
     if (referenceLines) { for (auto& item : plan.items) { item.edges = false; } }
     g::touch(0);
     woby::submitSceneFiles(0, plan, fixture.runtimes,
-        fixture.markerIds ? fixture.markerMesh : fixture.mesh, fixture.uvUniform,
+        fixture.markerIds ? fixture.markerMesh : fixture.mesh,
         fixture.markerIds ? fixture.markerColor : fixture.color,
-        fixture.markerIds ? fixture.markerPoint : fixture.point, fixture.colorUniform, fixture.pointUniform,
+        fixture.markerIds ? fixture.markerPoint : fixture.point,
         pulled ? fixture.pulled : fixture.native, 128, 96, fixture.markerIds ? &markers : nullptr);
     if (referenceLines) {
         for (const auto& item : reference.items) {
@@ -103,7 +97,7 @@ std::vector<uint8_t> capture(EdgeGpuFixture& fixture, woby::SceneDrawPlan plan, 
             const auto& range = mesh.nodeRanges[item.groupIndex];
             auto color = item.color;
             for (size_t channel = 0; channel < 3; ++channel) { color[channel] = std::min(1.0f, color[channel]*1.25f); }
-            g::setTransform(item.model.data()); g::setUniform(fixture.colorUniform, color.data());
+            g::setTransform(item.model.data()); g::setColor(color);
             g::setVertexBuffer(0, mesh.vertexBuffer);
             g::setIndexBuffer(fixture.referenceEdges, range.lineIndexOffset, range.lineIndexCount);
             auto flags = WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_PT_LINES | WOBY_GPU_STATE_MSAA;

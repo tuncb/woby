@@ -177,21 +177,19 @@ TEST_CASE("GPU point ranges preserve first occurrence order independently for ea
     }
 }
 
-TEST_CASE("Point uniforms preserve large offsets and pixel sizing")
+TEST_CASE("Point parameters preserve large offsets and pixel sizing")
 {
     for (const uint32_t offset : {0u, 65535u, 65536u, 16777217u, 38414391u,
                                  std::numeric_limits<uint32_t>::max()}) {
         const auto params = woby::pointSpriteParameters(40.0f, 1280, 720, offset);
-        CHECK(params[0] == 40.0f);
-        CHECK(params[1] == 1280.0f);
-        CHECK(params[2] == 720.0f);
-        const auto restored = static_cast<uint32_t>(params[4])
-            + static_cast<uint32_t>(params[5]) * 65536u;
-        CHECK(restored == offset);
+        CHECK(params.size == 40.0f);
+        CHECK(params.width == 1280u);
+        CHECK(params.height == 720u);
+        CHECK(params.offset == offset);
     }
     const auto minimized = woby::pointSpriteParameters(1.0f, 0, 0, 0);
-    CHECK(minimized[1] == 1.0f);
-    CHECK(minimized[2] == 1.0f);
+    CHECK(minimized.width == 1u);
+    CHECK(minimized.height == 1u);
 }
 
 TEST_CASE("Renderer requirements reject missing shader features at startup")
@@ -285,7 +283,6 @@ TEST_CASE("GPU uploads reject invalid indices and ranges before allocating")
     CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
         "Scene needs valid triangles, line segments or points.");
 }
-
 
 TEST_CASE("GPU standalone points use point buffers without triangle or line buffers")
 {

@@ -46,7 +46,6 @@ size_t inspectorEnabledPartCount(const ComparisonRuntime& runtime, const UiState
     return runtime.inspector.queries.inputs[side == ComparisonSide::a ? 0 : 1].summary.enabledPartCount;
 }
 
-
 ComparisonActivity comparisonActivity(const UiState& state, const ComparisonRuntime& runtime, SceneObjectId id)
 {
     const auto& queries = runtime.inspector.queries;
@@ -916,7 +915,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
 }
 
 void submitEdges(woby::graphics::ViewId view, woby::graphics::VertexBufferHandle vertices, woby::graphics::ProgramHandle program,
-                 woby::graphics::UniformHandle uniform, const std::array<float, 4> &color, const float* transform)
+    const std::array<float, 4> &color, const float* transform)
 {
     if (!woby::graphics::isValid(vertices))
     {
@@ -924,18 +923,18 @@ void submitEdges(woby::graphics::ViewId view, woby::graphics::VertexBufferHandle
     }
     woby::graphics::setTransform(transform);
     woby::graphics::setVertexBuffer(0, vertices);
-    woby::graphics::setUniform(uniform, color.data());
+    woby::graphics::setColor(color);
     woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_PT_LINES | WOBY_GPU_STATE_DEPTH_TEST_ALWAYS |
                    WOBY_GPU_STATE_MSAA);
     woby::graphics::submit(view, program);
 }
 void submitWire(woby::graphics::ViewId view, const ComparisonGpuSurface &gpu, woby::graphics::ProgramHandle program,
-                woby::graphics::UniformHandle uniform, const std::array<float, 4> &color, bool xray, const float* transform)
+    const std::array<float, 4> &color, bool xray, const float* transform)
 {
     woby::graphics::setTransform(transform);
     woby::graphics::setVertexBuffer(0, gpu.vertices);
     woby::graphics::setTriangleWireframe(gpu.triangles);
-    woby::graphics::setUniform(uniform, color.data());
+    woby::graphics::setColor(color);
     woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_PT_LINES | WOBY_GPU_STATE_MSAA |
                    (xray ? WOBY_GPU_STATE_DEPTH_TEST_ALWAYS : WOBY_GPU_STATE_DEPTH_TEST_LEQUAL));
     woby::graphics::submit(view, program);
@@ -1398,7 +1397,7 @@ void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes)
 
 static void submitComparisonScene(woby::graphics::ViewId view, const UiComparison& comparison, const ComparisonRuntime& runtime,
                            const ComparisonRuntimes& runtimes,
-                           woby::graphics::ProgramHandle colorProgram, woby::graphics::UniformHandle colorUniform, const ComparisonSettings& settings, woby::graphics::ProgramHandle markerProgram)
+                           woby::graphics::ProgramHandle colorProgram, const ComparisonSettings& settings, woby::graphics::ProgramHandle markerProgram)
 {
     if (!comparison.settings.enabled || !runtime.gpu.ready) { return; }
     const bool useOriginal = originalActive(settings);
@@ -1415,8 +1414,8 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
             const bool uvQuality = settings.type == AnalysisType::uvQuality;
             const auto uv = uvQuality ? std::array<float,4>{0,0,6,settings.uvMetric == UvQualityMetric::area ? 1.0f : 0.0f} : uvColorParameters(settings.uvGrid,node.hasTexcoords,true);
             woby::graphics::setTransform(identity);
-            woby::graphics::setUniform(runtimes.parameters, uv.data());
-            woby::graphics::setUniform(colorUniform, gray.data());
+            woby::graphics::setComparison(uv);
+            woby::graphics::setColor(gray);
             if (uvQuality) {
                 woby::graphics::setVertexBuffer(0, gpu.vertices);
                 woby::graphics::setFaceDisplay(gpu.quality, gpu.triangles, woby::graphics::FaceDisplayKind::uvQuality, node.indexOffset/3, node.indexCount/3);
@@ -1429,7 +1428,7 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
                 WOBY_GPU_STATE_DEPTH_TEST_LEQUAL | WOBY_GPU_STATE_MSAA, woby::graphics::isValid(markerProgram));
             woby::graphics::submit(view, woby::graphics::isValid(markerProgram) ? markerProgram : runtimes.program);
         }
-        if (settings.showEdges) { submitWire(view, gpu, colorProgram, colorUniform, {.22f, .25f, .30f, 1}, false, identity); }
+        if (settings.showEdges) { submitWire(view, gpu, colorProgram, {.22f, .25f, .30f, 1}, false, identity); }
         return;
     }
     const std::array<float, 4> parameters = {quality ? static_cast<float>(settings.quality.metric) : settings.tolerance,
@@ -1437,8 +1436,8 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
         quality && settings.quality.metric == SurfaceQualityMetric::shape ? 1.0f : 0.0f};
     const std::array<float, 4> gray = {.58f, .63f, .69f, 1};
     woby::graphics::setTransform(identity);
-    woby::graphics::setUniform(runtimes.parameters, parameters.data());
-    woby::graphics::setUniform(colorUniform, gray.data());
+    woby::graphics::setComparison(parameters);
+    woby::graphics::setColor(gray);
     woby::graphics::setVertexBuffer(0, gpu.vertices);
     if (heatmap) { woby::graphics::setFaceDisplay(quality ? gpu.quality : gpu.samples, gpu.triangles,
         quality ? woby::graphics::FaceDisplayKind::surfaceQuality : woby::graphics::FaceDisplayKind::distance); }
@@ -1451,71 +1450,71 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
     woby::graphics::submit(view, woby::graphics::isValid(markerProgram) ? markerProgram : runtimes.program);
     if (settings.showEdges)
     {
-        submitWire(view, gpu, colorProgram, colorUniform, {.22f, .25f, .30f, 1}, false, identity);
+        submitWire(view, gpu, colorProgram, {.22f, .25f, .30f, 1}, false, identity);
     }
     if (settings.mode == ComparisonMode::overlay)
     {
-        submitWire(view, runtime.gpu.original, colorProgram, colorUniform, {.3f, .75f, 1, 1}, true, identity);
+        submitWire(view, runtime.gpu.original, colorProgram, {.3f, .75f, 1, 1}, true, identity);
     }
     if (settings.intersections.show) {
         if (woby::graphics::isValid(gpu.intersectionFill)) {
             const std::array<float, 4> red = {1, .2f, .15f, .45f};
             woby::graphics::setTransform(identity); woby::graphics::setVertexBuffer(0, gpu.intersectionFill);
-            woby::graphics::setUniform(colorUniform, red.data());
+            woby::graphics::setColor(red);
             setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_DEPTH_TEST_ALWAYS | WOBY_GPU_STATE_BLEND_ALPHA | WOBY_GPU_STATE_MSAA, woby::graphics::isValid(markerProgram));
             woby::graphics::submit(view, colorProgram);
         }
-        submitEdges(view, gpu.intersectionEdges, colorProgram, colorUniform, {1, .2f, .15f, 1}, identity);
+        submitEdges(view, gpu.intersectionEdges, colorProgram, {1, .2f, .15f, 1}, identity);
     }
     if (settings.degenerates.enabled && settings.degenerates.show) {
         if (woby::graphics::isValid(gpu.degenerateFill)) {
             const std::array<float, 4> purple = {.8f, .25f, 1, .45f};
             woby::graphics::setTransform(identity); woby::graphics::setVertexBuffer(0, gpu.degenerateFill);
-            woby::graphics::setUniform(colorUniform, purple.data());
+            woby::graphics::setColor(purple);
             setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_DEPTH_TEST_ALWAYS | WOBY_GPU_STATE_BLEND_ALPHA | WOBY_GPU_STATE_MSAA, woby::graphics::isValid(markerProgram));
             woby::graphics::submit(view, colorProgram);
         }
-        submitEdges(view, gpu.degenerateEdges, colorProgram, colorUniform, {.8f, .25f, 1, 1}, identity);
+        submitEdges(view, gpu.degenerateEdges, colorProgram, {.8f, .25f, 1, 1}, identity);
     }
     if (settings.duplicates.triangles && settings.duplicates.showTriangles) {
         if (woby::graphics::isValid(gpu.duplicateTriangleFill)) {
             const std::array<float, 4> orange = {1, .45f, .08f, .4f};
             woby::graphics::setTransform(identity); woby::graphics::setVertexBuffer(0, gpu.duplicateTriangleFill);
-            woby::graphics::setUniform(colorUniform, orange.data());
+            woby::graphics::setColor(orange);
             setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_DEPTH_TEST_ALWAYS | WOBY_GPU_STATE_BLEND_ALPHA | WOBY_GPU_STATE_MSAA, woby::graphics::isValid(markerProgram));
             woby::graphics::submit(view, colorProgram);
         }
-        submitEdges(view, gpu.duplicateTriangleEdges, colorProgram, colorUniform, {1, .45f, .08f, 1}, identity);
+        submitEdges(view, gpu.duplicateTriangleEdges, colorProgram, {1, .45f, .08f, 1}, identity);
     }
     if (settings.duplicates.points && settings.duplicates.showPoints) {
-        submitEdges(view, gpu.duplicatePoints, colorProgram, colorUniform, {.1f, .85f, 1, 1}, identity);
+        submitEdges(view, gpu.duplicatePoints, colorProgram, {.1f, .85f, 1, 1}, identity);
     }
     if (settings.showBoundaries)
     {
-        submitEdges(view, gpu.boundaries, colorProgram, colorUniform, {.2f, 1, .6f, 1}, identity);
+        submitEdges(view, gpu.boundaries, colorProgram, {.2f, 1, .6f, 1}, identity);
     }
     if (settings.showNonManifold)
     {
-        submitEdges(view, gpu.nonManifold, colorProgram, colorUniform, {1, .15f, .55f, 1}, identity);
+        submitEdges(view, gpu.nonManifold, colorProgram, {1, .15f, .55f, 1}, identity);
     }
     if (settings.topologyInspection.nonManifoldVertices && settings.topologyInspection.showNonManifoldVertices) {
-        submitEdges(view, gpu.nonManifoldVertices, colorProgram, colorUniform, {1, .65f, .05f, 1}, identity);
+        submitEdges(view, gpu.nonManifoldVertices, colorProgram, {1, .65f, .05f, 1}, identity);
     }
     if (settings.topologyInspection.fins && settings.topologyInspection.showFins) {
         if (woby::graphics::isValid(gpu.finFill)) {
-            const float color[] = {.2f, .9f, .65f, .35f};
-            woby::graphics::setTransform(identity); woby::graphics::setUniform(colorUniform, color);
+            const std::array<float,4> color{.2f, .9f, .65f, .35f};
+            woby::graphics::setTransform(identity); woby::graphics::setColor(color);
             woby::graphics::setVertexBuffer(0, gpu.finFill);
             setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_DEPTH_TEST_LEQUAL | WOBY_GPU_STATE_BLEND_ALPHA, woby::graphics::isValid(markerProgram));
             woby::graphics::submit(view, colorProgram);
         }
-        submitEdges(view, gpu.finEdges, colorProgram, colorUniform, {.2f, .9f, .65f, 1}, identity);
+        submitEdges(view, gpu.finEdges, colorProgram, {.2f, .9f, .65f, 1}, identity);
     }
     if (settings.topologyInspection.holes && settings.topologyInspection.showHoles) {
-        submitEdges(view, gpu.holes, colorProgram, colorUniform, {.1f, .65f, 1, 1}, identity);
+        submitEdges(view, gpu.holes, colorProgram, {.1f, .65f, 1, 1}, identity);
     }
     if (settings.showWinding) {
-        submitEdges(view, gpu.winding, colorProgram, colorUniform, {1, .2f, .2f, 1}, identity);
+        submitEdges(view, gpu.winding, colorProgram, {1, .2f, .2f, 1}, identity);
     }
 }
 
@@ -1537,14 +1536,14 @@ void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const U
 }
 
 void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
-    woby::graphics::ProgramHandle colorProgram, woby::graphics::UniformHandle colorUniform, SceneRenderScratch& scratch, woby::graphics::ProgramHandle markerProgram)
+    woby::graphics::ProgramHandle colorProgram, SceneRenderScratch& scratch, woby::graphics::ProgramHandle markerProgram)
 {
     for (const auto& comparison : state.comparisons) {
         if (!comparison.settings.enabled) { continue; }
         const auto it = runtimes.objects.find(comparison.objectId);
         if (it != runtimes.objects.end() && comparisonStagesReady(it->second, state, comparison.objectId, comparisonSource, true)) {
             auto settings = readyComparisonSettings(it->second, state, comparison.objectId);
-            submitComparisonScene(view, comparison, it->second, runtimes, colorProgram, colorUniform, settings, markerProgram);
+            submitComparisonScene(view, comparison, it->second, runtimes, colorProgram, settings, markerProgram);
         }
     }
     // Submit focus last so surfaces and other diagnostic edges cannot obscure it.
@@ -1668,7 +1667,7 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
         woby::translationMatrix(transform, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
         const std::array<float, 4> yellow = {1, 1, .1f, 1};
         woby::graphics::setTransform(transform);
-        woby::graphics::setUniform(colorUniform, yellow.data());
+        woby::graphics::setColor(yellow);
         woby::graphics::setVertexBuffer(0, &buffer);
         woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A |
             WOBY_GPU_STATE_DEPTH_TEST_ALWAYS | WOBY_GPU_STATE_MSAA);

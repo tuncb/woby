@@ -175,7 +175,6 @@ TEST_CASE("Native draws retain texture versions and geometry until GPU completio
     REQUIRE(fixture.initialized);
     const auto program =
         woby::loadProgram(WOBY_TEST_ASSET_DIRECTORY, "vs_marker_screen.bin", "fs_marker_composite.bin");
-    const auto sampler = g::createUniform("s_tex", g::UniformType::Sampler);
     const std::array<uint8_t, 4> red{255, 0, 0, 255}, blue{0, 0, 255, 255};
     const auto texture = g::createTexture2D(1, 1, false, 1, g::TextureFormat::RGBA8, 0, g::copy(red.data(), 4));
     const auto output =
@@ -190,7 +189,7 @@ TEST_CASE("Native draws retain texture versions and geometry until GPU completio
     {
         if (i)
             g::updateTexture2D(texture, 0, 0, 0, 0, 1, 1, g::copy(blue.data(), 4));
-        g::setTexture(0, sampler, texture);
+        g::setTexture(0, texture);
         g::setScissor(static_cast<uint16_t>(i * 4), 0, 4, 8);
         g::setVertexCount(4);
         g::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_PT_TRISTRIP);
@@ -200,7 +199,6 @@ TEST_CASE("Native draws retain texture versions and geometry until GPU completio
     const std::array<uint16_t, 3> indices{0, 1, 2};
     g::destroy(g::createIndexBuffer(g::copy(indices.data(), sizeof(indices))));
     g::destroy(texture);
-    g::destroy(sampler);
     const auto ready = g::readTexture(output, pixels.data());
     while (g::frame() < ready)
     {
@@ -231,10 +229,8 @@ TEST_CASE("Native circular markers use pixel coverage consistently for display a
         WOBY_GPU_BUFFER_COMPUTE_READ);
     const auto indices = g::createIndexBuffer(g::copy(pointId.data(), sizeof(pointId)),
         WOBY_GPU_BUFFER_INDEX32 | WOBY_GPU_BUFFER_COMPUTE_READ);
-    const auto color = g::createUniform("u_color", g::UniformType::Vec4);
-    const auto parameters = g::createUniform("u_pointParams", g::UniformType::Vec4, 2);
     const std::array<float, 4> red{1, 0, 0, 1};
-    const std::array<float, 8> pointParameters{8, 16, 16, 0, 0, 0, 0, 0};
+    const g::PointParameters pointParameters{8, 16, 16};
     for (const bool multisample : {false, true})
         for (const bool markerIds : {false, true})
         {
@@ -254,8 +250,8 @@ TEST_CASE("Native circular markers use pixel coverage consistently for display a
             g::setViewFrameBuffer(0, target);
             g::setViewRect(0, 0, 0, 16, 16);
             g::setViewClear(0, WOBY_GPU_CLEAR_COLOR, 0x000000ff);
-            g::setUniform(color, red.data());
-            g::setUniform(parameters, pointParameters.data(), 2);
+            g::setColor(red);
+            g::setPointParameters(pointParameters);
             g::setBuffer(0, vertices, g::Access::Read);
             g::setBuffer(1, indices, g::Access::Read);
             g::setVertexCount(4);
@@ -288,10 +284,78 @@ TEST_CASE("Native circular markers use pixel coverage consistently for display a
             if (markerIds)
                 g::destroy(ids);
         }
-    g::destroy(parameters);
-    g::destroy(color);
     g::destroy(indices);
     g::destroy(vertices);
+}
+
+TEST_CASE("Typed roots preserve uint32 marker IDs and reset copied parameters between draws")
+{
+    namespace g = woby::graphics;
+    NativeFixture fixture;
+    fixture.initialized = g::init({});
+    REQUIRE(fixture.initialized);
+    const auto program = woby::loadProgram(WOBY_TEST_ASSET_DIRECTORY, "vs_marker_point.bin", "fs_marker_point.bin");
+    const auto output = g::createTexture2D(30, 10, false, 1, g::TextureFormat::RGBA8,
+        WOBY_GPU_TEXTURE_RT | WOBY_GPU_TEXTURE_READ_BACK);
+    const auto ids = g::createTexture2D(30, 10, false, 1, g::TextureFormat::RGBA8,
+        WOBY_GPU_TEXTURE_RT | WOBY_GPU_TEXTURE_READ_BACK);
+    const std::array attachments{output, ids};
+    const auto target = g::createFrameBuffer(2, attachments.data());
+    g::setViewFrameBuffer(0, target); g::setViewRect(0, 0, 0, 30, 10);
+    g::setViewClear(0, WOBY_GPU_CLEAR_COLOR, 0);
+    struct Point { float x, y, z; uint32_t originalId; };
+    const std::array<uint32_t, 7> boundaries{0, 1, 65535, 65536, 16777217, 2147483648u, UINT32_MAX};
+    for (const bool compact : {false, true}) {
+        for (size_t caseIndex = 0; caseIndex < boundaries.size(); ++caseIndex) {
+            const uint32_t markerId = boundaries[caseIndex];
+            // Source and marker IDs are independent. An accidental field swap
+            // or float conversion must change the readback, including UINT32_MAX.
+            const uint32_t sourceFirst = boundaries[(caseIndex + 3) % boundaries.size()];
+            for (const uint32_t sourceDelta : {0u, 7u}) {
+                if (sourceDelta && (!compact || !markerId || markerId > UINT32_MAX - sourceDelta
+                    || sourceFirst > UINT32_MAX - sourceDelta)) { continue; }
+                CAPTURE(compact); CAPTURE(markerId); CAPTURE(sourceFirst); CAPTURE(sourceDelta);
+                std::vector<Point> data(compact ? 65537 : 3);
+                const std::array<uint32_t, 3> offsets{65536, 65535, 1};
+                std::vector<uint32_t> pointIndices(65537);
+                for (uint32_t draw = 0; draw < 3; ++draw) {
+                    data[compact ? offsets[draw] : draw] = {-2.0f/3.0f + float(draw)*2.0f/3.0f, 0, .5f, sourceFirst + sourceDelta};
+                    pointIndices[offsets[draw]] = draw;
+                }
+                const auto vertices = g::createVertexBuffer(g::copy(data.data(), woby::sceneBufferBytes(data.size(), sizeof(Point))), {sizeof(Point)});
+                const auto indices = g::createIndexBuffer(g::copy(pointIndices.data(), woby::sceneBufferBytes(pointIndices.size(), sizeof(uint32_t))),
+                    WOBY_GPU_BUFFER_INDEX32);
+                g::touch(0);
+                for (uint32_t draw = 0; draw < 3; ++draw) {
+                    std::array<float, 4> color{draw == 0 ? 1.0f : 0.0f, draw == 1 ? 1.0f : 0.0f, 0, 1};
+                    if (draw < 2) { g::setColor(color); }
+                    g::setPointParameters({6, 30, 10, offsets[draw], sourceFirst, compact});
+                    if (draw == 0) { g::setMarkerBase(markerId); }
+                    g::setBuffer(0, vertices, g::Access::Read);
+                    if (!compact) { g::setBuffer(1, indices, g::Access::Read); }
+                    g::setVertexCount(4); g::setInstanceCount(1);
+                    g::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_PT_TRISTRIP);
+                    color = {0, 0, 1, 1}; // The setter must already own its copy.
+                    g::submit(0, program);
+                }
+                // Submission must also retain buffers after their public handles die.
+                g::destroy(indices); g::destroy(vertices);
+                std::array<uint8_t, 30*10*4> pixels{}, markers{};
+                const auto ready = std::max(g::readTexture(output, pixels.data()), g::readTexture(ids, markers.data()));
+                while (g::frame() < ready) {}
+                for (size_t draw = 0; draw < 3; ++draw) {
+                    const size_t pixel = (5*30 + 5 + draw*10)*4;
+                    CHECK(pixels[pixel] == (draw == 0 ? 255 : 0));
+                    CHECK(pixels[pixel+1] == (draw == 1 ? 255 : 0));
+                    CHECK(pixels[pixel+2] == 0);
+                    const uint32_t actual = uint32_t{markers[pixel]} | (uint32_t{markers[pixel+1]} << 8)
+                        | (uint32_t{markers[pixel+2]} << 16) | (uint32_t{markers[pixel+3]} << 24);
+                    CHECK(actual == (draw == 0 ? markerId + sourceDelta : 0));
+                }
+            }
+        }
+    }
+    g::destroy(target); g::destroy(ids); g::destroy(output); g::destroy(program);
 }
 
 TEST_CASE("Reversed depth resolves close and distant layers independent of draw order and MSAA")
@@ -301,7 +365,6 @@ TEST_CASE("Reversed depth resolves close and distant layers independent of draw 
     fixture.initialized = g::init({});
     REQUIRE(fixture.initialized);
     const auto program = woby::loadProgram(WOBY_TEST_ASSET_DIRECTORY, "vs_color.bin", "fs_color.bin");
-    const auto color = g::createUniform("u_color", g::UniformType::Vec4);
     const std::array<float, 4> red{1, 0, 0, 1}, blue{0, 0, 1, 1};
     const std::array<float, 18> positions{
         -200000, -200000, .5f, 200000, -200000, .5f, 0, 200000, .5f,
@@ -336,7 +399,7 @@ TEST_CASE("Reversed depth resolves close and distant layers independent of draw 
                         g::touch(0);
                         for (int draw = 0; draw < 2; ++draw) {
                             const bool front = (draw == 0) == frontFirst;
-                            g::setUniform(color, front ? red.data() : blue.data());
+                            g::setColor(front ? red : blue);
                             g::setVertexBuffer(0, vertices, front ? 0 : 3, 3);
                             g::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_WRITE_Z | test);
                             g::submit(1, program);
@@ -358,5 +421,5 @@ TEST_CASE("Reversed depth resolves close and distant layers independent of draw 
         }
         g::destroy(target); g::destroy(depth); g::destroy(output);
     }
-    g::destroy(vertices); g::destroy(color); g::destroy(program);
+    g::destroy(vertices); g::destroy(program);
 }

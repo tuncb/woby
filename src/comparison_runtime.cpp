@@ -744,7 +744,6 @@ void destroyComparisonRuntimes(ComparisonRuntimes& runtimes)
     for (auto& [id, runtime] : runtimes.objects) { (void)id; destroyComparisonRuntime(runtime); }
     runtimes.objects.clear();
     if (woby::graphics::isValid(runtimes.program)) { woby::graphics::destroy(runtimes.program); runtimes.program = WOBY_GPU_INVALID_HANDLE; }
-    if (woby::graphics::isValid(runtimes.parameters)) { woby::graphics::destroy(runtimes.parameters); runtimes.parameters = WOBY_GPU_INVALID_HANDLE; }
 }
 
 bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntimes& runtimes)

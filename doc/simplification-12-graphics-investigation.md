@@ -3,6 +3,9 @@
 Baseline: `46a27585c5bc8638a8bde5d601e5cead71376631`. This investigation changes
 research targets and documents. Application behavior is unchanged.
 
+The investigation above describes the historical baseline. The [implementation
+record](#implementation-record) below covers the subsequent production change.
+
 ## Decision
 
 Implement typed setters as a small adapter cleanup. A uniform-name change can
@@ -131,3 +134,70 @@ the current size and arena use.
 
 The API cleanup has low numerical risk. The integer/layout phase has a wider
 validation surface. The two phases should have separate review and validation.
+
+## Implementation record
+
+Implemented on 11 October 2026 from parent
+`9db20ba6ac34ad11679fe037e4bce148866fe76f`. The user selected both the API cleanup
+and the integer shader layout, and deferred Apple hardware checks to CI.
+
+The graphics API now has free setters for color, point parameters, comparison
+display, UV display, triangle edges, marker IDs, marker queries and marker
+options. Point, edge and marker settings have named structs. Colors and display
+values use fixed-size arrays. The adapter no longer creates, looks up or retains
+uniform-name resources. Texture submission retains its texture owner directly.
+All viewport, export, annotation, analysis, ImGui and optional experiment callers
+use the new API.
+
+The encoder still copies values into each submitted operation and resets after
+draw, transparent draw and compute submission. Root staging and GPU resource
+retention keep their existing lifetime. Generated sprite and edge draws now
+check their offsets and counts against retained buffer ranges at submission,
+with wide arithmetic before comparison. Quality selectors and marker sample
+counts also have explicit checks. These checks do not scan uploaded index data.
+
+`WobyRoot` now stores point offsets, source offsets, marker IDs and triangle
+offsets as `uint32_t`. C++ and Slang use the same header. Every field offset,
+alignment and total size has a C++ assertion. The root is **320 bytes**, compared
+with 344 bytes before this change. Each allocation in the 16-byte-aligned frame
+arena falls from **352 to 320 bytes**. This saves 32 requested arena bytes per
+root and copies 24 fewer bytes; it is not a measured VRAM or frame-time saving.
+
+The new SPIR-V ABI test checks all 24 offsets and all 11 unsigned integer fields
+in every compiled shader that uses this root. It currently checks 35 shaders.
+New GPU readback coverage checks all seven marker-ID boundary values, distinct
+source IDs, compact and indexed points, offsets across 65,535/65,536, copied
+colors, reset between consecutive draws, and retained buffers after handle
+destruction. CPU tests check invalid selectors and storage ranges, including
+`UINT32_MAX` and marker-ID overflow.
+
+The optional dispatch probe now calls the production typed API and marks new
+records with `production_api: typed_integer_root`. The historical measurement
+files above stay unchanged. Use the implementation parent commit to reproduce
+the old name-based baseline; new runs do not measure that baseline.
+
+Validation results:
+
+- `cmake --build --preset vs2026-vcpkg` passed in Debug with no compiler or
+  linker warnings. Headless tests, simplification probes and the optional
+  mesh-memory viewer were enabled.
+- The full CTest run completed all 117 registered tests in 580.42 seconds.
+  It passed 116 tests. `woby_freeform_render` failed during `ctl instances`
+  discovery before rendering, with an empty application log. Fixture cleanup
+  also reported a temporary file lock. The process exited and the fixture was
+  removed. The cause of the discovery failure was not established.
+- The freeform test then passed three consecutive runs in 53.11 seconds,
+  without a production-code change. Thus, all 117 registered tests have passing
+  results across the full run and rechecks; the initial run was not all green.
+- After the final test refinements, all 10 focused CPU, Vulkan readback, shader
+  ABI and item-12 contract checks passed in 24.70 seconds. These include nonzero
+  compact-point source-ID differences and the uint32 boundary cases.
+- SPIR-V compilation, validation and all 35 root ABI checks passed. The existing
+  marker shader test also passed Metal source generation. Native Metal
+  compilation and Apple hardware validation remain deferred to CI as requested.
+  The macOS CI build compiles the shaders; local Vulkan results do not establish
+  Metal runtime behavior.
+
+Local implementation checks are complete. The change can proceed to CI review.
+The measured benefit here is the verified root size and allocation reduction;
+no new full-frame performance claim is made.

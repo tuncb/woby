@@ -109,7 +109,6 @@ struct ComparisonRuntimes {
     uint64_t generation = 0;
     std::map<SceneObjectId, ComparisonRuntime> objects;
     woby::graphics::ProgramHandle program = WOBY_GPU_INVALID_HANDLE;
-    woby::graphics::UniformHandle parameters = WOBY_GPU_INVALID_HANDLE;
 };
 
 [[nodiscard]] uint64_t comparisonCurrentSignature(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id);

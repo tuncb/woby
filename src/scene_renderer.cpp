@@ -94,8 +94,6 @@ void submitTriangleRange(
     woby::graphics::ViewId viewId,
     const GpuMesh& mesh,
     woby::graphics::ProgramHandle program,
-    woby::graphics::UniformHandle uvGridUniform,
-    woby::graphics::UniformHandle colorUniform,
     const float* model,
     const std::array<float, 4>& color,
     uint32_t indexOffset,
@@ -108,9 +106,9 @@ void submitTriangleRange(
         return;
     }
 
-    woby::graphics::setUniform(uvGridUniform, uvGrid.data());
+    woby::graphics::setUvGrid(uvGrid);
     woby::graphics::setTransform(model);
-    woby::graphics::setUniform(colorUniform, color.data());
+    woby::graphics::setColor(color);
     woby::graphics::setVertexBuffer(0, mesh.vertexBuffer);
     woby::graphics::setIndexBuffer(mesh.triangleIndexBuffer, indexOffset, indexCount);
     const auto state = renderState(WOBY_GPU_STATE_DEPTH_TEST_LESS, true, color, 0u);
@@ -127,8 +125,6 @@ void submitPointSpriteRange(
     woby::graphics::ViewId viewId,
     const GpuMesh& mesh,
     woby::graphics::ProgramHandle program,
-    woby::graphics::UniformHandle colorUniform,
-    woby::graphics::UniformHandle pointParamsUniform,
     const float* model,
     const std::array<float, 4>& color,
     float pointSize,
@@ -146,8 +142,8 @@ void submitPointSpriteRange(
 
     const auto pointParams = pointSpriteParameters(pointSize, viewWidth, viewHeight, indexOffset);
     woby::graphics::setTransform(model);
-    woby::graphics::setUniform(colorUniform, color.data());
-    woby::graphics::setUniform(pointParamsUniform, pointParams.data(), 2);
+    woby::graphics::setColor(color);
+    woby::graphics::setPointParameters(pointParams);
     woby::graphics::setBuffer(0, mesh.vertexBuffer, woby::graphics::Access::Read);
     woby::graphics::setBuffer(1, mesh.pointIdBuffer, woby::graphics::Access::Read);
     woby::graphics::setVertexCount(4);
@@ -160,21 +156,19 @@ void submitHelperBuffer(
     woby::graphics::ViewId viewId,
     const woby::graphics::TransientVertexBuffer& vertexBuffer,
     woby::graphics::ProgramHandle program,
-    woby::graphics::UniformHandle colorUniform,
     const std::array<float, 4>& color)
 {
     float model[16];
     woby::identityMatrix(model);
     woby::graphics::setTransform(model);
-    woby::graphics::setUniform(colorUniform, color.data());
+    woby::graphics::setColor(color);
     woby::graphics::setVertexBuffer(0, &vertexBuffer);
     woby::graphics::setState(renderState(WOBY_GPU_STATE_DEPTH_TEST_ALWAYS, false, color, WOBY_GPU_STATE_PT_LINES));
     woby::graphics::submit(viewId, program);
 }
 
 void submitHelperLines(woby::graphics::ViewId viewId, std::span<const HelperLineVertex> vertices,
-    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program,
-    woby::graphics::UniformHandle colorUniform, const std::array<float, 4>& color)
+    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, const std::array<float, 4>& color)
 {
     if (vertices.empty() || vertices.size() % 2u != 0u) { return; }
     const auto count = sceneBufferBytes(vertices.size(), sizeof(HelperLineVertex)) / sizeof(HelperLineVertex);
@@ -183,7 +177,7 @@ void submitHelperLines(woby::graphics::ViewId viewId, std::span<const HelperLine
     woby::graphics::TransientVertexBuffer buffer;
     woby::graphics::allocTransientVertexBuffer(&buffer, vertexCount, layout);
     std::copy(vertices.begin(), vertices.end(), reinterpret_cast<HelperLineVertex*>(buffer.data));
-    submitHelperBuffer(viewId, buffer, program, colorUniform, color);
+    submitHelperBuffer(viewId, buffer, program, color);
 }
 
 } // namespace
@@ -373,12 +367,10 @@ void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes)
     runtimes.clear();
 }
 
-std::array<float, 8> pointSpriteParameters(
+graphics::PointParameters pointSpriteParameters(
     float pointSize, uint32_t viewWidth, uint32_t viewHeight, uint32_t pointOffset)
 {
-    return {pointSize, static_cast<float>(std::max(viewWidth, 1u)),
-        static_cast<float>(std::max(viewHeight, 1u)), 0.0f,
-        static_cast<float>(pointOffset & 0xffffu), static_cast<float>(pointOffset >> 16u), 0.0f, 0.0f};
+    return {pointSize, std::max(viewWidth, 1u), std::max(viewHeight, 1u), pointOffset};
 }
 
 uint32_t vertexPointSize(float masterSize, float groupScale)
@@ -405,7 +397,6 @@ TriangleEdgePrograms createTriangleEdgePrograms(const std::filesystem::path& ass
             result.nativeBarycentrics ? "fs_transparent_edges.bin" : "fs_transparent_edges_pulled.bin");
         result.lines = loadProgram(assets, "vs_triangle_lines.bin", "fs_color.bin");
         result.markerLines = loadProgram(assets, "vs_triangle_lines.bin", "fs_marker_line.bin");
-        result.parameters = graphics::createUniform("u_triangleEdges", graphics::UniformType::Vec4);
     } catch (...) { destroyTriangleEdgePrograms(result); throw; }
     return result;
 }
@@ -415,7 +406,6 @@ void destroyTriangleEdgePrograms(TriangleEdgePrograms& programs)
     for (auto handle : {programs.surface, programs.markerSurface, programs.transparentSurface, programs.lines, programs.markerLines}) {
         if (graphics::isValid(handle)) { graphics::destroy(handle); }
     }
-    if (graphics::isValid(programs.parameters)) { graphics::destroy(programs.parameters); }
     programs = {};
 }
 
@@ -440,9 +430,8 @@ void destroyTransparentSurfacePrograms(TransparentSurfacePrograms& programs)
 
 void submitSceneFiles(
     graphics::ViewId viewId, const SceneDrawPlan& plan, const std::vector<LoadedModelRuntime>& runtimes,
-    graphics::ProgramHandle meshProgram, graphics::UniformHandle uvGridUniform,
+    graphics::ProgramHandle meshProgram,
     graphics::ProgramHandle colorProgram, graphics::ProgramHandle pointSpriteProgram,
-    graphics::UniformHandle colorUniform, graphics::UniformHandle pointParamsUniform,
     const TriangleEdgePrograms& edges, uint32_t width, uint32_t height,
     MarkerDrawContext* markers, bool importedLinesOnly, AdaptivePointRuntime* adaptivePoints,
     const TransparentSurfacePrograms* transparency)
@@ -468,8 +457,7 @@ void submitSceneFiles(
             draw.pointOffset = range.pointIndexOffset; draw.count = range.pointIndexCount;
             firstId = appendMarkerDraw(markers ? markers->list : localMarkers, draw, item.pointSize);
             if (markers) {
-                const std::array<float, 4> base{float(firstId & 65535u), float(firstId >> 16u), 0, 0};
-                graphics::setUniform(markers->baseUniform, base.data());
+                graphics::setMarkerBase(firstId);
             }
         }
         if (adaptivePoints && queueAdaptivePoints(*adaptivePoints,mesh,item,firstId)) return;
@@ -481,14 +469,13 @@ void submitSceneFiles(
                     const auto offset=node.begin+used, chunk=offset/pointChunkSize;
                     const auto count=std::min(node.count-used,pointChunkSize-offset%pointChunkSize);
                     auto params=pointSpriteParameters(item.pointSize,width,height,offset%pointChunkSize);
-                    params[3]=1;
+                    params.compact=true;
                     const auto sourceFirst=range.pointIndexOffset+1;
-                    params[6]=float(sourceFirst&65535u); params[7]=float(sourceFirst>>16u);
-                    graphics::setTransform(item.model.data()); graphics::setUniform(colorUniform,color.data());
-                    graphics::setUniform(pointParamsUniform,params.data(),2);
+                    params.sourceFirst=sourceFirst;
+                    graphics::setTransform(item.model.data()); graphics::setColor(color);
+                    graphics::setPointParameters(params);
                     if (markers) {
-                        const std::array<float,4> base{float(firstId&65535u),float(firstId>>16u),0,0};
-                        graphics::setUniform(markers->baseUniform,base.data());
+                        graphics::setMarkerBase(firstId);
                     }
                     graphics::setBuffer(0,mesh.pointChunks.at(chunk),graphics::Access::Read);
                     graphics::setVertexCount(4); graphics::setInstanceCount(count);
@@ -498,7 +485,7 @@ void submitSceneFiles(
             }
             return;
         }
-        submitPointSpriteRange(viewId, mesh, pointSpriteProgram, colorUniform, pointParamsUniform,
+        submitPointSpriteRange(viewId, mesh, pointSpriteProgram,
             item.model.data(), color, item.pointSize, width, height,
             range.pointIndexOffset, range.pointIndexCount, markerIds);
     };
@@ -507,8 +494,8 @@ void submitSceneFiles(
             if (item.color[3] > 0 && item.lineIndexCount && graphics::isValid(mesh.importedLineBuffer)) {
                 const auto params = pointSpriteParameters(item.lineWidth, width, height, item.lineIndexOffset);
                 graphics::setTransform(item.model.data());
-                graphics::setUniform(colorUniform, item.color.data());
-                graphics::setUniform(pointParamsUniform, params.data(), 2);
+                graphics::setColor(item.color);
+                graphics::setPointParameters(params);
                 graphics::setBuffer(0, mesh.vertexBuffer, graphics::Access::Read);
                 graphics::setBuffer(1, mesh.importedLineBuffer, graphics::Access::Read);
                 graphics::setVertexCount(4); graphics::setInstanceCount(item.lineIndexCount / 2);
@@ -523,13 +510,12 @@ void submitSceneFiles(
     const auto triangleEdges = [&](const SceneDrawItem& item, const GpuMesh& mesh,
         const GpuNodeRange& range, bool hardwareLines) {
         if (!range.triangleIndexCount || !graphics::isValid(mesh.triangleIndexBuffer)) { return; }
-        const std::array<float, 4> params{.5f, item.solid ? 1.0f : 0.0f,
-            float(range.triangleIndexOffset & 65535u), float(range.triangleIndexOffset >> 16u)};
+        const graphics::TriangleEdgeParameters params{.5f, item.solid, range.triangleIndexOffset};
         const auto color = hardwareLines ? scaledRgbColor(item.color, 1.25f) : item.color;
         graphics::setTransform(item.model.data());
-        graphics::setUniform(colorUniform, color.data());
-        graphics::setUniform(uvGridUniform, item.uvGrid.data());
-        graphics::setUniform(edges.parameters, params.data());
+        graphics::setColor(color);
+        graphics::setUvGrid(item.uvGrid);
+        graphics::setTriangleEdges(params);
         graphics::setVertexBuffer(0, mesh.vertexBuffer);
         if (!hardwareLines && edges.nativeBarycentrics) {
             graphics::setIndexBuffer(mesh.triangleIndexBuffer, range.triangleIndexOffset, range.triangleIndexCount);
@@ -557,7 +543,7 @@ void submitSceneFiles(
             graphics::setTransform(item.model.data());
             // The picking variant discards zero-alpha fragments even when color
             // writes are disabled; supply the opaque occluder's alpha explicitly.
-            graphics::setUniform(colorUniform, item.color.data());
+            graphics::setColor(item.color);
             graphics::setVertexBuffer(0, mesh.vertexBuffer);
             graphics::setIndexBuffer(mesh.triangleIndexBuffer, range.triangleIndexOffset, range.triangleIndexCount);
             setMarkerRenderState(WOBY_GPU_STATE_WRITE_Z | WOBY_GPU_STATE_DEPTH_TEST_LESS | WOBY_GPU_STATE_MSAA, markerIds);
@@ -571,7 +557,7 @@ void submitSceneFiles(
         each([&](const auto& item, const auto& mesh, const auto& range) {
             if (!item.solid || item.color[3] <= 0 || (item.color[3] >= .999f) != opaque) { return; }
             if (item.edges && !plan.triangleEdgeXray) { triangleEdges(item, mesh, range, false); }
-            else { submitTriangleRange(viewId, mesh, meshProgram, uvGridUniform, colorUniform,
+            else { submitTriangleRange(viewId, mesh, meshProgram,
                 item.model.data(), item.color, range.triangleIndexOffset, range.triangleIndexCount, markerIds, item.uvGrid, transparency); }
         });
     }
@@ -595,21 +581,20 @@ void submitSceneFiles(
 }
 
 void submitSceneSelection(woby::graphics::ViewId viewId, std::span<const ScenePickPart> parts, const UiState& state,
-    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
+    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program,
     SceneRenderScratch& scratch)
 {
     sceneSelectionLines(parts, scratch.positions);
-    submitHelperLines(viewId, scratch.positions, layout, program, colorUniform, {1.0f, .78f, .15f, 1.0f});
+    submitHelperLines(viewId, scratch.positions, layout, program, {1.0f, .78f, .15f, 1.0f});
     uvProbeLines(parts,state,scratch.positions, &scratch.queries);
-    submitHelperLines(viewId, scratch.positions, layout, program, colorUniform, {.1f,1,.8f,1});
+    submitHelperLines(viewId, scratch.positions, layout, program, {.1f,1,.8f,1});
 }
 
 void submitSceneHelpers(
     woby::graphics::ViewId viewId,
     const UiState& state,
     const woby::graphics::VertexLayout& layout,
-    woby::graphics::ProgramHandle program,
-    woby::graphics::UniformHandle colorUniform)
+    woby::graphics::ProgramHandle program)
 {
     const auto grid = sceneGrid(state.sceneBounds, state.upAxis);
     const float spacing = grid.spacing;
@@ -636,7 +621,7 @@ void submitSceneHelpers(
                     *vertex++ = {snappedExtent, offset, 0.0f};
                 }
             }
-            submitHelperBuffer(viewId, buffer, program, colorUniform, {0.72f, 0.74f, 0.78f, 0.42f});
+            submitHelperBuffer(viewId, buffer, program, {0.72f, 0.74f, 0.78f, 0.42f});
         }
     }
 
@@ -646,13 +631,13 @@ void submitSceneHelpers(
         std::array<HelperLineVertex, 2> axisLine{};
 
         axisLine[1] = {axisLength, 0.0f, 0.0f};
-        submitHelperLines(viewId, axisLine, layout, program, colorUniform, {1.0f, 0.20f, 0.20f, 1.0f});
+        submitHelperLines(viewId, axisLine, layout, program, {1.0f, 0.20f, 0.20f, 1.0f});
 
         axisLine[1] = {0.0f, axisLength, 0.0f};
-        submitHelperLines(viewId, axisLine, layout, program, colorUniform, {0.20f, 0.85f, 0.35f, 1.0f});
+        submitHelperLines(viewId, axisLine, layout, program, {0.20f, 0.85f, 0.35f, 1.0f});
 
         axisLine[1] = {0.0f, 0.0f, axisLength};
-        submitHelperLines(viewId, axisLine, layout, program, colorUniform, {0.30f, 0.55f, 1.0f, 1.0f});
+        submitHelperLines(viewId, axisLine, layout, program, {0.30f, 0.55f, 1.0f, 1.0f});
     }
 }
 

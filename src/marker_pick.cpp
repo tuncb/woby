@@ -43,12 +43,6 @@ void initialize(GpuMarkerPicker& picker, const std::filesystem::path& assets)
         picker.lookup[i] = woby::graphics::createProgram(loadShader(root / ("cs_marker_lookup_" + suffix + ".bin")), true);
         picker.highlight[i] = loadProgram(assets, "vs_marker_highlight.bin", ("fs_marker_highlight_" + suffix + ".bin").c_str());
     }
-    picker.context.baseUniform = woby::graphics::createUniform("u_markerBase", woby::graphics::UniformType::Vec4);
-    picker.queryUniform = woby::graphics::createUniform("u_markerQuery", woby::graphics::UniformType::Vec4);
-    picker.optionsUniform = woby::graphics::createUniform("u_markerOptions", woby::graphics::UniformType::Vec4);
-    picker.colorSampler = woby::graphics::createUniform("s_markerColor", woby::graphics::UniformType::Sampler);
-    picker.idSampler = woby::graphics::createUniform("s_markerIds", woby::graphics::UniformType::Sampler);
-    picker.resultSampler = woby::graphics::createUniform("s_markerResult", woby::graphics::UniformType::Sampler);
     picker.result = woby::graphics::createTexture2D(1, 1, false, 1, woby::graphics::TextureFormat::RGBA32F,
         WOBY_GPU_TEXTURE_COMPUTE_WRITE | samplerFlags);
     for (auto& request : picker.requests) {
@@ -156,11 +150,10 @@ bool beginGpuMarkerPicking(GpuMarkerPicker& picker, const std::filesystem::path&
 void submitGpuMarkerPicking(GpuMarkerPicker& picker, const SceneViewport& viewport)
 {
     if (!picker.active) { return; }
-    picker.options = {static_cast<float>(picker.samples), 0, picker.context.list.largestPoint + 5.0f, 0};
     const size_t variant = picker.samples == 4 ? 1u : 0u;
-    woby::graphics::setUniform(picker.queryUniform, picker.query.data());
-    woby::graphics::setUniform(picker.optionsUniform, picker.options.data());
-    woby::graphics::setTexture(0, picker.idSampler, picker.ids);
+    woby::graphics::setMarkerQuery({picker.query[0], picker.query[1], picker.width, picker.height});
+    woby::graphics::setMarkerOptions({static_cast<uint32_t>(picker.samples), picker.context.list.largestPoint + 5.0f});
+    woby::graphics::setTexture(0, picker.ids);
     woby::graphics::setImage(1, picker.result, 0, woby::graphics::Access::Write, woby::graphics::TextureFormat::RGBA32F);
     woby::graphics::dispatch(lookupView, picker.lookup[variant], 1);
     for (auto view : {compositeView, highlightView}) {
@@ -168,14 +161,14 @@ void submitGpuMarkerPicking(GpuMarkerPicker& picker, const SceneViewport& viewpo
         woby::graphics::setViewRect(view, static_cast<uint16_t>(viewport.x), static_cast<uint16_t>(viewport.y), picker.width, picker.height);
         woby::graphics::setViewTransform(view, nullptr, nullptr);
     }
-    woby::graphics::setTexture(0, picker.colorSampler, picker.color);
+    woby::graphics::setTexture(0, picker.color);
     woby::graphics::setVertexCount(4);
     woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_PT_TRISTRIP);
     woby::graphics::submit(compositeView, picker.composite);
-    woby::graphics::setUniform(picker.queryUniform, picker.query.data());
-    woby::graphics::setUniform(picker.optionsUniform, picker.options.data());
-    woby::graphics::setTexture(0, picker.idSampler, picker.ids);
-    woby::graphics::setTexture(1, picker.resultSampler, picker.result);
+    woby::graphics::setMarkerQuery({picker.query[0], picker.query[1], picker.width, picker.height});
+    woby::graphics::setMarkerOptions({static_cast<uint32_t>(picker.samples), picker.context.list.largestPoint + 5.0f});
+    woby::graphics::setTexture(0, picker.ids);
+    woby::graphics::setTexture(1, picker.result);
     woby::graphics::setVertexCount(4);
     woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_PT_TRISTRIP | WOBY_GPU_STATE_BLEND_ALPHA);
     woby::graphics::submit(highlightView, picker.highlight[variant]);
@@ -243,8 +236,7 @@ void destroyGpuMarkerPicker(GpuMarkerPicker& picker)
     release(picker.point); release(picker.mesh); release(picker.line); release(picker.lineSprite); release(picker.comparison); release(picker.composite);
     for (auto& handle : picker.lookup) { release(handle); }
     for (auto& handle : picker.highlight) { release(handle); }
-    release(picker.context.baseUniform); release(picker.queryUniform); release(picker.optionsUniform);
-    release(picker.colorSampler); release(picker.idSampler); release(picker.resultSampler); release(picker.result);
+    release(picker.result);
     for (auto& request : picker.requests) { release(request.staging); request.pending = false; }
     picker.initialized = picker.active = false;
     picker.coordinates.reset();

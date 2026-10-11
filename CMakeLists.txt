@@ -475,6 +475,12 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/marker_shader_tests.py"
         "${WOBY_SLANGC}" "${CMAKE_CURRENT_SOURCE_DIR}/shaders/native/woby.slang"
         "${woby_ngapi_SOURCE_DIR}")
+    if(NOT APPLE)
+        add_test(NAME woby_graphics_root_layout COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/graphics_root_layout_tests.py"
+            "${CMAKE_CURRENT_BINARY_DIR}/assets/shaders/spirv")
+        set_tests_properties(woby_graphics_root_layout PROPERTIES LABELS "unit;cpu")
+    endif()
     add_executable(woby_update_viewer_fixture tests/update_viewer_fixture.cpp)
     target_compile_definitions(woby_update_viewer_fixture PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
     target_link_libraries(woby_update_viewer_fixture PRIVATE woby_update_core)

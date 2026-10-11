@@ -65,7 +65,7 @@ void prepareSceneAnnotations(const UiState& state, const ScenePickView& view,
     SceneRenderScratch& scratch, const AnnotationInteraction* interaction = nullptr);
 // Requires prepared queries and the annotation vertex shader (projected NDC positions).
 void submitSceneAnnotations(woby::graphics::ViewId viewId, const UiState& state,
-    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
+    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program,
     const SceneRenderScratch& scratch,
     const AnnotationInteraction* interaction = nullptr);
 } // namespace woby
