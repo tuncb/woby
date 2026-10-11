@@ -9,7 +9,7 @@ $executablePath=(Resolve-Path -LiteralPath $Executable).Path
 $outputPath=[IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Force -Path $outputPath | Out-Null
 $sourceHashes=[ordered]@{}
-foreach($name in @('main.cpp','predicate.cpp','adaptive_predicates.h','probe.h','CMakeLists.txt','run.ps1')) {
+foreach($name in @('main.cpp','predicate.cpp','adaptive_predicates.h','probe.h','CMakeLists.txt','run.ps1','rational-baseline.cpp')) {
     $sourceHashes[$name]=(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot $name)).Hash
 }
 $metadata=[ordered]@{

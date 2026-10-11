@@ -1,0 +1,28 @@
+{
+  "base_commit": "dcee7da7144d9f25cba267ec611e78324bcdd0f9",
+  "started_utc": "2026-10-11T11:06:09.299246Z",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+  "executable_sha256": "f6ac16af305c8f4c8cc800d6d588ebc57ac5884aa1927001c8ca6c7c6173b0f5",
+  "sources": {
+    "src/mesh_intersections.cpp": "40d1ce55eb691938ad7e00ba967e3d9fabae1c6950056fa94df50a7d60dc6907",
+    "src/mesh_intersection_predicates.cpp": "aacf43901daf041df2405050cb7170ecab8b52b0324fb24f84adcb026be17142",
+    "src/mesh_intersection_predicates.h": "ea62ace79197406e32c00b099fa064431f5b239f70e386ddda8d5ac3a457cd12",
+    "CMakeLists.txt": "e3bbc164bd05ed659d1a94031ab35a9ff6be0162a30c920fd7d95c5d58eaa6fe",
+    "experiments/simplification-10/main.cpp": "71a7a650218babf3c2db38c713685038589cdf6c0fefe2de51981d2667cc3dde",
+    "experiments/simplification-10/CMakeLists.txt": "ffeb24a0f8bd528a494e19de02e4bd8bd3a7f0e489d36d66679f73d333b03290",
+    "experiments/simplification-10/run-adoption.ps1": "7591014a13d0e29ac766c78603ab3169b8fd367af4cf437fef02684004e8c838",
+    "experiments/simplification-10/predicate.cpp": "7561b0fd84cc4d1975f50c0c0e37206690e15ee0087d7c01eb3425108fce1089",
+    "experiments/simplification-10/probe.h": "dd88d9789248cf7c8e6c918843133b86bd2a481224ba233245ac6e882bd0828f",
+    "build/vs2026-vcpkg/experiments/simplification-10/production_rational_baseline.cpp": "d055319b9b8947228aef4fe6d70447b6dfd24ea1e5ec736c55f9eb1f91d19ab8",
+    "build/vs2026-vcpkg/vcpkg_installed/x64-windows/include/predicates.h": "8c188601672f6752fad906953cf68e7322b1b63ef77e4dadfaaf9653992a89ec"
+  },
+  "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+  "model_bytes": 75585857,
+  "model_sha256": "9ac38b16814658cee4d52415796e7c8a1cfffa70549f9b7f0eb0c1f1704e4977",
+  "runs_per_variant": 7,
+  "scope": "Normal allocator. Production library versus an uninstrumented rational baseline. Alternating order; import, geometry construction and complete result comparisons are outside the timer. Run without concurrent builds, tests or benchmarks.",
+  "completed_utc": "2026-10-11T11:08:37.4612122Z",
+  "source_and_executable_hashes_unchanged": true,
+  "campaign_role": "Initial per-pair rounding check; superseded because the filter-only median regressed by 7.7 percent.",
+  "preserved_production_source": "per-pair-mesh_intersections.cpp"
+}

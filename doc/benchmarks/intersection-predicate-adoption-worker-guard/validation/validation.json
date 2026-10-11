@@ -1,0 +1,75 @@
+{
+  "base_commit": "dcee7da7144d9f25cba267ec611e78324bcdd0f9",
+  "recorded_utc": "2026-10-11T11:37:56.7284273Z",
+  "platform": "Windows x64, MSVC 19.51, AMD Ryzen 7 5800H",
+  "preset": "vs2026-vcpkg",
+  "debug": {
+    "failures": 0,
+    "skipped": 0,
+    "disabled": 0,
+    "compiler_warnings": 0,
+    "tests": 129,
+    "ctest_parallelism": 2,
+    "build": "Full default build",
+    "elapsed_seconds": 563.78
+  },
+  "release": {
+    "build_targets": [
+      "woby_tests",
+      "woby_intersection_fma_tests"
+    ],
+    "elapsed_seconds": 9.34,
+    "compiler_warnings": 0,
+    "contracts": 3,
+    "ctest_parallelism": 2,
+    "failures": 0
+  },
+  "optional_fma_contract_enabled": true,
+  "predicate_corpus": {
+    "independent_rational_sat_pairs": 1000,
+    "triangle_pairs": 30256,
+    "rounding_modes_tested": [
+      "FE_TONEAREST",
+      "FE_DOWNWARD",
+      "FE_UPWARD",
+      "FE_TOWARDZERO"
+    ],
+    "independent_integer_orientation_signs": 12000
+  },
+  "compiler_settings": {
+    "configurations_per_project": 4,
+    "floating_point_mode": "Strict",
+    "projects_checked": 7,
+    "precompiled_headers": "NotUsing"
+  },
+  "measured_source_matches": {
+    "src/mesh_intersections.cpp": true,
+    "src/mesh_intersection_predicates.cpp": true,
+    "src/mesh_intersection_predicates.h": true,
+    "experiments/simplification-10/rational-baseline.cpp": true
+  },
+  "validation_scope": "Optional target wiring was finalized after timing. Measured predicate, traversal and frozen baseline sources are unchanged. Other compiler flags are configured but were not run. Adoption timings do not measure memory or VRAM.",
+  "implementation_sha256": {
+    "CMakeLists.txt": "08e49e1575a4bcf04acf5cb98e567bf42c86b1557ef2077e369fa6f983b926f1",
+    "cmake/WobyIntersectionPredicates.cmake": "c2fb2cbf25e5ac49fe5e9dc223d35c11b0036338e3532e6be466c397d60f4058",
+    "src/mesh_intersections.cpp": "290a622a0fc05c734e1a3c82391b8e51c31022bcb5bdfce6388bb9283c3c6ed2",
+    "src/mesh_intersection_predicates.cpp": "aacf43901daf041df2405050cb7170ecab8b52b0324fb24f84adcb026be17142",
+    "src/mesh_intersection_predicates.h": "ea62ace79197406e32c00b099fa064431f5b239f70e386ddda8d5ac3a457cd12",
+    "tests/mesh_intersection_predicates_tests.cpp": "7c81f59d647ce905b44da148dc98b569ea625750a27a18a70dd39ddcac98f861",
+    "tests/mesh_intersection_reference.cpp": "2c769f1a356743b7808fc2420fc2605b1682d51b6366f743f3fa72fbb33a2627",
+    "tests/mesh_intersection_reference.h": "f008debc63b51a514cd83ca7c4a035f4ecdae3ef16804c8cb13deac7df4b2da1",
+    "experiments/simplification-10/CMakeLists.txt": "601a72d19110f1ad8332e9785468ed3306d7320859f2c565f8ba492d34b76479",
+    "experiments/simplification-10/main.cpp": "71a7a650218babf3c2db38c713685038589cdf6c0fefe2de51981d2667cc3dde",
+    "experiments/simplification-10/run-adoption.ps1": "0f82deb82cec525cdf8d989074867bf300f1a91077b909e553af4f2744601720",
+    "experiments/simplification-10/rational-baseline.cpp": "d6b0a5992270356d6d81cfa72442676b775750a8361f094e9c284ead992b4bea",
+    "experiments/simplification-19-dense-set/CMakeLists.txt": "c9e9c76d799fa7e82c2400f4830d3a89cb71427c4f7faa5a5e1b0b62bc1a6ad6"
+  },
+  "evidence_sha256": {
+    "debug-build.log": "386c8fd71ed47a6e76b6be393d23e1817ff82d047285ede1dab0f0de718f2349",
+    "debug-ctest.log": "f6cb312a2b1af3fc4ff9ff93cc3430a4cd38572e96f71b848732ed952cc4f90d",
+    "debug-ctest.xml": "e564a1bec0160ec474dda288a34e07ee3eb466b5cee946e2066b29ed630d1f31",
+    "release-build.log": "fc42c537a24ea4084a573864ba7187308e33ef272feed86db333015ab2a8399c",
+    "release-contracts.log": "d92867df4745a6a27c3d8bfa8e8fa819f2c0078dc95a59ca9b33ffb4b880aa5b",
+    "compiler-settings.json": "68d305e47767db3bc5fa077f329c3ddcd1993f861f97561f23a4926365af4af8"
+  }
+}

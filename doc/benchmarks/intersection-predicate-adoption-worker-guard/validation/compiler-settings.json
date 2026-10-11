@@ -1,0 +1,79 @@
+[
+  {
+    "project": "woby_core.vcxproj",
+    "predicate_source": "D:\\woby\\src\\mesh_intersection_predicates.cpp",
+    "floating_point_modes": [
+      "Strict",
+      "Strict",
+      "Strict",
+      "Strict"
+    ],
+    "precompiled_header": "NotUsing"
+  },
+  {
+    "project": "woby_benchmarks.vcxproj",
+    "predicate_source": "D:\\woby\\src\\mesh_intersection_predicates.cpp",
+    "floating_point_modes": [
+      "Strict",
+      "Strict",
+      "Strict",
+      "Strict"
+    ],
+    "precompiled_header": "NotUsing"
+  },
+  {
+    "project": "woby_benchmarks_boost.vcxproj",
+    "predicate_source": "D:\\woby\\src\\mesh_intersection_predicates.cpp",
+    "floating_point_modes": [
+      "Strict",
+      "Strict",
+      "Strict",
+      "Strict"
+    ],
+    "precompiled_header": "NotUsing"
+  },
+  {
+    "project": "woby_benchmarks_ankerl.vcxproj",
+    "predicate_source": "D:\\woby\\src\\mesh_intersection_predicates.cpp",
+    "floating_point_modes": [
+      "Strict",
+      "Strict",
+      "Strict",
+      "Strict"
+    ],
+    "precompiled_header": "NotUsing"
+  },
+  {
+    "project": "woby_intersection_fma_tests.vcxproj",
+    "predicate_source": "D:\\woby\\src\\mesh_intersection_predicates.cpp",
+    "floating_point_modes": [
+      "Strict",
+      "Strict",
+      "Strict",
+      "Strict"
+    ],
+    "precompiled_header": "NotUsing"
+  },
+  {
+    "project": "experiments/simplification-19-dense-set/woby_benchmarks_dense_set.vcxproj",
+    "predicate_source": "D:\\woby\\src\\mesh_intersection_predicates.cpp",
+    "floating_point_modes": [
+      "Strict",
+      "Strict",
+      "Strict",
+      "Strict"
+    ],
+    "precompiled_header": "NotUsing"
+  },
+  {
+    "project": "experiments/simplification-19-dense-set/woby_benchmarks_dense_set_custom.vcxproj",
+    "predicate_source": "D:\\woby\\src\\mesh_intersection_predicates.cpp",
+    "floating_point_modes": [
+      "Strict",
+      "Strict",
+      "Strict",
+      "Strict"
+    ],
+    "precompiled_header": "NotUsing"
+  }
+]

@@ -1,0 +1,245 @@
+{
+  "curved_grid": {
+    "candidate_tests": 60285,
+    "finding_signature_fnv1a64": "f078aea7656945bd",
+    "findings": 0,
+    "frequency": {
+      "calls": 60285,
+      "filtered": 60285,
+      "guarded": 0,
+      "rational": 0,
+      "rational_shared": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "signs_2d": 0,
+      "signs_3d": 0
+    },
+    "oracle_pairs": 0,
+    "reason": "",
+    "runs": [
+      {
+        "ms": 39.9265,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 39.9893,
+        "variant": "production"
+      },
+      {
+        "ms": 40.1937,
+        "variant": "production"
+      },
+      {
+        "ms": 40.734,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 40.5229,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 28.5171,
+        "variant": "production"
+      },
+      {
+        "ms": 27.9356,
+        "variant": "production"
+      },
+      {
+        "ms": 30.7614,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 29.7322,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 26.4737,
+        "variant": "production"
+      },
+      {
+        "ms": 25.2851,
+        "variant": "production"
+      },
+      {
+        "ms": 26.8173,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 26.212,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 24.9492,
+        "variant": "production"
+      }
+    ],
+    "truncated": false
+  },
+  "duplicate_faces": {
+    "candidate_tests": 4950,
+    "finding_signature_fnv1a64": "5aafae055d0b99c5",
+    "findings": 4950,
+    "frequency": {
+      "calls": 4950,
+      "filtered": 0,
+      "guarded": 0,
+      "rational": 4950,
+      "rational_shared": [
+        4950,
+        0,
+        0,
+        0
+      ],
+      "signs_2d": 0,
+      "signs_3d": 0
+    },
+    "oracle_pairs": 4950,
+    "reason": "",
+    "runs": [
+      {
+        "ms": 196.4446,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 7.4069,
+        "variant": "production"
+      },
+      {
+        "ms": 7.1988,
+        "variant": "production"
+      },
+      {
+        "ms": 149.2521,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 174.5692,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 11.5002,
+        "variant": "production"
+      },
+      {
+        "ms": 13.8603,
+        "variant": "production"
+      },
+      {
+        "ms": 170.7909,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 161.3507,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 9.7503,
+        "variant": "production"
+      },
+      {
+        "ms": 13.6111,
+        "variant": "production"
+      },
+      {
+        "ms": 190.4832,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 163.9286,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 6.9212,
+        "variant": "production"
+      }
+    ],
+    "truncated": false
+  },
+  "flat_grid": {
+    "candidate_tests": 68104,
+    "finding_signature_fnv1a64": "10c89ad199b6ca1b",
+    "findings": 0,
+    "frequency": {
+      "calls": 68104,
+      "filtered": 56197,
+      "guarded": 0,
+      "rational": 11907,
+      "rational_shared": [
+        0,
+        11907,
+        0,
+        0
+      ],
+      "signs_2d": 0,
+      "signs_3d": 0
+    },
+    "oracle_pairs": 11907,
+    "reason": "",
+    "runs": [
+      {
+        "ms": 1906.6636,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 102.5246,
+        "variant": "production"
+      },
+      {
+        "ms": 109.7726,
+        "variant": "production"
+      },
+      {
+        "ms": 2019.7982,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1824.6587,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 103.5224,
+        "variant": "production"
+      },
+      {
+        "ms": 105.2564,
+        "variant": "production"
+      },
+      {
+        "ms": 1874.8273,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 2019.2178,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 158.444,
+        "variant": "production"
+      },
+      {
+        "ms": 158.4856,
+        "variant": "production"
+      },
+      {
+        "ms": 2028.3714,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1925.209,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 118.0274,
+        "variant": "production"
+      }
+    ],
+    "truncated": false
+  },
+  "notes": "Release production library versus an uninstrumented rational baseline; normal allocator; alternating order. Untimed frequency/oracle pass and complete finding/status comparison. Model uses all parts in one identity-transform source batch.",
+  "sizeof_cpp_rational": 64,
+  "sizeof_rational_triangle": 576
+}

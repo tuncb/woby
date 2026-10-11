@@ -1,0 +1,7 @@
+{
+  "runs_per_variant": 20,
+  "started_utc": "2026-10-11T11:16:19.3984930Z",
+  "executable_sha256": "0360961aa714df87df240bba64d2d451b8299ca5aa914e1321ca19864bb19ba6",
+  "reason": "Check the noisy zero-survivor result without changing the measured executable.",
+  "completed_utc": "2026-10-11T11:17:10.5006167Z"
+}

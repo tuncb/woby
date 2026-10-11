@@ -1,0 +1,327 @@
+{
+  "exact_position": {
+    "candidate_tests": 576805,
+    "finding_signature_fnv1a64": "bb0dd188b031ced7",
+    "findings": 10000,
+    "frequency": {
+      "calls": 576805,
+      "filtered": 564403,
+      "guarded": 0,
+      "rational": 12402,
+      "rational_shared": [
+        12269,
+        131,
+        0,
+        2
+      ],
+      "signs_2d": 0,
+      "signs_3d": 0
+    },
+    "oracle_pairs": 12402,
+    "reason": "pair_limit",
+    "runs": [
+      {
+        "ms": 4749.1741,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1234.9239,
+        "variant": "production"
+      },
+      {
+        "ms": 1244.2062,
+        "variant": "production"
+      },
+      {
+        "ms": 4794.6574,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 4931.9777,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1319.5597,
+        "variant": "production"
+      },
+      {
+        "ms": 1210.6979,
+        "variant": "production"
+      },
+      {
+        "ms": 4782.9809,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 4916.0051,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1257.1541,
+        "variant": "production"
+      },
+      {
+        "ms": 1152.7601,
+        "variant": "production"
+      },
+      {
+        "ms": 4786.2241,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 4696.6759,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1190.4781,
+        "variant": "production"
+      }
+    ],
+    "truncated": true
+  },
+  "exact_position_first_25000_faces_complete": {
+    "candidate_tests": 212998,
+    "finding_signature_fnv1a64": "88e49b3006d6816a",
+    "findings": 832,
+    "frequency": {
+      "calls": 212998,
+      "filtered": 211926,
+      "guarded": 0,
+      "rational": 1072,
+      "rational_shared": [
+        988,
+        84,
+        0,
+        0
+      ],
+      "signs_2d": 0,
+      "signs_3d": 0
+    },
+    "oracle_pairs": 1072,
+    "reason": "",
+    "runs": [
+      {
+        "ms": 451.4682,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 131.3616,
+        "variant": "production"
+      },
+      {
+        "ms": 139.1091,
+        "variant": "production"
+      },
+      {
+        "ms": 510.8141,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 495.101,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 136.7117,
+        "variant": "production"
+      },
+      {
+        "ms": 132.9405,
+        "variant": "production"
+      },
+      {
+        "ms": 446.6071,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 560.3216,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 136.472,
+        "variant": "production"
+      },
+      {
+        "ms": 126.9269,
+        "variant": "production"
+      },
+      {
+        "ms": 565.3588,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 449.0584,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 119.5682,
+        "variant": "production"
+      }
+    ],
+    "truncated": false
+  },
+  "faces": 1054542,
+  "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+  "notes": "Release production library versus an uninstrumented rational baseline; normal allocator; alternating order. Untimed frequency/oracle pass and complete finding/status comparison. Model uses all parts in one identity-transform source batch.",
+  "original_index": {
+    "candidate_tests": 538195,
+    "finding_signature_fnv1a64": "1f068852d898944a",
+    "findings": 10000,
+    "frequency": {
+      "calls": 538195,
+      "filtered": 526424,
+      "guarded": 0,
+      "rational": 11771,
+      "rational_shared": [
+        11691,
+        78,
+        2,
+        0
+      ],
+      "signs_2d": 0,
+      "signs_3d": 0
+    },
+    "oracle_pairs": 11771,
+    "reason": "pair_limit",
+    "runs": [
+      {
+        "ms": 4960.8832,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1285.3527,
+        "variant": "production"
+      },
+      {
+        "ms": 1155.9383,
+        "variant": "production"
+      },
+      {
+        "ms": 4499.8149,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 4005.4436,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1178.954,
+        "variant": "production"
+      },
+      {
+        "ms": 1231.6495,
+        "variant": "production"
+      },
+      {
+        "ms": 4305.8142,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 4209.5754,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1205.0767,
+        "variant": "production"
+      },
+      {
+        "ms": 1266.4244,
+        "variant": "production"
+      },
+      {
+        "ms": 4052.2859,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 4269.1306,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1211.9245,
+        "variant": "production"
+      }
+    ],
+    "truncated": true
+  },
+  "original_index_first_25000_faces_complete": {
+    "candidate_tests": 212998,
+    "finding_signature_fnv1a64": "899776631be8af25",
+    "findings": 4230,
+    "frequency": {
+      "calls": 212998,
+      "filtered": 208528,
+      "guarded": 0,
+      "rational": 4470,
+      "rational_shared": [
+        4424,
+        46,
+        0,
+        0
+      ],
+      "signs_2d": 0,
+      "signs_3d": 0
+    },
+    "oracle_pairs": 4470,
+    "reason": "",
+    "runs": [
+      {
+        "ms": 1040.2795,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 145.3727,
+        "variant": "production"
+      },
+      {
+        "ms": 129.1527,
+        "variant": "production"
+      },
+      {
+        "ms": 1056.0955,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1075.5232,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 137.4918,
+        "variant": "production"
+      },
+      {
+        "ms": 147.7131,
+        "variant": "production"
+      },
+      {
+        "ms": 1111.7856,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1139.4758,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 151.3683,
+        "variant": "production"
+      },
+      {
+        "ms": 156.7552,
+        "variant": "production"
+      },
+      {
+        "ms": 1115.4809,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1051.5723,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 131.8521,
+        "variant": "production"
+      }
+    ],
+    "truncated": false
+  },
+  "sizeof_cpp_rational": 64,
+  "sizeof_rational_triangle": 576
+}

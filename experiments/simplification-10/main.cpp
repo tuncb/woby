@@ -40,12 +40,14 @@ void release(void* pointer) noexcept {
     std::free(allocation);
 }
 }
+#ifndef WOBY_PROBE_NORMAL_ALLOCATOR
 void* operator new(size_t size) { return allocation_probe::allocate(size); }
 void* operator new[](size_t size) { return allocation_probe::allocate(size); }
 void operator delete(void* pointer) noexcept { allocation_probe::release(pointer); }
 void operator delete[](void* pointer) noexcept { allocation_probe::release(pointer); }
 void operator delete(void* pointer,size_t) noexcept { allocation_probe::release(pointer); }
 void operator delete[](void* pointer,size_t) noexcept { allocation_probe::release(pointer); }
+#endif
 
 namespace {
 using namespace woby;
@@ -279,9 +281,14 @@ std::shared_ptr<const AnalysisGeometry> duplicates(size_t n) {
 Json signature(const MeshIntersections& result) {
     Json findings=Json::array();
     for(const auto& f:result.findings) { findings.push_back({{"faces",{{f.faces[0].fileId,f.faces[0].partId,f.faces[0].triangleId},
-        {f.faces[1].fileId,f.faces[1].partId,f.faces[1].triangleId}}},{"geometry",f.geometry},{"batch",f.batchId}}); }
+        {f.faces[1].fileId,f.faces[1].partId,f.faces[1].triangleId}}},{"geometry",f.geometry},{"batch",f.batchId},
+        {"source",f.source},{"provenance",static_cast<int>(f.provenance)},{"mode",static_cast<int>(f.mode)}}); }
     return Json{{"candidates",result.candidateTests},{"affected",result.affectedFaces},{"truncated",result.truncated},
-        {"reason",result.truncationReason},{"findings",findings}};
+        {"reason",result.truncationReason},{"findings",findings},{"status",intersectionStatus(result)},
+        {"has_result",result.hasResult},{"error",result.error},{"mode",static_cast<int>(result.mode)},
+        {"available_sources",result.availableSources},{"unavailable_sources",result.unavailableSources},
+        {"collapsed",result.excludedCollapsedFaces},{"pair_limit",result.limits.pairs},
+        {"candidate_limit",result.limits.candidateTests}};
 }
 std::string signatureHash(const Json& value) {
     uint64_t hash=14695981039346656037ull;
@@ -303,6 +310,19 @@ Json benchmark(const AnalysisGeometry& geometry,size_t runs,IntersectionLimits l
         {"finding_signature_fnv1a64",signatureHash(expected)},
         {"runs",Json::array()}};
     for(size_t run=0;run<runs;++run) {
+#ifdef WOBY_PROBE_NORMAL_ALLOCATOR
+        // Compare the production library with the preserved rational route,
+        // using normal allocation and alternating execution order.
+        for(size_t side=0;side<2;++side) {
+            const bool production=((run+side)%2)!=0;
+            useCandidate=false; forceRational=false; counters={};
+            const auto start=Clock::now();
+            const auto actual=production ? inspectIntersections(geometry,{}, {},limits) : adoption_inspectIntersections(geometry,{}, {},limits);
+            const double elapsed=std::chrono::duration<double,std::milli>(Clock::now()-start).count();
+            require(signature(actual)==expected,"Production adoption changed the complete result/order.");
+            result["runs"].push_back({{"variant",production?"production":"rational_baseline"},{"ms",elapsed}});
+        }
+#else
         for(size_t side=0;side<2;++side) {
             useCandidate=((run+side)%2)!=0; forceRational=false; counters={};
             const bool candidate=useCandidate;
@@ -315,8 +335,10 @@ Json benchmark(const AnalysisGeometry& geometry,size_t runs,IntersectionLimits l
         const double elapsed=std::chrono::duration<double,std::milli>(Clock::now()-start).count();
         require(signature(production)==expected,"Production result changed during measurement.");
         result["runs"].push_back({{"variant","production"},{"ms",elapsed}});
+#endif
     }
     // Count allocations in separate passes; tracking is off during timings.
+#ifndef WOBY_PROBE_NORMAL_ALLOCATOR
     result["allocations"]=Json::array();
     for(bool candidate:{false,true}) {
         require(allocation_probe::counts.live==0,"Tracked allocations survived the previous pass.");
@@ -329,6 +351,7 @@ Json benchmark(const AnalysisGeometry& geometry,size_t runs,IntersectionLimits l
         result["allocations"].push_back({{"candidate",candidate},{"calls",counts.calls},{"requested_bytes",counts.requested},
             {"peak_live_requested_bytes",counts.peak},{"retained_requested_bytes",counts.live}});
     }
+#endif
     return result;
 }
 Mesh input(Mesh mesh) {
@@ -356,6 +379,9 @@ int main(int argc,char** argv) {
         const size_t runs=argc>2?static_cast<size_t>(std::stoul(argv[2])):5; require(runs>=1 && runs<=20,"Invalid run count.");
         Json output={{"notes","Release; unmeasured frequency/oracle pass, then alternating baseline/candidate; allocation pass separate. Same BVH/filters/budgets/order. Model uses all parts in one identity-transform source batch."},
             {"sizeof_cpp_rational",sizeof(Exact)},{"sizeof_rational_triangle",sizeof(std::array<ExactPoint,3>)}};
+#ifdef WOBY_PROBE_NORMAL_ALLOCATOR
+        output["notes"]="Release production library versus an uninstrumented rational baseline; normal allocator; alternating order. Untimed frequency/oracle pass and complete finding/status comparison. Model uses all parts in one identity-transform source batch.";
+#endif
         if(command=="--synthetic") {
             for(bool curved:{false,true}) { const auto geometry=grid(64,curved); output[curved?"curved_grid":"flat_grid"]=benchmark(*geometry,runs); }
             output["duplicate_faces"]=benchmark(*duplicates(100),runs);

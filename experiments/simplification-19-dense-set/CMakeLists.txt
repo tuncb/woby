@@ -87,6 +87,7 @@ set(dense_set_common_sources
 add_executable(woby_benchmarks_dense_set_custom ${dense_set_common_sources} ${dense_set_custom_sources})
 add_executable(woby_benchmarks_dense_set ${dense_set_common_sources} ${dense_set_sources})
 foreach(target IN ITEMS woby_benchmarks_dense_set_custom woby_benchmarks_dense_set)
+    woby_add_intersection_predicates(${target})
     target_include_directories(${target} PRIVATE "${PROJECT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}" "${dense_set_generated_directory}")
     target_include_directories(${target} SYSTEM PRIVATE "${PROJECT_SOURCE_DIR}/third_party/rapidobj/include")
     target_link_libraries(${target} PRIVATE Threads::Threads CDT::CDT Boost::multiprecision

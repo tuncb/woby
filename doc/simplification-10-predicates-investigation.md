@@ -1,5 +1,9 @@
 # Item 10: exact predicates for self-intersections
 
+The [production adoption](#production-adoption) section records the implemented
+follow-up. The investigation and its original measurements below remain tied
+to the stated baseline commit.
+
 This investigation applies to production commit
 `46a27585c5bc8638a8bde5d601e5cead71376631`. The application algorithm is
 unchanged. The candidate and its contracts are in
@@ -304,3 +308,104 @@ and the whole-filter strict build are rejected. A narrower or wider guard,
 a different projection choice, or another compiler needs separate
 validation. No larger data structure change or new retained memory layout
 is required.
+
+## Production adoption
+
+The application now uses the guarded adaptive classifier in
+[`mesh_intersection_predicates.cpp`](../src/mesh_intersection_predicates.cpp).
+The rational classifier remains in `mesh_intersections.cpp`. An unsupported
+range or rounding mode selects that fallback; it does not clamp coordinates
+or introduce a proximity tolerance. Non-finite coordinates still raise an
+input error. An engaged `false` result from the adaptive classifier is a final
+non-intersection decision, while a missing result requires rational work.
+
+The range check reads IEEE-754 bits. It accepts signed zero and nonzero absolute
+coordinates in `[2^-200, 2^200]`, including both endpoints. Subnormal values
+cannot pass that check as zero. Adaptive arithmetic also checks `FE_TONEAREST`
+on the calling thread. The detector checks rounding once for its synchronous
+filter traversal; the traversal does not change that mode. A direct pair call
+checks its own caller. The classifier checks again before expansion arithmetic.
+Other modes bypass the floating-point filters and use rational classification.
+
+Only the adaptive source uses `/fp:strict` on MSVC. Other compilers use
+`-fno-fast-math -ffp-contract=off -frounding-math`. Its CDT template symbols have
+a separate namespace, and the source does not use the core precompiled header.
+The existing filters retain their normal compiler options. The optional
+`WOBY_TEST_INTERSECTION_FMA` target compiles the actual production classifier
+with AVX2/FMA; it is off by default and requires a compatible CPU.
+
+Permanent application tests retain the independent integer sign oracle and a
+frozen copy of the previous rational clipping classifier. Each normal/FMA
+corpus checks 30,256 pairs, 12,000 orientation signs and 1,000 independent
+rational separating-axis cases. Additional tests cover the guard endpoints
+and their adjacent values, signed zero, source-ID/coordinate mismatches,
+non-finite input, and separated planes whose determinant reaches the lower
+guard's `2^-756` lattice. All four rounding modes are tested through both the
+pair API and the detector traversal. Existing integration tests cover source
+scope, transforms, topology modes, cancellation and result/work limits.
+
+### Normal-allocator measurements
+
+The [adoption runner](../experiments/simplification-10/run-adoption.ps1) compares
+the production library with an uninstrumented rational baseline frozen from
+investigation commit `dcee7da`. Its [source check](benchmarks/intersection-predicate-adoption-worker-guard/baseline-equivalence.json)
+confirms that the frozen file matches that commit apart from its banner and
+whitespace. Import and source preparation are outside the timer. Each result
+comparison includes all findings, order, source metadata, status and limits.
+Both variants use the normal allocator and run in alternating order.
+
+The final seven-sample real-model campaign used the same Ryzen 7 5800H and
+MSVC toolchain as the investigation. Medians are milliseconds:
+
+| Workload | Rational baseline | Production | Change | Result |
+| --- | ---: | ---: | ---: | --- |
+| BusGameMap, original-index mode | 4,391.10 | 1,216.34 | -72.3% | 10,000 findings; pair limit |
+| BusGameMap, exact-position mode | 4,742.45 | 1,222.39 | -74.2% | 10,000 findings; pair limit |
+| First 25,000 faces, original-index mode | 1,119.79 | 138.12 | -87.7% | 4,230 findings; complete |
+| First 25,000 faces, exact-position mode | 496.62 | 149.12 | -70.0% | 832 findings; complete |
+
+All complete result comparisons passed. The bounded full-model results are
+not presented as complete searches. Raw [model samples](benchmarks/intersection-predicate-adoption-worker-guard/model.json),
+[synthetic samples](benchmarks/intersection-predicate-adoption-worker-guard/synthetic.json),
+[provenance](benchmarks/intersection-predicate-adoption-worker-guard/metadata.json)
+and [derived medians/ranges](benchmarks/intersection-predicate-adoption-worker-guard/summary.json)
+are retained.
+
+The first design checked rounding for every candidate pair. Its curved grid,
+where the existing filters reject all 60,285 candidates, had a 7.7% median
+regression. That [pilot](benchmarks/intersection-predicate-adoption/metadata.json)
+and its measured source are preserved. The final design moves the filter
+check to the detector call. The revised seven-sample curved-grid median was
+30.76 to 27.94 ms (-9.2%), but its ranges overlapped substantially.
+
+A [20-sample repeat](benchmarks/intersection-predicate-adoption-worker-guard/synthetic-repeat.json)
+used the same unchanged executable to check that noise. Its curved-grid
+medians were 26.63 and 28.29 ms (+6.3%), with ranges of 25.19–39.09 and
+24.70–38.51 ms. Production was slower in 9 of the 20 paired samples; the median
+paired ratio was 0.991. Thus this test establishes neither a stable speedup
+nor the absence of a small regression in filter-only work. The explicit
+per-pair rounding check has been removed from that path, but timing variation
+remains. The 20-sample flat-grid and duplicate-face medians improved by 93.9%
+and 95.9%, respectively. No further production changes were made to pursue
+the noisy filter-only ranking.
+
+The adoption measurement does not record process memory or VRAM. The new
+classifier uses fixed local arrays and adds no retained geometry owner. The
+original allocation-traffic measurements above remain prototype evidence.
+
+### Adoption validation
+
+The final full `vs2026-vcpkg` Debug build completed without warnings. All
+129 CTest entries passed, with no skipped tests, in 563.78 seconds. This includes
+the normal and FMA predicate corpora, detector integration, optional benchmark
+contracts, graphics tests and slow workloads. The Release normal/FMA and
+intersection integration contracts also passed.
+
+The shared CMake helper applies strict settings to the core, FMA test and
+standalone detector consumers. Generated MSVC projects were checked for those
+settings in all four build configurations, including the nested dense-set
+targets. The [validation record](benchmarks/intersection-predicate-adoption-worker-guard/validation/validation.json)
+links the build/test evidence and records the final implementation hashes.
+The optional-target wiring was completed after timing; the measured predicate
+and traversal source files remain unchanged. Validation was performed on
+Windows/MSVC; other compiler flags are configured but were not run here.

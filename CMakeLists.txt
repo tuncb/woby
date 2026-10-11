@@ -31,6 +31,7 @@ if(WIN32)
 endif()
 
 include(cmake/WobyWarnings.cmake)
+include(cmake/WobyIntersectionPredicates.cmake)
 include(cmake/WobyPrecompiledHeaders.cmake)
 include(cmake/WobyRuntimeFiles.cmake)
 
@@ -221,6 +222,7 @@ add_library(woby_core STATIC
     src/ui_layout.h
 )
 
+woby_add_intersection_predicates(woby_core)
 target_compile_features(woby_core PUBLIC cxx_std_20)
 target_include_directories(woby_core PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -330,6 +332,7 @@ if(WOBY_BUILD_SIMPLIFICATION_PROBES)
     add_subdirectory(experiments/simplification-14-capacity)
     list(APPEND woby_runtime_targets
         woby_simplification_10_probe woby_simplification_11_probe
+        woby_intersection_adoption_benchmark
         woby_simplification_12 woby_instance_query_probe
         woby_simplification_14 woby_simplification_14_capacity woby_simplification_15
         woby_simplification_16_probe woby_analysis_index_probe)
@@ -349,6 +352,7 @@ if(WOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK)
         src/mesh_duplicates.cpp src/uv_quality.cpp src/uv_overlap.cpp src/mesh_comparison.cpp
         src/mesh_degenerates.cpp src/mesh_topology.cpp src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
     target_include_directories(woby_obj_prototype_benchmark PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    woby_add_intersection_predicates(woby_obj_prototype_benchmark)
     target_include_directories(woby_obj_prototype_benchmark SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
     target_link_libraries(woby_obj_prototype_benchmark PRIVATE Threads::Threads CDT::CDT Boost::multiprecision nlohmann_json::nlohmann_json)
     if(WIN32)
@@ -378,6 +382,7 @@ if(WOBY_BUILD_BENCHMARKS)
         src/uv_quality.cpp src/uv_overlap.cpp
         src/mesh_duplicates.cpp src/mesh_degenerates.cpp src/mesh_topology.cpp src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
     target_include_directories(woby_benchmarks PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    woby_add_intersection_predicates(woby_benchmarks)
     target_include_directories(woby_benchmarks SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
     target_link_libraries(woby_benchmarks PRIVATE Threads::Threads CDT::CDT Boost::multiprecision nlohmann_json::nlohmann_json)
     woby_enable_project_warnings(woby_benchmarks)
@@ -403,6 +408,7 @@ if(WOBY_BUILD_BENCHMARKS)
                 src/uv_quality.cpp src/uv_overlap.cpp
                 src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
             target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+            woby_add_intersection_predicates(${target})
             target_include_directories(${target} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
             target_compile_definitions(${target} PRIVATE "WOBY_BENCHMARK_${backend}=1")
             target_link_libraries(${target} PRIVATE Threads::Threads
@@ -529,6 +535,8 @@ if(BUILD_TESTING)
         tests/update_tests.cpp
         tests/analysis_presentation_tests.cpp
         tests/mesh_intersections_tests.cpp
+        tests/mesh_intersection_predicates_tests.cpp
+        tests/mesh_intersection_reference.cpp
         tests/mesh_topology_tests.cpp
         tests/mesh_degenerates_tests.cpp
         tests/mesh_duplicates_tests.cpp
@@ -647,6 +655,28 @@ if(BUILD_TESTING)
 
     woby_enable_project_warnings(woby_tests)
     woby_enable_precompiled_headers(woby_tests <doctest/doctest.h>)
+    set_source_files_properties(tests/mesh_intersection_predicates_tests.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+    if(MSVC)
+        set_source_files_properties(tests/mesh_intersection_predicates_tests.cpp PROPERTIES COMPILE_OPTIONS /fp:strict)
+    else()
+        set_source_files_properties(tests/mesh_intersection_predicates_tests.cpp PROPERTIES
+            COMPILE_OPTIONS "-fno-fast-math;-ffp-contract=off;-frounding-math")
+    endif()
+    target_link_libraries(woby_tests PRIVATE CDT::CDT Boost::multiprecision)
+    option(WOBY_TEST_INTERSECTION_FMA "Test the production intersection classifier with AVX2/FMA; requires an AVX2 CPU" OFF)
+    if(WOBY_TEST_INTERSECTION_FMA AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_VS_PLATFORM_NAME STREQUAL "x64")
+        add_executable(woby_intersection_fma_tests tests/mesh_intersection_predicates_tests.cpp
+            tests/mesh_intersection_reference.cpp)
+        woby_add_intersection_predicates(woby_intersection_fma_tests)
+        target_compile_definitions(woby_intersection_fma_tests PRIVATE WOBY_INTERSECTION_STANDALONE_TEST WOBY_EXPECT_INTERSECTION_FMA)
+        target_compile_options(woby_intersection_fma_tests PRIVATE /arch:AVX2)
+        target_link_libraries(woby_intersection_fma_tests PRIVATE woby_core doctest::doctest CDT::CDT
+            Boost::multiprecision nlohmann_json::nlohmann_json)
+        woby_enable_project_warnings(woby_intersection_fma_tests)
+        list(APPEND woby_runtime_targets woby_intersection_fma_tests)
+        add_test(NAME woby_intersection_fma_contract COMMAND woby_intersection_fma_tests)
+        set_tests_properties(woby_intersection_fma_contract PROPERTIES LABELS "unit;cpu" TIMEOUT 600)
+    endif()
     # doctest's implementation macro must take effect before its first include.
     set_source_files_properties(tests/dummy_tests.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 

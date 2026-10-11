@@ -1,7 +1,9 @@
 #include "mesh_intersections.h"
+#include "mesh_intersection_predicates.h"
 
 #include <boost/multiprecision/cpp_int.hpp>
 #include <algorithm>
+#include <cfenv>
 #include <cmath>
 #include <limits>
 #include <numeric>
@@ -18,7 +20,7 @@ using Triangle = std::array<Point, 3>;
 using Position = std::array<double, 3>;
 using Points = std::array<Position, 3>;
 // A sign is returned only when roundoff cannot change it. Uncertain cases
-// continue through the exact rational predicate below.
+// continue through the adaptive classifier or exact rational fallback below.
 std::optional<int> sign2d(const Position& a, const Position& b, const Position& c, size_t x, size_t y)
 {
     const double ax = a[x]-c[x], ay = a[y]-c[y];
@@ -302,15 +304,17 @@ bool exactTriangleCollapsed(const std::array<Position, 3>& points)
     }
     return zero(normal(exact(points)));
 }
-bool trianglesSelfIntersect(const std::array<Position, 3>& aPoints, const std::array<Position, 3>& bPoints,
-    const std::array<size_t, 3>& aIds, const std::array<size_t, 3>& bIds)
+namespace {
+bool classifyTriangles(const std::array<Position, 3>& aPoints, const std::array<Position, 3>& bPoints,
+    const std::array<size_t, 3>& aIds, const std::array<size_t, 3>& bIds, bool roundToNearest)
 {
     for (const auto* points : {&aPoints, &bPoints}) {
         for (const auto& point : *points) { for (const auto coordinate : point) {
             if (!std::isfinite(coordinate)) { throw std::invalid_argument("Non-finite intersection coordinate."); }
         } }
     }
-    if (definitelyDisjoint(aPoints, bPoints, aIds, bIds)) { return false; }
+    if (roundToNearest && definitelyDisjoint(aPoints, bPoints, aIds, bIds)) { return false; }
+    if (const auto result = adaptiveTrianglesSelfIntersect(aPoints, bPoints, aIds, bIds)) { return *result; }
     const auto a = exact(aPoints), b = exact(bPoints);
     const auto an = normal(a), bn = normal(b);
     if (zero(an) || zero(bn)) { return false; }
@@ -325,6 +329,12 @@ bool trianglesSelfIntersect(const std::array<Position, 3>& aPoints, const std::a
         for (const auto& p : edgeIntersection(b[i], b[(i+1)%3], a, an)) { if (!onSharedFeature(p, shared)) { return true; } }
     }
     return false;
+}
+} // namespace
+bool trianglesSelfIntersect(const std::array<Position, 3>& aPoints, const std::array<Position, 3>& bPoints,
+    const std::array<size_t, 3>& aIds, const std::array<size_t, 3>& bIds)
+{
+    return classifyTriangles(aPoints, bPoints, aIds, bIds, std::fegetround() == FE_TONEAREST);
 }
 const char* intersectionStatus(const MeshIntersections& result)
 {
@@ -346,6 +356,10 @@ MeshIntersections inspectIntersections(const AnalysisGeometry& topology, Interse
 {
     MeshIntersections result; result.settings = settings; result.mode = topology.mode;
     canceled(stop);
+    // This synchronous traversal does not change the thread's rounding mode.
+    // Read it once for the filters; the adaptive classifier also checks it
+    // before expansion arithmetic. Direct pair calls check their own caller.
+    const bool roundToNearest = std::fegetround() == FE_TONEAREST;
     result.phase = IntersectionPhase::complete; result.hasResult = true; result.limits = limits;
     result.availableSources = topology.availableSources; result.unavailableSources = topology.unavailableSources;
     result.excludedCollapsedFaces = topology.excludedCollapsedFaces;
@@ -382,7 +396,7 @@ MeshIntersections inspectIntersections(const AnalysisGeometry& topology, Interse
                     if (limits.candidateTests && result.candidateTests >= limits.candidateTests) { result.truncated = true; result.truncationReason = "candidate_limit"; break; }
                     ++result.candidateTests;
                     const auto ap = positions(source, a), bp = positions(source, b);
-                    if (!trianglesSelfIntersect(ap, bp, source.faces[a].vertices, source.faces[b].vertices)) { continue; }
+                    if (!classifyTriangles(ap, bp, source.faces[a].vertices, source.faces[b].vertices, roundToNearest)) { continue; }
                     if (limits.pairs && result.findings.size() >= limits.pairs) { result.truncated = true; result.truncationReason = "pair_limit"; break; }
                     IntersectionFinding finding;
                     finding.faces = {source.faces[a].reference, source.faces[b].reference};

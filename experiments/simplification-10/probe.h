@@ -25,4 +25,8 @@ bool probeBaseline(const intersection_probe::Triangle& a,const intersection_prob
 bool probeCollapsed(const intersection_probe::Triangle& points);
 MeshIntersections probeInspect(const AnalysisGeometry& geometry,IntersectionSettings settings,
     std::stop_token stop,IntersectionLimits limits);
+#ifdef WOBY_PROBE_NORMAL_ALLOCATOR
+MeshIntersections adoption_inspectIntersections(const AnalysisGeometry& geometry,IntersectionSettings settings,
+    std::stop_token stop,IntersectionLimits limits);
+#endif
 }

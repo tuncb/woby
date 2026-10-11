@@ -1,0 +1,557 @@
+{
+  "curved_grid": {
+    "candidate_tests": 60285,
+    "finding_signature_fnv1a64": "f078aea7656945bd",
+    "findings": 0,
+    "frequency": {
+      "calls": 60285,
+      "filtered": 60285,
+      "guarded": 0,
+      "rational": 0,
+      "rational_shared": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "signs_2d": 0,
+      "signs_3d": 0
+    },
+    "oracle_pairs": 0,
+    "reason": "",
+    "runs": [
+      {
+        "ms": 25.1914,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 24.6982,
+        "variant": "production"
+      },
+      {
+        "ms": 31.4579,
+        "variant": "production"
+      },
+      {
+        "ms": 26.5281,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 26.7226,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 38.3061,
+        "variant": "production"
+      },
+      {
+        "ms": 34.9406,
+        "variant": "production"
+      },
+      {
+        "ms": 31.4242,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 31.4886,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 25.5088,
+        "variant": "production"
+      },
+      {
+        "ms": 27.7595,
+        "variant": "production"
+      },
+      {
+        "ms": 27.8992,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 25.6137,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 28.1791,
+        "variant": "production"
+      },
+      {
+        "ms": 28.5783,
+        "variant": "production"
+      },
+      {
+        "ms": 29.5367,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 25.3143,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 25.801,
+        "variant": "production"
+      },
+      {
+        "ms": 26.3198,
+        "variant": "production"
+      },
+      {
+        "ms": 25.9481,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 29.1119,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 26.126,
+        "variant": "production"
+      },
+      {
+        "ms": 25.0556,
+        "variant": "production"
+      },
+      {
+        "ms": 26.5071,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 29.8231,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 28.1616,
+        "variant": "production"
+      },
+      {
+        "ms": 28.4041,
+        "variant": "production"
+      },
+      {
+        "ms": 25.8305,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 25.3841,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 36.999,
+        "variant": "production"
+      },
+      {
+        "ms": 28.4232,
+        "variant": "production"
+      },
+      {
+        "ms": 36.7148,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 39.091,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 38.5079,
+        "variant": "production"
+      },
+      {
+        "ms": 33.4297,
+        "variant": "production"
+      },
+      {
+        "ms": 25.4363,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 36.5621,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 30.4362,
+        "variant": "production"
+      },
+      {
+        "ms": 25.7596,
+        "variant": "production"
+      },
+      {
+        "ms": 26.1119,
+        "variant": "rational_baseline"
+      }
+    ],
+    "truncated": false
+  },
+  "duplicate_faces": {
+    "candidate_tests": 4950,
+    "finding_signature_fnv1a64": "5aafae055d0b99c5",
+    "findings": 4950,
+    "frequency": {
+      "calls": 4950,
+      "filtered": 0,
+      "guarded": 0,
+      "rational": 4950,
+      "rational_shared": [
+        4950,
+        0,
+        0,
+        0
+      ],
+      "signs_2d": 0,
+      "signs_3d": 0
+    },
+    "oracle_pairs": 4950,
+    "reason": "",
+    "runs": [
+      {
+        "ms": 176.6284,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 11.8117,
+        "variant": "production"
+      },
+      {
+        "ms": 11.3433,
+        "variant": "production"
+      },
+      {
+        "ms": 155.7342,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 174.9045,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 7.0007,
+        "variant": "production"
+      },
+      {
+        "ms": 7.2794,
+        "variant": "production"
+      },
+      {
+        "ms": 221.7952,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 149.5007,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 7.5173,
+        "variant": "production"
+      },
+      {
+        "ms": 8.2462,
+        "variant": "production"
+      },
+      {
+        "ms": 211.1321,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 233.6889,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 7.2041,
+        "variant": "production"
+      },
+      {
+        "ms": 7.6184,
+        "variant": "production"
+      },
+      {
+        "ms": 197.8361,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 207.027,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 8.1924,
+        "variant": "production"
+      },
+      {
+        "ms": 7.8177,
+        "variant": "production"
+      },
+      {
+        "ms": 154.1115,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 164.9022,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 8.9505,
+        "variant": "production"
+      },
+      {
+        "ms": 7.4453,
+        "variant": "production"
+      },
+      {
+        "ms": 198.5961,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 149.6783,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 7.4912,
+        "variant": "production"
+      },
+      {
+        "ms": 11.4088,
+        "variant": "production"
+      },
+      {
+        "ms": 191.9739,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 212.0799,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 7.4274,
+        "variant": "production"
+      },
+      {
+        "ms": 8.3152,
+        "variant": "production"
+      },
+      {
+        "ms": 189.8865,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 213.6337,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 13.6177,
+        "variant": "production"
+      },
+      {
+        "ms": 7.4523,
+        "variant": "production"
+      },
+      {
+        "ms": 178.7731,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 227.7887,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 14.7204,
+        "variant": "production"
+      },
+      {
+        "ms": 11.4787,
+        "variant": "production"
+      },
+      {
+        "ms": 253.0882,
+        "variant": "rational_baseline"
+      }
+    ],
+    "truncated": false
+  },
+  "flat_grid": {
+    "candidate_tests": 68104,
+    "finding_signature_fnv1a64": "10c89ad199b6ca1b",
+    "findings": 0,
+    "frequency": {
+      "calls": 68104,
+      "filtered": 56197,
+      "guarded": 0,
+      "rational": 11907,
+      "rational_shared": [
+        0,
+        11907,
+        0,
+        0
+      ],
+      "signs_2d": 0,
+      "signs_3d": 0
+    },
+    "oracle_pairs": 11907,
+    "reason": "",
+    "runs": [
+      {
+        "ms": 1908.2868,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 96.1802,
+        "variant": "production"
+      },
+      {
+        "ms": 114.8994,
+        "variant": "production"
+      },
+      {
+        "ms": 1634.4569,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1766.408,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 104.1993,
+        "variant": "production"
+      },
+      {
+        "ms": 110.1298,
+        "variant": "production"
+      },
+      {
+        "ms": 1772.398,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1817.3515,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 100.0034,
+        "variant": "production"
+      },
+      {
+        "ms": 98.7313,
+        "variant": "production"
+      },
+      {
+        "ms": 1700.1003,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1725.2968,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 110.1057,
+        "variant": "production"
+      },
+      {
+        "ms": 111.4898,
+        "variant": "production"
+      },
+      {
+        "ms": 1757.3515,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1775.8931,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 106.2225,
+        "variant": "production"
+      },
+      {
+        "ms": 127.6925,
+        "variant": "production"
+      },
+      {
+        "ms": 1913.2662,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1763.1522,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 117.1537,
+        "variant": "production"
+      },
+      {
+        "ms": 131.71,
+        "variant": "production"
+      },
+      {
+        "ms": 1708.5712,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1701.6469,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 99.791,
+        "variant": "production"
+      },
+      {
+        "ms": 97.9291,
+        "variant": "production"
+      },
+      {
+        "ms": 1900.6128,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1821.1388,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 101.7619,
+        "variant": "production"
+      },
+      {
+        "ms": 104.1543,
+        "variant": "production"
+      },
+      {
+        "ms": 1840.5376,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1770.8513,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 108.4231,
+        "variant": "production"
+      },
+      {
+        "ms": 100.0165,
+        "variant": "production"
+      },
+      {
+        "ms": 1772.2271,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 1772.452,
+        "variant": "rational_baseline"
+      },
+      {
+        "ms": 115.6496,
+        "variant": "production"
+      },
+      {
+        "ms": 123.394,
+        "variant": "production"
+      },
+      {
+        "ms": 1797.7902,
+        "variant": "rational_baseline"
+      }
+    ],
+    "truncated": false
+  },
+  "notes": "Release production library versus an uninstrumented rational baseline; normal allocator; alternating order. Untimed frequency/oracle pass and complete finding/status comparison. Model uses all parts in one identity-transform source batch.",
+  "sizeof_cpp_rational": 64,
+  "sizeof_rational_triangle": 576
+}

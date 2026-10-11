@@ -1,9 +1,10 @@
 # Exact intersection predicate experiment
 
 The probe keeps the production BVH, conservative disjoint filters, budgets,
-finding order, and report geometry. CMake copies `src/mesh_intersections.cpp`
-to the build directory and adds counters and a candidate selection switch.
-The application uses its original translation unit.
+finding order, and report geometry. CMake copies the frozen `rational-baseline.cpp`
+from commit `dcee7da` to the build directory and adds counters and a candidate
+selection switch. This keeps the rational baseline separate from the adopted
+production classifier.
 
 The candidate uses adaptive `orient2d` and `orient3d` from the installed CDT
 `predicates.h`. It constructs no intersection coordinates. Inputs outside
@@ -21,6 +22,11 @@ separate rational separating-axis implementation checks closed intersections
 without shared IDs. It also checks raw adaptive orientation signs directly
 against rational determinants and an independent integer determinant
 oracle that decodes the input double bits.
+
+The application now uses `src/mesh_intersection_predicates.cpp`, with a bitwise
+range check and a runtime round-to-nearest check. Its permanent unit tests also
+exercise directed rounding, guard boundaries and adjacent values. The original
+experimental candidate below remains a historical comparison route.
 
 From the repository root:
 
@@ -51,6 +57,25 @@ allocator. A normal-allocator application check is required before merge.
 
 The measured raw results, hashes, and compiler-scope pilot are retained in
 [the investigation data](../../doc/simplification-10-predicates-results.json).
-The measured source is frozen in that data's build metadata. The later
-`CMAKE_CONFIGURE_DEPENDS` entry only makes a production source edit trigger
-regeneration of the wrapper. It did not change the measured binary.
+The original measured source is identified in that data's build metadata.
+Current wrappers regenerate when the frozen rational baseline changes.
+Production edits rebuild the shared application library independently.
+
+## Production adoption check
+
+`woby_intersection_adoption_benchmark` uses the normal allocator. It compares the
+production library with an uninstrumented rational baseline in alternating
+order. It checks all findings, order, source metadata and result status outside
+the timer. It measures the detector; import and source preparation are excluded.
+
+```powershell
+cmake --preset vs2026-vcpkg -DWOBY_BUILD_SIMPLIFICATION_PROBES=ON -DWOBY_TEST_INTERSECTION_FMA=ON
+cmake --build --preset vs2026-vcpkg --config Release --target woby_tests woby_intersection_fma_tests woby_intersection_adoption_benchmark
+ctest --test-dir build/vs2026-vcpkg -C Release -R 'mesh_intersection_predicates_tests|intersection_fma_contract|mesh_intersections_tests' --output-on-failure
+experiments/simplification-10/run-adoption.ps1 -Model D:/temp/obj_tests/uploads_files_2720101_BusGameMap.obj -Runs 7
+```
+
+The FMA option requires an AVX2-capable CPU and is off by default. Its executable
+compiles the production classifier with AVX2/FMA and runs the same permanent
+unit corpus. Normal builds run that corpus through the application's shared
+production library. Use a new output directory for each benchmark campaign.

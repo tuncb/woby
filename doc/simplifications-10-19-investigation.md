@@ -1,6 +1,6 @@
 # Investigation of simplification items 10–19
 
-This report covers the remaining proposals in [the original assessment](data-structure-algorithm-simplifications.md), with isolated correctness and performance experiments against commit `46a27585c5bc8638a8bde5d601e5cead71376631`. Investigation date: 11 October 2026. Production optimization code has not been changed.
+This report covers the remaining proposals in [the original assessment](data-structure-algorithm-simplifications.md), with isolated correctness and performance experiments against commit `46a27585c5bc8638a8bde5d601e5cead71376631`. Investigation date: 11 October 2026. Production optimization code was unchanged for these investigation measurements. Item 10 has since been implemented; its [production adoption](simplification-10-predicates-investigation.md#production-adoption) records the new measurements and validation.
 
 ## Numbering and coverage
 
@@ -33,7 +33,7 @@ The five OBJ models include an ordinary mixed-attribute model, large industrial 
 
 ## Production merge boundary
 
-The measured candidates are decision tools. None is a production implementation ready to merge. Approving an implementation means the expected gain and semantic boundary are now clear enough to start a separate change. That change must satisfy its detailed report's remaining gates and the repository's Debug build and test requirements.
+The measured prototypes are decision tools. Item 10 now has a separate production implementation, documented in its adoption section. For the other candidates, approving an implementation means the expected gain and semantic boundary are clear enough to start a separate change. That change must satisfy its detailed report's remaining gates and the repository's Debug build and test requirements.
 
 Use small changes with independent validation. Shared annotation geometry can precede the persistent-settings migration. Topology slices can precede narrowing IDs. Typed graphics setters can precede a changed shared shader layout. Keep the rational oracle and guarded fallback when introducing adaptive predicates. Reject changes that require repaired input, lose source identity, or omit a required display consumer to produce their claimed saving.
 

@@ -1,0 +1,269 @@
+{
+  "method": "Median and range within each serial, alternating-order campaign. No confidence interval. Do not compare absolute times between different binaries or campaigns.",
+  "synthetic_seven": {
+    "curved_grid": {
+      "variants": {
+        "rational_baseline": {
+          "samples": 7,
+          "median_ms": 30.7614,
+          "minimum_ms": 26.212,
+          "maximum_ms": 40.734
+        },
+        "production": {
+          "samples": 7,
+          "median_ms": 27.9356,
+          "minimum_ms": 24.9492,
+          "maximum_ms": 40.1937
+        }
+      },
+      "median_change_percent": -9.186187884816677,
+      "paired_median_ratio": 0.9428652399756874,
+      "pairs_with_slower_production": 1,
+      "findings": 0,
+      "candidate_tests": 60285,
+      "rational_survivors": 0,
+      "captured_pairs_checked": 0,
+      "truncated": false,
+      "truncation_reason": "",
+      "complete_result_signature": "f078aea7656945bd"
+    },
+    "duplicate_faces": {
+      "variants": {
+        "rational_baseline": {
+          "samples": 7,
+          "median_ms": 170.7909,
+          "minimum_ms": 149.2521,
+          "maximum_ms": 196.4446
+        },
+        "production": {
+          "samples": 7,
+          "median_ms": 9.7503,
+          "minimum_ms": 6.9212,
+          "maximum_ms": 13.8603
+        }
+      },
+      "median_change_percent": -94.29108927934685,
+      "paired_median_ratio": 0.06042923891870317,
+      "pairs_with_slower_production": 0,
+      "findings": 4950,
+      "candidate_tests": 4950,
+      "rational_survivors": 4950,
+      "captured_pairs_checked": 4950,
+      "truncated": false,
+      "truncation_reason": "",
+      "complete_result_signature": "5aafae055d0b99c5"
+    },
+    "flat_grid": {
+      "variants": {
+        "rational_baseline": {
+          "samples": 7,
+          "median_ms": 1925.209,
+          "minimum_ms": 1824.6587,
+          "maximum_ms": 2028.3714
+        },
+        "production": {
+          "samples": 7,
+          "median_ms": 109.7726,
+          "minimum_ms": 102.5246,
+          "maximum_ms": 158.4856
+        }
+      },
+      "median_change_percent": -94.29814633112561,
+      "paired_median_ratio": 0.056735213001752056,
+      "pairs_with_slower_production": 0,
+      "findings": 0,
+      "candidate_tests": 68104,
+      "rational_survivors": 11907,
+      "captured_pairs_checked": 11907,
+      "truncated": false,
+      "truncation_reason": "",
+      "complete_result_signature": "10c89ad199b6ca1b"
+    }
+  },
+  "real_model_seven": {
+    "exact_position": {
+      "variants": {
+        "rational_baseline": {
+          "samples": 7,
+          "median_ms": 4742.4541,
+          "minimum_ms": 4537.1417,
+          "maximum_ms": 4975.6473
+        },
+        "production": {
+          "samples": 7,
+          "median_ms": 1222.3931,
+          "minimum_ms": 1162.8007,
+          "maximum_ms": 1266.0178
+        }
+      },
+      "median_change_percent": -74.22446112868019,
+      "paired_median_ratio": 0.2539516893164087,
+      "pairs_with_slower_production": 0,
+      "findings": 10000,
+      "candidate_tests": 576805,
+      "rational_survivors": 12402,
+      "captured_pairs_checked": 12402,
+      "truncated": true,
+      "truncation_reason": "pair_limit",
+      "complete_result_signature": "bb0dd188b031ced7"
+    },
+    "exact_position_first_25000_faces_complete": {
+      "variants": {
+        "rational_baseline": {
+          "samples": 7,
+          "median_ms": 496.6179,
+          "minimum_ms": 454.2099,
+          "maximum_ms": 588.8208
+        },
+        "production": {
+          "samples": 7,
+          "median_ms": 149.1161,
+          "minimum_ms": 119.7772,
+          "maximum_ms": 160.2805
+        }
+      },
+      "median_change_percent": -69.97367593878514,
+      "paired_median_ratio": 0.30026324061214865,
+      "pairs_with_slower_production": 0,
+      "findings": 832,
+      "candidate_tests": 212998,
+      "rational_survivors": 1072,
+      "captured_pairs_checked": 1072,
+      "truncated": false,
+      "truncation_reason": "",
+      "complete_result_signature": "88e49b3006d6816a"
+    },
+    "original_index": {
+      "variants": {
+        "rational_baseline": {
+          "samples": 7,
+          "median_ms": 4391.1034,
+          "minimum_ms": 4313.8418,
+          "maximum_ms": 4748.4292
+        },
+        "production": {
+          "samples": 7,
+          "median_ms": 1216.3365,
+          "minimum_ms": 1167.0144,
+          "maximum_ms": 1270.6868
+        }
+      },
+      "median_change_percent": -72.29998045593734,
+      "paired_median_ratio": 0.2743377639447832,
+      "pairs_with_slower_production": 0,
+      "findings": 10000,
+      "candidate_tests": 538195,
+      "rational_survivors": 11771,
+      "captured_pairs_checked": 11771,
+      "truncated": true,
+      "truncation_reason": "pair_limit",
+      "complete_result_signature": "1f068852d898944a"
+    },
+    "original_index_first_25000_faces_complete": {
+      "variants": {
+        "rational_baseline": {
+          "samples": 7,
+          "median_ms": 1119.7879,
+          "minimum_ms": 1008.4158,
+          "maximum_ms": 1181.8575
+        },
+        "production": {
+          "samples": 7,
+          "median_ms": 138.1178,
+          "minimum_ms": 130.657,
+          "maximum_ms": 189.2113
+        }
+      },
+      "median_change_percent": -87.66571776673064,
+      "paired_median_ratio": 0.13124586108230357,
+      "pairs_with_slower_production": 0,
+      "findings": 4230,
+      "candidate_tests": 212998,
+      "rational_survivors": 4470,
+      "captured_pairs_checked": 4470,
+      "truncated": false,
+      "truncation_reason": "",
+      "complete_result_signature": "899776631be8af25"
+    }
+  },
+  "synthetic_twenty_same_executable": {
+    "curved_grid": {
+      "variants": {
+        "rational_baseline": {
+          "samples": 20,
+          "median_ms": 26.625349999999997,
+          "minimum_ms": 25.1914,
+          "maximum_ms": 39.091
+        },
+        "production": {
+          "samples": 20,
+          "median_ms": 28.2916,
+          "minimum_ms": 24.6982,
+          "maximum_ms": 38.5079
+        }
+      },
+      "median_change_percent": 6.258133695895074,
+      "paired_median_ratio": 0.9907503775827274,
+      "pairs_with_slower_production": 9,
+      "findings": 0,
+      "candidate_tests": 60285,
+      "rational_survivors": 0,
+      "captured_pairs_checked": 0,
+      "truncated": false,
+      "truncation_reason": "",
+      "complete_result_signature": "f078aea7656945bd"
+    },
+    "duplicate_faces": {
+      "variants": {
+        "rational_baseline": {
+          "samples": 20,
+          "median_ms": 194.90499999999997,
+          "minimum_ms": 149.5007,
+          "maximum_ms": 253.0882
+        },
+        "production": {
+          "samples": 20,
+          "median_ms": 8.00505,
+          "minimum_ms": 7.0007,
+          "maximum_ms": 14.7204
+        }
+      },
+      "median_change_percent": -95.89284523229266,
+      "paired_median_ratio": 0.044572456947169554,
+      "pairs_with_slower_production": 0,
+      "findings": 4950,
+      "candidate_tests": 4950,
+      "rational_survivors": 4950,
+      "captured_pairs_checked": 4950,
+      "truncated": false,
+      "truncation_reason": "",
+      "complete_result_signature": "5aafae055d0b99c5"
+    },
+    "flat_grid": {
+      "variants": {
+        "rational_baseline": {
+          "samples": 20,
+          "median_ms": 1772.31255,
+          "minimum_ms": 1634.4569,
+          "maximum_ms": 1913.2662
+        },
+        "production": {
+          "samples": 20,
+          "median_ms": 107.3228,
+          "minimum_ms": 96.1802,
+          "maximum_ms": 131.71
+        }
+      },
+      "median_change_percent": -93.94447666694003,
+      "paired_median_ratio": 0.060520053818329096,
+      "pairs_with_slower_production": 0,
+      "findings": 0,
+      "candidate_tests": 68104,
+      "rational_survivors": 11907,
+      "captured_pairs_checked": 11907,
+      "truncated": false,
+      "truncation_reason": "",
+      "complete_result_signature": "10c89ad199b6ca1b"
+    }
+  }
+}
