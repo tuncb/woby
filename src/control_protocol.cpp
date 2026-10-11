@@ -80,7 +80,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"type", "name", "a", "b"}, {}, false, true},
         {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
-            {"uvThresholdEnabled", "uvOverlapEnabled", "uvRangeEnabled", "uvThreshold", "uvNearCollapse", "uvRangeMinimum", "uvRangeMaximum", "uvOverlapScope", "uvSeparated", "uvLinkedSelection", "uvMetric", "uvNormalization", "uvView", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "analysisMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
+            {"uvThresholdEnabled", "uvOverlapEnabled", "uvRangeEnabled", "uvThreshold", "uvNearCollapse", "uvRangeMinimum", "uvRangeMaximum", "uvOverlapScope", "uvSeparated", "uvLinkedSelection", "uvMetric", "uvNormalization", "uvView", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "colorMinimum", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "analysisMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
         {ControlAction::comparisonAdd, "analysis.add", "analysis add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "analysis.remove", "analysis remove", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonEnable, "analysis.enable", "analysis enable", "target", {"side", "enabled", "object", "isolate"}, {"side", "enabled"}, false, true},
@@ -176,6 +176,7 @@ std::string cliOption(const std::string& name)
     if (name == "automaticNearPlane") { return "--automatic-near-plane"; }
     if (name == "distanceOnA") { return "--distance-on-a"; }
     if (name == "colorRange") { return "--color-range"; }
+    if (name == "colorMinimum") { return "--color-minimum"; }
     if (name == "showEdges") { return "--show-edges"; }
     if (name == "showBoundaries") { return "--show-boundaries"; }
     if (name == "showWinding") { return "--show-winding"; }
@@ -331,7 +332,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     NUMBER_FIELD(qualityMinimumSize) NUMBER_FIELD(qualityMaximumSize)
     NUMBER_FIELD(holeSizeRatioTolerance) NUMBER_FIELD(finMaxAreaRatio)
     NUMBER_FIELD(needleThresholdRatio) NUMBER_FIELD(capMinAngleDegrees)
-    NUMBER_FIELD(tolerance) NUMBER_FIELD(colorRange)
+    NUMBER_FIELD(tolerance) NUMBER_FIELD(colorRange) NUMBER_FIELD(colorMinimum)
 #undef NUMBER_FIELD
 #define VECTOR_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::array<float, 3>>(); }
     VECTOR_FIELD(translation) VECTOR_FIELD(rotationDegrees) VECTOR_FIELD(rgb) VECTOR_FIELD(eye)
@@ -482,7 +483,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(duplicatePoints) FIELD(duplicateTriangles) FIELD(showDuplicatePoints) FIELD(showDuplicateTriangles)
     FIELD(shape) FIELD(comments) FIELD(locked) FIELD(start) FIELD(end) FIELD(delta) FIELD(aspect) FIELD(opacity)
     FIELD(qualityMetric) FIELD(qualityOnA) FIELD(qualityMinimumEnabled) FIELD(qualityMaximumEnabled) FIELD(qualityMinimumSize) FIELD(qualityMaximumSize)
-    FIELD(distanceOnA) FIELD(showEdges) FIELD(showBoundaries) FIELD(showNonManifold) FIELD(showWinding) FIELD(topologyMode) FIELD(tolerance) FIELD(colorRange) FIELD(enabled)
+    FIELD(distanceOnA) FIELD(showEdges) FIELD(showBoundaries) FIELD(showNonManifold) FIELD(showWinding) FIELD(topologyMode) FIELD(tolerance) FIELD(colorRange) FIELD(colorMinimum) FIELD(enabled)
 #undef FIELD
     return result;
 }

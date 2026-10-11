@@ -181,7 +181,7 @@ Manual run/cancel requests do not change these saved preferences.
 | --- | --- | --- |
 | `analysis create [--type mesh|surface_comparison|uv|uv_quality] [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `analysis.create` | Create an analysis, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
 | `analysis delete ANALYSIS_ID` | `analysis.delete` | Delete the analysis without deleting its source models. Returns `removed` and `dirty`. |
-| `analysis set ANALYSIS_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL] [--show-winding BOOL] [--topology-mode original_index\|exact_position]` | `analysis.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
+| `analysis set ANALYSIS_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-minimum N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL] [--show-winding BOOL] [--topology-mode original_index\|exact_position]` | `analysis.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
 | `analysis add ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.add` | Add the input's current triangular parts to the selected side, deduplicating existing membership. |
 | `analysis enable ANALYSIS_ID --side a\|b --enabled BOOL [--object OBJECT_ID] [--isolate BOOL]` | `analysis.enable` | Enable or disable existing members on one side. Accepts a file, folder, or triangular mesh group; omit `--object` to change the whole side. `--isolate true` requires an object and `--enabled true`; enables only its members on that side. Mesh supports A/B; UV supports A only. Membership is preserved. |
 | `analysis remove ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.remove` | Remove the input's current triangular parts from the selected side. |
@@ -200,6 +200,19 @@ change after recomputation. For example:
 ```powershell
 woby.exe ctl --instance review analysis focus ANALYSIS_ID --side a --detector holes --index 7 --json
 woby.exe ctl --instance review analysis focus ANALYSIS_ID --side b --detector fins --index 2 --json
+```
+
+Use `--color-minimum N` for the lower distance color limit and `--color-range N`
+for the upper limit. The RPC fields are `colorMinimum` and `colorRange`.
+Either option selects Custom mode. Both limits are saved in the scene; they do
+not change the measurement tolerance. Limits are clamped to the supported range,
+with the lower limit below the upper limit. Acceptance tolerance is independent.
+The percentage presets select zero to a percentage of the largest sampled distance;
+they do not use area percentiles.
+The settings response includes `colorMinimum`, `colorRange`, and `colorRangeMode`.
+
+```powershell
+woby.exe ctl --instance review analysis set ANALYSIS_ID --color-minimum 0.02 --color-range 0.2 --json
 ```
 
 Exact source-duplicate controls are available through `analysis set`:

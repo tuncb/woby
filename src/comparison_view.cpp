@@ -1201,6 +1201,92 @@ void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId i
     }
 }
 
+void comparisonFieldLabel(const char* label)
+{
+    ImGui::TableNextRow(); ImGui::TableNextColumn();
+    ImGui::AlignTextToFramePadding(); ImGui::TextWrapped("%s", label);
+    ImGui::TableNextColumn(); ImGui::SetNextItemWidth(-1);
+}
+
+void drawDistanceInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId id, bool ready)
+{
+    auto settings = comparisonSettings(state, id);
+    const auto initial = settings;
+    ImGui::SeparatorText("Measurement");
+    if (ImGui::BeginTable("distance_measurement", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings)) {
+        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch, .42f);
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, .58f);
+        comparisonFieldLabel("Measurement direction");
+        if (ImGui::RadioButton("A -> B", settings.distanceOnOriginal)) { settings.distanceOnOriginal = true; }
+        setLastItemTooltip("Measure distances on A to reference surface B.");
+        ImGui::SameLine();
+        if (ImGui::RadioButton("B -> A", !settings.distanceOnOriginal)) { settings.distanceOnOriginal = false; }
+        setLastItemTooltip("Measure distances on B to reference surface A.");
+        ImGui::EndTable();
+    }
+    settings = normalizedComparisonSettings(settings);
+    const auto& surface = settings.distanceOnOriginal ? runtime.results.value.original : runtime.results.value.repaired;
+    ImGui::SeparatorText("Distance heatmap");
+    ImGui::TextDisabled("Distances in model units");
+    if (ImGui::BeginTable("distance_scale", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings)) {
+        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch, .32f);
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, .68f);
+        comparisonFieldLabel("Color range");
+        int preset = static_cast<int>(settings.colorRangeMode);
+        if (ImGui::BeginCombo("##color_range", comparisonColorRangeLabels[static_cast<size_t>(preset)])) {
+            for (size_t i = 0; i < comparisonColorRangeLabels.size(); ++i) {
+                ImGui::BeginDisabled(i != 0 && !ready);
+                if (ImGui::Selectable(comparisonColorRangeLabels[i], preset == static_cast<int>(i))) {
+                    settings.colorRangeMode = static_cast<ComparisonColorRange>(i);
+                }
+                ImGui::EndDisabled();
+            }
+            ImGui::EndCombo();
+        }
+        setLastItemTooltip("Each percentage sets the color limits from zero to that percentage of the largest sampled distance. Acceptance tolerance is separate.");
+        ImGui::EndTable();
+    }
+    if (ready) { settings = fittedComparisonSettings(settings, surface); }
+    drawComparisonRangeControl(settings, runtime.inspector.rangeDrag, ready ? surface.maximum : 0);
+    ImGui::TextWrapped("Gray: within acceptance tolerance.");
+    ImGui::TextWrapped("Drag triangles for color limits; drag the diamond for tolerance.");
+    if (ready) {
+        if (surface.maximum > settings.colorRange || settings.colorMinimum > settings.tolerance) {
+            ImGui::TextWrapped("Distances outside the color range use the end colors. Measurements are unchanged.");
+        } else { ImGui::TextWrapped("All sampled distances are covered by this scale."); }
+    }
+    if (ImGui::BeginTable("distance_edges", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings)) {
+        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch, .6f);
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, .4f);
+        comparisonFieldLabel("Measured mesh edges");
+        if (drawVisibilityButton("measured_edges", settings.showEdges, "Measured mesh edges")) { settings.showEdges = !settings.showEdges; }
+        ImGui::SameLine(); ImGui::TextUnformatted(settings.showEdges ? "Visible" : "Hidden");
+        ImGui::EndTable();
+    }
+    ImGui::SeparatorText("Results");
+    if (settings != initial) { setComparisonSettings(state, settings, id); }
+    if (ImGui::Button("Frame result")) { frameComparison(state, id); }
+    setLastItemTooltip("Fit the complete comparison result in the viewport.");
+    if (!ready || !settings.enabled) { return; }
+    ImGui::TextWrapped("Estimated from surface samples");
+    const double above = surfacePercentAboveTolerance(surface, settings.tolerance);
+    ImGui::TextWrapped("%.2f%% of surface area within tolerance", 100 - above);
+    const auto gray = comparisonHeatmapColor(0, settings);
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(gray[0], gray[1], gray[2], 1));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(1, .77f, .31f, 1));
+    ImGui::ProgressBar(static_cast<float>((100 - above) / 100), {-1, ImGui::GetFontSize() * .4f}, "");
+    ImGui::PopStyleColor(2);
+    if (ImGui::BeginTable("distance_results", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings)) {
+        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch, .68f);
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, .32f);
+        comparisonFieldLabel("Area above tolerance"); ImGui::Text("%.2f%%", above);
+        comparisonFieldLabel("Mean distance"); ImGui::Text("%.5g", surface.mean);
+        comparisonFieldLabel("95% of area at or below"); ImGui::Text("%.5g", surface.percentile95);
+        comparisonFieldLabel("Largest sampled distance"); ImGui::Text("%.5g", surface.maximum);
+        ImGui::EndTable();
+    }
+}
+
 void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObjectId id)
 {
     const auto* comparison = findComparison(state, id);
@@ -1250,7 +1336,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     const bool valid = (runtime.inspector.queries.signature != 0);
     {
         if (task == AnalysisTask::surfaceComparison) {
-            ImGui::SeparatorText("Display");
+            ImGui::SeparatorText("View");
             const char* modes[] = {"Distance heatmap", "Input A", "Input B", "Overlay"};
             int mode = settings.mode == ComparisonMode::surfaceQuality ? 0 : static_cast<int>(settings.mode);
             ImGui::SetNextItemWidth(-1);
@@ -1263,34 +1349,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         }
         if (both && settings.mode == ComparisonMode::distance)
         {
-            ImGui::TextUnformatted("Measurement direction");
-            ImGui::SameLine();
-            const auto a = comparisonInputSummary(state, ComparisonSide::a, id);
-            const auto b = comparisonInputSummary(state, ComparisonSide::b, id);
-            const std::string directionHint = std::string("Measured surface (heatmap): ")
-                + (settings.distanceOnOriginal ? "A - " : "B - ")
-                + (settings.distanceOnOriginal ? a.sourceNames : b.sourceNames)
-                + "\n\nReference surface (nearest distance): "
-                + (settings.distanceOnOriginal ? "B - " : "A - ")
-                + (settings.distanceOnOriginal ? b.sourceNames : a.sourceNames);
-            drawInformationIcon("direction_info", "Measurement direction", directionHint.c_str());
-            if (ImGui::RadioButton("A -> B", settings.distanceOnOriginal)) { settings.distanceOnOriginal = true; }
-            setLastItemTooltip("Measure distances from vertices on A to the nearest surface on B.");
-            ImGui::SameLine();
-            if (ImGui::RadioButton("B -> A", !settings.distanceOnOriginal)) { settings.distanceOnOriginal = false; }
-            setLastItemTooltip("Measure distances from vertices on B to the nearest surface on A.");
-            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
-            ImGui::InputFloat("Tolerance", &settings.tolerance, 0, 0, "%.5g");
-            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
-            ImGui::InputFloat("Color maximum", &settings.colorRange, 0, 0, "%.5g");
-            ImGui::BeginDisabled(!resultReady || !(runtime.results.cache.completed & comparisonDistance));
-            if (ImGui::Button("Fit color range")) {
-                const auto& surface = settings.distanceOnOriginal ? runtime.results.value.original : runtime.results.value.repaired;
-                settings.colorRange = fittedComparisonColorRange(surface.maximum, settings.tolerance);
-            }
-            setLastItemTooltip("Fit the color maximum to the largest measured distance, with tolerance as the minimum.");
-            ImGui::EndDisabled();
-
+            if (settings != initial) { setComparisonSettings(state, settings, id); }
+            drawDistanceInspector(state, runtime, id, resultReady);
+            return;
         }
         if (task == AnalysisTask::meshQuality) {
             ImGui::SeparatorText("Metric");
@@ -1319,20 +1380,6 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         if (ImGui::Button("Full result")) { frameComparison(state, id); }
         ImGui::EndDisabled();
     }
-    if (both && comparisonSettings(state, id).mode == ComparisonMode::distance) {
-        const auto currentSettings = comparisonSettings(state, id);
-        ImGui::TextUnformatted("Distance");
-        ImGui::SameLine();
-        drawInformationIcon("distance_info", "Distance colors and statistics",
-            currentSettings.colorRange == currentSettings.tolerance ?
-            "Gray: at or below tolerance. Above tolerance saturates orange-red.\n\n"
-            "Approximate unsigned distance, four samples per triangle; not an exact maximum. Surface shading affects brightness." :
-            "Gray: at or below tolerance. >= color maximum saturates orange-red.\n\n"
-            "Approximate unsigned distance, four samples per triangle; not an exact maximum. Surface shading affects brightness.");
-        const float legendHeight = drawComparisonLegend(*ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(),
-            ImGui::GetContentRegionAvail().x, ImGui::GetFontSize(), currentSettings);
-        ImGui::Dummy({0, legendHeight});
-    }
     const bool validVisible = valid && comparisonSettings(state, id).enabled;
     if (task == AnalysisTask::meshChecks) { drawDiagnosticNavigation(state, runtime, validVisible, hasA, hasB, id); }
     if (!validVisible) { return; }
@@ -1344,18 +1391,6 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     // Diagnostic focus temporarily changes the drawn surface, not the measured direction.
     const bool useOriginal = !hasB || (hasA && originalActive(comparisonSettings(state, id)));
     const auto &surface = useOriginal ? runtime.results.value.original : runtime.results.value.repaired;
-    if (both && comparisonSettings(state, id).mode == ComparisonMode::distance && inspectorStagesReady(runtime, state, id, comparisonDistance))
-    {
-        if (surface.maximum > comparisonSettings(state, id).colorRange) {
-            ImGui::PushTextWrapPos();
-            ImGui::TextColored(ImVec4(1, .65f, .25f, 1), "SATURATED: sample max exceeds color maximum");
-            ImGui::PopTextWrapPos();
-        }
-        ImGui::TextWrapped("Sample max: %.5g", surface.maximum);
-        ImGui::TextWrapped("Area-weighted mean: %.5g", surface.mean);
-        ImGui::TextWrapped("Area-weighted P95: %.5g", surface.percentile95);
-        ImGui::TextWrapped("Area above tolerance: %.2f%%", surfacePercentAboveTolerance(surface, comparisonSettings(state, id).tolerance));
-    }
     if (task != AnalysisTask::meshChecks) { return; }
     const auto &a = runtime.results.value.original.diagnostics;
     const auto &b = runtime.results.value.repaired.diagnostics;
@@ -1433,7 +1468,7 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
     }
     const std::array<float, 4> parameters = {quality ? static_cast<float>(settings.quality.metric) : settings.tolerance,
         settings.colorRange, quality ? 2.0f : heatmap ? 1.0f : 0.0f,
-        quality && settings.quality.metric == SurfaceQualityMetric::shape ? 1.0f : 0.0f};
+        quality ? (settings.quality.metric == SurfaceQualityMetric::shape ? 1.0f : 0.0f) : settings.colorMinimum};
     const std::array<float, 4> gray = {.58f, .63f, .69f, 1};
     woby::graphics::setTransform(identity);
     woby::graphics::setComparison(parameters);

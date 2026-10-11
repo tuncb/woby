@@ -95,7 +95,8 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"uvView", settings.uvView == UvView::layout ? "layout" : "surface"},
                 {"uvGrid", settings.uvGrid.enabled}, {"uvDensityU", settings.uvGrid.densityU}, {"uvDensityV", settings.uvGrid.densityV},
                 {"mode", mode}, {"distanceOnA", settings.distanceOnOriginal}, {"tolerance", settings.tolerance},
-                {"colorRange", settings.colorRange}, {"showEdges", settings.showEdges},
+                {"colorRange", settings.colorRange}, {"colorMinimum", settings.colorMinimum},
+                {"colorRangeMode", comparisonColorRangeKeys[static_cast<size_t>(settings.colorRangeMode)]}, {"showEdges", settings.showEdges},
                 {"nonManifoldVertices", settings.topologyInspection.nonManifoldVertices},
                 {"showNonManifoldVertices", settings.topologyInspection.showNonManifoldVertices},
                 {"fins", settings.topologyInspection.fins},
@@ -492,7 +493,8 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.qualityMaximumSize) { settings.quality.maximumSize = *command.qualityMaximumSize; }
             if (command.distanceOnA) { settings.distanceOnOriginal = *command.distanceOnA; }
             if (command.tolerance) { settings.tolerance = *command.tolerance; }
-            if (command.colorRange) { settings.colorRange = *command.colorRange; }
+            if (command.colorRange) { settings.colorRange = *command.colorRange; settings.colorRangeMode = ComparisonColorRange::custom; }
+            if (command.colorMinimum) { settings.colorMinimum = *command.colorMinimum; settings.colorRangeMode = ComparisonColorRange::custom; }
             if (command.showEdges) { settings.showEdges = *command.showEdges; }
             if (command.showBoundaries) { settings.showBoundaries = *command.showBoundaries; }
             if (command.analysisMode) { settings.analysisMode = parseAnalysisMode(*command.analysisMode); }

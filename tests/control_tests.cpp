@@ -101,7 +101,7 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
         {"analysis", "create", "--name", "Repair check", "--a", "source-a", "--b", "source-b"},
         {"analysis", "delete", "object"},
         {"analysis", "set", "object", "--name", "Renamed", "--mode", "overlay", "--visible", "false", "--distance-on-a", "true",
-            "--tolerance", "0.1", "--color-range", "1", "--show-edges", "true", "--show-boundaries", "false", "--show-non-manifold", "true"},
+            "--tolerance", "0.1", "--color-minimum", "0.2", "--color-range", "1", "--show-edges", "true", "--show-boundaries", "false", "--show-non-manifold", "true"},
         {"analysis", "add", "object", "--side", "a", "--object", "source"},
         {"analysis", "remove", "object", "--side", "b", "--object", "source"},
         {"analysis", "enable", "object", "--side", "a", "--object", "source", "--enabled", "false"},
@@ -131,6 +131,41 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
     }
     CHECK(parse({"vertex-size", "set", "object", "--scale", "3"}).operation.scale == 3);
 }
+TEST_CASE("analysis CLI sets and persists custom lower and upper distance color limits")
+{
+    IsolationFixture fixture;
+    auto& state = fixture.state;
+    const auto id = woby::createComparison(state);
+    auto settings = woby::comparisonSettings(state, id);
+    settings.colorRangeMode = woby::ComparisonColorRange::max95;
+    woby::setComparisonSettings(state, settings, id);
+    const auto clean = woby::createSceneDocument(state);
+    const auto parsed = parse({"analysis", "set", formatId(id), "--color-minimum", "0.12", "--color-range", "0.6"});
+    const auto params = woby::controlOperationParams(parsed.operation);
+    CHECK(params["colorMinimum"].get<double>() == doctest::Approx(.12));
+    const auto result = run(state, clean, "analysis.set", params, id);
+    CHECK(result["object"]["settings"]["colorRangeMode"] == "custom");
+    CHECK(result["object"]["settings"]["colorMinimum"].get<double>() == doctest::Approx(.12));
+    CHECK(result["object"]["settings"]["colorRange"].get<double>() == doctest::Approx(.6));
+    CHECK(woby::comparisonSettings(state, id).tolerance == settings.tolerance);
+    const auto path = fixture.root / "range.woby";
+    woby::writeSceneDocument(path, woby::createSceneDocument(state));
+    const auto restored = woby::prepareSceneReplacement(state, state.files, woby::readSceneDocument(path));
+    REQUIRE(restored.comparisons.size() == 1);
+    CHECK(restored.comparisons.front().settings == woby::comparisonSettings(state, id));
+    settings = woby::comparisonSettings(state, id);
+    settings.colorRangeMode = woby::ComparisonColorRange::max99;
+    woby::setComparisonSettings(state, settings, id);
+    run(state, clean, "analysis.set", {{"colorMinimum", .1}}, id);
+    CHECK(woby::comparisonSettings(state, id).colorRangeMode == woby::ComparisonColorRange::custom);
+    CHECK(woby::comparisonSettings(state, id).colorRange == settings.colorRange);
+    CHECK_THROWS(parse({"analysis", "set", formatId(id), "--color-minimum", "nan"}));
+    CHECK_THROWS(parse({"analysis", "set", formatId(id), "--color-minimum", "1e100"}));
+    const auto usage = woby::controlMethodUsage(*woby::findControlMethod("analysis.set"));
+    CHECK(usage.find("--color-minimum") != std::string::npos);
+    CHECK(usage.find("--color-range") != std::string::npos);
+}
+
 TEST_CASE("annotation CLI and RPC validate drawing coordinates and preserve empty multiline comments")
 {
     const auto comments = parse({"annotation", "set", "object", "--comments", ""});
@@ -582,7 +617,7 @@ TEST_CASE("ctl analysis lifecycle expands inputs edits independently and persist
         {"showBoundaries", false}, {"showNonManifold", false}}, id);
     const auto settings = edited["object"]["settings"];
     CHECK(settings["tolerance"] == 2);
-    CHECK(settings["colorRange"] == 2);
+    CHECK(settings["colorRange"].get<double>() == doctest::Approx(1e-6));
     CHECK(settings["mode"] == "overlay");
     CHECK(settings["distanceOnA"] == true);
     CHECK(settings["showEdges"] == true);

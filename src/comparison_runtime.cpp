@@ -722,6 +722,11 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
         }
         updateComparisonInspectorCache(runtime.inspector.queries, state, comparison.objectId);
         updateComparisonRuntime(runtime, state, comparison.objectId, active < 2);
+        if (comparison.settings.colorRangeMode != ComparisonColorRange::custom
+            && comparisonStagesReady(runtime, comparison.settings, runtime.inspector.queries.signature, comparisonDistance)) {
+            const auto& surface = comparison.settings.distanceOnOriginal ? runtime.results.value.original : runtime.results.value.repaired;
+            setComparisonSettings(state, fittedComparisonSettings(comparison.settings, surface), comparison.objectId);
+        }
         for (size_t index = 0; index < diagnosticCategoryCount; ++index) {
             const auto category = static_cast<DiagnosticCategory>(index);
             const auto phase = comparisonDetectorStatus(runtime.results.value, category).phase;

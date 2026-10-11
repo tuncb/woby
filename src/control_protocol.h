@@ -56,7 +56,7 @@ struct ControlOperation {
     std::optional<std::string> name, mode, side, a, b, object;
     SceneObjectId aId = invalidSceneObjectId, bId = invalidSceneObjectId, memberId = invalidSceneObjectId;
     std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold, showWinding, enabled;
-    std::optional<float> tolerance, colorRange;
+    std::optional<float> tolerance, colorRange, colorMinimum;
     std::optional<std::string> type, uvView;
     std::optional<std::string> qualityMetric, topologyMode, detector;
     std::optional<uint64_t> index, offset, limit, intersectionPairLimit, intersectionCandidateLimit;

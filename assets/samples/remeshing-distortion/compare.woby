@@ -1,0 +1,139 @@
+# Synthetic remeshing comparison; coordinates and distances are millimeters.
+version = 22
+show_grid = false
+show_origin = false
+show_dimensions = false
+up_axis = "z"
+
+[camera]
+target = [-8, 50, 2]
+yaw_radians = -1.5707963267948966
+pitch_radians = 1.05
+roll_radians = 0
+distance = 168
+vertical_fov_degrees = 60
+near_plane = 0.01
+
+[[files]]
+path = "original.obj"
+visible = false
+[[files.groups]]
+name = "surface"
+show_vertices = false
+show_triangles = false
+
+[[files]]
+path = "remeshed-distorted.obj"
+visible = false
+[[files.groups]]
+name = "surface"
+show_vertices = false
+show_triangles = false
+
+[[analyses]]
+name = "1 Original - 11700 triangles"
+translation = [0, 60, 0]
+analysis_type = "surface_comparison"
+analysis_task = "surface_comparison"
+analysis_enabled = true
+analysis_mode = "a"
+analysis_distance_on_a = false
+analysis_tolerance = 0.05
+analysis_color_range = 8
+analysis_show_edges = false
+analysis_show_boundaries = false
+analysis_show_non_manifold = false
+analysis_show_winding = false
+show_duplicate_points = false
+show_duplicate_triangles = false
+show_degenerate_triangles = false
+show_self_intersections = false
+[[analyses.a]]
+file_index = 0
+group_index = 0
+name = "original.obj / surface"
+[[analyses.b]]
+file_index = 1
+group_index = 0
+name = "remeshed-distorted.obj / surface"
+
+[[analyses]]
+name = "2 Distorted remesh - 1500 triangles"
+translation = [-76, 60, 0]
+analysis_type = "surface_comparison"
+analysis_task = "surface_comparison"
+analysis_enabled = true
+analysis_mode = "b"
+analysis_distance_on_a = false
+analysis_tolerance = 0.05
+analysis_color_range = 8
+analysis_show_edges = false
+analysis_show_boundaries = false
+analysis_show_non_manifold = false
+analysis_show_winding = false
+show_duplicate_points = false
+show_duplicate_triangles = false
+show_degenerate_triangles = false
+show_self_intersections = false
+[[analyses.a]]
+file_index = 0
+group_index = 0
+name = "original.obj / surface"
+[[analyses.b]]
+file_index = 1
+group_index = 0
+name = "remeshed-distorted.obj / surface"
+
+[[analyses]]
+name = "3 Heatmap - wide range 0 to 8 mm"
+translation = [0, 0, 0]
+analysis_type = "surface_comparison"
+analysis_task = "surface_comparison"
+analysis_enabled = true
+analysis_mode = "distance"
+analysis_distance_on_a = false
+analysis_tolerance = 0.05
+analysis_color_range = 8
+analysis_show_edges = false
+analysis_show_boundaries = false
+analysis_show_non_manifold = false
+analysis_show_winding = false
+show_duplicate_points = false
+show_duplicate_triangles = false
+show_degenerate_triangles = false
+show_self_intersections = false
+[[analyses.a]]
+file_index = 0
+group_index = 0
+name = "original.obj / surface"
+[[analyses.b]]
+file_index = 1
+group_index = 0
+name = "remeshed-distorted.obj / surface"
+
+[[analyses]]
+name = "4 Heatmap - detail range 0 to 0.65 mm"
+translation = [-76, 0, 0]
+analysis_type = "surface_comparison"
+analysis_task = "surface_comparison"
+analysis_enabled = true
+analysis_mode = "distance"
+analysis_distance_on_a = false
+analysis_tolerance = 0.05
+analysis_color_range = 0.65
+analysis_show_edges = false
+analysis_show_boundaries = false
+analysis_show_non_manifold = false
+analysis_show_winding = false
+show_duplicate_points = false
+show_duplicate_triangles = false
+show_degenerate_triangles = false
+show_self_intersections = false
+[[analyses.a]]
+file_index = 0
+group_index = 0
+name = "original.obj / surface"
+[[analyses.b]]
+file_index = 1
+group_index = 0
+name = "remeshed-distorted.obj / surface"

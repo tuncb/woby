@@ -34,12 +34,38 @@ float fittedComparisonColorRange(double maximum, float tolerance)
     return std::max(range, tolerance);
 }
 
+ComparisonSettings fittedComparisonSettings(ComparisonSettings settings, const SurfaceComparison& surface)
+{
+    double maximum = settings.colorRange;
+    switch (settings.colorRangeMode) {
+    case ComparisonColorRange::custom: return normalizedComparisonSettings(settings);
+    case ComparisonColorRange::max90: maximum = surface.maximum * .9; break;
+    case ComparisonColorRange::max95: maximum = surface.maximum * .95; break;
+    case ComparisonColorRange::max975: maximum = surface.maximum * .975; break;
+    case ComparisonColorRange::max99: maximum = surface.maximum * .99; break;
+    case ComparisonColorRange::allSamples: maximum = surface.maximum; break;
+    }
+    settings.colorMinimum = 0;
+    settings.colorRange = fittedComparisonColorRange(maximum, 0);
+    return normalizedComparisonSettings(settings);
+}
+
+ComparisonSettings editedComparisonColorLimit(ComparisonSettings settings, bool lower, double value)
+{
+    if (!std::isfinite(value)) { return settings; }
+    settings.colorRangeMode = ComparisonColorRange::custom;
+    const float limit = static_cast<float>(std::clamp(value, 0.0, 1e12));
+    if (lower) { settings.colorMinimum = limit; }
+    else { settings.colorRange = std::max(limit, std::nextafter(settings.colorMinimum, std::numeric_limits<float>::infinity())); }
+    return normalizedComparisonSettings(settings);
+}
+
 std::array<float, 4> comparisonHeatmapColor(double distance, const ComparisonSettings& settings)
 {
     if (distance <= settings.tolerance) { return {.56f, .61f, .67f, 1}; }
-    const auto amount = settings.colorRange <= settings.tolerance ? 1.0f :
-        static_cast<float>(std::clamp((distance - settings.tolerance) /
-            (static_cast<double>(settings.colorRange) - settings.tolerance), 0.0, 1.0));
+    const double start = std::max(settings.colorMinimum, settings.tolerance);
+    const auto amount = settings.colorRange <= start ? 1.0f :
+        static_cast<float>(std::clamp((distance - start) / (settings.colorRange - start), 0.0, 1.0));
     return {1.0f - .06f * amount, .77f - .55f * amount, .31f - .255f * amount, 1};
 }
 
@@ -244,10 +270,11 @@ std::vector<std::string> comparisonReportLines(
         lines.push_back("Tolerance: " + measurementNumber(settings.tolerance) + " (gray at or below)");
     }
     if (options.legend) {
+        lines.push_back("Color minimum: " + measurementNumber(settings.colorMinimum));
         lines.push_back("Color maximum: " + measurementNumber(settings.colorRange) +
             (settings.colorRange == settings.tolerance ? " (above tolerance saturates)" : " (>= saturates)"));
-        if (surface.maximum > settings.colorRange) {
-            lines.push_back("SATURATED: sampled values exceed the color maximum.");
+        if (surface.maximum > settings.colorRange || settings.colorMinimum > settings.tolerance) {
+            lines.push_back("Distances outside the color range use the end colors. Measurements are unchanged.");
         }
         lines.push_back("Sample max: " + measurementNumber(surface.maximum));
         lines.push_back("Area-weighted mean: " + measurementNumber(surface.mean));

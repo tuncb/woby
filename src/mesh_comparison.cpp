@@ -597,8 +597,7 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
         {
             checkCanceled(stop);
             cumulative += result.sampleAreas[index];
-            if (cumulative >= totalArea * .95)
-            {
+            if (cumulative >= totalArea * .95) {
                 result.percentile95 = result.distances[index];
                 break;
             }
@@ -642,7 +641,12 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
         settings.mode = ComparisonMode::distance;
     settings.tolerance = std::isfinite(settings.tolerance) ? std::clamp(settings.tolerance, 0.0f, 1e12f) : .05f;
     settings.colorRange = std::isfinite(settings.colorRange) ? std::clamp(settings.colorRange, 1e-6f, 1e12f) : .5f;
-    settings.colorRange = std::max(settings.colorRange, settings.tolerance);
+    settings.colorMinimum = std::isfinite(settings.colorMinimum)
+        ? std::clamp(settings.colorMinimum, 0.0f, std::nextafter(settings.colorRange, 0.0f)) : 0;
+    if (settings.colorRangeMode < ComparisonColorRange::custom || settings.colorRangeMode > ComparisonColorRange::allSamples) {
+        settings.colorRangeMode = ComparisonColorRange::custom;
+    }
+    if (settings.colorRangeMode != ComparisonColorRange::custom) { settings.colorMinimum = 0; }
     settings.quality = normalizedSurfaceQualitySettings(settings.quality);
     settings.degenerates = normalizedDegenerateSettings(settings.degenerates);
     settings.topologyInspection = normalizedTopologyInspectionSettings(settings.topologyInspection);

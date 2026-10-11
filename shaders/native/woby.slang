@@ -249,7 +249,8 @@ float4 fs_comparison(VertexOutput v) : SV_Target0 {
     } else if (root.comparison.z > .5) {
         color = float3(.56,.61,.67);
         if (v.uv.x > root.comparison.x) {
-            float amount = root.comparison.y > root.comparison.x ? saturate((v.uv.x-root.comparison.x)/(root.comparison.y-root.comparison.x)) : 1;
+            float start = max(root.comparison.x,root.comparison.w);
+            float amount = root.comparison.y > start ? saturate((v.uv.x-start)/(root.comparison.y-start)) : 1;
             color = lerp(float3(1,.77,.31),float3(.94,.22,.055),amount);
         }
     }

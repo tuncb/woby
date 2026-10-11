@@ -612,6 +612,18 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         record.settings.quality.maximumSize = parseTomlFloat(value);
     } else if (key == "analysis_color_range") {
         record.settings.colorRange = parseTomlFloat(value);
+    } else if (key == "analysis_color_minimum") {
+        record.settings.colorMinimum = parseTomlFloat(value);
+    } else if (key == "analysis_color_range_mode") {
+        auto mode = parseTomlString(value);
+        // Retain the selected percentage from early area-percentile menu keys.
+        if (mode == "area90") { mode = "max90"; }
+        else if (mode == "area95") { mode = "max95"; }
+        else if (mode == "area975") { mode = "max975"; }
+        else if (mode == "area99") { mode = "max99"; }
+        const auto found = std::find(comparisonColorRangeKeys.begin(), comparisonColorRangeKeys.end(), mode);
+        if (found == comparisonColorRangeKeys.end()) { throw std::runtime_error("Unknown comparison color range mode."); }
+        record.settings.colorRangeMode = static_cast<ComparisonColorRange>(found - comparisonColorRangeKeys.begin());
     } else if (key == "analysis_show_edges") {
         record.settings.showEdges = parseTomlBool(value);
     } else if (key == "analysis_show_boundaries") {
@@ -669,6 +681,8 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "diagnostic_category = \"" << category << "\"\n";
     stream << "analysis_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
     stream << "analysis_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
+    stream << "analysis_color_minimum = "; writeTomlFloat(stream, comparison.colorMinimum); stream << "\n";
+    stream << "analysis_color_range_mode = \"" << comparisonColorRangeKeys[static_cast<size_t>(comparison.colorRangeMode)] << "\"\n";
     stream << "analysis_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";
     stream << "analysis_show_boundaries = " << (comparison.showBoundaries ? "true" : "false") << "\n";
     stream << "analysis_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";

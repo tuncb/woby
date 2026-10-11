@@ -3,6 +3,7 @@
 #include "mesh_comparison.h"
 #include "analysis_presentation.h"
 #include "comparison_scene.h"
+#include "comparison_legend.h"
 #include "scene_renderer.h"
 
 #include <future>
@@ -93,6 +94,7 @@ struct ComparisonGpuRuntime {
     bool ready = false;
 };
 struct ComparisonInspectorRuntime {
+    ComparisonRangeDrag rangeDrag;
     ComparisonInspectorCache queries;
     std::array<std::array<DiagnosticSummary, 2>, diagnosticCategoryCount> diagnosticSummaries{};
 };
