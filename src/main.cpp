@@ -10,6 +10,7 @@
 #include "marker_pick.h"
 #include "adaptive_points.h"
 #include "comparison_view.h"
+#include "difference_runtime.h"
 #include "comparison_scene.h"
 #include "imgui_graphics.h"
 #include "model_load.h"
@@ -329,6 +330,13 @@ struct AutomationComparisonRuntime {
     woby::DegenerateSettings degenerates;
     woby::TopologyInspectionSettings topologyInspection;
     woby::TopologyMode topologyMode = woby::TopologyMode::originalIndex;
+};
+
+struct AutomationDifferenceRuntime {
+    woby::AutomationCommandId id = 0;
+    woby::SceneObjectId objectId = 0;
+    uint64_t generation = 0, request = 0;
+    bool exporting = false;
 };
 
 struct ResolvedModelInputGroup {
@@ -740,7 +748,7 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
         ImGui::TextUnformatted("Properties");
         ImGui::Separator();
         if (woby::selectedAnnotation(state)) {
-            woby::drawAnnotationInspector(state);
+            woby::drawAnnotationInspector(state, inspector.sharedQueries);
         } else if (woby::selectedComparison(state)) {
             woby::drawComparisonPanelContents(state, runtimes);
         } else {
@@ -2483,6 +2491,7 @@ int main(int argc, char** argv)
         std::optional<woby::AutomationCommandId> automationOpenCommandId;
         std::optional<AutomationAppendRuntime> automationAppend;
         std::optional<AutomationComparisonRuntime> automationComparison;
+        std::vector<AutomationDifferenceRuntime> automationDifferences;
         woby::AnalysisExportRuntime analysisExport;
         const woby::ObjectIdFormatter formatObjectId = [&](woby::SceneObjectId id) { return woby::automationObjectId(*automation, id); };
         const auto measurementScene = [&]() {
@@ -2671,7 +2680,7 @@ int main(int argc, char** argv)
                     && !modelFileDialogIsOpen(modelFileDialogState) && !sceneFileDialogIsOpen(sceneFileDialogState)
                     && !sceneScreenshotDialogIsOpen(sceneScreenshotDialogState) && !ImGui::GetIO().WantCaptureMouse;
                 if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE
-                    && (annotationInteraction.tool || annotationInteraction.dragging)) {
+                    && (annotationInteraction.tool || annotationInteraction.sectionTool || annotationInteraction.dragging)) {
                     woby::cancelAnnotationPointer(annotationInteraction);
                     annotationEscapeConsumed = true;
                     scenePointer = {};
@@ -2687,6 +2696,12 @@ int main(int argc, char** argv)
                     }
                 }
                 if (annotationInteraction.dragging) {
+                    if (annotationInteraction.sectionStart
+                        && (event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP)
+                        && (event.key.key == SDLK_LSHIFT || event.key.key == SDLK_RSHIFT)) {
+                        annotationMotion = annotationMotion.value_or(annotationInteraction.pointerEnd);
+                        continue;
+                    }
                     if (event.type == SDL_EVENT_MOUSE_MOTION) {
                         const auto p = mousePositionInPixels(window.get(), event.motion.x, event.motion.y);
                         annotationMotion = woby::PickPoint{p.x - static_cast<float>(presentedViewport.x), p.y - static_cast<float>(presentedViewport.y)};
@@ -2694,7 +2709,8 @@ int main(int argc, char** argv)
                     }
                     if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) {
                         annotationMotion.reset();
-                        woby::moveAnnotationPointer(ui, annotationInteraction, {inputMouse.x - static_cast<float>(presentedViewport.x), inputMouse.y - static_cast<float>(presentedViewport.y)});
+                        woby::moveAnnotationPointer(ui, annotationInteraction, {inputMouse.x - static_cast<float>(presentedViewport.x), inputMouse.y - static_cast<float>(presentedViewport.y)},
+                            (SDL_GetModState() & SDL_KMOD_SHIFT) != 0u);
                         woby::endAnnotationPointer(ui, annotationInteraction, pointerAllowed && canvasInput);
                         continue;
                     }
@@ -2767,7 +2783,7 @@ int main(int argc, char** argv)
                 }
             }
             if (annotationMotion && annotationInteraction.dragging) {
-                woby::moveAnnotationPointer(ui, annotationInteraction, *annotationMotion);
+                woby::moveAnnotationPointer(ui, annotationInteraction, *annotationMotion, (SDL_GetModState() & SDL_KMOD_SHIFT) != 0u);
             }
             recordFrameStage(frameTimings, woby::FrameStage::events, stageStart);
 
@@ -3490,6 +3506,7 @@ int main(int argc, char** argv)
             // UI and loading commits have finished. No logical edits occur between
             // executing commands here and submitting their screenshots below.
             if (automationComparison) {
+                // Difference jobs are tracked independently below.
                 const auto& pending = *automationComparison;
                 const auto it = comparison.objects.find(pending.objectId);
                 const bool both = woby::enabledComparisonPartCount(ui, woby::ComparisonSide::a, pending.objectId) != 0
@@ -3526,6 +3543,26 @@ int main(int argc, char** argv)
                     if (it != comparison.objects.end()) { it->second.jobs.fullResultsRequested = false; }
                     automationComparison.reset();
                 }
+            }
+            for (auto it = automationDifferences.begin(); it != automationDifferences.end();) {
+                bool done = false;
+                try {
+                    const auto* item = woby::findComparison(ui, it->objectId);
+                    if (ui.sceneGeneration != it->generation || !item) { throw std::runtime_error("Difference command canceled because the scene changed."); }
+                    auto& runtime = comparison.objects.at(it->objectId).difference;
+                    if (!it->exporting && item->differenceRequest.revision != it->request) { throw std::runtime_error("Difference command canceled or superseded."); }
+                    const auto phase = it->exporting ? runtime.exportState : runtime.phase;
+                    if (phase == "failed" || phase == "outdated" || phase == "canceled" || phase == "not_created") {
+                        throw std::runtime_error(it->exporting ? runtime.exportError : runtime.error.empty() ? "Difference mesh is " + phase : runtime.error);
+                    }
+                    if (phase == "ready" || phase == "complete") {
+                        if (!it->exporting && !woby::differenceStatus(runtime, ui, it->objectId).value("current", false)) {
+                            throw std::runtime_error("Difference mesh is out of date.");
+                        }
+                        woby::completeAutomationCommand(*automation, it->id, woby::AutomationControlResult{{{"difference", woby::differenceStatus(runtime, ui, it->objectId)}}}); done = true;
+                    }
+                } catch (const std::exception& e) { woby::completeAutomationCommand(*automation, it->id, woby::AutomationCommandError{e.what()}); done = true; }
+                if (done) { it = automationDifferences.erase(it); } else { ++it; }
             }
             if (annotationCommand) {
                 auto& pending = *annotationCommand;
@@ -3586,7 +3623,7 @@ int main(int argc, char** argv)
                                     return;
                                 }
                             }
-                            if (busy && payload.action != A::comparisonCancel && payload.action != A::performanceEnd
+                            if (busy && payload.action != A::comparisonCancel && payload.action != A::differenceCancel && payload.action != A::performanceEnd
                                 && (woby::controlMethod(payload.action).mutating || (payload.action == A::comparisonResults || payload.action == A::comparisonExport))) {
                                 woby::completeAutomationCommand(*automation, command->id,
                                     woby::AutomationCommandError{"Scene is busy loading, capturing, displaying a dialog, or editing a widget.", -32014});
@@ -3600,7 +3637,7 @@ int main(int argc, char** argv)
                                         : "Annotation preparation failed: " + annotationPreparation.error, -32014});
                                 return;
                             }
-                            if (payload.action == A::annotationCreate || payload.action == A::annotationMove || payload.action == A::annotationReshape) {
+                            if ((payload.action == A::annotationCreate && payload.shape != "section") || payload.action == A::annotationMove || payload.action == A::annotationReshape) {
                                 auto next = woby::prepareAnnotationCommand(ui, payload);
                                 if (annotationCommand) {
                                     woby::cancelAnnotationWork(annotationCommand->work);
@@ -3619,6 +3656,15 @@ int main(int argc, char** argv)
                                 const bool redo = payload.action == A::sceneRedo;
                                 const bool applied = runSceneHistory(redo);
                                 result = {{"action", redo ? "redo" : "undo"}, {"applied", applied}, {"dirty", ui.isDirty}};
+                            } else if (payload.action >= A::differenceCreate && payload.action <= A::differenceDelete) {
+                                auto& runtime = comparison.objects[payload.objectId].difference;
+                                result = woby::controlDifference(ui, runtime, payload);
+                                woby::updateSceneDirty(ui, cleanSceneDocument);
+                                if (payload.action == A::differenceCreate || payload.action == A::differenceRebuild || payload.action == A::differenceExport) {
+                                    automationDifferences.push_back({command->id, payload.objectId, ui.sceneGeneration,
+                                        woby::findComparison(ui, payload.objectId)->differenceRequest.revision, payload.action == A::differenceExport});
+                                    return;
+                                }
                             } else if (payload.action == A::comparisonExportStatus || payload.action == A::comparisonExportCancel) {
                                 if (payload.action == A::comparisonExportCancel) { woby::cancelAnalysisExport(analysisExport); }
                                 result = {{"export", woby::analysisExportStatus(analysisExport)}};
@@ -3904,7 +3950,7 @@ int main(int argc, char** argv)
                     && !keyboardIo.WantCaptureKeyboard && !keyboardIo.WantTextInput
                     && !ImGui::IsAnyItemActive()
                     && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
-                if (sceneKeyboardAvailable && !annotationEscapeConsumed && !annotationInteraction.dragging && !annotationInteraction.tool) {
+                if (sceneKeyboardAvailable && !annotationEscapeConsumed && !annotationInteraction.dragging && !annotationInteraction.tool && !annotationInteraction.sectionTool) {
                     if (!keyboardIo.KeyCtrl && !keyboardIo.KeyAlt && !keyboardIo.KeySuper) {
                         if (!popupWasOpen && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
                             woby::clearSceneSelection(ui);

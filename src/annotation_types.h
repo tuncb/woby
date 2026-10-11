@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "scene_up_axis.h"
 
 namespace woby {
 
@@ -106,12 +107,25 @@ struct SceneAnnotationTarget {
     friend bool operator==(const SceneAnnotationTarget&, const SceneAnnotationTarget&) = default;
 };
 
+// World-space vertical cutting plane. Lift changes display only.
+struct CrossSectionSettings {
+    std::array<float, 3> a{}, b{1, 0, 0};
+    SceneUpAxis upAxis = SceneUpAxis::z;
+    float lift = 1;
+    bool showPlane = true, showConnections = true, showDifferences = false, faceOn = false;
+    int reference = 0, compared = 1;
+    std::vector<bool> sourceVisible;
+    friend bool operator==(const CrossSectionSettings&, const CrossSectionSettings&) = default;
+};
+[[nodiscard]] CrossSectionSettings normalizedCrossSectionSettings(CrossSectionSettings settings, size_t sources);
+
 struct SceneAnnotationRecord {
     int fileIndex = -1, groupIndex = -1;
     std::string targetName;
     AnnotationSettings settings;
     AnnotationGeometryOwner geometry;
     std::vector<SceneAnnotationTarget> targets;
+    std::optional<CrossSectionSettings> section;
     friend bool operator==(const SceneAnnotationRecord&, const SceneAnnotationRecord&) = default;
 };
 

@@ -1,5 +1,6 @@
 #include "scene_screenshot.h"
 #include "annotation_ui.h"
+#include "cross_section_runtime.h"
 #include "scene_scale_overlay.h"
 #include "comparison_view.h"
 #include "comparison_scene.h"
@@ -229,6 +230,14 @@ void submitSceneScreenshotCapture(
     if (comparison != nullptr && !comparisonsReadyForScreenshot(ui, *comparison)) {
         return; // Keep the request pending until all visible results are ready.
     }
+    if (!screenshot.options.resultsOnly) {
+        updateSceneAnnotationQueries(screenshot.renderScratch.queries, ui);
+        const auto error = crossSectionError(screenshot.renderScratch.queries);
+        if (!error.empty()) { throw std::runtime_error(error); }
+        for (const auto& item : ui.annotations) {
+            if (item.section && item.settings.visible && !crossSectionResult(screenshot.renderScratch.queries, item.objectId)) { return; }
+        }
+    }
 
     const bool visibleResults = std::any_of(ui.comparisons.begin(), ui.comparisons.end(),
         [](const auto& item) { return item.settings.enabled; });
@@ -274,6 +283,29 @@ void submitSceneScreenshotCapture(
             const auto a = comparisonInputSummary(ui, ComparisonSide::a, item.objectId);
             const auto b = comparisonInputSummary(ui, ComparisonSide::b, item.objectId);
             const auto settings = effectiveComparisonSettings(ui, item.objectId);
+            if (settings.difference.visible) {
+                const auto& result = *comparison->objects.at(item.objectId).difference.result;
+                if (options.comparisonName) { line(item.name); }
+                if (options.sources) { line("A: " + a.sourceNames); line("B: " + b.sourceNames); }
+                line(result.constructed ? "Constructed gap volume" : "Difference mesh");
+                if (options.legend) {
+                    line(result.message);
+                    line("Volumes in model units cubed");
+                    if (result.constructed) {
+                        line(std::string("Blue: gap surfaces") + (settings.difference.showA ? "" : " (hidden)"));
+                        line(std::string("Gold: generated closure walls") + (settings.difference.showWalls ? "" : " (hidden)"));
+                        line("Constructed gap: " + measurementNumber(result.volumes[0]));
+                        line("Closure triangles: " + std::to_string(result.closureTriangles));
+                    } else {
+                        line(std::string("Blue: A only") + (settings.difference.showA ? "" : " (hidden)") + ": " + measurementNumber(result.volumes[0]));
+                        line(std::string("Orange: B only") + (settings.difference.showB ? "" : " (hidden)") + ": " + measurementNumber(result.volumes[1]));
+                        line("Total changed: " + measurementNumber(result.volumes[0] + result.volumes[1]));
+                        line("Net change: " + measurementNumber(result.volumes[1] - result.volumes[0]));
+                    }
+                    line("Full geometry; heatmap color limits and acceptance tolerance do not change the volume.");
+                }
+                continue;
+            }
             for (const auto& text : comparisonReportLines(item.name, a.enabledPartCount == 0 ? "" : a.sourceNames,
                      b.enabledPartCount == 0 ? "" : b.sourceNames, settings,
                      comparison->objects.at(item.objectId).results.value, options)) { line(text); }

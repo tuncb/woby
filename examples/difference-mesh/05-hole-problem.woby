@@ -1,0 +1,221 @@
+# woby scene
+version = 24
+coordinate_origin = [0, 0, 0]
+master_vertex_point_size = 4
+show_origin = false
+show_grid = true
+adaptive_points = true
+triangle_edge_xray = false
+show_dimensions = false
+up_axis = "z"
+
+[camera]
+target = [12, 5, 3]
+yaw_radians = -0.52359879
+pitch_radians = 0.436332315
+roll_radians = 0
+distance = 42
+vertical_fov_degrees = 60
+near_plane = 0.100000001
+automatic_near_plane = true
+
+[[files]]
+path = "surface-hole.obj"
+coordinate_origin = [0, 0, 0]
+analysis_mode = "per_volume"
+visible = true
+scale = 1
+opacity = 1
+translation = [0, 0, 0]
+rotation_degrees = [0, 0, 0]
+vertex_size_scale = 1
+
+[[files.groups]]
+name = "surface-hole"
+primitive = "triangles"
+uv_color = "grid"
+uv_minimum = 0
+uv_maximum = 1
+uv_grid = false
+line_width = 2
+line_depth_test = true
+uv_density_u = 10
+uv_density_v = 10
+visible = true
+show_solid_mesh = true
+show_triangles = false
+show_vertices = false
+scale = 1
+opacity = 1
+vertex_size_scale = 1
+translation = [0, 0, 0]
+rotation_degrees = [0, 0, 0]
+color = [0.899999976, 0.219999999, 0.239999995, 1]
+
+[[files]]
+path = "surface-raised.obj"
+coordinate_origin = [0, 0, 0]
+analysis_mode = "per_volume"
+visible = true
+scale = 1
+opacity = 1
+translation = [0, 0, 0]
+rotation_degrees = [0, 0, 0]
+vertex_size_scale = 1
+
+[[files.groups]]
+name = "surface-raised"
+primitive = "triangles"
+uv_color = "grid"
+uv_minimum = 0
+uv_maximum = 1
+uv_grid = false
+line_width = 2
+line_depth_test = true
+uv_density_u = 10
+uv_density_v = 10
+visible = true
+show_solid_mesh = true
+show_triangles = false
+show_vertices = false
+scale = 1
+opacity = 1
+vertex_size_scale = 1
+translation = [0, 0, 0]
+rotation_degrees = [0, 0, 0]
+color = [0.129999995, 0.579999983, 0.949999988, 1]
+
+[[nodes]]
+kind = "file"
+name = "surface-hole.obj"
+parent = -1
+file_index = 0
+group_index = -1
+visible = true
+scale = 1
+opacity = 1
+translation = [0, 0, 0]
+rotation_degrees = [0, 0, 0]
+
+[[nodes]]
+kind = "group"
+name = "surface-hole"
+parent = 0
+file_index = 0
+group_index = 0
+visible = true
+scale = 1
+opacity = 1
+translation = [0, 0, 0]
+rotation_degrees = [0, 0, 0]
+
+[[nodes]]
+kind = "file"
+name = "surface-raised.obj"
+parent = -1
+file_index = 1
+group_index = -1
+visible = true
+scale = 1
+opacity = 1
+translation = [0, 0, 0]
+rotation_degrees = [0, 0, 0]
+
+[[nodes]]
+kind = "group"
+name = "surface-raised"
+parent = 2
+file_index = 1
+group_index = 0
+visible = true
+scale = 1
+opacity = 1
+translation = [0, 0, 0]
+rotation_degrees = [0, 0, 0]
+
+[[analyses]]
+name = "05-hole-problem"
+translation = [14, 0, 0]
+analysis_enabled = true
+analysis_type = "surface_comparison"
+analysis_task = "surface_comparison"
+analysis_uv_separated = false
+analysis_uv_linked_selection = true
+analysis_uv_metric = "angle"
+analysis_uv_normalization = "per_patch"
+analysis_uv_threshold_enabled = false
+analysis_uv_threshold = 2
+analysis_uv_near_collapse = 0.00999999978
+analysis_uv_overlap_enabled = false
+analysis_uv_range_enabled = false
+analysis_uv_range_minimum = 0
+analysis_uv_range_maximum = 1
+analysis_uv_overlap_scope = "per_patch"
+analysis_uv_view = "layout"
+analysis_uv_color = "grid"
+analysis_uv_minimum = 0
+analysis_uv_maximum = 1
+analysis_uv_grid = true
+analysis_uv_density_u = 10
+analysis_uv_density_v = 10
+analysis_mode = "distance"
+analysis_distance_on_a = false
+diagnostic_side = "a"
+diagnostic_category = "boundary"
+analysis_tolerance = 0.0500000007
+analysis_color_range = 0.5
+difference_created = true
+difference_visible = true
+difference_show_a = true
+difference_show_b = true
+difference_show_walls = true
+difference_opacity = 0.850000024
+analysis_color_minimum = 0
+analysis_color_range_mode = "custom"
+analysis_show_edges = false
+analysis_show_boundaries = true
+analysis_show_non_manifold = true
+analysis_non_manifold_vertices_enabled = true
+analysis_auto_update_boundaries = true
+analysis_auto_update_non_manifold_edges = true
+analysis_auto_update_winding = true
+analysis_show_non_manifold_vertices = true
+analysis_fins_enabled = true
+analysis_show_fins = true
+analysis_fin_max_area_ratio = 1
+analysis_holes_enabled = true
+analysis_show_holes = true
+analysis_hole_size_ratio_tolerance = 0.0500000007
+analysis_processing_mode = "model"
+topology_mode = "original_index"
+analysis_show_winding = true
+self_intersections_auto_update = false
+intersection_pair_limit = 10000
+intersection_candidate_limit = 1000000
+show_self_intersections = true
+degenerate_triangles_enabled = true
+show_degenerate_triangles = true
+needle_threshold_ratio = 1000
+cap_min_angle_degrees = 177.5
+duplicate_points_enabled = true
+duplicate_triangles_enabled = true
+show_duplicate_points = true
+show_duplicate_triangles = true
+quality_metric = "longest_edge"
+quality_on_a = false
+quality_minimum_enabled = false
+quality_maximum_enabled = false
+quality_minimum_size = 0
+quality_maximum_size = 1
+
+[[analyses.a]]
+file_index = 0
+group_index = 0
+name = "surface-hole.obj / surface-hole"
+enabled = true
+
+[[analyses.b]]
+file_index = 1
+group_index = 0
+name = "surface-raised.obj / surface-raised"
+enabled = true

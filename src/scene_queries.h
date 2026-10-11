@@ -8,6 +8,7 @@
 
 namespace woby {
 struct ComparisonRuntimes;
+struct CrossSectionRuntime;
 
 // Every cache includes both the live state owner and document generation.
 struct SceneQueryStamp {
@@ -45,6 +46,9 @@ struct ScenePartQueries {
 
 struct AnnotationProjectionSource { size_t partIndex = 0; PickMatrix transform{}; };
 struct AnnotationQuery {
+    std::vector<std::array<float,3>> sheet, projectedSheet;
+    std::vector<AnnotationQuery> batches;
+    std::array<float, 4> color{1,1,1,1};
     SceneObjectId id = 0;
     uint64_t revision = 0, builds = 0;
     bool visible = false, valid = false;
@@ -70,6 +74,7 @@ struct ComparisonQuery {
     std::optional<Bounds> bounds;
 };
 struct SceneSelectionQueries {
+    uint64_t sectionBuilds = 0;
     SceneQueryStamp stamp;
     std::vector<SceneObjectId> selection;
     uint64_t annotations = 0, analysis = 0, presentation = 0;
@@ -83,6 +88,7 @@ struct SceneBoundsQueries {
     uint64_t analysis = 0, presentation = 0, builds = 0;
 };
 struct SceneQueryRuntime {
+    std::shared_ptr<CrossSectionRuntime> sections;
     SceneBoundsQueries bounds;
     SceneTreeQueries tree;
     ScenePartQueries parts;

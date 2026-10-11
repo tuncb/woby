@@ -1504,7 +1504,7 @@ TEST_CASE("analysis settings clamp and memberships survive unrelated file remova
     settings.colorRange = -4;
     woby::setComparisonSettings(state, settings);
     CHECK(woby::comparisonSettings(state).tolerance == doctest::Approx(.05));
-    CHECK(woby::comparisonSettings(state).colorRange >= woby::comparisonSettings(state).tolerance);
+    CHECK(woby::comparisonSettings(state).colorRange == doctest::Approx(1e-6));
     REQUIRE(woby::removeFileFromState(state, 0));
     CHECK(woby::comparisonSettings(state).enabled);
     CHECK(state.files[0].objectId == first);
@@ -1617,7 +1617,7 @@ TEST_CASE("analysis load normalizes settings and preserves incomplete objects")
     CHECK_FALSE(document.comparisons[0].translation.has_value());
     CHECK(document.comparisons[0].a.empty());
     CHECK(document.comparisons[0].settings.tolerance == doctest::Approx(.05));
-    CHECK(document.comparisons[0].settings.colorRange >= document.comparisons[0].settings.tolerance);
+    CHECK(document.comparisons[0].settings.colorRange == doctest::Approx(1e-6));
     std::filesystem::remove(path);
 }
 
@@ -2063,16 +2063,16 @@ TEST_CASE("analysis report identifies source roles and unsigned approximate meas
     auto text = report();
     for (const auto* expected : {"Repair check", "A: original.obj", "B: repaired.obj", "B -> A: measured B; reference A",
              "Approximate unsigned", "Four samples per triangle", "Tolerance: 0.05", ">= saturates",
-             "SATURATED", "Sample max: 0.833", "Area-weighted mean: 0.3", "Area-weighted P95: 0.7",
+             "Distances outside the color range", "Sample max: 0.833", "Area-weighted mean: 0.3", "Area-weighted P95: 0.7",
              "Area above tolerance: 75%"}) { CHECK(text.find(expected) != std::string::npos); }
     CHECK(text.find("model units") == std::string::npos);
     settings.distanceOnOriginal = true;
     text = report();
     CHECK(text.find("A -> B: measured A; reference B") != std::string::npos);
     CHECK(text.find("Sample max: 0.25\n") != std::string::npos);
-    CHECK(text.find("SATURATED") == std::string::npos);
+    CHECK(text.find("Distances outside the color range") == std::string::npos);
     result.original.maximum = settings.colorRange;
-    CHECK(report().find("SATURATED") == std::string::npos);
+    CHECK(report().find("Distances outside the color range") == std::string::npos);
     woby::ScreenshotSettings options;
     options.comparisonName = options.sources = options.direction = options.tolerance = false;
     text = report(options);
@@ -2088,6 +2088,29 @@ TEST_CASE("analysis report identifies source roles and unsigned approximate meas
     text = report();
     CHECK(text.find("A blue wireframe; B gray surface") != std::string::npos);
     CHECK(text.find("unsigned") == std::string::npos);
+}
+
+TEST_CASE("fitted heatmap range covers measured distances after float rounding")
+{
+    for (const double maximum : {6.1218, .833, .5, std::nextafter(1.0, 2.0),
+             static_cast<double>(std::nextafter(1.0f, 2.0f)), 0.0}) {
+        CAPTURE(maximum);
+        woby::ComparisonSettings settings;
+        settings.colorRange = woby::fittedComparisonColorRange(maximum, settings.tolerance);
+        settings = woby::normalizedComparisonSettings(settings);
+        CHECK(static_cast<double>(settings.colorRange) >= maximum);
+        CHECK(settings.colorRange >= settings.tolerance);
+        if (maximum > settings.tolerance) {
+            CHECK(static_cast<double>(std::nextafter(settings.colorRange, 0.0f)) < maximum);
+        }
+        woby::MeshComparison result;
+        result.repaired.maximum = maximum;
+        for (const auto& line : woby::comparisonReportLines("Check", "A", "B", settings, result, {})) {
+            CHECK(line.find("Distances outside the color range") == std::string::npos);
+        }
+    }
+    CHECK(woby::fittedComparisonColorRange(.5, .05f) == .5f);
+    CHECK(woby::fittedComparisonColorRange(.01, .05f) == .05f);
 }
 
 TEST_CASE("heatmap legend palette preserves threshold and saturation boundaries")
@@ -2108,6 +2131,122 @@ TEST_CASE("heatmap legend palette preserves threshold and saturation boundaries"
     CHECK(woby::comparisonHeatmapColor(settings.tolerance, settings) == gray);
     CHECK(woby::comparisonHeatmapColor(.833, settings) == maximum);
     CHECK(woby::comparisonHeatmapColor(std::nextafter(settings.tolerance, 1.0f), settings) == maximum);
+}
+
+TEST_CASE("color presets use maximum fractions while the P95 result remains area weighted")
+{
+    woby::Mesh source;
+    auto& geometry = editMeshGeometry(source);
+    for (uint32_t i = 0; i < 101; ++i) {
+        const float height = static_cast<float>(i + 1);
+        const float width = i == 0 ? 900.0f : 1.0f;
+        geometry.vertices.insert(geometry.vertices.end(), {{{0, 0, height}, {}, {}}, {{width, 0, height}, {}, {}}, {{0, 1, height}, {}, {}}});
+        geometry.indices.insert(geometry.indices.end(), {3 * i, 3 * i + 1, 3 * i + 2});
+    }
+    const auto reference = mesh({{0,0,0}, {2000,0,0}, {0,2000,0}}, {0,1,2});
+    auto computed = woby::computeComparisonStages(source, reference, woby::comparisonDistance);
+    woby::MeshComparison published;
+    woby::ComparisonCacheStatus cache;
+    cache.signature = 42;
+    REQUIRE(woby::applyComparisonStages(published, cache, std::move(computed), 42, woby::comparisonDistance));
+    const auto& surface = published.original;
+    CHECK(surface.percentile95 == doctest::Approx(51));
+    CHECK(surface.maximum == doctest::Approx(101));
+    const std::array expected{90.9, 95.95, 98.475, 99.99, 101.0};
+    for (size_t i = 0; i < expected.size(); ++i) {
+        woby::ComparisonSettings settings;
+        settings.colorRangeMode = static_cast<woby::ComparisonColorRange>(i + 1);
+        const auto fitted = woby::fittedComparisonSettings(settings, surface);
+        CHECK(fitted.colorMinimum == 0);
+        CHECK(fitted.colorRange == doctest::Approx(expected[i]));
+        CHECK(fitted.tolerance == settings.tolerance);
+    }
+}
+
+TEST_CASE("maximum percentage presets remain independent of acceptance tolerance")
+{
+    woby::SurfaceComparison surface;
+    surface.maximum = 1.7959;
+    surface.percentile95 = .14636;
+    const std::array fractions{.9, .95, .975, .99, 1.0};
+    for (size_t i = 0; i < fractions.size(); ++i) {
+        woby::ComparisonSettings settings;
+        settings.colorRangeMode = static_cast<woby::ComparisonColorRange>(i + 1);
+        settings.colorMinimum = .12f;
+        settings.tolerance = 2;
+        const auto fitted = woby::fittedComparisonSettings(settings, surface);
+        CHECK(fitted.colorMinimum == 0);
+        CHECK(fitted.colorRange >= surface.maximum * fractions[i]);
+        CHECK(fitted.colorRange == doctest::Approx(surface.maximum * fractions[i]));
+        CHECK(fitted.tolerance == 2);
+        CHECK(woby::normalizedComparisonSettings(fitted) == fitted);
+        CHECK(woby::comparisonHeatmapColor(surface.maximum, fitted) == woby::comparisonHeatmapColor(0, fitted));
+        const auto edited = woby::editedComparisonColorLimit(fitted, false, .2);
+        CHECK(edited.colorRange == doctest::Approx(.2));
+        CHECK(edited.tolerance == 2);
+    }
+}
+
+TEST_CASE("custom distance color limits preserve tolerance and cannot cross")
+{
+    woby::ComparisonSettings settings;
+    settings.colorRangeMode = woby::ComparisonColorRange::max95;
+    settings.colorRange = 1;
+    settings = woby::editedComparisonColorLimit(settings, true, .2);
+    CHECK(settings.colorRangeMode == woby::ComparisonColorRange::custom);
+    CHECK(settings.colorMinimum == doctest::Approx(.2));
+    CHECK(settings.colorRange == 1);
+    CHECK(settings.tolerance == .05f);
+    const auto gray = woby::comparisonHeatmapColor(0, settings);
+    CHECK(woby::comparisonHeatmapColor(.04, settings) == gray);
+    CHECK(woby::comparisonHeatmapColor(.1, settings) == woby::comparisonHeatmapColor(.2, settings));
+    CHECK(woby::comparisonHeatmapColor(.6, settings)[1] == doctest::Approx(.495));
+    CHECK(woby::editedComparisonColorLimit(settings, true, -2).colorMinimum == 0);
+    const auto lowerCross = woby::editedComparisonColorLimit(settings, true, 2);
+    CHECK(lowerCross.colorMinimum < lowerCross.colorRange);
+    const auto upperCross = woby::editedComparisonColorLimit(settings, false, .1);
+    CHECK(upperCross.colorRange > upperCross.colorMinimum);
+    CHECK(upperCross.colorMinimum == settings.colorMinimum);
+    CHECK(woby::editedComparisonColorLimit(settings, false, std::numeric_limits<double>::quiet_NaN()) == settings);
+    CHECK(woby::fittedComparisonSettings(settings, {}) == settings);
+}
+
+TEST_CASE("comparison range presets and custom limits round trip through scene operations")
+{
+    struct Fixture {
+        std::filesystem::path root = std::filesystem::absolute(std::filesystem::temp_directory_path())
+            / ("woby-distance-range-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        Fixture() { std::filesystem::create_directories(root); }
+        ~Fixture() { std::error_code error; std::filesystem::remove_all(root, error); }
+    } fixture;
+    woby::UiState state;
+    const auto id = woby::createComparison(state);
+    for (size_t i = 0; i < woby::comparisonColorRangeKeys.size(); ++i) {
+        auto settings = woby::comparisonSettings(state, id);
+        settings.colorRangeMode = static_cast<woby::ComparisonColorRange>(i);
+        settings.colorMinimum = .12f;
+        settings.colorRange = woby::fittedComparisonColorRange(6.1218, settings.tolerance);
+        woby::setComparisonSettings(state, settings, id);
+        const auto expected = woby::comparisonSettings(state, id);
+        CHECK(expected.colorMinimum == (i == 0 ? .12f : 0));
+        const auto path = fixture.root / "comparison.woby";
+        woby::writeSceneDocument(path, woby::createSceneDocument(state));
+        const auto loaded = woby::readSceneDocument(path);
+        REQUIRE(loaded.comparisons.size() == 1);
+        CHECK(loaded.comparisons[0].settings == expected);
+        CHECK(loaded.comparisons[0].settings.colorRange >= 6.1218);
+    }
+    const std::array legacyKeys{"area90", "area95", "area975", "area99"};
+    for (size_t i = 0; i < legacyKeys.size(); ++i) {
+        const auto path = fixture.root / "legacy-range.woby";
+        {
+            std::ofstream file(path);
+            file << "version = 5\n[[analyses]]\nname = \"Legacy\"\nanalysis_color_range_mode = \"" << legacyKeys[i] << "\"\n";
+        }
+        const auto loaded = woby::readSceneDocument(path);
+        REQUIRE(loaded.comparisons.size() == 1);
+        CHECK(loaded.comparisons[0].settings.colorRangeMode == static_cast<woby::ComparisonColorRange>(i + 1));
+    }
 }
 
 TEST_CASE("legacy unit labels are ignored on load and omitted on save and reports")

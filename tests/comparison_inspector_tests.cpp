@@ -10,6 +10,154 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <cmath>
+
+TEST_CASE("distance range bar selects tolerance only on its marker and keeps the drag axis stable")
+{
+    auto* previous = ImGui::GetCurrentContext();
+    auto* context = ImGui::CreateContext();
+    struct Cleanup {
+        ImGuiContext* context;
+        ImGuiContext* previous;
+        ~Cleanup() { ImGui::DestroyContext(context); ImGui::SetCurrentContext(previous); }
+    } cleanup{context, previous};
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr; io.DisplaySize = {900, 700}; io.DeltaTime = 1.0f / 60.0f;
+    unsigned char* pixels = nullptr; int atlasWidth = 0, atlasHeight = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &atlasWidth, &atlasHeight);
+    woby::ComparisonSettings settings;
+    settings.colorRange = 1;
+    settings.colorRangeMode = woby::ComparisonColorRange::allSamples;
+    woby::ComparisonRangeDrag drag;
+    double sampleMaximum = 1;
+    ImRect bounds;
+    float markerMinX = 0, markerMaxX = 0;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({20, 20}); ImGui::SetNextWindowSize({360, 160});
+        ImGui::Begin("Range bar");
+        woby::drawComparisonRangeControl(settings, drag, sampleMaximum);
+        bounds = context->LastItemData.Rect;
+        markerMinX = bounds.Max.x; markerMaxX = bounds.Min.x;
+        for (const auto& vertex : ImGui::GetWindowDrawList()->VtxBuffer) {
+            if (vertex.col == IM_COL32(71, 198, 224, 255)
+                && vertex.pos.y >= bounds.Min.y + context->FontSize * .8f
+                && vertex.pos.y <= bounds.Min.y + context->FontSize * 1.8f) {
+                markerMinX = std::min(markerMinX, vertex.pos.x);
+                markerMaxX = std::max(markerMaxX, vertex.pos.x);
+            }
+        }
+        ImGui::End(); ImGui::EndFrame();
+    };
+    const auto click = [&](ImVec2 position) {
+        io.AddMousePosEvent(position.x, position.y); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
+    };
+    frame(); frame();
+    const auto original = settings;
+    frame(); CHECK(settings == original);
+    const float padding = context->FontSize * .5f;
+    const float left = bounds.Min.x + padding, width = bounds.GetWidth() - 2 * padding;
+    const float y = bounds.Min.y + context->FontSize;
+    REQUIRE(markerMaxX > markerMinX);
+    CHECK((markerMinX + markerMaxX) * .5f == doctest::Approx(left + width * settings.tolerance / drag.axisMaximum));
+    settings.tolerance = .35f;
+    const auto changedTolerance = settings;
+    frame();
+    CHECK(settings == changedTolerance);
+    CHECK((markerMinX + markerMaxX) * .5f == doctest::Approx(left + width * .35f / drag.axisMaximum));
+    settings = original; frame();
+    const float markerY = bounds.Min.y + context->FontSize * 1.3f;
+    const float markerX = left + width * settings.tolerance / drag.axisMaximum;
+    click({markerX, markerY});
+    CHECK(settings == original);
+    io.AddMousePosEvent(markerX, markerY); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMousePosEvent(markerX + width * .2f, markerY); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
+    CHECK(settings.tolerance == doctest::Approx(.26).epsilon(.015));
+    CHECK(settings.colorMinimum == original.colorMinimum);
+    CHECK(settings.colorRange == original.colorRange);
+    CHECK(settings.colorRangeMode == original.colorRangeMode);
+    // The same x on the bar, outside the diamond, must edit a bound instead.
+    const float tolerance = settings.tolerance;
+    click({left + width * tolerance / drag.axisMaximum, bounds.Min.y + context->FontSize * .8f});
+    CHECK(settings.tolerance == tolerance);
+    CHECK(settings.colorMinimum > 0);
+    settings = original; frame();
+    click({left + width * .2f, y});
+    CHECK(settings.colorRangeMode == woby::ComparisonColorRange::custom);
+    CHECK(settings.colorMinimum == doctest::Approx(.21).epsilon(.02));
+    CHECK(settings.colorRange == 1);
+    CHECK(settings.tolerance == original.tolerance);
+    const float lower = settings.colorMinimum;
+    const float upperHandle = left + width / drag.axisMaximum;
+    io.AddMousePosEvent(upperHandle, y); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMousePosEvent(upperHandle - width * .2f, y); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
+    CHECK(settings.colorRange == doctest::Approx(.79).epsilon(.005));
+    CHECK(settings.colorMinimum == lower);
+    CHECK(settings.tolerance == original.tolerance);
+    CHECK(drag.axisMaximum == doctest::Approx(1.05));
+    const auto afterUpperDrag = settings;
+    for (int i = 0; i < 3; ++i) { frame(); }
+    CHECK(settings == afterUpperDrag);
+    CHECK(drag.axisMaximum == doctest::Approx(1.05));
+    // A drag beyond the upper end extends the range instead of trapping it at the preset.
+    const float movedUpperHandle = left + width * settings.colorRange / drag.axisMaximum;
+    io.AddMousePosEvent(movedUpperHandle, y); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMousePosEvent(movedUpperHandle + width * .5f, y); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
+    CHECK(settings.colorRange > 1);
+    CHECK(settings.colorMinimum == lower);
+    // The triangle remains selectable when tolerance and the upper limit coincide.
+    settings.tolerance = settings.colorRange; frame();
+    const float triangleX = left + width * settings.colorRange / drag.axisMaximum;
+    const float triangleY = bounds.Min.y + context->FontSize * .4f;
+    const auto beforeOverlap = settings;
+    io.AddMousePosEvent(triangleX, triangleY); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMousePosEvent(triangleX + width * .1f, triangleY); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
+    CHECK(settings.colorRange > beforeOverlap.colorRange);
+    CHECK(settings.tolerance == beforeOverlap.tolerance);
+    // A tolerance gesture stays on that marker even when dragged past a bound.
+    const float overlapX = left + width * settings.tolerance / drag.axisMaximum;
+    const auto beforeTolerance = settings;
+    io.AddMousePosEvent(overlapX, markerY); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMousePosEvent(left + width * 2, markerY); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
+    CHECK(settings.tolerance == drag.axisMaximum);
+    CHECK(settings.colorRange == beforeTolerance.colorRange);
+    CHECK(settings.colorMinimum == beforeTolerance.colorMinimum);
+    // A narrow custom interval still uses the full measured extent shown in Results.
+    sampleMaximum = 1.7959;
+    settings = original;
+    settings.colorRangeMode = woby::ComparisonColorRange::custom;
+    settings.colorRange = .45446f;
+    frame();
+    CHECK(drag.axisMaximum == doctest::Approx(1.7959 * 1.05));
+    const auto measuredAxis = drag.axisMaximum;
+    settings.colorRange = .14636f;
+    settings.colorRangeMode = woby::ComparisonColorRange::max95;
+    frame();
+    CHECK(drag.axisMaximum == measuredAxis);
+    settings.colorRange = .3f;
+    settings.colorRangeMode = woby::ComparisonColorRange::custom;
+    frame();
+    CHECK(drag.axisMaximum == measuredAxis);
+    // New measurement results reset the axis; editing bounds does not.
+    sampleMaximum = 3;
+    frame();
+    CHECK(drag.axisMaximum == doctest::Approx(3.15));
+    sampleMaximum = .5;
+    frame();
+    CHECK(drag.axisMaximum == doctest::Approx(.525));
+}
 
 namespace {
 using namespace woby;
@@ -78,6 +226,117 @@ struct InspectorFixture {
         return contents;
     }
 };
+
+TEST_CASE("distance inspector applies maximum percentages without numeric range fields")
+{
+    InspectorFixture f;
+    setAnalysisTask(f.state, f.id, AnalysisTask::surfaceComparison);
+    setComparisonObjects(f.state, {f.state.files[0].objectId}, ComparisonSide::b, true, f.id);
+    auto& runtime = f.runtimes.objects[f.id];
+    runtime.results.signature = comparisonGeometrySignature(f.state, f.id);
+    runtime.results.cache = {runtime.results.signature, comparisonSource | comparisonDistance};
+    for (auto* surface : {&runtime.results.value.original, &runtime.results.value.repaired}) {
+        surface->maximum = 6.1218; surface->mean = .062883;
+        surface->percentile95 = .1796;
+        surface->distances = {0, .2}; surface->sampleAreas = {88, 12};
+    }
+    f.frame(); f.frame();
+    const auto before = createSceneDocument(f.state);
+    const auto contents = f.frame(true);
+    INFO(contents);
+    CHECK(createSceneDocument(f.state) == before);
+    for (const char* label : {"Measurement direction", "A -> B", "B -> A", "Measured mesh edges", "Mean distance"}) {
+        CHECK(contents.find(label) != std::string::npos);
+    }
+    CHECK(contents.find("Upper limit") == std::string::npos);
+    CHECK(contents.find("Color maximum") == std::string::npos);
+    CHECK(contents.find("SATURATED") == std::string::npos);
+    CHECK(contents.find("Allowed deviation") == std::string::npos);
+    CHECK(contents.find("Measured surface") == std::string::npos);
+    CHECK(contents.find("Acceptance tolerance") == std::string::npos);
+    // Logging expands tree nodes for that frame. Restore the normal layout before clicking.
+    f.frame(); f.frame();
+    ImGuiWindow* editor = nullptr;
+    for (auto* window : f.context->Windows) {
+        if (std::string_view(window->Name).find("comparison_properties") != std::string_view::npos) { editor = window; break; }
+    }
+    REQUIRE(editor);
+    auto& io = ImGui::GetIO();
+    const auto click = [&](ImVec2 position) {
+        io.AddMousePosEvent(position.x, position.y); f.frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); f.frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); f.frame(); f.frame();
+    };
+    const std::array expected{6.1218 * .9, 6.1218 * .95, 6.1218 * .975, 6.1218 * .99, 6.1218};
+    for (size_t choice = 1; choice < comparisonColorRangeLabels.size(); ++choice) {
+        const auto* table = ImGui::TableFindByID(editor->GetID("distance_scale"));
+        REQUIRE(table);
+        click({table->Columns[1].WorkMinX + 20, table->OuterRect.Min.y + ImGui::GetStyle().CellPadding.y + ImGui::GetFrameHeight() * .5f});
+        REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+        const auto* popup = f.context->OpenPopupStack.back().Window;
+        REQUIRE(popup);
+        const auto start = popup->DC.CursorStartPos;
+        click({start.x + 30, start.y + static_cast<float>(choice) * ImGui::GetTextLineHeightWithSpacing() + ImGui::GetTextLineHeight() * .5f});
+        const auto settings = comparisonSettings(f.state, f.id);
+        CHECK(settings.colorRangeMode == static_cast<ComparisonColorRange>(choice));
+        CHECK(settings.colorMinimum == 0);
+        CHECK(settings.colorRange >= expected[choice - 1]);
+        CHECK(settings.colorRange == doctest::Approx(expected[choice - 1]));
+        CHECK(settings.tolerance == before.comparisons[0].settings.tolerance);
+    }
+    CHECK(f.frame(true).find("All sampled distances are covered") != std::string::npos);
+    f.frame(); f.frame();
+    // Direction buttons use the maximum of the selected measured surface.
+    runtime.results.value.original.maximum = .3;
+    runtime.results.value.repaired.maximum = .4;
+    auto settings = comparisonSettings(f.state, f.id);
+    settings.colorRangeMode = ComparisonColorRange::max95;
+    setComparisonSettings(f.state, settings, f.id);
+    f.frame();
+    const auto* direction = ImGui::TableFindByID(editor->GetID("distance_measurement"));
+    REQUIRE(direction);
+    const float radioX = direction->Columns[1].WorkMinX;
+    const float radioY = direction->OuterRect.Min.y + ImGui::GetStyle().CellPadding.y + ImGui::GetFrameHeight() * .5f;
+    click({radioX + ImGui::GetFrameHeight() * .5f, radioY});
+    CHECK(comparisonSettings(f.state, f.id).distanceOnOriginal);
+    CHECK(comparisonSettings(f.state, f.id).colorRange == doctest::Approx(.3 * .95));
+    const float radioWidth = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x + ImGui::CalcTextSize("A -> B").x;
+    click({radioX + radioWidth + ImGui::GetStyle().ItemSpacing.x + ImGui::GetFrameHeight() * .5f, radioY});
+    CHECK_FALSE(comparisonSettings(f.state, f.id).distanceOnOriginal);
+    CHECK(comparisonSettings(f.state, f.id).colorRange == doctest::Approx(.4 * .95));
+    // The diamond changes acceptance statistics through scene operations.
+    settings = comparisonSettings(f.state, f.id);
+    settings.colorRangeMode = ComparisonColorRange::custom;
+    settings.colorMinimum = .1f; settings.colorRange = .5f;
+    setComparisonSettings(f.state, settings, f.id);
+    f.frame();
+    ImVec2 diamondMin{io.DisplaySize.x, io.DisplaySize.y}, diamondMax{0, 0};
+    // The first diamond is on the track; the second is the numeric key below it.
+    for (const auto& vertex : editor->DrawList->VtxBuffer) {
+        if (vertex.col == IM_COL32(71, 198, 224, 255)) {
+            diamondMin.x = std::min(diamondMin.x, vertex.pos.x);
+            diamondMin.y = std::min(diamondMin.y, vertex.pos.y);
+        }
+    }
+    REQUIRE(diamondMin.y < io.DisplaySize.y);
+    const float top = diamondMin.y;
+    diamondMin.x = io.DisplaySize.x;
+    for (const auto& vertex : editor->DrawList->VtxBuffer) {
+        if (vertex.col == IM_COL32(71, 198, 224, 255) && vertex.pos.y <= top + ImGui::GetFontSize()) {
+            diamondMin.x = std::min(diamondMin.x, vertex.pos.x);
+            diamondMax.x = std::max(diamondMax.x, vertex.pos.x);
+        }
+    }
+    const ImVec2 marker{(diamondMin.x + diamondMax.x) * .5f, top + ImGui::GetFontSize() * .5f};
+    io.AddMousePosEvent(marker.x, marker.y); f.frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); f.frame();
+    io.AddMousePosEvent(marker.x + 160, marker.y); f.frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); f.frame();
+    CHECK(comparisonSettings(f.state, f.id).tolerance > .2f);
+    CHECK(comparisonSettings(f.state, f.id).colorMinimum == settings.colorMinimum);
+    CHECK(comparisonSettings(f.state, f.id).colorRange == settings.colorRange);
+    CHECK(f.frame(true).find("100.00% of surface area within tolerance") != std::string::npos);
+}
 
 void checkTree(const std::vector<ComparisonTreeNode>& actual, const std::vector<ComparisonTreeNode>& expected) {
     REQUIRE(actual.size() == expected.size());

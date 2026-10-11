@@ -6,6 +6,7 @@
 #include "mesh_topology.h"
 #include "mesh_intersections.h"
 #include "uv_grid.h"
+#include "difference_mesh.h"
 
 #include <cstddef>
 #include <string>
@@ -64,6 +65,11 @@ enum class ComparisonMode
     surfaceQuality
 };
 
+enum class ComparisonColorRange { custom, max90, max95, max975, max99, allSamples };
+inline constexpr std::array<const char*, 6> comparisonColorRangeKeys = {"custom", "max90", "max95", "max975", "max99", "all"};
+inline constexpr std::array<const char*, 6> comparisonColorRangeLabels = {
+    "Custom", "90% of maximum", "95% of maximum", "97.5% of maximum", "99% of maximum", "100% of maximum"};
+
 enum class AnalysisType { mesh, uv, uvQuality, surfaceComparison };
 // Automatic preserves the behavior of scenes and API clients predating task selection.
 enum class AnalysisTask { automatic, meshChecks, meshQuality, surfaceComparison, uvInspection };
@@ -77,6 +83,7 @@ enum class UvView { layout, surface };
 
 struct ComparisonSettings
 {
+    DifferenceSettings difference;
     AnalysisType type = AnalysisType::mesh;
     AnalysisTask task = AnalysisTask::automatic;
     UvView uvView = UvView::layout;
@@ -97,6 +104,8 @@ struct ComparisonSettings
     bool distanceOnOriginal = false;
     float tolerance = 0.05f;
     float colorRange = 0.5f;
+    float colorMinimum = 0;
+    ComparisonColorRange colorRangeMode = ComparisonColorRange::custom;
     bool showEdges = false;
     bool showBoundaries = true;
     bool showNonManifold = true;

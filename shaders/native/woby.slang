@@ -249,12 +249,13 @@ float4 fs_comparison(VertexOutput v) : SV_Target0 {
     } else if (root.comparison.z > .5) {
         color = float3(.56,.61,.67);
         if (v.uv.x > root.comparison.x) {
-            float amount = root.comparison.y > root.comparison.x ? saturate((v.uv.x-root.comparison.x)/(root.comparison.y-root.comparison.x)) : 1;
+            float start = max(root.comparison.x,root.comparison.w);
+            float amount = root.comparison.y > start ? saturate((v.uv.x-start)/(root.comparison.y-start)) : 1;
             color = lerp(float3(1,.77,.31),float3(.94,.22,.055),amount);
         }
     }
     float light = .6+.4*abs(dot(normalize(v.normal+1e-8),normalize(float3(.35,.6,.7))));
-    return float4(color*light,1);
+    return float4(color*light,root.comparison.z < .5 ? root.color.a : 1);
 }
 struct MarkerOutput { float4 color : SV_Target0; float4 id : SV_Target1; };
 MarkerOutput fs_marker_mesh_edges(VertexOutput v, noperspective float3 bary : SV_Barycentrics) {

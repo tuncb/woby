@@ -18,12 +18,21 @@ using Json = nlohmann::json;
 const std::vector<ControlMethod>& controlMethods()
 {
     static const std::vector<ControlMethod> methods = {
+        {ControlAction::differenceCreate, "analysis.difference-create", "analysis difference-create", "target", {}, {}, false, true},
+        {ControlAction::differenceRebuild, "analysis.difference-rebuild", "analysis difference-rebuild", "target", {}, {}, false, true},
+        {ControlAction::differenceGet, "analysis.difference-get", "analysis difference-get", "target", {}, {}},
+        {ControlAction::differenceSet, "analysis.difference-set", "analysis difference-set", "target", {"visible", "showAOnly", "showBOnly", "showWalls", "opacity"}, {}, true, true},
+        {ControlAction::differenceCancel, "analysis.difference-cancel", "analysis difference-cancel", "target", {}, {}, false, true},
+        {ControlAction::differenceDelete, "analysis.difference-delete", "analysis difference-delete", "target", {}, {}, false, true},
+        {ControlAction::differenceExport, "analysis.difference-export", "analysis difference-export", "target", {"path"}, {"path"}, false, true},
         {ControlAction::annotationList, "annotation.list", "annotation list", {}, {}, {}},
         {ControlAction::annotationGet, "annotation.get", "annotation get", "target", {}, {}},
         {ControlAction::annotationCreate, "annotation.create", "annotation create", "target",
-            {"shape", "start", "end", "aspect", "name", "comments", "visible", "locked", "rgb", "opacity", "width"}, {"shape", "start", "end"}, false, true},
+            {"shape", "start", "end", "aspect", "name", "comments", "visible", "locked", "rgb", "opacity", "width",
+             "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceVisible", "referenceIndex", "comparedIndex"}, {"shape"}, false, true},
         {ControlAction::annotationSet, "annotation.set", "annotation set", "target",
-            {"name", "comments", "visible", "locked", "rgb", "opacity", "width"}, {}, true, true},
+            {"name", "comments", "visible", "locked", "rgb", "opacity", "width",
+             "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceVisible", "referenceIndex", "comparedIndex"}, {}, true, true},
         {ControlAction::annotationReshape, "annotation.reshape", "annotation reshape", "target", {"start", "end"}, {}, true, true},
         {ControlAction::annotationMove, "annotation.move", "annotation move", "target", {"delta"}, {"delta"}, false, true},
         {ControlAction::annotationDelete, "annotation.delete", "annotation delete", "target", {}, {}, false, true},
@@ -80,7 +89,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"type", "name", "a", "b"}, {}, false, true},
         {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
-            {"uvThresholdEnabled", "uvOverlapEnabled", "uvRangeEnabled", "uvThreshold", "uvNearCollapse", "uvRangeMinimum", "uvRangeMaximum", "uvOverlapScope", "uvSeparated", "uvLinkedSelection", "uvMetric", "uvNormalization", "uvView", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "analysisMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
+            {"uvThresholdEnabled", "uvOverlapEnabled", "uvRangeEnabled", "uvThreshold", "uvNearCollapse", "uvRangeMinimum", "uvRangeMaximum", "uvOverlapScope", "uvSeparated", "uvLinkedSelection", "uvMetric", "uvNormalization", "uvView", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "colorMinimum", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "analysisMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
         {ControlAction::comparisonAdd, "analysis.add", "analysis add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "analysis.remove", "analysis remove", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonEnable, "analysis.enable", "analysis enable", "target", {"side", "enabled", "object", "isolate"}, {"side", "enabled"}, false, true},
@@ -121,6 +130,8 @@ const ControlMethod& controlMethod(ControlAction action)
 namespace {
 bool booleanOption(const std::string& name)
 {
+    if (name == "showAOnly" || name == "showBOnly" || name == "showWalls") { return true; }
+    if (name == "showPlane" || name == "showConnections" || name == "showDifferences" || name == "faceOn" || name == "sourceVisible") { return true; }
     if (name == "uvThresholdEnabled" || name == "uvOverlapEnabled" || name == "uvRangeEnabled" || name == "uvSeparated" || name == "uvLinkedSelection" || name == "isolate" || name == "uvGrid" || name == "lineDepthTest") { return true; }
     return name == "autoUpdateBoundaries" || name == "autoUpdateNonManifold" || name == "autoUpdateWinding" || name == "autoUpdateSelfIntersections" || name == "selfIntersections" || name == "showSelfIntersections" || name == "nonManifoldVertices" || name == "showNonManifoldVertices" || name == "fins" || name == "showFins" || name == "holes" || name == "showHoles" || name == "degenerateTriangles" || name == "showDegenerateTriangles" || name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles"
         || name == "adaptivePoints" || name == "xray" || name == "locked" || name == "enabled" || name == "visible" || name == "propertiesVisible" || name == "solid" || name == "triangles" || name == "vertices"
@@ -129,19 +140,36 @@ bool booleanOption(const std::string& name)
 }
 bool stringOption(const std::string& name)
 {
+    if (name == "sectionUpAxis") { return true; }
     return name == "analysisMode" || name == "uvOverlapScope" || name == "uvColor" || name == "uvMetric" || name == "uvNormalization" || name == "type" || name == "uvView" || name == "path" || name == "collection" || name == "revision" || name == "detector" || name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "topologyMode" || name == "qualityMetric";
 }
 bool integerOption(const std::string& name)
 {
+    if (name == "sourceIndex" || name == "referenceIndex" || name == "comparedIndex") { return true; }
     return name == "index" || name == "offset" || name == "limit" || name == "intersectionPairLimit" || name == "intersectionCandidateLimit";
 }
 size_t vectorSize(const std::string& name) { return name == "start" || name == "end" || name == "delta" ? 2u : 3u; }
 bool vectorOption(const std::string& name)
 {
+    if (name == "planeStart" || name == "planeEnd") { return true; }
     return name == "barycentric" || name == "start" || name == "end" || name == "delta" || name == "translation" || name == "rotationDegrees" || name == "rgb" || name == "eye" || name == "target";
 }
 std::string cliOption(const std::string& name)
 {
+    if (name == "showAOnly") { return "--show-a-only"; }
+    if (name == "showBOnly") { return "--show-b-only"; }
+    if (name == "showWalls") { return "--show-walls"; }
+    if (name == "planeStart") { return "--plane-start"; }
+    if (name == "planeEnd") { return "--plane-end"; }
+    if (name == "sectionUpAxis") { return "--section-up-axis"; }
+    if (name == "showPlane") { return "--show-plane"; }
+    if (name == "showConnections") { return "--show-connections"; }
+    if (name == "showDifferences") { return "--show-differences"; }
+    if (name == "faceOn") { return "--face-on"; }
+    if (name == "sourceIndex") { return "--source-index"; }
+    if (name == "sourceVisible") { return "--source-visible"; }
+    if (name == "referenceIndex") { return "--reference-index"; }
+    if (name == "comparedIndex") { return "--compared-index"; }
     if (name == "uvSeparated") { return "--uv-separated"; }
     if (name == "uvLinkedSelection") { return "--uv-linked-selection"; }
     if (name == "uvColor") { return "--uv-color"; }
@@ -176,6 +204,7 @@ std::string cliOption(const std::string& name)
     if (name == "automaticNearPlane") { return "--automatic-near-plane"; }
     if (name == "distanceOnA") { return "--distance-on-a"; }
     if (name == "colorRange") { return "--color-range"; }
+    if (name == "colorMinimum") { return "--color-minimum"; }
     if (name == "showEdges") { return "--show-edges"; }
     if (name == "showBoundaries") { return "--show-boundaries"; }
     if (name == "showWinding") { return "--show-winding"; }
@@ -259,7 +288,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         }
         command.target = params["target"].get<std::string>();
         const bool sceneAllowed = method.action == ControlAction::visibility || method.action == ControlAction::render
-            || method.action == ControlAction::vertexSize;
+            || method.action == ControlAction::vertexSize || (method.action == ControlAction::annotationCreate && params.value("shape", "") == "section");
         if (command.target == "scene" && !sceneAllowed) { throw std::invalid_argument("This command requires an object ID."); }
     }
     if (params.contains("path")) {
@@ -308,6 +337,8 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         }
     }
 #define BOOL_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<bool>(); }
+    BOOL_FIELD(showAOnly) BOOL_FIELD(showBOnly) BOOL_FIELD(showWalls)
+    BOOL_FIELD(showPlane) BOOL_FIELD(showConnections) BOOL_FIELD(showDifferences) BOOL_FIELD(faceOn) BOOL_FIELD(sourceVisible)
     BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(xray) BOOL_FIELD(adaptivePoints) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
     BOOL_FIELD(uvThresholdEnabled) BOOL_FIELD(uvOverlapEnabled) BOOL_FIELD(uvRangeEnabled)
     BOOL_FIELD(uvSeparated) BOOL_FIELD(uvLinkedSelection) BOOL_FIELD(isolate) BOOL_FIELD(uvGrid) BOOL_FIELD(lineDepthTest)
@@ -321,6 +352,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     BOOL_FIELD(distanceOnA) BOOL_FIELD(showEdges) BOOL_FIELD(showBoundaries) BOOL_FIELD(showNonManifold) BOOL_FIELD(showWinding) BOOL_FIELD(enabled)
 #undef BOOL_FIELD
 #define NUMBER_FIELD(field) if (params.contains(#field)) { command.field = number(params[#field]); }
+    NUMBER_FIELD(lift)
     NUMBER_FIELD(scale) NUMBER_FIELD(value) NUMBER_FIELD(pixels) NUMBER_FIELD(width)
     NUMBER_FIELD(uvThreshold) NUMBER_FIELD(uvNearCollapse) NUMBER_FIELD(uvRangeMinimum) NUMBER_FIELD(uvRangeMaximum)
     NUMBER_FIELD(uvMinimum) NUMBER_FIELD(uvMaximum) NUMBER_FIELD(lineWidth) NUMBER_FIELD(uvDensityU) NUMBER_FIELD(uvDensityV)
@@ -331,9 +363,10 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     NUMBER_FIELD(qualityMinimumSize) NUMBER_FIELD(qualityMaximumSize)
     NUMBER_FIELD(holeSizeRatioTolerance) NUMBER_FIELD(finMaxAreaRatio)
     NUMBER_FIELD(needleThresholdRatio) NUMBER_FIELD(capMinAngleDegrees)
-    NUMBER_FIELD(tolerance) NUMBER_FIELD(colorRange)
+    NUMBER_FIELD(tolerance) NUMBER_FIELD(colorRange) NUMBER_FIELD(colorMinimum)
 #undef NUMBER_FIELD
 #define VECTOR_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::array<float, 3>>(); }
+    VECTOR_FIELD(planeStart) VECTOR_FIELD(planeEnd)
     VECTOR_FIELD(translation) VECTOR_FIELD(rotationDegrees) VECTOR_FIELD(rgb) VECTOR_FIELD(eye)
 #undef VECTOR_FIELD
     if (params.contains("barycentric")) {
@@ -352,6 +385,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         command.cameraTarget = params["target"].get<std::array<float, 3>>();
     }
 #define STRING_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::string>(); }
+    STRING_FIELD(sectionUpAxis)
     STRING_FIELD(analysisMode) STRING_FIELD(detector) STRING_FIELD(qualityMetric) STRING_FIELD(topologyMode) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
     STRING_FIELD(shape) STRING_FIELD(comments) STRING_FIELD(collection) STRING_FIELD(revision)
     STRING_FIELD(uvOverlapScope)
@@ -367,7 +401,20 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     if (command.isolate.value_or(false) && (!command.object || command.enabled != true)) { throw std::invalid_argument("isolate requires --object and --enabled true."); }
     if (command.uvView && *command.uvView != "layout" && *command.uvView != "surface") { throw std::invalid_argument("uvView must be layout or surface."); }
     if ((command.type == "uv" || command.type == "uv_quality") && command.b) { throw std::invalid_argument("UV analysis uses one source input: --a."); }
-    if (command.shape && *command.shape != "line" && *command.shape != "rectangle") { throw std::invalid_argument("shape must be line or rectangle."); }
+    if (command.shape && *command.shape != "line" && *command.shape != "rectangle" && *command.shape != "section") { throw std::invalid_argument("shape must be line, rectangle, or section."); }
+    if (command.sectionUpAxis && *command.sectionUpAxis != "y" && *command.sectionUpAxis != "z") { throw std::invalid_argument("sectionUpAxis must be y or z."); }
+    if (command.lift && *command.lift < 0) { throw std::invalid_argument("lift must be nonnegative."); }
+    if (method.action == ControlAction::annotationCreate) {
+        if (command.shape == "section") {
+            if (!command.planeStart || !command.planeEnd) { throw std::invalid_argument("A section requires planeStart and planeEnd in world coordinates."); }
+            if (command.start || command.end || command.aspect || command.rgb) { throw std::invalid_argument("Sections use planeStart/planeEnd and per-source colors, without start/end/aspect/rgb."); }
+        } else {
+            if (!command.start || !command.end) { throw std::invalid_argument("A surface annotation requires start and end."); }
+            for (const auto* key : {"planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceVisible", "referenceIndex", "comparedIndex"}) {
+                if (params.contains(key)) { throw std::invalid_argument(std::string(key) + " requires a section annotation."); }
+            }
+        }
+    }
     if (command.aspect && (*command.aspect < .1f || *command.aspect > 10)) { throw std::invalid_argument("aspect must be between 0.1 and 10."); }
     for (const auto& point : {command.start, command.end}) {
         if (point && (std::abs((*point)[0]) > 1 || std::abs((*point)[1]) > 1)) { throw std::invalid_argument("Drawing coordinates must be between -1 and 1."); }
@@ -396,10 +443,14 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
             throw std::invalid_argument(#field " must be a nonnegative integer within its documented range."); \
         } command.field = v.get<uint64_t>(); }
     INTEGER_FIELD(offset, std::numeric_limits<size_t>::max())
+    INTEGER_FIELD(sourceIndex, 2147483647)
+    INTEGER_FIELD(referenceIndex, 2147483647)
+    INTEGER_FIELD(comparedIndex, 2147483647)
     INTEGER_FIELD(limit, 100)
     INTEGER_FIELD(intersectionPairLimit, 2147483647)
     INTEGER_FIELD(intersectionCandidateLimit, 2147483647)
 #undef INTEGER_FIELD
+    if (command.sourceIndex.has_value() != command.sourceVisible.has_value()) { throw std::invalid_argument("Supply sourceIndex and sourceVisible together."); }
     if (command.limit && !*command.limit) { throw std::invalid_argument("limit must be from 1 to 100."); }
     if (command.collection && (command.collection->empty() || command.collection->front() != '/')) { throw std::invalid_argument("collection must start with /."); }
     if (params.contains("index")) {
@@ -426,7 +477,7 @@ std::string controlMethodUsage(const ControlMethod& method)
     else if (method.positional == "preset") { result += " front|back|left|right|top|bottom|isometric"; }
     else if (method.positional == "axis") { result += " y|z"; }
     else if (method.positional == "target") {
-        if (method.action == ControlAction::annotationCreate) { result += " GROUP_ID"; }
+        if (method.action == ControlAction::annotationCreate) { result += " TARGET"; }
         else if (method.method.starts_with("annotation.")) { result += " ANNOTATION_ID"; }
         else if (method.method.starts_with("analysis.")) { result += " ANALYSIS_ID"; }
         else if (method.action == ControlAction::visibility || method.action == ControlAction::render
@@ -442,7 +493,7 @@ std::string controlMethodUsage(const ControlMethod& method)
         result += cliOption(name);
         if (name != "tree" && name != "remember") {
             result += booleanOption(name) ? " true|false" : name == "rgb" ? " R G B" : vectorOption(name) ? (vectorSize(name) == 2 ? " U V" : " X Y Z")
-                : name == "type" ? " mesh|surface_comparison|uv|uv_quality" : name == "uvColor" ? " grid|u|v" : name == "uvMetric" ? " angle|area|orientation|anisotropy|min_stretch|overlap" : name == "uvNormalization" ? " per_patch|absolute" : name == "uvView" ? " layout|surface" : name == "shape" ? " line|rectangle" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
+                : name == "sectionUpAxis" ? " y|z" : name == "type" ? " mesh|surface_comparison|uv|uv_quality" : name == "uvColor" ? " grid|u|v" : name == "uvMetric" ? " angle|area|orientation|anisotropy|min_stretch|overlap" : name == "uvNormalization" ? " per_patch|absolute" : name == "uvView" ? " layout|surface" : name == "shape" ? " line|rectangle|section" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
                 : name == "path" ? " PATH" : name == "collection" ? " ARRAY_PATH" : name == "index" ? " POSITIVE_INTEGER"
                 : name == "a" || name == "b" || name == "object" ? " OBJECT_ID" : stringOption(name) ? " TEXT" : " N";
         }
@@ -465,6 +516,8 @@ Json controlOperationParams(const ControlOperation& command)
     if (command.action == ControlAction::folderAdd) { result["tree"] = command.tree; }
     if (command.action == ControlAction::importersAdd || command.action == ControlAction::importersScan) { result["remember"] = command.remember; }
 #define FIELD(field) if (command.field) { result[#field] = *command.field; }
+    FIELD(showAOnly) FIELD(showBOnly) FIELD(showWalls)
+    FIELD(planeStart) FIELD(planeEnd) FIELD(sectionUpAxis) FIELD(lift) FIELD(showPlane) FIELD(showConnections) FIELD(showDifferences) FIELD(faceOn) FIELD(sourceIndex) FIELD(sourceVisible) FIELD(referenceIndex) FIELD(comparedIndex)
     FIELD(analysisMode) FIELD(visible) FIELD(propertiesVisible) FIELD(solid) FIELD(xray) FIELD(adaptivePoints) FIELD(triangles) FIELD(vertices) FIELD(translation) FIELD(rotationDegrees) FIELD(rgb) FIELD(barycentric)
     FIELD(lineWidth) FIELD(lineDepthTest) FIELD(uvGrid) FIELD(uvDensityU) FIELD(uvDensityV)
     FIELD(uvThresholdEnabled) FIELD(uvOverlapEnabled) FIELD(uvRangeEnabled) FIELD(uvThreshold) FIELD(uvNearCollapse) FIELD(uvRangeMinimum) FIELD(uvRangeMaximum) FIELD(uvOverlapScope)
@@ -482,7 +535,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(duplicatePoints) FIELD(duplicateTriangles) FIELD(showDuplicatePoints) FIELD(showDuplicateTriangles)
     FIELD(shape) FIELD(comments) FIELD(locked) FIELD(start) FIELD(end) FIELD(delta) FIELD(aspect) FIELD(opacity)
     FIELD(qualityMetric) FIELD(qualityOnA) FIELD(qualityMinimumEnabled) FIELD(qualityMaximumEnabled) FIELD(qualityMinimumSize) FIELD(qualityMaximumSize)
-    FIELD(distanceOnA) FIELD(showEdges) FIELD(showBoundaries) FIELD(showNonManifold) FIELD(showWinding) FIELD(topologyMode) FIELD(tolerance) FIELD(colorRange) FIELD(enabled)
+    FIELD(distanceOnA) FIELD(showEdges) FIELD(showBoundaries) FIELD(showNonManifold) FIELD(showWinding) FIELD(topologyMode) FIELD(tolerance) FIELD(colorRange) FIELD(colorMinimum) FIELD(enabled)
 #undef FIELD
     return result;
 }
@@ -506,6 +559,12 @@ Json controlCapabilities()
     }
     return {{"analysisResults", {{"defaultListingLimit", 100}, {"pageLimit", {1, 100}}, {"offsetBase", 0}, {"collectionIndexBase", 0}, {"defaultCollection", "/findings"}, {"intersectionPairLimitDefault", 10000}, {"intersectionCandidateLimitDefault", 1000000}, {"intersectionBudgetRange", {0, 2147483647}}, {"zeroBudgetMeansUnlimited", true}, {"exportOverwrites", false}, {"concurrentExports", 1}}}, {"apiVersion", 1}, {"methods", methods}, {"objectKinds", {"folder", "file", "group", "analysis", "annotation"}},
         {"analysisTransformFields", {"translation"}},
+        {"differenceMeshes", {{"targets", {"analysis"}}, {"inputTypes", {"closed_solids", "single_boundary_surfaces"}},
+            {"exportFormat", "obj"}, {"exportOverwrites", false}, {"volumeUnits", "model_units_cubed"},
+            {"buildOnSceneLoad", true}, {"boundaryEditing", false}}},
+        {"annotations", {{"shapes", {"line", "rectangle", "section"}},
+            {"createRequiredByShape", {{"line", {"start", "end"}}, {"rectangle", {"start", "end"}}, {"section", {"planeStart", "planeEnd"}}}},
+            {"sectionTargets", {"scene", "folder", "file", "group"}}, {"sectionIndexBase", 0}, {"sectionCoordinateSpace", "world"}}},
         {"cameraPersistent", false}, {"screenshot", {{"width", 1920}, {"height", 1800}, {"overwrite", true}}},
         {"scopes", {{"visibility.set", {"scene", "folder", "file", "group", "analysis", "annotation"}},
             {"render.set", {"scene", "folder", "file", "group"}}, {"transform", {"folder", "file", "group", "analysis"}},

@@ -2,6 +2,7 @@
 #include "graphics_helpers.h"
 #include "math_utils.h"
 #include "marker_pick.h"
+#include "difference_runtime.h"
 #include <doctest/doctest.h>
 #include <algorithm>
 
@@ -14,8 +15,10 @@ struct DisplayFixture {
     g::FrameBufferHandle target{};
     std::vector<g::VertexBufferHandle> vertices;
     std::vector<g::IndexBufferHandle> indices;
+    woby::DifferenceRuntime difference;
     ~DisplayFixture() {
         if (!initialized) { return; }
+        woby::destroyDifferenceRuntime(difference);
         for (auto h : vertices) { g::destroy(h); }
         for (auto h : indices) { g::destroy(h); }
         for (auto h : {comparison, color}) { if (g::isValid(h)) { g::destroy(h); } }
@@ -40,6 +43,45 @@ void initialize(DisplayFixture& f, bool msaa, bool markers) {
     g::setViewClear(0, WOBY_GPU_CLEAR_COLOR | WOBY_GPU_CLEAR_DEPTH, 0x20242aff, 1);
     std::array<float,16> identity{}; woby::identityMatrix(identity.data());
     g::setViewTransform(0, identity.data(), identity.data());
+}
+TEST_CASE("GPU difference mesh opacity changes pixels and clears marker IDs") {
+    for (const bool markers : {false, true}) {
+        DisplayFixture f;
+        initialize(f, false, markers);
+        auto result = std::make_shared<woby::DifferenceMesh>();
+        auto& geometry = woby::editMeshGeometry(result->parts[0]);
+        geometry.vertices = {{{-.9f,-.9f,.5f},{0,0,1}}, {{.9f,-.9f,.5f},{0,0,1}}, {{0,.9f,.5f},{0,0,1}}};
+        geometry.indices = {0,1,2};
+        woby::publishMeshGeometry(result->parts[0]);
+        f.difference.result = result;
+        f.difference.phase = "ready";
+        woby::uploadDifferenceMesh(f.difference);
+        woby::UiComparison comparison;
+        const auto captureDifference = [&](float opacity) {
+            comparison.settings.difference.opacity = opacity;
+            g::touch(0);
+            woby::submitDifferenceMesh(0, comparison, f.difference, f.comparison,
+                markers ? f.comparison : g::ProgramHandle{});
+            std::vector<uint8_t> pixels(128*96*4*(markers ? 2 : 1));
+            auto ready = g::readTexture(f.output, pixels.data());
+            if (markers) { ready = std::max(ready, g::readTexture(f.ids, pixels.data()+128*96*4)); }
+            while (g::frame() < ready) {}
+            return pixels;
+        };
+        const auto opaque = captureDifference(1), faint = captureDifference(.25f);
+        constexpr size_t center = (48*128+64)*4;
+        CHECK(opaque[center+2] > faint[center+2]+50);
+        CHECK(faint[center+2] > 42);
+        comparison.settings.difference.showA = false;
+        const auto hidden = captureDifference(.25f);
+        CHECK(hidden[center+2] == 42);
+        if (markers) {
+            for (size_t channel = 0; channel < 4; ++channel) {
+                CHECK(opaque[128*96*4+center+channel] == 0);
+                CHECK(faint[128*96*4+center+channel] == 0);
+            }
+        }
+    }
 }
 template<class T> g::VertexBufferHandle buffer(DisplayFixture& f, const std::vector<T>& values) {
     const auto h = g::createVertexBuffer(g::copy(values.data(), static_cast<uint32_t>(values.size()*sizeof(T))), {sizeof(T)});

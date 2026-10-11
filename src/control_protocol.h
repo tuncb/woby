@@ -23,6 +23,7 @@ enum class ControlAction {
     comparisonClear, comparisonSwap, comparisonFindings, comparisonExport, comparisonExportStatus, comparisonExportCancel, comparisonResults, comparisonFocus, comparisonEnable, comparisonRun, comparisonCancel,
     comparisonUvTriangles, comparisonUvProbe, comparisonUvProbeGet, comparisonUvProbeClear,
     annotationList, annotationGet, annotationCreate, annotationSet, annotationReshape, annotationMove, annotationDelete,
+    differenceCreate, differenceGet, differenceSet, differenceRebuild, differenceCancel, differenceExport, differenceDelete,
 };
 
 // Validated, owned command data. No scene pointers or runtime resources cross threads.
@@ -56,7 +57,7 @@ struct ControlOperation {
     std::optional<std::string> name, mode, side, a, b, object;
     SceneObjectId aId = invalidSceneObjectId, bId = invalidSceneObjectId, memberId = invalidSceneObjectId;
     std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold, showWinding, enabled;
-    std::optional<float> tolerance, colorRange;
+    std::optional<float> tolerance, colorRange, colorMinimum;
     std::optional<std::string> type, uvView;
     std::optional<std::string> qualityMetric, topologyMode, detector;
     std::optional<uint64_t> index, offset, limit, intersectionPairLimit, intersectionCandidateLimit;
@@ -74,6 +75,12 @@ struct ControlOperation {
     std::optional<bool> locked;
     std::optional<std::array<float, 2>> start, end, delta;
     std::optional<float> aspect, opacity;
+    std::optional<bool> showAOnly, showBOnly, showWalls;
+    std::optional<std::array<float, 3>> planeStart, planeEnd;
+    std::optional<std::string> sectionUpAxis;
+    std::optional<float> lift;
+    std::optional<bool> showPlane, showConnections, showDifferences, faceOn, sourceVisible;
+    std::optional<uint64_t> sourceIndex, referenceIndex, comparedIndex;
 };
 
 struct ControlMethod {

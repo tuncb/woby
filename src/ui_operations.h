@@ -298,6 +298,8 @@ void navigateUiCamera(UiState& state, const CameraNavigation& navigation);
 
 [[nodiscard]] const UiAnnotation* findAnnotation(const UiState& state, SceneObjectId id);
 [[nodiscard]] const UiAnnotation* selectedAnnotation(const UiState& state);
+SceneObjectId createCrossSection(UiState& state, CrossSectionSettings settings, std::vector<SceneObjectId> sources);
+void setCrossSectionSettings(UiState& state, SceneObjectId id, CrossSectionSettings settings);
 [[nodiscard]] std::vector<Coordinate> annotationOriginalVertices(const UiState& state, const UiAnnotation& item);
 [[nodiscard]] std::vector<std::array<float, 3>> annotationVertices(const UiState& state, const UiAnnotation& item);
 SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationGeometry geometry,
@@ -318,6 +320,7 @@ void loadSceneAnnotations(UiState& state, const SceneDocument& document);
 } // namespace woby
 
 namespace woby { void requestComparisonIntersections(UiState& state, SceneObjectId id, bool cancel = false); }
+namespace woby { void requestDifferenceMesh(UiState& state, SceneObjectId id, bool cancel = false); }
 namespace woby {
 void requestComparisonDetector(UiState& state, SceneObjectId id, DiagnosticCategory category, bool cancel = false);
 void setComparisonAutomaticUpdate(UiState& state, SceneObjectId id, DiagnosticCategory category, bool automatic);

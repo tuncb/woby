@@ -503,7 +503,7 @@ TEST_CASE("analysis inspectors keep measurements separate from diagnostic findin
     INFO(contents);
     CHECK((contents.find("Diagnostics") != std::string::npos) == (task == woby::AnalysisTask::meshChecks));
     CHECK((contents.find("Size limits") != std::string::npos) == (task == woby::AnalysisTask::meshQuality));
-    CHECK((contents.find("Area-weighted mean") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));
+    CHECK((contents.find("Mean distance") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));
     CHECK((contents.find("Group A") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));
     CHECK((contents.find("Group B") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));
     CHECK((contents.find("Swap inputs A / B") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));

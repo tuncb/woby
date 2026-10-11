@@ -95,7 +95,8 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"uvView", settings.uvView == UvView::layout ? "layout" : "surface"},
                 {"uvGrid", settings.uvGrid.enabled}, {"uvDensityU", settings.uvGrid.densityU}, {"uvDensityV", settings.uvGrid.densityV},
                 {"mode", mode}, {"distanceOnA", settings.distanceOnOriginal}, {"tolerance", settings.tolerance},
-                {"colorRange", settings.colorRange}, {"showEdges", settings.showEdges},
+                {"colorRange", settings.colorRange}, {"colorMinimum", settings.colorMinimum},
+                {"colorRangeMode", comparisonColorRangeKeys[static_cast<size_t>(settings.colorRangeMode)]}, {"showEdges", settings.showEdges},
                 {"nonManifoldVertices", settings.topologyInspection.nonManifoldVertices},
                 {"showNonManifoldVertices", settings.topologyInspection.showNonManifoldVertices},
                 {"fins", settings.topologyInspection.fins},
@@ -492,7 +493,8 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.qualityMaximumSize) { settings.quality.maximumSize = *command.qualityMaximumSize; }
             if (command.distanceOnA) { settings.distanceOnOriginal = *command.distanceOnA; }
             if (command.tolerance) { settings.tolerance = *command.tolerance; }
-            if (command.colorRange) { settings.colorRange = *command.colorRange; }
+            if (command.colorRange) { settings.colorRange = *command.colorRange; settings.colorRangeMode = ComparisonColorRange::custom; }
+            if (command.colorMinimum) { settings.colorMinimum = *command.colorMinimum; settings.colorRangeMode = ComparisonColorRange::custom; }
             if (command.showEdges) { settings.showEdges = *command.showEdges; }
             if (command.showBoundaries) { settings.showBoundaries = *command.showBoundaries; }
             if (command.analysisMode) { settings.analysisMode = parseAnalysisMode(*command.analysisMode); }
@@ -664,6 +666,8 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     case A::status: case A::capabilities: case A::modelAdd: case A::modelRemove: case A::folderAdd:
     case A::importersList: case A::importersAdd: case A::importersScan: case A::importersForget: case A::performance:
     case A::performanceBegin: case A::performanceEnd:
+    case A::differenceCreate: case A::differenceGet: case A::differenceSet: case A::differenceRebuild:
+    case A::differenceCancel: case A::differenceExport: case A::differenceDelete:
     case A::annotationList: case A::annotationGet: case A::annotationCreate: case A::annotationSet:
     case A::annotationReshape: case A::annotationMove: case A::annotationDelete:
     case A::comparisonFindings: case A::comparisonExport: case A::comparisonExportStatus: case A::comparisonExportCancel:

@@ -1,5 +1,6 @@
 #include "comparison_runtime.h"
 #include "comparison_gpu.h"
+#include "difference_runtime.h"
 #include "ui_operations.h"
 #include <spdlog/spdlog.h>
 #include <algorithm>
@@ -678,6 +679,7 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
 
 static void destroyComparisonRuntime(ComparisonRuntime &runtime)
 {
+    destroyDifferenceRuntime(runtime.difference);
     runtime.jobs.display.stop.request_stop();
     if (runtime.jobs.display.worker.valid()) { runtime.jobs.display.worker.wait(); }
     runtime.jobs.preparationStop.request_stop();
@@ -722,6 +724,13 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
         }
         updateComparisonInspectorCache(runtime.inspector.queries, state, comparison.objectId);
         updateComparisonRuntime(runtime, state, comparison.objectId, active < 2);
+        updateDifferenceRuntime(runtime.difference, state, comparison.objectId, runtime.inspector.queries.signature);
+        if (graphics::isValid(runtimes.program)) { uploadDifferenceMesh(runtime.difference); }
+        if (comparison.settings.colorRangeMode != ComparisonColorRange::custom
+            && comparisonStagesReady(runtime, comparison.settings, runtime.inspector.queries.signature, comparisonDistance)) {
+            const auto& surface = comparison.settings.distanceOnOriginal ? runtime.results.value.original : runtime.results.value.repaired;
+            setComparisonSettings(state, fittedComparisonSettings(comparison.settings, surface), comparison.objectId);
+        }
         for (size_t index = 0; index < diagnosticCategoryCount; ++index) {
             const auto category = static_cast<DiagnosticCategory>(index);
             const auto phase = comparisonDetectorStatus(runtime.results.value, category).phase;
@@ -763,6 +772,14 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
         const auto it = runtimes.objects.find(comparison.objectId);
         if (it == runtimes.objects.end()) { ready = false; continue; }
         const auto& runtime = it->second;
+        if (comparison.settings.difference.visible) {
+            if (runtime.difference.phase == "failed" || runtime.difference.phase == "outdated" || runtime.difference.phase == "canceled") {
+                throw std::runtime_error("Difference mesh is " + runtime.difference.phase + ": " + runtime.difference.error);
+            }
+            ready = ready && runtime.difference.phase == "ready" && runtime.difference.uploaded
+                && runtime.difference.signature == signature;
+            continue;
+        }
         if (!runtime.jobs.error.empty() && runtime.jobs.attemptedSignature == signature
             && !comparisonResultsReady(runtime, state, comparison.objectId)) {
             throw std::runtime_error(comparison.name + ": " + runtime.jobs.error);

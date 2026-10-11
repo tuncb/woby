@@ -15,6 +15,9 @@ struct AnnotationInteraction {
     AnnotationExecutor* executor = nullptr;
     std::shared_ptr<AnnotationPointerRuntime> pending;
     std::optional<AnnotationShape> tool;
+    bool sectionTool = false;
+    std::optional<CrossSectionSettings> sectionStart;
+    std::array<float, 3> sectionGrab{};
     bool dragging = false;
     // Runtime-only coarse guide on dense meshes; commit resolves the full edge.
     bool sampledPreview = false;
@@ -46,12 +49,12 @@ struct AnnotationNameEdit {
 };
 void drawAnnotationTools(const UiState& state, AnnotationInteraction& interaction, bool disabled);
 void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit);
-void drawAnnotationInspector(UiState& state);
+void drawAnnotationInspector(UiState& state, SceneQueryRuntime* queries = nullptr);
 // True consumes the left-button gesture, including invalid placement attempts.
 // Unprepared geometry returns false so camera navigation can handle the gesture.
 bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction,
     const ScenePickView& view, PickPoint point);
-void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interaction, PickPoint point);
+void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interaction, PickPoint point, bool lockDirection = false);
 void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bool allowed);
 void cancelAnnotationPointer(AnnotationInteraction& interaction);
 // Poll on the UI thread, before history recording. Never waits for a worker.

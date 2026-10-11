@@ -39,6 +39,7 @@
     "boost-multiprecision",
     "boost-unordered",
     "cdt",
+    "manifold",
     "doctest"
   ],
   "features": {

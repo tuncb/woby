@@ -610,8 +610,26 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         record.settings.quality.minimumSize = parseTomlFloat(value);
     } else if (key == "quality_maximum_size") {
         record.settings.quality.maximumSize = parseTomlFloat(value);
+    } else if (key == "difference_created") { record.settings.difference.created = parseTomlBool(value);
+    } else if (key == "difference_visible") { record.settings.difference.visible = parseTomlBool(value);
+    } else if (key == "difference_show_a") { record.settings.difference.showA = parseTomlBool(value);
+    } else if (key == "difference_show_b") { record.settings.difference.showB = parseTomlBool(value);
+    } else if (key == "difference_show_walls") { record.settings.difference.showWalls = parseTomlBool(value);
+    } else if (key == "difference_opacity") { record.settings.difference.opacity = parseTomlFloat(value);
     } else if (key == "analysis_color_range") {
         record.settings.colorRange = parseTomlFloat(value);
+    } else if (key == "analysis_color_minimum") {
+        record.settings.colorMinimum = parseTomlFloat(value);
+    } else if (key == "analysis_color_range_mode") {
+        auto mode = parseTomlString(value);
+        // Retain the selected percentage from early area-percentile menu keys.
+        if (mode == "area90") { mode = "max90"; }
+        else if (mode == "area95") { mode = "max95"; }
+        else if (mode == "area975") { mode = "max975"; }
+        else if (mode == "area99") { mode = "max99"; }
+        const auto found = std::find(comparisonColorRangeKeys.begin(), comparisonColorRangeKeys.end(), mode);
+        if (found == comparisonColorRangeKeys.end()) { throw std::runtime_error("Unknown comparison color range mode."); }
+        record.settings.colorRangeMode = static_cast<ComparisonColorRange>(found - comparisonColorRangeKeys.begin());
     } else if (key == "analysis_show_edges") {
         record.settings.showEdges = parseTomlBool(value);
     } else if (key == "analysis_show_boundaries") {
@@ -669,6 +687,14 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "diagnostic_category = \"" << category << "\"\n";
     stream << "analysis_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
     stream << "analysis_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
+    stream << "difference_created = " << (comparison.difference.created ? "true" : "false") << "\n";
+    stream << "difference_visible = " << (comparison.difference.visible ? "true" : "false") << "\n";
+    stream << "difference_show_a = " << (comparison.difference.showA ? "true" : "false") << "\n";
+    stream << "difference_show_b = " << (comparison.difference.showB ? "true" : "false") << "\n";
+    stream << "difference_show_walls = " << (comparison.difference.showWalls ? "true" : "false") << "\n";
+    stream << "difference_opacity = "; writeTomlFloat(stream, comparison.difference.opacity); stream << "\n";
+    stream << "analysis_color_minimum = "; writeTomlFloat(stream, comparison.colorMinimum); stream << "\n";
+    stream << "analysis_color_range_mode = \"" << comparisonColorRangeKeys[static_cast<size_t>(comparison.colorRangeMode)] << "\"\n";
     stream << "analysis_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";
     stream << "analysis_show_boundaries = " << (comparison.showBoundaries ? "true" : "false") << "\n";
     stream << "analysis_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";
@@ -989,7 +1015,29 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     const auto shape = parseTomlString(value);
                     if (shape == "line") { annotationDrafts.back().shape = AnnotationShape::line; }
                     else if (shape == "rectangle") { annotationDrafts.back().shape = AnnotationShape::rectangle; }
+                    else if (shape == "section") { if (!item.section) { item.section.emplace(); } }
                     else { throw std::runtime_error("Unknown annotation shape."); }
+                } else if (key.starts_with("section_")) {
+                    if (!item.section) { item.section.emplace(); }
+                    auto& s = *item.section;
+                    if (key == "section_a") { s.a = parseTomlFloat3(value); }
+                    else if (key == "section_b") { s.b = parseTomlFloat3(value); }
+                    else if (key == "section_lift") { s.lift = parseTomlFloat(value); }
+                    else if (key == "section_up") {
+                        const auto up = parseTomlString(value);
+                        if (up != "y" && up != "z") { throw std::runtime_error("Invalid section up axis."); }
+                        s.upAxis = up == "y" ? SceneUpAxis::y : SceneUpAxis::z;
+                    }
+                    else if (key == "section_plane") { s.showPlane = parseTomlBool(value); }
+                    else if (key == "section_connections") { s.showConnections = parseTomlBool(value); }
+                    else if (key == "section_differences") { s.showDifferences = parseTomlBool(value); }
+                    else if (key == "section_face_on") { s.faceOn = parseTomlBool(value); }
+                    else if (key == "section_reference") { s.reference = parseTomlInteger(value); }
+                    else if (key == "section_compared") { s.compared = parseTomlInteger(value); }
+                    else if (key == "section_visibility") {
+                        s.sourceVisible.clear();
+                        for (auto v : parseTomlFloatArray(value)) { s.sourceVisible.push_back(v != 0); }
+                    }
                 } else if (key == "projector") {
                     const auto values = parseTomlFloatArray<double>(value);
                     if (values.size() != 16) { throw std::runtime_error("Expected 16 annotation projector values."); }
@@ -1155,10 +1203,11 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
 
     for (size_t i = 0; i < document.annotations.size(); ++i) {
         auto& item = document.annotations[i];
-        validateAnnotationGeometry(annotationDrafts[i]);
-        item.geometry = shareAnnotationGeometry(std::move(annotationDrafts[i]));
+        if (item.section) { item.section = normalizedCrossSectionSettings(*item.section, item.targets.size()); }
+        else { validateAnnotationGeometry(annotationDrafts[i]); }
+        item.geometry = item.section ? AnnotationGeometryOwner{} : shareAnnotationGeometry(std::move(annotationDrafts[i]));
         item.settings = normalizedAnnotationSettings(std::move(item.settings));
-        if (item.targets.size() != item.geometry->sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
+        if (!item.section && item.targets.size() != item.geometry->sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
         for (const auto& target : item.targets) {
             if (target.fileIndex == -1 && target.groupIndex == -1) { continue; }
             if (target.fileIndex < 0 || static_cast<size_t>(target.fileIndex) >= document.files.size()
@@ -1310,7 +1359,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "\n";
     }
     for (const auto& item : document.annotations) {
-        validateAnnotationGeometry(*item.geometry);
+        if (!item.section) { validateAnnotationGeometry(*item.geometry); }
         stream << "\n[[annotations]]\n";
         stream << "name = \"" << escapeTomlString(item.settings.name) << "\"\n";
         stream << "note = \"" << escapeTomlString(item.settings.note) << "\"\n";
@@ -1320,6 +1369,25 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "locked = " << (item.settings.locked ? "true" : "false") << "\n";
         stream << "width = "; writeTomlFloat(stream, item.settings.width); stream << "\n";
         stream << "color = "; writeTomlFloat4(stream, item.settings.color); stream << "\n";
+        if (item.section) {
+            const auto s = normalizedCrossSectionSettings(*item.section, item.targets.size());
+            stream << "shape = \"section\"\nsection_a = "; writeTomlFloat3(stream, s.a);
+            stream << "\nsection_b = "; writeTomlFloat3(stream, s.b);
+            stream << "\nsection_lift = "; writeTomlFloat(stream, s.lift);
+            stream << "\nsection_up = \"" << (s.upAxis == SceneUpAxis::z ? "z" : "y") << "\"\n";
+            stream << "section_plane = " << (s.showPlane ? "true" : "false") << "\n";
+            stream << "section_connections = " << (s.showConnections ? "true" : "false") << "\n";
+            stream << "section_differences = " << (s.showDifferences ? "true" : "false") << "\n";
+            stream << "section_face_on = " << (s.faceOn ? "true" : "false") << "\n";
+            stream << "section_reference = " << s.reference << "\nsection_compared = " << s.compared << "\n";
+            stream << "section_visibility = [";
+            for (size_t i = 0; i < s.sourceVisible.size(); ++i) { if (i) { stream << ", "; } stream << (s.sourceVisible[i] ? 1 : 0); }
+            stream << "]\n";
+            for (const auto& target : item.targets) {
+                stream << "\n[[annotations.sources]]\nfile_index = " << target.fileIndex << "\ngroup_index = " << target.groupIndex << "\n";
+            }
+            continue;
+        }
         stream << "shape = \"" << (item.geometry->shape == AnnotationShape::line ? "line" : "rectangle") << "\"\n";
         stream << "fingerprint = \"" << escapeTomlString(item.geometry->fingerprint) << "\"\n";
         stream << "homogeneous_depth = " << (item.geometry->homogeneousDepth ? "true" : "false") << "\n";

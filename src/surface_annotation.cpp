@@ -1,4 +1,5 @@
 #include "surface_annotation.h"
+#include "cross_section.h"
 #include "hash_utils.h"
 
 #include "math_utils.h"
@@ -1235,6 +1236,12 @@ std::vector<std::array<float, 3>> annotationControlPositions(const Mesh& mesh, s
 std::vector<std::array<float, 3>> annotationControlWorldPositions(const UiAnnotation& item,
     std::span<const ScenePickPart> parts)
 {
+    if (item.section) {
+        auto lifted = item.section->a;
+        for (size_t k = 0; k < 3; ++k) { lifted[k] = (item.section->a[k] + item.section->b[k]) * .5f; }
+        lifted[item.section->upAxis == SceneUpAxis::z ? 2 : 1] += item.section->lift;
+        return {item.section->a, item.section->b, lifted};
+    }
     std::vector<const ScenePickPart*> sources;
     for (size_t i = 0; i < std::max(size_t{1}, item.targetIds.size()); ++i) {
         const auto* part = annotationSourcePart(item, parts, static_cast<uint32_t>(i));
@@ -1286,6 +1293,7 @@ void annotationWorldLines(const UiAnnotation& item, std::span<const ScenePickPar
     lines.clear();
     sources.clear();
     if (!item.settings.visible || !item.targetValid || item.settings.color[3] <= 0) { return; }
+    if (item.section) { lines = sectionGuides(*item.section); return; }
     // Keep the outline complete: hiding a participating source hides the annotation.
     for (size_t i = 0; i < std::max(size_t{1}, item.targetIds.size()); ++i) {
         const auto* part = annotationSourcePart(item, parts, static_cast<uint32_t>(i));
@@ -1335,6 +1343,7 @@ bool annotationEdgeHit(const UiAnnotation& item, std::span<const ScenePickPart> 
     woby::identityMatrix(outline.model.data());
     // Reject off-outline pointers before testing source/occluder triangles.
     if (pickSceneObject(std::span<const ScenePickPart>(&outline, 1), view, point) != item.objectId) { return false; }
+    if (item.section) { return true; }
     std::vector<ScenePickPart> pickParts(parts.begin(), parts.end());
     for (auto& part : pickParts) { part.edges = false; part.vertices = false; }
     pickParts.push_back(outline);

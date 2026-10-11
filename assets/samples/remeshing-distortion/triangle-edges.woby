@@ -1,0 +1,85 @@
+# Synthetic remeshing comparison; coordinates and distances are millimeters.
+version = 22
+show_grid = false
+show_origin = false
+show_dimensions = false
+up_axis = "z"
+
+[camera]
+target = [-8, 20, 2]
+yaw_radians = -1.5707963267948966
+pitch_radians = 1.15
+roll_radians = 0
+distance = 148
+vertical_fov_degrees = 60
+near_plane = 0.01
+
+[[files]]
+path = "original.obj"
+visible = false
+[[files.groups]]
+name = "surface"
+show_vertices = false
+show_triangles = false
+
+[[files]]
+path = "remeshed-distorted.obj"
+visible = false
+[[files.groups]]
+name = "surface"
+show_vertices = false
+show_triangles = false
+
+[[analyses]]
+name = "Overlay - triangle edges OFF"
+translation = [0, 0, 0]
+analysis_type = "surface_comparison"
+analysis_task = "surface_comparison"
+analysis_enabled = true
+analysis_mode = "overlay"
+analysis_distance_on_a = false
+analysis_tolerance = 0.05
+analysis_color_range = 0.65
+analysis_show_edges = false
+analysis_show_boundaries = false
+analysis_show_non_manifold = false
+analysis_show_winding = false
+show_duplicate_points = false
+show_duplicate_triangles = false
+show_degenerate_triangles = false
+show_self_intersections = false
+[[analyses.a]]
+file_index = 0
+group_index = 0
+name = "original.obj / surface"
+[[analyses.b]]
+file_index = 1
+group_index = 0
+name = "remeshed-distorted.obj / surface"
+
+[[analyses]]
+name = "Overlay - triangle edges ON"
+translation = [-76, 0, 0]
+analysis_type = "surface_comparison"
+analysis_task = "surface_comparison"
+analysis_enabled = true
+analysis_mode = "overlay"
+analysis_distance_on_a = false
+analysis_tolerance = 0.05
+analysis_color_range = 0.65
+analysis_show_edges = true
+analysis_show_boundaries = false
+analysis_show_non_manifold = false
+analysis_show_winding = false
+show_duplicate_points = false
+show_duplicate_triangles = false
+show_degenerate_triangles = false
+show_self_intersections = false
+[[analyses.a]]
+file_index = 0
+group_index = 0
+name = "original.obj / surface"
+[[analyses.b]]
+file_index = 1
+group_index = 0
+name = "remeshed-distorted.obj / surface"

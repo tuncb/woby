@@ -44,6 +44,7 @@ find_package(httplib CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(CDT CONFIG REQUIRED)
+find_package(manifold CONFIG REQUIRED)
 find_package(Boost CONFIG REQUIRED COMPONENTS multiprecision unordered)
 find_package(CURL REQUIRED)
 find_package(LibArchive REQUIRED)
@@ -119,6 +120,9 @@ endif()
 
 # Compile production code once for the viewer and its tests.
 add_library(woby_core STATIC
+    src/difference_mesh.cpp
+    src/difference_runtime.cpp
+    src/difference_view.cpp
     src/comparison_report.cpp
     src/comparison_legend.cpp
     src/surface_mesh_quality.cpp
@@ -165,6 +169,9 @@ add_library(woby_core STATIC
     src/hover_pick.cpp
     src/hover_pick.h
     src/surface_annotation.cpp
+    src/cross_section.cpp
+    src/cross_section_runtime.cpp
+    src/cross_section_ui.cpp
     src/ui_annotation_operations.cpp
     src/annotation_work.cpp
     src/annotation_command.cpp
@@ -252,6 +259,7 @@ target_link_libraries(woby_core
         Boost::unordered
     PRIVATE
         CDT::CDT
+        manifold::manifold
         Boost::multiprecision
         ${CMAKE_DL_LIBS}
         spdlog::spdlog
@@ -583,6 +591,8 @@ if(BUILD_TESTING)
         tests/marker_pick_tests.cpp
         tests/hover_pick_tests.cpp
         tests/surface_annotation_tests.cpp
+        tests/cross_section_tests.cpp
+        tests/difference_mesh_tests.cpp
         tests/scene_pick_tests.cpp
         tests/scene_renderer_tests.cpp
         tests/adaptive_points_tests.cpp
