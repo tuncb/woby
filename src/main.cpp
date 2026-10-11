@@ -2236,6 +2236,8 @@ int main(int argc, char** argv)
 
         auto deploymentGuard = woby::guardViewerDeployment();
         woby::UpdateUiRuntime updateRuntime;
+        woby::FileAssociationsRuntime fileAssociations;
+        bool fileAssociationSettingsOpen = false;
         updateRuntime.state.currentVersion = WOBY_VERSION;
         updateRuntime.state.managedDeployment = std::filesystem::is_regular_file(
             woby::updateExecutablePath().parent_path() / woby::packageManifestName);
@@ -2609,6 +2611,7 @@ int main(int argc, char** argv)
                 scenePointer.selectionEnabled = false;
             }
             woby::pollUiUpdate(updateRuntime);
+            woby::pollFileAssociations(fileAssociations);
             if (updateRuntime.state.closeRequested) {
                 woby::requestQuit(ui);
                 break;
@@ -2654,6 +2657,9 @@ int main(int argc, char** argv)
                     woby::setCameraOrbiting(ui, false);
                     woby::setCameraRolling(ui, false);
                     woby::setCameraPanning(ui, false);
+                }
+                if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED && fileAssociationSettingsOpen) {
+                    woby::startFileAssociationAction(fileAssociations, {woby::FileAssociationAction::refresh});
                 }
                 const auto inputLayout = canvasLayout(window.get(), ui);
                 const bool buttonEvent = event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_BUTTON_UP;
@@ -3432,7 +3438,13 @@ int main(int argc, char** argv)
                     ImGui::End();
                 }
                 drawPropertiesPane(ui, comparison, panelLayout, inspector);
-                const auto settings = woby::drawSettingsDialog(ui, requestSettings, menu.popupPosition);
+                if (requestSettings) {
+                    woby::startFileAssociationAction(fileAssociations, {woby::FileAssociationAction::refresh});
+                }
+                const auto settings = woby::drawSettingsDialog(ui, requestSettings, menu.popupPosition,
+                    fileAssociations.state);
+                fileAssociationSettingsOpen = settings.open;
+                woby::startFileAssociationAction(fileAssociations, settings.fileAssociationRequest);
                 const auto updates = woby::drawUpdatesDialog(ui, requestUpdates, updateRuntime.state, menu.popupPosition);
                 modalDialogOpen = modalDialogOpen || settings.open || updates.open;
                 if (updates.updateCommand != woby::UpdateCommand::none) {

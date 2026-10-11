@@ -52,6 +52,14 @@ if(NOT WIN32)
     find_package(OpenSSL REQUIRED)
 endif()
 
+add_library(woby_file_associations STATIC src/file_associations.cpp)
+target_include_directories(woby_file_associations PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(woby_file_associations PRIVATE Threads::Threads)
+if(WIN32)
+    target_link_libraries(woby_file_associations PRIVATE advapi32 shell32 shlwapi ole32)
+endif()
+woby_enable_project_warnings(woby_file_associations)
+
 add_library(woby_recent_files STATIC src/recent_files.cpp src/recent_files_storage.cpp src/recent_files_runtime.cpp)
 target_include_directories(woby_recent_files PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_link_libraries(woby_recent_files PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
@@ -233,6 +241,7 @@ target_include_directories(woby_core SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}
 target_link_libraries(woby_core
     PUBLIC
         woby_recent_files
+        woby_file_associations
         woby_update
         woby_automation
         SDL3::SDL3
@@ -606,7 +615,8 @@ if(BUILD_TESTING)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/native")
     target_include_directories(woby_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
     if(WIN32)
-        target_sources(woby_tests PRIVATE tests/windows_paths_tests.cpp packaging/windows/long_paths.manifest)
+        target_sources(woby_tests PRIVATE tests/windows_paths_tests.cpp tests/file_associations_tests.cpp
+            packaging/windows/long_paths.manifest)
         add_test(NAME woby_windows_manifests COMMAND "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/windows_manifest_tests.py"
             "$<TARGET_FILE:woby>" "$<TARGET_FILE:woby-update-helper>" "$<TARGET_FILE:woby_tests>")
