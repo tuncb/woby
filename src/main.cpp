@@ -740,7 +740,7 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
         ImGui::TextUnformatted("Properties");
         ImGui::Separator();
         if (woby::selectedAnnotation(state)) {
-            woby::drawAnnotationInspector(state);
+            woby::drawAnnotationInspector(state, inspector.sharedQueries);
         } else if (woby::selectedComparison(state)) {
             woby::drawComparisonPanelContents(state, runtimes);
         } else {
@@ -2665,7 +2665,7 @@ int main(int argc, char** argv)
                     && !modelFileDialogIsOpen(modelFileDialogState) && !sceneFileDialogIsOpen(sceneFileDialogState)
                     && !sceneScreenshotDialogIsOpen(sceneScreenshotDialogState) && !ImGui::GetIO().WantCaptureMouse;
                 if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE
-                    && (annotationInteraction.tool || annotationInteraction.dragging)) {
+                    && (annotationInteraction.tool || annotationInteraction.sectionTool || annotationInteraction.dragging)) {
                     woby::cancelAnnotationPointer(annotationInteraction);
                     annotationEscapeConsumed = true;
                     scenePointer = {};
@@ -2681,6 +2681,12 @@ int main(int argc, char** argv)
                     }
                 }
                 if (annotationInteraction.dragging) {
+                    if (annotationInteraction.sectionStart
+                        && (event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP)
+                        && (event.key.key == SDLK_LSHIFT || event.key.key == SDLK_RSHIFT)) {
+                        annotationMotion = annotationMotion.value_or(annotationInteraction.pointerEnd);
+                        continue;
+                    }
                     if (event.type == SDL_EVENT_MOUSE_MOTION) {
                         const auto p = mousePositionInPixels(window.get(), event.motion.x, event.motion.y);
                         annotationMotion = woby::PickPoint{p.x - static_cast<float>(presentedViewport.x), p.y - static_cast<float>(presentedViewport.y)};
@@ -2688,7 +2694,8 @@ int main(int argc, char** argv)
                     }
                     if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) {
                         annotationMotion.reset();
-                        woby::moveAnnotationPointer(ui, annotationInteraction, {inputMouse.x - static_cast<float>(presentedViewport.x), inputMouse.y - static_cast<float>(presentedViewport.y)});
+                        woby::moveAnnotationPointer(ui, annotationInteraction, {inputMouse.x - static_cast<float>(presentedViewport.x), inputMouse.y - static_cast<float>(presentedViewport.y)},
+                            (SDL_GetModState() & SDL_KMOD_SHIFT) != 0u);
                         woby::endAnnotationPointer(ui, annotationInteraction, pointerAllowed && canvasInput);
                         continue;
                     }
@@ -2761,7 +2768,7 @@ int main(int argc, char** argv)
                 }
             }
             if (annotationMotion && annotationInteraction.dragging) {
-                woby::moveAnnotationPointer(ui, annotationInteraction, *annotationMotion);
+                woby::moveAnnotationPointer(ui, annotationInteraction, *annotationMotion, (SDL_GetModState() & SDL_KMOD_SHIFT) != 0u);
             }
             recordFrameStage(frameTimings, woby::FrameStage::events, stageStart);
 
@@ -3588,7 +3595,7 @@ int main(int argc, char** argv)
                                         : "Annotation preparation failed: " + annotationPreparation.error, -32014});
                                 return;
                             }
-                            if (payload.action == A::annotationCreate || payload.action == A::annotationMove || payload.action == A::annotationReshape) {
+                            if ((payload.action == A::annotationCreate && payload.shape != "section") || payload.action == A::annotationMove || payload.action == A::annotationReshape) {
                                 auto next = woby::prepareAnnotationCommand(ui, payload);
                                 if (annotationCommand) {
                                     woby::cancelAnnotationWork(annotationCommand->work);
@@ -3892,7 +3899,7 @@ int main(int argc, char** argv)
                     && !keyboardIo.WantCaptureKeyboard && !keyboardIo.WantTextInput
                     && !ImGui::IsAnyItemActive()
                     && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
-                if (sceneKeyboardAvailable && !annotationEscapeConsumed && !annotationInteraction.dragging && !annotationInteraction.tool) {
+                if (sceneKeyboardAvailable && !annotationEscapeConsumed && !annotationInteraction.dragging && !annotationInteraction.tool && !annotationInteraction.sectionTool) {
                     if (!keyboardIo.KeyCtrl && !keyboardIo.KeyAlt && !keyboardIo.KeySuper) {
                         if (!popupWasOpen && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
                             woby::clearSceneSelection(ui);

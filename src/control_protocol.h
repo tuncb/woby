@@ -74,6 +74,11 @@ struct ControlOperation {
     std::optional<bool> locked;
     std::optional<std::array<float, 2>> start, end, delta;
     std::optional<float> aspect, opacity;
+    std::optional<std::array<float, 3>> planeStart, planeEnd;
+    std::optional<std::string> sectionUpAxis;
+    std::optional<float> lift;
+    std::optional<bool> showPlane, showConnections, showDifferences, faceOn, sourceVisible;
+    std::optional<uint64_t> sourceIndex, referenceIndex, comparedIndex;
 };
 
 struct ControlMethod {

@@ -656,7 +656,7 @@ struct AnnotationUiFixture {
     AnnotationInteraction interaction;
     AnnotationNameEdit nameEdit;
     ScenePickView pickView = view();
-    ImVec2 lineButton{}, rectangleButton{}, dimensions{};
+    ImVec2 lineButton{}, rectangleButton{}, sectionButton{}, dimensions{};
     bool pointerAllowed = true, captureMouse = false, disabled = false;
     bool showObjects = false, showInspector = false;
     bool showScaleOverlay = false;
@@ -681,8 +681,9 @@ struct AnnotationUiFixture {
         const auto origin = ImGui::GetCursorScreenPos();
         drawAnnotationTools(scene.state, interaction, disabled);
         const auto low = ImGui::GetItemRectMin(), high = ImGui::GetItemRectMax();
-        rectangleButton = {(low.x + high.x) / 2, (low.y + high.y) / 2};
-        lineButton = {origin.x + (high.x - low.x) / 2, rectangleButton.y};
+        sectionButton = {(low.x + high.x) / 2, (low.y + high.y) / 2};
+        lineButton = {origin.x + renderModeButtonSize() / 2, sectionButton.y};
+        rectangleButton = {lineButton.x + renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.x, sectionButton.y};
         ImGui::SameLine();
         bool showDimensions = false;
         ImGui::Checkbox("Show dimensions", &showDimensions);
@@ -911,6 +912,11 @@ TEST_CASE("annotation icon tools share the dimensions row and toggle without edi
     CHECK(fixture.interaction.tool == AnnotationShape::rectangle);
     fixture.click(fixture.rectangleButton);
     CHECK_FALSE(fixture.interaction.tool);
+    fixture.click(fixture.sectionButton);
+    CHECK(fixture.interaction.sectionTool);
+    CHECK_FALSE(fixture.interaction.tool);
+    fixture.click(fixture.sectionButton);
+    CHECK_FALSE(fixture.interaction.sectionTool);
     fixture.disabled = true;
     fixture.click(fixture.lineButton);
     CHECK_FALSE(fixture.interaction.tool);

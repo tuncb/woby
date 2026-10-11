@@ -3,6 +3,7 @@
 #include "annotation_command.h"
 #include "annotation_preparation.h"
 #include "surface_annotation.h"
+#include "cross_section.h"
 #include "ui_operations.h"
 
 #include <nlohmann/json.hpp>
@@ -11,6 +12,32 @@
 
 namespace woby {
 using Json = nlohmann::json;
+namespace {
+bool hasSectionOptions(const ControlOperation& c)
+{
+    return c.planeStart || c.planeEnd || c.sectionUpAxis || c.lift || c.showPlane || c.showConnections
+        || c.showDifferences || c.faceOn || c.sourceIndex || c.sourceVisible || c.referenceIndex || c.comparedIndex;
+}
+CrossSectionSettings sectionOptions(CrossSectionSettings s, const ControlOperation& c, size_t sourceCount)
+{
+    if (c.planeStart) { s.a = *c.planeStart; }
+    if (c.planeEnd) { s.b = *c.planeEnd; }
+    if (c.sectionUpAxis) { s.upAxis = *c.sectionUpAxis == "z" ? SceneUpAxis::z : SceneUpAxis::y; }
+    if (c.lift) { s.lift = *c.lift; }
+    if (c.showPlane) { s.showPlane = *c.showPlane; }
+    if (c.showConnections) { s.showConnections = *c.showConnections; }
+    if (c.showDifferences) { s.showDifferences = *c.showDifferences; }
+    if (c.faceOn) { s.faceOn = *c.faceOn; }
+    for (const auto index : {c.sourceIndex, c.referenceIndex, c.comparedIndex}) {
+        if (index && *index >= sourceCount) { throw std::invalid_argument("Section index is outside sourceIds. Indices start at zero."); }
+    }
+    if (c.referenceIndex) { s.reference = static_cast<int>(*c.referenceIndex); }
+    if (c.comparedIndex) { s.compared = static_cast<int>(*c.comparedIndex); }
+    s.sourceVisible.resize(sourceCount, true);
+    if (c.sourceIndex) { s.sourceVisible[static_cast<size_t>(*c.sourceIndex)] = *c.sourceVisible; }
+    return normalizedCrossSectionSettings(std::move(s), sourceCount);
+}
+}
 
 bool annotationControlReady(const UiState& state, ControlAction action)
 {
@@ -25,6 +52,16 @@ Json controlAnnotationDetails(const UiState& state, const UiAnnotation& item)
 {
     const auto& settings = item.settings;
     const auto parts = scenePickParts(state);
+    if (item.section) {
+        const auto& s = *item.section;
+        return {{"shape", "section"}, {"settings", {{"name", settings.name}, {"comments", settings.note}, {"visible", settings.visible},
+            {"locked", settings.locked}, {"width", settings.width}, {"color", settings.color}}}, {"start", s.a}, {"end", s.b}, {"controlSpace", "world"},
+            {"lift", s.lift}, {"upAxis", s.upAxis == SceneUpAxis::z ? "z" : "y"}, {"showPlane", s.showPlane},
+            {"showConnections", s.showConnections}, {"showDifferences", s.showDifferences}, {"faceOn", s.faceOn},
+            {"sourceVisible", s.sourceVisible}, {"referenceIndex", s.reference}, {"comparedIndex", s.compared},
+            {"targetValid", item.targetValid}, {"targetPending", false}, {"effectiveVisible", settings.visible},
+            {"vertices", annotationOriginalVertices(state, item)}, {"vertexSpace", "world"}};
+    }
     return {{"shape", item.geometry->shape == AnnotationShape::line ? "line" : "rectangle"},
         {"settings", {{"name", settings.name}, {"comments", settings.note}, {"visible", settings.visible},
             {"locked", settings.locked}, {"width", settings.width}, {"color", settings.color}}},
@@ -55,7 +92,27 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
         return {{"annotations", std::move(items)}};
     }
     auto id = command.objectId;
-    if (command.action == A::annotationCreate) {
+    if (command.action == A::annotationCreate && command.shape == "section") {
+        std::vector<SceneObjectId> sources;
+        if (command.target == "scene") {
+            for (const auto& part : scenePickParts(state)) {
+                if (part.mesh && part.indexCount) { sources.push_back(part.objectId); }
+            }
+        } else {
+            const auto target = findSceneObject(state, id);
+            if (!target || (target->kind != SceneObjectKind::group && target->kind != SceneObjectKind::file && target->kind != SceneObjectKind::folder)) {
+                throw std::invalid_argument("Section creation requires scene, a folder, file, or model group ID.");
+            }
+            sources = comparisonObjectParts(state, {id});
+        }
+        CrossSectionSettings s;
+        s.upAxis = state.upAxis;
+        s = sectionOptions(std::move(s), command, sources.size());
+        const auto selection = state.selectedSceneObjects;
+        id = createCrossSection(state, std::move(s), std::move(sources));
+        clearSceneSelection(state);
+        for (const auto selected : selection) { selectSceneObject(state, selected, true); }
+    } else if (command.action == A::annotationCreate) {
         const auto target = findSceneObject(state, id);
         if (!target || target->kind != SceneObjectKind::group) { throw std::invalid_argument("Annotation creation requires a model group ID."); }
         // A fixed authoring aspect makes scripts independent of panel/window sizes.
@@ -82,6 +139,7 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
             return {{"removed", formatId(id)}, {"dirty", state.isDirty}};
         }
         if (command.action == A::annotationMove || command.action == A::annotationReshape) {
+            if (item->section) { throw std::invalid_argument("Use annotation set --plane-start/--plane-end to change a cross section."); }
             if (item->settings.locked || !item->targetValid) { throw std::invalid_argument("The annotation is locked or its source is unavailable."); }
             const auto parts = scenePickParts(state);
             const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& part) { return part.objectId == item->targetId; });
@@ -99,6 +157,15 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
             && command.action != A::colorSet && command.action != A::colorReset && command.action != A::opacity) {
             throw std::invalid_argument("Use annotation get, set, reshape, move, or delete for annotation objects.");
         }
+    }
+    if (command.action == A::annotationSet && hasSectionOptions(command)) {
+        const auto* item = findAnnotation(state, id);
+        if (!item->section) { throw std::invalid_argument("Section options require a cross-section annotation."); }
+        auto section = sectionOptions(*item->section, command, item->targetIds.size());
+        if (item->settings.locked && (section.a != item->section->a || section.b != item->section->b || section.upAxis != item->section->upAxis)) {
+            throw std::invalid_argument("Unlock the section before changing its plane.");
+        }
+        setCrossSectionSettings(state, id, std::move(section));
     }
     auto settings = findAnnotation(state, id)->settings;
     if (command.name) { settings.name = *command.name; }

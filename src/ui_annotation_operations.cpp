@@ -176,6 +176,7 @@ void validateAnnotationTargets(UiState& state)
 {
     bool changed = false;
     for (auto& item : state.annotations) {
+        if (item.section) { item.targetValid = true; item.targetPending = false; continue; }
         const bool validBefore = item.targetValid, pendingBefore = item.targetPending;
         item.targetPending = false;
         for (const auto& file : state.files) {
@@ -191,6 +192,35 @@ void validateAnnotationTargets(UiState& state)
         changed = changed || validBefore != item.targetValid || pendingBefore != item.targetPending;
     }
     if (changed) { notifySceneEdit(state, SceneChange::annotations); }
+}
+SceneObjectId createCrossSection(UiState& state, CrossSectionSettings settings, std::vector<SceneObjectId> sources)
+{
+    if (sources.empty()) { throw std::runtime_error("Choose visible triangle meshes for the section."); }
+    std::vector<SceneObjectId> unique;
+    for (auto id : sources) {
+        const auto object = findSceneObject(state, id);
+        if (!object || object->kind != SceneObjectKind::group || std::find(unique.begin(), unique.end(), id) != unique.end()) {
+            throw std::runtime_error("Section sources must be distinct model parts.");
+        }
+        unique.push_back(id);
+    }
+    UiAnnotation item;
+    item.section = normalizedCrossSectionSettings(std::move(settings), sources.size());
+    item.targetId = sources.front(); item.targetIds = std::move(sources); item.targetValid = true;
+    item.settings.name = "Cross section " + std::to_string(state.annotations.size() + 1);
+    state.annotations.push_back(std::move(item)); assignSceneObjectIds(state);
+    const auto id = state.annotations.back().objectId; selectSceneObject(state, id);
+    markSceneDirty(state, SceneChange::annotations); return id;
+}
+void setCrossSectionSettings(UiState& state, SceneObjectId id, CrossSectionSettings settings)
+{
+    for (auto& item : state.annotations) {
+        if (item.objectId != id || !item.section) { continue; }
+        settings = normalizedCrossSectionSettings(std::move(settings), item.targetIds.size());
+        if (item.settings.locked && (settings.a != item.section->a || settings.b != item.section->b || settings.upAxis != item.section->upAxis)) { return; }
+        if (settings != *item.section) { item.section = std::move(settings); ++item.geometryRevision; markSceneDirty(state, SceneChange::annotations); }
+        return;
+    }
 }
 SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationGeometry geometry, std::vector<SceneObjectId> targets)
 {
@@ -254,7 +284,7 @@ void setAnnotationSettings(UiState& state, SceneObjectId id, AnnotationSettings 
     settings = normalizedAnnotationSettings(std::move(settings));
     for (auto& item : state.annotations) {
         if (item.objectId == id && item.settings != settings) {
-            const bool geometry = item.settings.visible != settings.visible || item.settings.color[3] != settings.color[3]
+            const bool geometry = item.section.has_value() || item.settings.visible != settings.visible || item.settings.color[3] != settings.color[3]
                 || item.settings.locked != settings.locked;
             const bool label = item.settings.name != settings.name;
             item.settings = std::move(settings);
@@ -283,6 +313,7 @@ void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometryOwner
     validateAnnotationGeometry(*geometry);
     for (auto& item : state.annotations) {
         if (item.objectId != id) { continue; }
+        if (item.section) { throw std::runtime_error("Use the section plane controls to reshape a cross section."); }
         if (item.settings.locked || !item.targetValid || !findSceneObject(state, item.targetId)) { throw std::runtime_error("This annotation is locked or its target is unavailable."); }
         if (geometry->fingerprint != item.geometry->fingerprint || geometry->projector != item.geometry->projector
             || geometry->sources != item.geometry->sources) { throw std::runtime_error("Annotation attachment cannot change while reshaping."); }
@@ -306,6 +337,7 @@ std::vector<SceneAnnotationRecord> sceneAnnotationRecords(const UiState& state)
     for (const auto& item : state.annotations) {
         SceneAnnotationRecord record;
         record.targetName = item.targetName; record.settings = item.settings; record.geometry = item.geometry;
+        record.section = item.section;
         const auto primary = savedTarget(state, item.targetId);
         record.fileIndex = primary.fileIndex; record.groupIndex = primary.groupIndex;
         for (const auto id : item.targetIds) { record.targets.push_back(savedTarget(state, id)); }
@@ -319,15 +351,16 @@ void loadSceneAnnotations(UiState& state, const SceneDocument& document)
     annotations.reserve(document.annotations.size());
     std::map<size_t, Mesh> legacyMeshes;
     for (const auto& record : document.annotations) {
-        validateAnnotationGeometry(*record.geometry);
+        if (!record.section) { validateAnnotationGeometry(*record.geometry); }
         UiAnnotation item;
         item.targetName = record.targetName;
         item.settings = normalizedAnnotationSettings(record.settings);
         item.geometry = record.geometry;
-        if (record.targets.size() != record.geometry->sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
+        if (record.section) { item.section = normalizedCrossSectionSettings(*record.section, record.targets.size()); }
+        if (!record.section && record.targets.size() != record.geometry->sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
         item.targetId = loadedTarget(state, document, {record.fileIndex, record.groupIndex});
         for (const auto& target : record.targets) { item.targetIds.push_back(loadedTarget(state, document, target)); }
-        migrateAnnotationFrame(item, record, state, document, legacyMeshes);
+        if (!record.section) { migrateAnnotationFrame(item, record, state, document, legacyMeshes); }
         annotations.push_back(std::move(item));
     }
     state.annotations = std::move(annotations);

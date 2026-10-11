@@ -1,5 +1,6 @@
 #include "scene_screenshot.h"
 #include "annotation_ui.h"
+#include "cross_section_runtime.h"
 #include "scene_scale_overlay.h"
 #include "comparison_view.h"
 #include "comparison_scene.h"
@@ -228,6 +229,14 @@ void submitSceneScreenshotCapture(
     }
     if (comparison != nullptr && !comparisonsReadyForScreenshot(ui, *comparison)) {
         return; // Keep the request pending until all visible results are ready.
+    }
+    if (!screenshot.options.resultsOnly) {
+        updateSceneAnnotationQueries(screenshot.renderScratch.queries, ui);
+        const auto error = crossSectionError(screenshot.renderScratch.queries);
+        if (!error.empty()) { throw std::runtime_error(error); }
+        for (const auto& item : ui.annotations) {
+            if (item.section && item.settings.visible && !crossSectionResult(screenshot.renderScratch.queries, item.objectId)) { return; }
+        }
     }
 
     const bool visibleResults = std::any_of(ui.comparisons.begin(), ui.comparisons.end(),

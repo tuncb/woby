@@ -154,6 +154,9 @@ add_library(woby_core STATIC
     src/hover_pick.cpp
     src/hover_pick.h
     src/surface_annotation.cpp
+    src/cross_section.cpp
+    src/cross_section_runtime.cpp
+    src/cross_section_ui.cpp
     src/ui_annotation_operations.cpp
     src/annotation_work.cpp
     src/annotation_command.cpp
@@ -571,6 +574,7 @@ if(BUILD_TESTING)
         tests/marker_pick_tests.cpp
         tests/hover_pick_tests.cpp
         tests/surface_annotation_tests.cpp
+        tests/cross_section_tests.cpp
         tests/scene_pick_tests.cpp
         tests/scene_renderer_tests.cpp
         tests/adaptive_points_tests.cpp

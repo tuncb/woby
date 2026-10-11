@@ -1,4 +1,5 @@
 #include "scene_queries.h"
+#include "cross_section_runtime.h"
 #include "math_utils.h"
 #include "comparison_runtime.h"
 #include "hash_utils.h"
@@ -172,9 +173,10 @@ void resolveSceneParts(SceneQueryRuntime& runtime, const UiState& state, std::ve
 
 void updateSceneAnnotationQueries(SceneQueryRuntime& runtime, const UiState& state)
 {
+    const bool sectionChanged = updateCrossSections(runtime, state);
     auto& cache = runtime.annotations;
     const auto stamp = sceneQueryStamp(state);
-    if (cache.stamp == stamp && cache.revision == state.revisions.annotations) { return; }
+    if (!sectionChanged && cache.stamp == stamp && cache.revision == state.revisions.annotations) { return; }
     const bool rebuild = cache.stamp != stamp;
     if (cache.stamp.owner != &state || cache.stamp.generation != state.sceneGeneration) { cache.objects.clear(); }
     std::vector<ScenePickPart> parts;
@@ -185,6 +187,48 @@ void updateSceneAnnotationQueries(SceneQueryRuntime& runtime, const UiState& sta
         live.insert(item.objectId);
         auto& entry = cache.objects[item.objectId];
         const bool visible = item.settings.visible && item.settings.color[3] > 0;
+        if (item.section) {
+            if (sectionChanged || rebuild || !entry.builds || entry.revision != item.geometryRevision || entry.visible != visible) {
+                entry.id = item.objectId; entry.lines.clear(); entry.batches.clear(); entry.sheet.clear(); ++cache.builds;
+                entry.revision = item.geometryRevision; entry.visible = visible; entry.valid = true; ++entry.builds;
+                const auto& s = *item.section;
+                if (visible) {
+                    const auto addBatch = [&](std::vector<DiagnosticEdge> lines, std::array<float,4> color) {
+                        AnnotationQuery batch; batch.lines = std::move(lines); batch.color = color; batch.builds = entry.builds;
+                        entry.lines.insert(entry.lines.end(), batch.lines.begin(), batch.lines.end()); entry.batches.push_back(std::move(batch));
+                    };
+                    addBatch(sectionGuides(s), item.settings.color);
+                    if (const auto result = crossSectionResult(runtime, item.objectId)) {
+                        const size_t up = s.upAxis == SceneUpAxis::z ? 2 : 1;
+                        std::array<float,2> lo{std::numeric_limits<float>::max(),std::numeric_limits<float>::max()}, hi{-lo[0],-lo[1]};
+                        for (const auto& contour : result->contours) { for (const auto& line : contour.lines) { for (const auto p : {line.a,line.b}) {
+                            const auto xy = sectionCoordinates(s,p);
+                            for (size_t k=0;k<2;++k) { lo[k]=std::min(lo[k],xy[k]); hi[k]=std::max(hi[k],xy[k]); }
+                        } } }
+                        if (s.showPlane && lo[0] <= hi[0]) {
+                            const auto direction = sectionDirection(s);
+                            const float pad = std::max((hi[0]-lo[0])*.025f,.001f);
+                            for (const auto xy : {std::array<float,2>{lo[0]-pad,lo[1]-pad}, {hi[0]+pad,lo[1]-pad}, {hi[0]+pad,hi[1]+pad}, {lo[0]-pad,hi[1]+pad}}) {
+                                auto p=s.a; for(size_t k=0;k<3;++k) { p[k]+=direction[k]*xy[0]; } p[up]=xy[1]+s.lift; entry.sheet.push_back(p);
+                            }
+                        }
+                        for (size_t i = 0; i < result->contours.size(); ++i) {
+                            if (!s.sourceVisible[i]) { continue; }
+                            auto lines = result->contours[i].lines;
+                            const auto cut = lines;
+                            for (auto& line : lines) { line.a[up] += s.lift; line.b[up] += s.lift; }
+                            lines.insert(lines.end(), cut.begin(), cut.end());
+                            addBatch(std::move(lines), sectionSourceColor(i));
+                        }
+                        if (s.showDifferences && result->largestGap && s.sourceVisible[static_cast<size_t>(s.reference)] && s.sourceVisible[static_cast<size_t>(s.compared)]) {
+                            auto line = *result->largestGap; line.a[up] += s.lift; line.b[up] += s.lift;
+                            addBatch({line}, {1,1,1,1});
+                        }
+                    }
+                }
+            }
+            continue;
+        }
         if (rebuild || !entry.builds || entry.revision != item.geometryRevision || entry.visible != visible || entry.valid != item.targetValid) {
             entry.id = item.objectId;
             annotationWorldLines(item, parts, entry.lines, sources);
@@ -206,12 +250,32 @@ void updateAnnotationProjection(AnnotationQuery& cache, const UiAnnotation& item
     cache.view = view; cache.width = settings.width; cache.projectedBuild = cache.builds; ++cache.projectionBuilds;
     auto& vertices = cache.projected;
     vertices.clear();
+    cache.projectedSheet.clear();
     const auto& lines = cache.lines;
     if (lines.empty() || view.width == 0 || view.height == 0) { return; }
     auto& sources = cache.sources;
     sources.clear();
     const auto vp = annotationCompose(view.view, view.renderProjection);
-    for (size_t i = 0; i < std::max(size_t{1}, item.targetIds.size()); ++i) {
+    if (!cache.sheet.empty()) {
+        std::vector<std::array<float,4>> polygon;
+        for (const auto p : cache.sheet) { polygon.push_back(annotationTransform(vp,{p[0],p[1],p[2],1})); }
+        for (size_t plane=0;plane<6;++plane) {
+            std::vector<std::array<float,4>> clipped;
+            const auto distance=[&](const auto& p) { return plane<4?p[3]+(plane%2==0?p[plane/2]:-p[plane/2]):plane==4?p[2]:p[3]-p[2]; };
+            for(size_t i=0;i<polygon.size();++i) {
+                const auto a=polygon[i],b=polygon[(i+1)%polygon.size()]; const float da=distance(a),db=distance(b);
+                if(da>=0) { clipped.push_back(a); }
+                if((da<0)!=(db<0)) { std::array<float,4> p{}; for(size_t k=0;k<4;++k) { p[k]=a[k]+da/(da-db)*(b[k]-a[k]); } clipped.push_back(p); }
+            }
+            polygon=std::move(clipped);
+        }
+        if(std::all_of(polygon.begin(),polygon.end(),[](const auto& p){return p[3]>0;})) {
+            for(size_t i=1;i+1<polygon.size();++i) { for(size_t j:{size_t{0},i,i+1}) {
+                const auto p=polygon[j]; cache.projectedSheet.push_back({p[0]/p[3],p[1]/p[3],p[2]/p[3]});
+            } }
+        }
+    }
+    for (size_t i = 0; !item.section && i < std::max(size_t{1}, item.targetIds.size()); ++i) {
         const auto* source = annotationSourcePart(item, parts, static_cast<uint32_t>(i));
         if (!source) { return; }
         sources.push_back({static_cast<size_t>(source - parts.data()), annotationCompose(source->model, vp)});
@@ -220,8 +284,9 @@ void updateAnnotationProjection(AnnotationQuery& cache, const UiAnnotation& item
     vertices.reserve(lines.size() * 6);
     size_t segmentIndex = 0;
     for (const auto& line : lines) {
-        const auto& segment = geometry.segments[segmentIndex++];
-        const auto* target = &parts[sources[segment.source].partIndex];
+        const AnnotationSegment empty;
+        const auto& segment = item.section ? empty : geometry.segments[segmentIndex++];
+        const auto* target = item.section ? nullptr : &parts[sources[segment.source].partIndex];
         double slopeX = 0, slopeY = 0;
         if (target && target->mesh && !segment.endTriangle) {
             const auto& transform = sources[segment.source].transform;
@@ -360,11 +425,12 @@ void updateSceneBoundsQuery(SceneQueryRuntime& runtime, UiState& state)
 
 void updateSceneSelectionQueries(SceneQueryRuntime& runtime, const UiState& state, const ComparisonRuntimes* comparisons)
 {
+    updateSceneAnnotationQueries(runtime, state);
     synchronizeComparisonQueries(runtime, state);
     auto& cache = runtime.selection;
     const auto stamp = sceneQueryStamp(state);
     const bool sourceChanged = cache.stamp != stamp || cache.selection != state.selectedSceneObjects;
-    const bool boundsChanged = sourceChanged || cache.annotations != state.revisions.annotations
+    const bool boundsChanged = sourceChanged || cache.sectionBuilds != runtime.annotations.builds || cache.annotations != state.revisions.annotations
         || cache.analysis != state.revisions.analysis || cache.presentation != state.revisions.presentation;
     // Result publication/readiness is independent of logical scene revisions.
     const uint64_t comparisonKey = comparisons ? sceneComparisonRevision(state, *comparisons) : 0;
@@ -462,6 +528,7 @@ void updateSceneSelectionQueries(SceneQueryRuntime& runtime, const UiState& stat
         cache.dimensions = sceneDimensions(parts); ++cache.dimensionBuilds;
     }
     cache.stamp = stamp; cache.selection = state.selectedSceneObjects;
+    cache.sectionBuilds = runtime.annotations.builds;
     cache.annotations = state.revisions.annotations; cache.analysis = state.revisions.analysis;
     cache.presentation = state.revisions.presentation; cache.comparisonKey = comparisonKey;
 }

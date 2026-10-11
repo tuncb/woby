@@ -1,4 +1,5 @@
 #include "annotation_ui.h"
+#include "cross_section_ui.h"
 #include "annotation_preparation.h"
 #include "annotation_work.h"
 #include "ui_operations.h"
@@ -82,6 +83,21 @@ void drawAnnotationTools(const UiState& state, AnnotationInteraction& interactio
         }
     }
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(disabled || state.files.empty() || interaction.dragging);
+    const bool active = interaction.sectionTool;
+    const bool sectionClicked = drawRenderModeIconButton("annotation_section", "", "Cross section: draw a line on the horizontal workplane. One section cuts all visible meshes.",
+        active ? RenderModeState::on : RenderModeState::off, false);
+    const auto low = ImGui::GetItemRectMin(), high = ImGui::GetItemRectMax();
+    auto* draw = ImGui::GetWindowDrawList();
+    const auto color = ImGui::GetColorU32(active ? ImGuiCol_Text : ImGuiCol_TextDisabled);
+    const float inset = uiSize(6);
+    draw->AddRect({low.x+inset,low.y+inset},{high.x-inset,high.y-inset},color,0,0,uiSize(1));
+    draw->AddLine({low.x+inset-2,high.y-inset+2},{high.x-inset+2,low.y+inset-2},color,uiSize(2));
+    if (sectionClicked) {
+        cancelAnnotationPointer(interaction); interaction.sectionTool = !active;
+    }
+    ImGui::EndDisabled();
 }
 void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
 {
@@ -130,7 +146,7 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
             setAnnotationSettings(state, id, style);
         }
         ImGui::SameLine();
-        const bool missing = !item.targetValid || !findSceneObject(state, item.targetId);
+        const bool missing = !item.section && (!item.targetValid || !findSceneObject(state, item.targetId));
         const std::string label = item.settings.name + (item.targetPending ? " [preparing]" : missing ? " [needs reattachment]" : "") + "##annotation";
         const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
         if (edit.objectId == id) {
@@ -172,10 +188,11 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
     if (remove) { deleteAnnotation(state, remove); }
     else if (duplicate) { duplicateAnnotation(state, duplicate); }
 }
-void drawAnnotationInspector(UiState& state)
+void drawAnnotationInspector(UiState& state, SceneQueryRuntime* queries)
 {
     const auto* item = selectedAnnotation(state);
     if (!item) { return; }
+    if (item->section) { drawCrossSectionInspector(state, queries); return; }
     const auto id = item->objectId;
     ImGui::PushID(std::to_string(id).c_str());
     auto settings = item->settings;
@@ -413,6 +430,9 @@ void cancelAnnotationPointer(AnnotationInteraction& interaction)
 }
 bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, const ScenePickView& view, PickPoint point)
 {
+    if (interaction.sectionTool || (!interaction.tool && selectedAnnotation(state) && selectedAnnotation(state)->section)) {
+        return beginSectionPointer(state, interaction, view, point);
+    }
     if (!annotationPreparationReady(state)) { return false; }
     if (!interaction.executor) {
         return beginPointerProjection(state, interaction, view, point, interactionParts(state, interaction), {});
@@ -458,8 +478,9 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
     } catch (const std::exception& error) { interaction.error = error.what(); interaction.dragging = false; }
     return true;
 }
-void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interaction, PickPoint point)
+void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interaction, PickPoint point, bool lockDirection)
 {
+    if (interaction.sectionStart) { moveSectionPointer(state, interaction, point, lockDirection); return; }
     if (!interaction.pending) { movePointerProjection(state, interaction, point, interactionParts(state, interaction)); return; }
     if (interaction.pending->released || point == interaction.pointerEnd) { return; }
     interaction.pointerEnd = point;
@@ -499,6 +520,7 @@ void updateAnnotationPointer(UiState& state, AnnotationInteraction& interaction,
 }
 void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bool allowed)
 {
+    if (interaction.sectionStart) { endSectionPointer(state, interaction, allowed); return; }
     if (interaction.pending) {
         if (!allowed || !annotationWorkCurrent(interaction.pending->input->identity, state, true)) {
             cancelAnnotationPointer(interaction); return;
@@ -559,7 +581,9 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
             // of those frames for settled navigation and ray-pick the mesh.
             auto parts = interactionParts(state, interaction);
             const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == item->targetId; });
-            if (target != parts.end()) {
+            if (item->section) {
+                interaction.overlayHandles = handles(*item, parts, view);
+            } else if (target != parts.end()) {
                 const auto positions = handles(*item, parts, view);
                 // Only show handles on visible target surfaces, not through other models.
                 for (auto& part : parts) { part.edges = false; part.vertices = false; }
@@ -570,14 +594,25 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
             }
             interaction.overlayReady = true;
         }
-        for (auto p : interaction.overlayHandles) {
-            draw->AddCircleFilled(screenPoint(p), 5, IM_COL32(255,230,140,255));
-            draw->AddCircle(screenPoint(p), 5, IM_COL32(35,35,35,255), 0, 1.5f);
+        if (item && item->section && interaction.overlayHandles.size() >= 2) {
+            draw->AddLine(screenPoint(interaction.overlayHandles[0]),screenPoint(interaction.overlayHandles[1]),IM_COL32(255,230,140,120),uiSize(1));
+        }
+        for (size_t i=0; i<interaction.overlayHandles.size(); ++i) {
+            const auto p=screenPoint(interaction.overlayHandles[i]);
+            if (item && item->section && i==2) {
+                draw->AddRectFilled({p.x-5,p.y-5},{p.x+5,p.y+5},IM_COL32(255,230,140,255));
+                draw->AddText({p.x+9,p.y-7},IM_COL32(255,230,140,255),"Lift");
+            } else {
+                draw->AddCircleFilled(p, 5, IM_COL32(255,230,140,255));
+                draw->AddCircle(p, 5, IM_COL32(35,35,35,255), 0, 1.5f);
+                if (item && item->section) { draw->AddText({p.x+8,p.y+5},IM_COL32(255,230,140,255),i==0?"S":"S'"); }
+            }
         }
     }
     float messageBottom = 0;
-    if (interaction.tool || interaction.dragging || !interaction.error.empty()) {
+    if (interaction.tool || interaction.sectionTool || interaction.dragging || !interaction.error.empty()) {
         const char* text = !interaction.error.empty() ? interaction.error.c_str()
+            : interaction.sectionTool || interaction.sectionStart ? "Drag a section line. Hold Shift for 45-degree directions. Escape cancels."
             : interaction.pending && interaction.pending->released ? "Attaching annotation... Escape cancels."
             : interaction.dragging && interaction.sampledPreview ? "Release to attach the outline to the surface. Escape cancels."
             : "Drag on the surface. Escape cancels.";
@@ -608,7 +643,7 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
         if ((interaction.dragging && interaction.editing)
             || (!interaction.tool && !interaction.dragging && (overHandle || interaction.overlayEdgeHit))) {
             ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
-        } else if (interaction.tool || interaction.dragging) {
+        } else if (interaction.tool || interaction.sectionTool || interaction.dragging) {
             // ImGui has no crosshair cursor. Hide the platform cursor and draw
             // a contrast-outlined crosshair in window coordinates at every DPI.
             ImGui::SetMouseCursor(ImGuiMouseCursor_None);
@@ -631,7 +666,9 @@ void prepareSceneAnnotations(const UiState& state, const ScenePickView& view,
     auto& parts = scratch.parts;
     resolveSceneParts(scratch.queries, state, parts);
     for (const auto& item : state.annotations) {
-        updateAnnotationProjection(scratch.queries.annotations.objects.at(item.objectId), item, parts, view);
+        auto& query = scratch.queries.annotations.objects.at(item.objectId);
+        updateAnnotationProjection(query, item, parts, view);
+        for (auto& batch : query.batches) { updateAnnotationProjection(batch, item, parts, view); }
     }
     auto& preview = scratch.annotationPreview;
     preview.projected.clear();
@@ -650,7 +687,13 @@ void submitSceneAnnotations(woby::graphics::ViewId viewId, const UiState& state,
         if (interaction && interaction->dragging && interaction->editing == item.objectId && interaction->error.empty()
             && !interaction->preview.geometry->segments.empty()) { continue; }
         const auto& query = scratch.queries.annotations.objects.at(item.objectId);
-        submitLines(viewId, item.settings, query.projected, layout, program);
+        if (item.section) {
+            auto sheetStyle = item.settings; sheetStyle.color = {.5f,.7f,.8f,.12f * item.settings.color[3]};
+            submitLines(viewId, sheetStyle, query.projectedSheet, layout, program);
+            for (const auto& batch : query.batches) { auto settings = item.settings; settings.color = batch.color;
+                settings.color[3] = item.settings.color[3];
+                submitLines(viewId, settings, batch.projected, layout, program); }
+        } else { submitLines(viewId, item.settings, query.projected, layout, program); }
     }
     if (interaction && interaction->dragging && interaction->error.empty()) {
         submitLines(viewId, interaction->preview.settings, scratch.annotationPreview.projected,
