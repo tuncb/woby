@@ -2090,6 +2090,29 @@ TEST_CASE("analysis report identifies source roles and unsigned approximate meas
     CHECK(text.find("unsigned") == std::string::npos);
 }
 
+TEST_CASE("fitted heatmap range covers measured distances after float rounding")
+{
+    for (const double maximum : {6.1218, .833, .5, std::nextafter(1.0, 2.0),
+             static_cast<double>(std::nextafter(1.0f, 2.0f)), 0.0}) {
+        CAPTURE(maximum);
+        woby::ComparisonSettings settings;
+        settings.colorRange = woby::fittedComparisonColorRange(maximum, settings.tolerance);
+        settings = woby::normalizedComparisonSettings(settings);
+        CHECK(static_cast<double>(settings.colorRange) >= maximum);
+        CHECK(settings.colorRange >= settings.tolerance);
+        if (maximum > settings.tolerance) {
+            CHECK(static_cast<double>(std::nextafter(settings.colorRange, 0.0f)) < maximum);
+        }
+        woby::MeshComparison result;
+        result.repaired.maximum = maximum;
+        for (const auto& line : woby::comparisonReportLines("Check", "A", "B", settings, result, {})) {
+            CHECK(line.find("SATURATED") == std::string::npos);
+        }
+    }
+    CHECK(woby::fittedComparisonColorRange(.5, .05f) == .5f);
+    CHECK(woby::fittedComparisonColorRange(.01, .05f) == .05f);
+}
+
 TEST_CASE("heatmap legend palette preserves threshold and saturation boundaries")
 {
     woby::ComparisonSettings settings;

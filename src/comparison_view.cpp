@@ -1286,7 +1286,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             ImGui::BeginDisabled(!resultReady || !(runtime.results.cache.completed & comparisonDistance));
             if (ImGui::Button("Fit color range")) {
                 const auto& surface = settings.distanceOnOriginal ? runtime.results.value.original : runtime.results.value.repaired;
-                settings.colorRange = std::max(static_cast<float>(surface.maximum), settings.tolerance);
+                settings.colorRange = fittedComparisonColorRange(surface.maximum, settings.tolerance);
             }
             setLastItemTooltip("Fit the color maximum to the largest measured distance, with tolerance as the minimum.");
             ImGui::EndDisabled();

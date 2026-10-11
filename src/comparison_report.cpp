@@ -2,7 +2,9 @@
 #include "uv_quality.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
+#include <limits>
 #include <locale>
 #include <sstream>
 
@@ -21,6 +23,15 @@ std::string measurementNumber(double value)
     text.imbue(std::locale::classic());
     text << std::setprecision(5) << value;
     return text.str();
+}
+
+float fittedComparisonColorRange(double maximum, float tolerance)
+{
+    float range = static_cast<float>(maximum);
+    if (static_cast<double>(range) < maximum) {
+        range = std::nextafter(range, std::numeric_limits<float>::infinity());
+    }
+    return std::max(range, tolerance);
 }
 
 std::array<float, 4> comparisonHeatmapColor(double distance, const ComparisonSettings& settings)
