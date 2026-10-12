@@ -1,0 +1,81 @@
+isa,phase,category,samples,percent
+sse2,parser_scan_collect,integer/other,171294.0,73.06019039819839
+sse2,corner_mapping,integer/other,14664.0,32.64906265307031
+sse2,normal_face_accumulation,integer/other,1642.0,21.43043591751501
+sse2,group_original_bounds,integer/other,3630.0,13.31474892711734
+sse2,point_radix_sort,integer/other,5330.0,95.33178322303702
+sse2,parser_scan_collect,control flow,54488.0,23.24018152659774
+sse2,corner_mapping,control flow,6038.0,13.443469742173933
+sse2,normal_face_accumulation,control flow,1443.0,18.833202819107285
+sse2,group_original_bounds,control flow,151.0,0.5538642115687928
+sse2,point_radix_sort,control flow,245.0,4.382042568413522
+sse2,parser_scan_collect,SSE scalar,349.0,0.14885522230183915
+sse2,corner_mapping,SSE scalar,2373.0,5.283430556174022
+sse2,normal_face_accumulation,SSE scalar,2443.0,31.884625424171237
+sse2,group_original_bounds,SSE scalar,20219.0,74.16278472655247
+sse2,point_radix_sort,SSE scalar,0,0.0
+sse2,parser_scan_collect,SSE128 packed/move,5078.0,2.16586481045484
+sse2,corner_mapping,SSE128 packed/move,21733.0,48.388030458209016
+sse2,normal_face_accumulation,SSE128 packed/move,2134.0,27.851735839206476
+sse2,group_original_bounds,SSE128 packed/move,3263.0,11.9686021347614
+sse2,point_radix_sort,SSE128 packed/move,5.0,0.08942944017170452
+sse2,parser_scan_collect,AVX scalar,0,0.0
+sse2,corner_mapping,AVX scalar,0,0.0
+sse2,normal_face_accumulation,AVX scalar,0,0.0
+sse2,group_original_bounds,AVX scalar,0,0.0
+sse2,point_radix_sort,AVX scalar,0,0.0
+sse2,parser_scan_collect,AVX128 packed/move,401.0,0.17103422390555156
+sse2,corner_mapping,AVX128 packed/move,0,0.0
+sse2,normal_face_accumulation,AVX128 packed/move,0,0.0
+sse2,group_original_bounds,AVX128 packed/move,0,0.0
+sse2,point_radix_sort,AVX128 packed/move,0,0.0
+sse2,parser_scan_collect,AVX256,2846.0,1.2138738185416453
+sse2,corner_mapping,AVX256,106.0,0.2360065903727123
+sse2,normal_face_accumulation,AVX256,0,0.0
+sse2,group_original_bounds,AVX256,0,0.0
+sse2,point_radix_sort,AVX256,11.0,0.19674476837774996
+sse2,parser_scan_collect,unresolved,0,0.0
+sse2,corner_mapping,unresolved,0,0.0
+sse2,normal_face_accumulation,unresolved,0,0.0
+sse2,group_original_bounds,unresolved,0,0.0
+sse2,point_radix_sort,unresolved,0,0.0
+avx2,parser_scan_collect,integer/other,164426.0,70.15928418124176
+avx2,corner_mapping,integer/other,14594.0,32.575892857142854
+avx2,normal_face_accumulation,integer/other,1444.0,21.832476564862414
+avx2,group_original_bounds,integer/other,5578.0,28.92403422348976
+avx2,point_radix_sort,integer/other,4958.0,93.65319229316206
+avx2,parser_scan_collect,control flow,61289.0,26.15153545171765
+avx2,corner_mapping,control flow,6076.0,13.5625
+avx2,normal_face_accumulation,control flow,1355.0,20.486846084064105
+avx2,group_original_bounds,control flow,3391.0,17.583614207933625
+avx2,point_radix_sort,control flow,311.0,5.874574990555346
+avx2,parser_scan_collect,SSE scalar,0,0.0
+avx2,corner_mapping,SSE scalar,0,0.0
+avx2,normal_face_accumulation,SSE scalar,0,0.0
+avx2,group_original_bounds,SSE scalar,0,0.0
+avx2,point_radix_sort,SSE scalar,0,0.0
+avx2,parser_scan_collect,SSE128 packed/move,0,0.0
+avx2,corner_mapping,SSE128 packed/move,0,0.0
+avx2,normal_face_accumulation,SSE128 packed/move,0,0.0
+avx2,group_original_bounds,SSE128 packed/move,0,0.0
+avx2,point_radix_sort,SSE128 packed/move,0,0.0
+avx2,parser_scan_collect,AVX scalar,425.0,0.18134416562482664
+avx2,corner_mapping,AVX scalar,2435.0,5.435267857142858
+avx2,normal_face_accumulation,AVX scalar,2760.0,41.72966434835198
+avx2,group_original_bounds,AVX scalar,9019.0,46.766917293233085
+avx2,point_radix_sort,AVX scalar,13.0,0.2455610124669437
+avx2,parser_scan_collect,AVX128 packed/move,5455.0,2.3276057023139516
+avx2,corner_mapping,AVX128 packed/move,20266.0,45.236607142857146
+avx2,normal_face_accumulation,AVX128 packed/move,1055.0,15.951013002721501
+avx2,group_original_bounds,AVX128 packed/move,1297.0,6.725434275343531
+avx2,point_radix_sort,AVX128 packed/move,0,0.0
+avx2,parser_scan_collect,AVX256,2766.0,1.180230499101813
+avx2,corner_mapping,AVX256,1429.0,3.189732142857143
+avx2,normal_face_accumulation,AVX256,0,0.0
+avx2,group_original_bounds,AVX256,0,0.0
+avx2,point_radix_sort,AVX256,12.0,0.22667170381564036
+avx2,parser_scan_collect,unresolved,0,0.0
+avx2,corner_mapping,unresolved,0,0.0
+avx2,normal_face_accumulation,unresolved,0,0.0
+avx2,group_original_bounds,unresolved,0,0.0
+avx2,point_radix_sort,unresolved,0,0.0

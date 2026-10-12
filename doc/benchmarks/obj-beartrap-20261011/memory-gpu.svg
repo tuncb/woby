@@ -1,0 +1,352 @@
+<svg role="img" aria-label="GPU memory after model upload: separate copies of render vertices V, triangle indices I, original points Q and proxy points R, with copy arrows from the retained CPU buffers. Precise source data and CPU trees are not uploaded." xmlns:xlink="http://www.w3.org/1999/xlink" width="1120pt" height="1210pt" viewBox="0 0 1120 1210" xmlns="http://www.w3.org/2000/svg" version="1.1"><title>GPU memory after model upload: separate copies of render vertices V, triangle indices I, original points Q and proxy points R, with copy arrows from the retained CPU buffers. Precise source data and CPU trees are not uploaded.</title>
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-12T13:39:25.080352</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 1210
+L 1120 1210
+L 1120 0
+L 0 0
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 29 62
+L 1091 62
+Q 1100 62 1100 71
+L 1100 140
+Q 1100 149 1091 149
+L 29 149
+Q 20 149 20 140
+L 20 71
+Q 20 62 29 62
+z
+" clip-path="url(#pb07229719b)" style="fill: #216e76"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 29 207
+L 311 207
+Q 320 207 320 216
+L 320 346
+Q 320 355 311 355
+L 29 355
+Q 20 355 20 346
+L 20 216
+Q 20 207 29 207
+z
+" clip-path="url(#pb07229719b)" style="fill: #fff3e6"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 459 207
+L 1066 207
+Q 1075 207 1075 216
+L 1075 346
+Q 1075 355 1066 355
+L 459 355
+Q 450 355 450 346
+L 450 216
+Q 450 207 459 207
+z
+" clip-path="url(#pb07229719b)" style="fill: #edf4f4"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 322.003479 281
+Q 384.499827 281 445.598633 281
+" clip-path="url(#pb07229719b)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 440.398633 278.4
+L 445.598633 281
+L 440.398633 283.6
+z
+" clip-path="url(#pb07229719b)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 29 405
+L 311 405
+Q 320 405 320 414
+L 320 544
+Q 320 553 311 553
+L 29 553
+Q 20 553 20 544
+L 20 414
+Q 20 405 29 405
+z
+" clip-path="url(#pb07229719b)" style="fill: #fff3e6"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 459 405
+L 1066 405
+Q 1075 405 1075 414
+L 1075 544
+Q 1075 553 1066 553
+L 459 553
+Q 450 553 450 544
+L 450 414
+Q 450 405 459 405
+z
+" clip-path="url(#pb07229719b)" style="fill: #edf4f4"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 322.003479 479
+Q 384.499827 479 445.598633 479
+" clip-path="url(#pb07229719b)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 440.398633 476.4
+L 445.598633 479
+L 440.398633 481.6
+z
+" clip-path="url(#pb07229719b)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 29 603
+L 311 603
+Q 320 603 320 612
+L 320 742
+Q 320 751 311 751
+L 29 751
+Q 20 751 20 742
+L 20 612
+Q 20 603 29 603
+z
+" clip-path="url(#pb07229719b)" style="fill: #fff3e6"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 459 603
+L 1066 603
+Q 1075 603 1075 612
+L 1075 742
+Q 1075 751 1066 751
+L 459 751
+Q 450 751 450 742
+L 450 612
+Q 450 603 459 603
+z
+" clip-path="url(#pb07229719b)" style="fill: #edf4f4"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 322.003479 677
+Q 384.499827 677 445.598633 677
+" clip-path="url(#pb07229719b)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 440.398633 674.4
+L 445.598633 677
+L 440.398633 679.6
+z
+" clip-path="url(#pb07229719b)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 29 801
+L 311 801
+Q 320 801 320 810
+L 320 940
+Q 320 949 311 949
+L 29 949
+Q 20 949 20 940
+L 20 810
+Q 20 801 29 801
+z
+" clip-path="url(#pb07229719b)" style="fill: #fff3e6"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 459 801
+L 1066 801
+Q 1075 801 1075 810
+L 1075 940
+Q 1075 949 1066 949
+L 459 949
+Q 450 949 450 940
+L 450 810
+Q 450 801 459 801
+z
+" clip-path="url(#pb07229719b)" style="fill: #edf4f4"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 322.003479 875
+Q 384.499827 875 445.598633 875
+" clip-path="url(#pb07229719b)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 440.398633 872.4
+L 445.598633 875
+L 440.398633 877.6
+z
+" clip-path="url(#pb07229719b)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 1077.003174 480
+Q 1089.502978 480 1102.002781 480
+" clip-path="url(#pb07229719b)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 1105 477.998947
+Q 1105 381.000953 1105 284.002959
+" clip-path="url(#pb07229719b)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 1102.996826 281
+Q 1090.497022 281 1079.394761 281
+" clip-path="url(#pb07229719b)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 1084.594761 283.6
+L 1079.394761 281
+L 1084.594761 278.4
+z
+" clip-path="url(#pb07229719b)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_18">
+    <path d="M 29 1066
+L 1091 1066
+Q 1100 1066 1100 1075
+L 1100 1172
+Q 1100 1181 1091 1181
+L 29 1181
+Q 20 1181 20 1172
+L 20 1075
+Q 20 1066 29 1066
+z
+" clip-path="url(#pb07229719b)" style="fill: #edf4f4"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 17px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="20" y="30.917344" transform="rotate(-0 20 30.917344)">GPU memory: model buffer copies after upload</text>
+   </g>
+   <g id="text_2">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="36" y="91.258437" transform="rotate(-0 36 91.258437)">Model buffer payload: 2.823 GB (2.629 GiB)</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="36" y="116.71125" transform="rotate(-0 36 116.71125)">Four CPU streams are copied. This is buffer payload, not total GPU heap allocation or device-wide VRAM use.</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #586e77" x="20" y="185" transform="rotate(-0 20 185)">CPU SOURCE · still retained</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #586e77" x="450" y="185" transform="rotate(-0 450 185)">GPU ALLOCATION · separate copy</text>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="236.042969" transform="rotate(-0 36 236.042969)">V · Vertex array</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 262.261562)">Float XYZ, normal and UV</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 278.51125)">32 bytes per render vertex</text>
+   </g>
+   <g id="text_8">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="466" y="236.258438" transform="rotate(-0 466 236.258438)">vertexBuffer · V copy</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(466 262.261562)">38,414,391 records · 1,229.261 MB</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(466 278.51125)">Positions, normals and UVs used by the solid triangle draw.</text>
+   </g>
+   <g id="text_10">
+    <g id="patch_19">
+     <path d="M 369.883594 273.98
+L 400.116406 273.98
+L 400.116406 259.02
+L 369.883594 259.02
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #586e77" x="385" y="269.357422" transform="rotate(-0 385 269.357422)">copy</text>
+   </g>
+   <g id="text_11">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="434.258438" transform="rotate(-0 36 434.258438)">I · triangle indices</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 460.87375)">uint32 render vertex IDs</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 476.51125)">4 bytes per triangle corner</text>
+   </g>
+   <g id="text_13">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="466" y="434.258438" transform="rotate(-0 466 434.258438)">triangleIndexBuffer · I copy</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(466 460.155625)">227,315,958 IDs · 909.264 MB</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(466 476.51125)">Each ID indexes the V copy above; three IDs form one triangle.</text>
+   </g>
+   <g id="text_15">
+    <g id="patch_20">
+     <path d="M 369.883594 471.98
+L 400.116406 471.98
+L 400.116406 457.02
+L 369.883594 457.02
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #586e77" x="385" y="467.357422" transform="rotate(-0 385 467.357422)">copy</text>
+   </g>
+   <g id="text_16">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="632.258438" transform="rotate(-0 36 632.258438)">Q · Point array</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 658.87375)">Float XYZ + marker ID</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 674.51125)">16 bytes per original point</text>
+   </g>
+   <g id="text_18">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="466" y="632.313125" transform="rotate(-0 466 632.313125)">pointChunks · Q copies</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(466 657.71125)">38,414,391 points · 614.630 MB</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(466 674.51125)">37 buffers, with up to 1,048,576 points per buffer. Used when vertex markers are drawn.</text>
+   </g>
+   <g id="text_20">
+    <g id="patch_21">
+     <path d="M 369.883594 669.98
+L 400.116406 669.98
+L 400.116406 655.02
+L 369.883594 655.02
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #586e77" x="385" y="665.357422" transform="rotate(-0 385 665.357422)">copy</text>
+   </g>
+   <g id="text_21">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="830.258438" transform="rotate(-0 36 830.258438)">R · proxy Point array</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 856.87375)">Float XYZ + marker ID</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 872.51125)">16 bytes per sampled point</text>
+   </g>
+   <g id="text_23">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="466" y="830.258438" transform="rotate(-0 466 830.258438)">proxyChunks · R copies</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(466 855.71125)">4,379,823 proxies · 70.077 MB</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(466 872.51125)">5 buffers. CPU detail selection chooses ranges of Q or R; the tree stays on the CPU.</text>
+   </g>
+   <g id="text_25">
+    <g id="patch_22">
+     <path d="M 369.883594 867.98
+L 400.116406 867.98
+L 400.116406 853.02
+L 369.883594 853.02
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #586e77" x="385" y="863.357422" transform="rotate(-0 385 863.357422)">copy</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #586e77" x="20" y="1026" transform="rotate(-0 20 1026)">Q/R are uploaded even while vertex markers are off. P, S, M, L, T and the annotation cache stay on the CPU.</text>
+   </g>
+   <g id="text_27">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="1095.258437" transform="rotate(-0 36 1095.258437)">Other graphics memory is outside the model-buffer total</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 1120.71125)">Colour/depth and MSAA render targets, programs, per-frame parameters, heaps and driver allocations also use graphics memory.</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 1137.51125)">Upload staging is transient or reusable; reclamation follows GPU completion fences.</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 1154.31125)">The recorded device-wide VRAM peak includes other applications and is not a per-buffer residency measurement.</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pb07229719b">
+   <rect x="0" y="0" width="1120" height="1210"/>
+  </clipPath>
+ </defs>
+</svg>

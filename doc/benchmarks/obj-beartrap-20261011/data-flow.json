@@ -1,0 +1,828 @@
+{
+  "note": "Document diagrams; not new measurements. Payload bytes are count \u00d7 C++ element size.",
+  "memory_snapshot": {
+    "snapshot": "scene publication, plus separately labelled post-load annotation addition",
+    "cpu_populated_array_bytes": 4951676500,
+    "cpu_mesh_populated_bytes": 4110821220,
+    "cpu_mesh_capacity_bytes": 4773997956,
+    "cpu_point_populated_bytes": 840855280,
+    "gpu_model_buffer_bytes": 2823231768,
+    "post_load_annotation_populated_bytes": 465922216,
+    "annotation_tree_capacity_bytes": 170078688,
+    "cpu_arrays": [
+      "P",
+      "V",
+      "I",
+      "S",
+      "M",
+      "L",
+      "Q",
+      "R",
+      "T"
+    ],
+    "gpu_copies": [
+      "V",
+      "I",
+      "Q",
+      "R"
+    ],
+    "annotation_arrays": [
+      "B",
+      "O",
+      "H"
+    ],
+    "element_bytes_windows_x64": {
+      "PointNode": 76,
+      "AnnotationBlock": 40,
+      "AnnotationNode": 72
+    },
+    "excluded": "spare capacity (except the reported mesh capacity), small metadata, allocator/driver overhead, other applications, and transient upload storage"
+  },
+  "chapters": [
+    {
+      "id": "parse",
+      "title": "A. Read, decode and merge",
+      "steps": [
+        {
+          "id": "capacity_preflight",
+          "title": "Check supported capacity",
+          "phase": "capacity_preflight",
+          "input_title": "File",
+          "input": "File size and an optional bounded capacity scan",
+          "action": "Check limits before large allocation.",
+          "output_title": "Continue to parsing",
+          "output": "No early rejection; parsed counts are checked again later.",
+          "effect": "Validate",
+          "note": "The optional scan stops early when a sampled count is within capacity or an attribute/primitive record makes a full scan unnecessary. Process read counters report 1 MiB in the measured preflight.",
+          "metric": "0.002 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "parser_scan_collect",
+          "title": "Read, decode and collect",
+          "phase": "parser_scan_collect",
+          "input_title": "File text",
+          "input": "Buffered reads; 16 ranges; bounded raw text storage",
+          "action": "Convert numbers and references; collect ranges in file order.",
+          "output_title": "Local numeric chunks",
+          "output": "Positions, UVs, face references and metadata; reported chunk bytes: 4.555 GB",
+          "effect": "Create",
+          "note": "RGB extras are decoded and validated, then discarded. No normals are supplied. Read and decode overlap.",
+          "metric": "4.880 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "parser_merge_shape_plan",
+          "title": "Plan shape merge",
+          "phase": "parser_merge_shape_plan",
+          "input_title": "Collected chunks",
+          "input": "Per-chunk counts and shape/group boundaries",
+          "action": "Compute global offsets and final output sizes.",
+          "output_title": "Merge plan",
+          "output": "Offsets, ranges and required array lengths",
+          "effect": "Create plan",
+          "note": "",
+          "metric": "<0.001 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "parser_attribute_allocation",
+          "title": "Allocate merged arrays",
+          "phase": "parser_attribute_allocation",
+          "input_title": "Merge plan",
+          "input": "Final attribute and primitive counts",
+          "action": "Allocate destination arrays.",
+          "output_title": "Empty destinations",
+          "output": "P, U, C and per-face/group metadata F",
+          "effect": "Allocate",
+          "note": "",
+          "metric": "0.117 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "parser_merge_attribute_plan",
+          "title": "Plan copy tasks",
+          "phase": "parser_merge_attribute_plan",
+          "input_title": "Chunks + destinations",
+          "input": "Local arrays and global destination offsets",
+          "action": "Create independent copy and index-adjustment tasks.",
+          "output_title": "Copy task list",
+          "output": "Source/destination ranges and index bases",
+          "effect": "Create plan",
+          "note": "",
+          "metric": "<0.001 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "parser_merge_execute",
+          "title": "Copy and reconcile indices",
+          "phase": "parser_merge_execute",
+          "input_title": "Local arrays + task list",
+          "input": "Numeric chunks and primitive references",
+          "action": "Copy attributes; convert local/relative indices to global references.",
+          "output_title": "P + U + C + F",
+          "output": "37.891 M positions; 38.414 M UVs; 227.316 M corners; one group",
+          "effect": "Copy and update",
+          "note": "Local chunk storage is temporary. Final output sizes in the buffer table are populated payloads, not the reported chunk-byte statistic.",
+          "metric": "0.465 s \u00b7 SSE2 median"
+        }
+      ]
+    },
+    {
+      "id": "coordinates",
+      "title": "B. Set coordinates and prepare construction buffers",
+      "steps": [
+        {
+          "id": "freeform_resolve",
+          "title": "Resolve freeform records",
+          "phase": "freeform_resolve",
+          "input_title": "P + U + C + statements",
+          "input": "Parsed geometry and ordered freeform records",
+          "action": "Resolve any analytic control references.",
+          "output_title": "Resolved geometry",
+          "output": "No freeform patches for this model; polygon data remains.",
+          "effect": "Validate / resolve",
+          "note": "",
+          "metric": "<0.001 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "statement_release",
+          "title": "Release statement records",
+          "phase": "statement_release",
+          "input_title": "Freeform statements + weights",
+          "input": "Records consumed by freeform resolution",
+          "action": "Drop numeric statement and sparse weight storage.",
+          "output_title": "Released temporary storage",
+          "output": "P, U, C and F remain available.",
+          "effect": "Release",
+          "note": "",
+          "metric": "<0.001 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "primitive_validation",
+          "title": "Validate primitive ranges",
+          "phase": "primitive_validation",
+          "input_title": "C + F",
+          "input": "Faces, line/point ranges and source counts",
+          "action": "Check supported counts and primitive structure.",
+          "output_title": "Validated counts",
+          "output": "75.772 M triangles; no line or point primitives",
+          "effect": "Validate",
+          "note": "",
+          "metric": "<0.001 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "source_position_adoption",
+          "title": "Adopt source coordinates",
+          "phase": "source_position_adoption",
+          "input_title": "P: parser position vector",
+          "input": "37.891 M double XYZ records",
+          "action": "Move P into mesh-construction ownership.",
+          "output_title": "P: same elements",
+          "output": "Ownership changes; no second XYZ array is copied.",
+          "effect": "Move",
+          "note": "",
+          "metric": "<0.001 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "coordinate_origin",
+          "title": "Choose coordinate origin",
+          "phase": "coordinate_origin",
+          "input_title": "P: file coordinates",
+          "input": "Double XYZ values",
+          "action": "Validate coordinates and select a local origin.",
+          "output_title": "Origin + P",
+          "output": "Origin is (0,0,0) for this model; P remains.",
+          "effect": "Create small value",
+          "note": "",
+          "metric": "0.355 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "coordinate_rebase",
+          "title": "Subtract the origin",
+          "phase": "coordinate_rebase",
+          "input_title": "P + origin",
+          "input": "The same source position vector",
+          "action": "Rewrite each point as P \u2212 origin.",
+          "output_title": "P: local coordinates",
+          "output": "Same array, updated in place; zero origin here.",
+          "effect": "Update in place",
+          "note": "",
+          "metric": "0.630 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "triangulation",
+          "title": "Inspect / triangulate faces",
+          "phase": "triangulation",
+          "input_title": "P + C + F",
+          "input": "Position table and polygon corner lists",
+          "action": "Split non-triangular polygons when required.",
+          "output_title": "Triangle C + F",
+          "output": "Already triangular here; still checked. Each triangle has three corners.",
+          "effect": "Validate / transform",
+          "note": "",
+          "metric": "0.383 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "mesh_allocation",
+          "title": "Reserve construction arrays",
+          "phase": "mesh_allocation",
+          "input_title": "P + source and corner counts",
+          "input": "Source positions move into a shared owner.",
+          "action": "Reserve render buffers and lookup tables.",
+          "output_title": "Empty V + I + S + M",
+          "output": "P is now shared; allocate primary entries, key storage and later seam buckets.",
+          "effect": "Move, share, allocate",
+          "note": "V and M reserve from source counts, then grow because UV seams add vertices.",
+          "metric": "0.075 s \u00b7 SSE2 median"
+        }
+      ]
+    },
+    {
+      "id": "mapping",
+      "title": "C. Convert corner references into render vertices",
+      "steps": [
+        {
+          "id": "corner_mapping",
+          "title": "Resolve and write corners",
+          "phase": "corner_mapping",
+          "input_title": "P + U + C + lookup tables",
+          "input": "Corner keys are (position ID, UV ID, normal ID).",
+          "action": "Reuse a render ID or create a vertex; write both index streams.",
+          "output_title": "V + I + S + M + groups",
+          "output": "38.414 M render vertices and two 227.316 M corner index streams",
+          "effect": "Create / append",
+          "note": "V stores float positions, normals and flipped-v UVs. I addresses V; S and M address P. Lookup tables are temporary.",
+          "metric": "15.104 s \u00b7 SSE2 median"
+        }
+      ]
+    },
+    {
+      "id": "normals",
+      "title": "D. Generate normals, calculate bounds and publish",
+      "steps": [
+        {
+          "id": "normal_check",
+          "title": "Check for complete normals",
+          "phase": "normal_check",
+          "input_title": "V.normal",
+          "input": "Initial normal fields; all are zero for this input.",
+          "action": "Decide whether normals must be generated.",
+          "output_title": "Generation decision",
+          "output": "Missing normals: generate them for this model.",
+          "effect": "Validate",
+          "note": "",
+          "metric": "<0.001 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "normal_clear",
+          "title": "Clear normal accumulators",
+          "phase": "normal_clear",
+          "input_title": "V",
+          "input": "The constructed render vertex array",
+          "action": "Set each vertex normal to zero.",
+          "output_title": "V: same array",
+          "output": "Normal fields are ready for accumulation.",
+          "effect": "Update in place",
+          "note": "",
+          "metric": "0.098 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "normal_face_accumulation",
+          "title": "Accumulate face normals",
+          "phase": "normal_face_accumulation",
+          "input_title": "V.position + I",
+          "input": "Three indexed render vertices per triangle",
+          "action": "Compute a unit face normal and add it to its three vertex normals.",
+          "output_title": "V.normal accumulators",
+          "output": "Sums of adjacent unit face normals; 75.772 M triangles processed",
+          "effect": "Update in place",
+          "note": "Face normals are transient local values; there is no retained array of all face normals.",
+          "metric": "2.054 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "normal_vertex_normalize",
+          "title": "Normalize vertex sums",
+          "phase": "normal_vertex_normalize",
+          "input_title": "V.normal accumulators",
+          "input": "One sum per render vertex",
+          "action": "Normalize the accumulated vectors.",
+          "output_title": "V: completed normals",
+          "output": "Same 32-byte vertex records, ready for shading",
+          "effect": "Update in place",
+          "note": "",
+          "metric": "0.261 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "render_bounds",
+          "title": "Calculate whole-mesh bounds",
+          "phase": "render_bounds",
+          "input_title": "V.position",
+          "input": "38.414 M float XYZ records",
+          "action": "Find min/max and centre; scan again for radius.",
+          "output_title": "Mesh.bounds",
+          "output": "Small float bounds value; radius uses vertex distances.",
+          "effect": "Create small value",
+          "note": "",
+          "metric": "0.511 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "original_bounds",
+          "title": "Calculate original bounds",
+          "phase": "original_bounds",
+          "input_title": "P + M + origin",
+          "input": "For vertex i, fetch P[M[i]] and add the origin.",
+          "action": "Reduce precise coordinates to min/max.",
+          "output_title": "Mesh.originalBounds",
+          "output": "Two double XYZ values; cached for whole-mesh use",
+          "effect": "Create small value",
+          "note": "",
+          "metric": "1.183 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "mesh_publish",
+          "title": "Publish CPU geometry",
+          "phase": "mesh_publish",
+          "input_title": "Draft V + I + M; shared P",
+          "input": "Completed render buffers, group ranges and source data S",
+          "action": "Validate storage and transfer its owner.",
+          "output_title": "Shared immutable mesh",
+          "output": "The same arrays can be read by UI, upload and workers.",
+          "effect": "Move / share",
+          "note": "Publication does not copy the complete mesh. S remains in SourceMeshData; P has one shared owner.",
+          "metric": "0.032 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "parser_lookup_release",
+          "title": "Release construction lookups",
+          "phase": "parser_lookup_release",
+          "input_title": "C + F + primary / key / bucket tables",
+          "input": "No longer needed after render IDs are written.",
+          "action": "Destroy parsed polygons and lookup tables.",
+          "output_title": "Retained P + V + I + S + M",
+          "output": "Temporary lookup storage is released.",
+          "effect": "Release",
+          "note": "U and the empty parsed normal array are released at importer return; that destruction is not a separately timed diagram step.",
+          "metric": "0.430 s \u00b7 SSE2 median"
+        }
+      ]
+    },
+    {
+      "id": "groups",
+      "title": "E. Create group controls and point membership",
+      "steps": [
+        {
+          "id": "group_render_bounds",
+          "title": "Calculate local group bounds",
+          "phase": "group_render_bounds",
+          "input_title": "V + I + group range",
+          "input": "For this group, I contains all 227.316 M corners.",
+          "action": "Gather float positions and reduce group bounds.",
+          "output_title": "G.localBounds",
+          "output": "Min/max, centre and box-based radius; no new V array",
+          "effect": "Read again / create small value",
+          "note": "",
+          "metric": "2.229 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "group_original_bounds",
+          "title": "Calculate original group bounds",
+          "phase": "group_original_bounds",
+          "input_title": "I + M + P + origin",
+          "input": "Corner \u2192 render ID \u2192 source ID \u2192 precise XYZ",
+          "action": "Reduce original-frame coordinates for this group.",
+          "output_title": "G.originalBounds",
+          "output": "Two double XYZ values; G also retains display settings.",
+          "effect": "Read again / create small value",
+          "note": "The group pass traverses corners rather than all unique render vertices. It repeats geometry already covered by whole-mesh bounds.",
+          "metric": "6.172 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "gpu_index_validation",
+          "title": "Validate upload indices",
+          "phase": "gpu_index_validation",
+          "input_title": "V + I + group ranges",
+          "input": "Published immutable mesh; display feature flags",
+          "action": "Check capacities, index bounds and valid triangle ranges.",
+          "output_title": "Validated upload input",
+          "output": "Same mesh arrays; no new geometry",
+          "effect": "Validate",
+          "note": "",
+          "metric": "0.634 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "point_membership_allocate",
+          "title": "Allocate membership buffers",
+          "phase": "point_membership_allocate",
+          "input_title": "V count + group count",
+          "input": "38.414 M render vertices; one group",
+          "action": "Reserve L and initialize temporary group markers.",
+          "output_title": "Empty L + membership scratch",
+          "output": "L uses 32-bit vertex IDs; scratch uses size_t per vertex.",
+          "effect": "Allocate",
+          "note": "",
+          "metric": "0.059 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "point_membership_build",
+          "title": "Collect unique group vertices",
+          "phase": "point_membership_build",
+          "input_title": "I + group ranges + scratch",
+          "input": "Walk corners; mark vertices already added to this group.",
+          "action": "Add each referenced render vertex once per group.",
+          "output_title": "L + GPU node ranges",
+          "output": "38.414 M point-to-vertex entries for the one group",
+          "effect": "Create",
+          "note": "Membership scratch is released when scene preparation returns. No edge-index buffer is created with the measured default features.",
+          "metric": "1.298 s \u00b7 SSE2 median"
+        }
+      ]
+    },
+    {
+      "id": "points",
+      "title": "F. Build the point hierarchy",
+      "steps": [
+        {
+          "id": "point_range_bounds",
+          "title": "Calculate point range bounds",
+          "phase": "point_range_bounds",
+          "input_title": "L + V.position + group ranges",
+          "input": "Use each marker ID to find its render position.",
+          "action": "Validate positions and calculate group min/max.",
+          "output_title": "Point group bounds + L",
+          "output": "Small bounds used to normalize spatial keys",
+          "effect": "Create small value",
+          "note": "",
+          "metric": "1.391 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "point_morton_keys",
+          "title": "Create spatial sort keys",
+          "phase": "point_morton_keys",
+          "input_title": "Point bounds + L + V.position",
+          "input": "38.414 M marker positions",
+          "action": "Interleave 10-bit coordinates into a Morton key.",
+          "output_title": "Kp: (key, marker ID)",
+          "output": "8 bytes per point; ID retains the original mapping.",
+          "effect": "Create temporary array",
+          "note": "",
+          "metric": "1.562 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "point_radix_sort",
+          "title": "Sort point keys",
+          "phase": "point_radix_sort",
+          "input_title": "Kp",
+          "input": "Key array plus a same-size temporary scratch array",
+          "action": "Run four stable 8-bit radix passes.",
+          "output_title": "Kp: spatial order",
+          "output": "Positions have not been rewritten or quantized.",
+          "effect": "Update / temporary allocation",
+          "note": "",
+          "metric": "1.303 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "point_sorted_gather",
+          "title": "Gather sorted point records",
+          "phase": "point_sorted_gather",
+          "input_title": "Sorted Kp + L + V.position",
+          "input": "Each marker ID still identifies its render vertex.",
+          "action": "Copy positions and IDs into Q; release keys.",
+          "output_title": "Q + retained L",
+          "output": "38.414 M records; Q is 614.630 MB, L is 153.658 MB.",
+          "effect": "Create / release",
+          "note": "",
+          "metric": "0.713 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "point_tree_build",
+          "title": "Build tree and proxy samples",
+          "phase": "point_tree_build",
+          "input_title": "Q",
+          "input": "Spatially ordered original points with persistent IDs",
+          "action": "Split ranges, reduce bounds and sample original points.",
+          "output_title": "T + R + group roots",
+          "output": "32,767 nodes; 4,379,823 proxy points; Q remains.",
+          "effect": "Create",
+          "note": "Proxy records are sampled original points, not averaged replacements. R occupies 70.077 MB.",
+          "metric": "0.416 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "point_navigation_cuts",
+          "title": "Prepare navigation cuts",
+          "phase": "point_navigation_cuts",
+          "input_title": "T + R + group roots",
+          "input": "Tree ranges and proxy counts",
+          "action": "Choose camera-independent cuts for several budgets.",
+          "output_title": "Cloud + prepared cuts",
+          "output": "Q, R, T, L and group metadata; ready for upload and picking",
+          "effect": "Create small selection lists",
+          "note": "",
+          "metric": "0.008 s \u00b7 SSE2 median"
+        }
+      ]
+    },
+    {
+      "id": "gpu",
+      "title": "G. Copy selected buffers to the GPU and draw",
+      "steps": [
+        {
+          "id": "gpu_upload",
+          "title": "Upload selected buffers",
+          "phase": null,
+          "input_title": "V + I + Q + R",
+          "input": "CPU arrays plus prepared node ranges",
+          "action": "Submit incremental buffer creation/copies to the graphics backend.",
+          "output_title": "GPU buffer copies",
+          "output": "V: 1,229.261 MB; I: 909.264 MB; Q + R: 684.707 MB",
+          "effect": "Copy CPU \u2192 GPU",
+          "note": "",
+          "metric": "1.227 s \u00b7 submission steps"
+        },
+        {
+          "id": "scene_publication",
+          "title": "Publish the viewer scene",
+          "phase": null,
+          "input_title": "GPU handles + shared mesh + G",
+          "input": "CPU scene metadata and completed upload job",
+          "action": "Install the loaded file into the viewer scene.",
+          "output_title": "Visible scene",
+          "output": "CPU geometry stays shared; graphics handles stay in runtime state.",
+          "effect": "Publish",
+          "note": "",
+          "metric": "55.76 s \u00b7 complete load endpoint"
+        },
+        {
+          "id": "gpu_render",
+          "title": "Draw the model",
+          "phase": null,
+          "input_title": "GPU V + I; camera and G",
+          "input": "Triangle vertex/index buffers, matrices and appearance",
+          "action": "Run vertex and fragment work and present the frame.",
+          "output_title": "Colour/depth targets",
+          "output": "A rendered frame; screenshot capture adds readback.",
+          "effect": "Create per-frame pixels",
+          "note": "",
+          "metric": "18.74 ms \u00b7 median GPU frame"
+        }
+      ]
+    },
+    {
+      "id": "annotation",
+      "title": "H. Prepare annotations on a background worker",
+      "steps": [
+        {
+          "id": "annotation_blocks_fingerprints",
+          "title": "Build blocks and fingerprints",
+          "phase": "annotation_blocks_fingerprints",
+          "input_title": "Shared V + I + group ranges",
+          "input": "The same immutable mesh used by the viewer",
+          "action": "Reduce bounds in blocks and hash group geometry.",
+          "output_title": "B + group fingerprints",
+          "output": "295,985 blocks, up to 256 triangles each; one group fingerprint",
+          "effect": "Create derived cache",
+          "note": "",
+          "metric": "4.176 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "annotation_morton_keys",
+          "title": "Create triangle centroid keys",
+          "phase": "annotation_morton_keys",
+          "input_title": "B + V + I",
+          "input": "Three indexed positions for each triangle",
+          "action": "Find each centroid and encode its spatial order.",
+          "output_title": "Ka: (key, original offset)",
+          "output": "75.772 M pairs; 606.176 MB of populated key payload",
+          "effect": "Create temporary array",
+          "note": "",
+          "metric": "4.753 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "annotation_radix_sort",
+          "title": "Sort keys and extract offsets",
+          "phase": "annotation_radix_sort",
+          "input_title": "Ka + scratch",
+          "input": "Same-size scratch supports four radix passes.",
+          "action": "Sort centroid keys, then keep original triangle offsets.",
+          "output_title": "O: offsets into I",
+          "output": "75.772 M offsets; 303.088 MB. Keys and scratch are released.",
+          "effect": "Create / release",
+          "note": "",
+          "metric": "3.364 s \u00b7 SSE2 median"
+        },
+        {
+          "id": "annotation_tree_build",
+          "title": "Build triangle search tree",
+          "phase": "annotation_tree_build",
+          "input_title": "O + shared V + I",
+          "input": "Spatial order and the original triangle geometry",
+          "action": "Build leaf bounds and combine child bounds.",
+          "output_title": "H + annotation cache",
+          "output": "2,097,151 nodes; cache contains B, fingerprints, O/H and a shared geometry owner.",
+          "effect": "Create / share",
+          "note": "",
+          "metric": "2.611 s \u00b7 SSE2 median"
+        }
+      ]
+    },
+    {
+      "id": "controls",
+      "title": "I. Measurement controls, outside production loading",
+      "steps": [
+        {
+          "id": "control_read_cached",
+          "title": "Cached read control",
+          "phase": null,
+          "input_title": "OBJ file through Windows cache",
+          "input": "Disjoint ranges; synchronous 256 KiB reads",
+          "action": "Read all bytes without parsing.",
+          "output_title": "Read buffers + byte count",
+          "output": "7,108,991,827 bytes verified; no geometry produced",
+          "effect": "Measurement only",
+          "note": "",
+          "metric": "0.667 s \u00b7 8-worker median"
+        },
+        {
+          "id": "control_read_native",
+          "title": "Native read control",
+          "phase": null,
+          "input_title": "OBJ file from input device",
+          "input": "Aligned reads bypass the Windows file cache.",
+          "action": "Read all bytes without parsing.",
+          "output_title": "Read buffers + byte count",
+          "output": "Physical-device read control; not cold production parsing",
+          "effect": "Measurement only",
+          "note": "",
+          "metric": "3.354 s \u00b7 8-worker median"
+        },
+        {
+          "id": "control_copy",
+          "title": "Memory copy control",
+          "phase": null,
+          "input_title": "Initialized source buffer",
+          "input": "512 MiB; separate 512 MiB destination",
+          "action": "Copy source to destination 16 times.",
+          "output_title": "Destination bytes + throughput",
+          "output": "Contiguous copy calibration; no mesh or indices",
+          "effect": "Measurement only",
+          "note": "",
+          "metric": "0.658 s \u00b7 median"
+        },
+        {
+          "id": "geometry_validation",
+          "title": "Probe geometry validation",
+          "phase": "geometry_validation",
+          "input_title": "P + V + I + M",
+          "input": "Read positions, UVs, indices and normals after timing.",
+          "action": "Calculate geometry and normal fingerprints.",
+          "output_title": "Two integer fingerprints",
+          "output": "Verify compared outputs; no new mesh geometry",
+          "effect": "Measurement only",
+          "note": "This extra pass is excluded from production load and CPU preparation totals.",
+          "metric": "6.130 s \u00b7 SSE2 median"
+        }
+      ]
+    }
+  ],
+  "buffers": [
+    {
+      "id": "P",
+      "name": "Precise source positions",
+      "records": 37890645,
+      "layout": "double XYZ; 24 bytes",
+      "payload_bytes": 909375480,
+      "lifetime": "Moved, then shared by MeshGeometry and SourceMeshData; stays on the CPU."
+    },
+    {
+      "id": "U",
+      "name": "Parsed UV coordinates",
+      "records": 38414285,
+      "layout": "double UV; 16 bytes",
+      "payload_bytes": 614628560,
+      "lifetime": "Temporary; read by corner mapping and released when the importer returns."
+    },
+    {
+      "id": "C",
+      "name": "Parsed corner references",
+      "records": 227315958,
+      "layout": "three 32-bit signed IDs; 12 bytes",
+      "payload_bytes": 2727791496,
+      "lifetime": "Temporary; replaced by I and S, then released."
+    },
+    {
+      "id": "F",
+      "name": "Parsed face and group metadata",
+      "records": 75771986,
+      "layout": "face sizes, material/smoothing IDs and group boundaries",
+      "payload_bytes": null,
+      "lifetime": "Temporary per-face records; final group ranges and names are copied into MeshNode metadata."
+    },
+    {
+      "id": "V",
+      "name": "Render vertices",
+      "records": 38414391,
+      "layout": "float XYZ + normal + UV; 32 bytes",
+      "payload_bytes": 1229260512,
+      "lifetime": "CPU mesh retains V; GPU gets a copy. Normal generation updates this array in place."
+    },
+    {
+      "id": "I",
+      "name": "Triangle render indices",
+      "records": 227315958,
+      "layout": "32-bit render vertex ID; 4 bytes",
+      "payload_bytes": 909263832,
+      "lifetime": "CPU and GPU each retain this stream; refers to V."
+    },
+    {
+      "id": "S",
+      "name": "Triangle source indices",
+      "records": 227315958,
+      "layout": "32-bit source position ID; 4 bytes",
+      "payload_bytes": 909263832,
+      "lifetime": "Retained in SourceMeshData on the CPU; refers to P."
+    },
+    {
+      "id": "M",
+      "name": "Render-to-source map",
+      "records": 38414391,
+      "layout": "32-bit source position ID; 4 bytes",
+      "payload_bytes": 153657564,
+      "lifetime": "Retained on the CPU. Precise position of vertex i is P[M[i]]."
+    },
+    {
+      "id": "L",
+      "name": "Overlay point ID-to-vertex map",
+      "records": 38414391,
+      "layout": "32-bit render vertex ID; 4 bytes",
+      "payload_bytes": 153657564,
+      "lifetime": "Moved into Cloud.sourceVertices; retained for CPU picking and source identity."
+    },
+    {
+      "id": "Kp",
+      "name": "Point sort keys",
+      "records": 38414391,
+      "layout": "Morton key + point ID; 8 bytes",
+      "payload_bytes": 307315128,
+      "lifetime": "Temporary; radix sorting also uses a same-size scratch array."
+    },
+    {
+      "id": "Q",
+      "name": "Spatially ordered point records",
+      "records": 38414391,
+      "layout": "float XYZ + original marker ID; 16 bytes",
+      "payload_bytes": 614630256,
+      "lifetime": "CPU and GPU retain Q; stored coordinates are not quantized."
+    },
+    {
+      "id": "R",
+      "name": "Point proxy records",
+      "records": 4379823,
+      "layout": "same 16-byte Point layout",
+      "payload_bytes": 70077168,
+      "lifetime": "CPU and GPU retain R; sampled original points retain their IDs."
+    },
+    {
+      "id": "T",
+      "name": "Point hierarchy",
+      "records": 32767,
+      "layout": "bounds + ranges + child/proxy IDs; 76 bytes",
+      "payload_bytes": 2490292,
+      "lifetime": "CPU tree; guides detail selection, navigation and picking."
+    },
+    {
+      "id": "G",
+      "name": "Logical group controls",
+      "records": 1,
+      "layout": "UiGroupState: bounds, display settings and transforms",
+      "payload_bytes": null,
+      "lifetime": "UiState retains logical controls on the CPU; runtime converts them to draw parameters."
+    },
+    {
+      "id": "B",
+      "name": "Annotation triangle blocks",
+      "records": 295985,
+      "layout": "bounds + index range; 40 bytes; up to 256 triangles",
+      "payload_bytes": 11839400,
+      "lifetime": "CPU annotation cache; geometry itself is shared."
+    },
+    {
+      "id": "Ka",
+      "name": "Annotation centroid keys",
+      "records": 75771986,
+      "layout": "Morton key + original triangle offset; 8 bytes",
+      "payload_bytes": 606175888,
+      "lifetime": "Temporary; a same-size scratch array is used by radix sorting."
+    },
+    {
+      "id": "O",
+      "name": "Spatial triangle offsets",
+      "records": 75771986,
+      "layout": "32-bit offset into I; 4 bytes",
+      "payload_bytes": 303087944,
+      "lifetime": "CPU annotation cache; preserves original triangle identity."
+    },
+    {
+      "id": "H",
+      "name": "Annotation spatial tree",
+      "records": 2097151,
+      "layout": "bounds + child and triangle ranges; 72 bytes",
+      "payload_bytes": 150994872,
+      "lifetime": "CPU annotation cache; prunes triangle searches."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+case,workers,median_s,min_s,max_s
+replay_original_api,1,8.1184346,8.1127752,8.1655362
+replay_unchecked_chain,1,1.9450692,1.9433597,1.9633763
+replay_source_indices,1,1.8895117,1.8880661,1.9231315
+replay_expanded_indexed,1,1.4470678,1.4381501,1.4543858
+replay_unique_vertices,1,0.246402,0.2453102,0.2484542
+replay_source_parallel,2,0.9623678,0.9378509,0.9714964
+replay_chain_parallel,2,1.0026217,0.9758473,1.0049539
+replay_source_parallel,4,0.4804246,0.4794689,0.5212475
+replay_chain_parallel,4,0.507647,0.4936132,0.5586074
+replay_source_parallel,8,0.2820534,0.2684526,0.3096245
+replay_chain_parallel,8,0.2768817,0.2762901,0.3155079
+replay_source_parallel,16,0.2003835,0.1818891,0.2094403
+replay_chain_parallel,16,0.2072894,0.1919848,0.2314343
+replay_source_prefetch_16,1,1.7783196,1.7737103,1.7866209
+replay_source_prefetch_64,1,1.7681714,1.7600972,1.7731736
+replay_source_prefetch_256,1,1.7553632,1.7504375,1.7605251

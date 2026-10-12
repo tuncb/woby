@@ -1,0 +1,635 @@
+<svg role="img" aria-label="F. Build the point hierarchy. Horizontal arrows show data; dashed vertical arrows show execution order." xmlns:xlink="http://www.w3.org/1999/xlink" width="1120pt" height="1147pt" viewBox="0 0 1120 1147" xmlns="http://www.w3.org/2000/svg" version="1.1"><title>F. Build the point hierarchy. Horizontal arrows show data; dashed vertical arrows show execution order.</title>
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-12T13:39:29.784582</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 1147
+L 1120 1147
+L 1120 0
+L 0 0
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 29 72
+L 343 72
+Q 352 72 352 81
+L 352 199
+Q 352 208 343 208
+L 29 208
+Q 20 208 20 199
+L 20 81
+Q 20 72 29 72
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #fff3e6"/>
+   </g>
+   <g id="patch_3">
+    <a xlink:href="report.html#flow-step-point_range_bounds" target="_self">
+     <path d="M 426 72
+L 693 72
+Q 702 72 702 81
+L 702 199
+Q 702 208 693 208
+L 426 208
+Q 417 208 417 199
+L 417 81
+Q 417 72 426 72
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #216e76"/>
+    </a>
+   </g>
+   <g id="patch_4">
+    <path d="M 776 72
+L 1090 72
+Q 1099 72 1099 81
+L 1099 199
+Q 1099 208 1090 208
+L 776 208
+Q 767 208 767 199
+L 767 81
+Q 767 72 776 72
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #edf4f4"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 354.003479 140
+Q 384.000266 140 412.599511 140
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 407.399511 137.4
+L 412.599511 140
+L 407.399511 142.6
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 704.003479 140
+Q 734.000266 140 762.599511 140
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 757.399511 137.4
+L 762.599511 140
+L 757.399511 142.6
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 559 210.002258
+Q 559 230.001299 559 248.602798
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke-dasharray: 4.625,2; stroke-dashoffset: 0; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 561.6 243.402798
+L 559 248.602798
+L 556.4 243.402798
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke-dasharray: 4.625,2; stroke-dashoffset: 0; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 29 253
+L 343 253
+Q 352 253 352 262
+L 352 380
+Q 352 389 343 389
+L 29 389
+Q 20 389 20 380
+L 20 262
+Q 20 253 29 253
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #fff3e6"/>
+   </g>
+   <g id="patch_9">
+    <a xlink:href="report.html#flow-step-point_morton_keys" target="_self">
+     <path d="M 426 253
+L 693 253
+Q 702 253 702 262
+L 702 380
+Q 702 389 693 389
+L 426 389
+Q 417 389 417 380
+L 417 262
+Q 417 253 426 253
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #216e76"/>
+    </a>
+   </g>
+   <g id="patch_10">
+    <path d="M 776 253
+L 1090 253
+Q 1099 253 1099 262
+L 1099 380
+Q 1099 389 1090 389
+L 776 389
+Q 767 389 767 380
+L 767 262
+Q 767 253 776 253
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #edf4f4"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 354.003479 321
+Q 384.000266 321 412.599511 321
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 407.399511 318.4
+L 412.599511 321
+L 407.399511 323.6
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 704.003479 321
+Q 734.000266 321 762.599511 321
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 757.399511 318.4
+L 762.599511 321
+L 757.399511 323.6
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 559 391.002258
+Q 559 411.001299 559 429.602798
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke-dasharray: 4.625,2; stroke-dashoffset: 0; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 561.6 424.402798
+L 559 429.602798
+L 556.4 424.402798
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke-dasharray: 4.625,2; stroke-dashoffset: 0; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 29 434
+L 343 434
+Q 352 434 352 443
+L 352 561
+Q 352 570 343 570
+L 29 570
+Q 20 570 20 561
+L 20 443
+Q 20 434 29 434
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #fff3e6"/>
+   </g>
+   <g id="patch_15">
+    <a xlink:href="report.html#flow-step-point_radix_sort" target="_self">
+     <path d="M 426 434
+L 693 434
+Q 702 434 702 443
+L 702 561
+Q 702 570 693 570
+L 426 570
+Q 417 570 417 561
+L 417 443
+Q 417 434 426 434
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #216e76"/>
+    </a>
+   </g>
+   <g id="patch_16">
+    <path d="M 776 434
+L 1090 434
+Q 1099 434 1099 443
+L 1099 561
+Q 1099 570 1090 570
+L 776 570
+Q 767 570 767 561
+L 767 443
+Q 767 434 776 434
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #edf4f4"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 354.003479 502
+Q 384.000266 502 412.599511 502
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 407.399511 499.4
+L 412.599511 502
+L 407.399511 504.6
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_18">
+    <path d="M 704.003479 502
+Q 734.000266 502 762.599511 502
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 757.399511 499.4
+L 762.599511 502
+L 757.399511 504.6
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_19">
+    <path d="M 559 572.002258
+Q 559 592.001299 559 610.602798
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke-dasharray: 4.625,2; stroke-dashoffset: 0; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 561.6 605.402798
+L 559 610.602798
+L 556.4 605.402798
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke-dasharray: 4.625,2; stroke-dashoffset: 0; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_20">
+    <path d="M 29 615
+L 343 615
+Q 352 615 352 624
+L 352 742
+Q 352 751 343 751
+L 29 751
+Q 20 751 20 742
+L 20 624
+Q 20 615 29 615
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #fff3e6"/>
+   </g>
+   <g id="patch_21">
+    <a xlink:href="report.html#flow-step-point_sorted_gather" target="_self">
+     <path d="M 426 615
+L 693 615
+Q 702 615 702 624
+L 702 742
+Q 702 751 693 751
+L 426 751
+Q 417 751 417 742
+L 417 624
+Q 417 615 426 615
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #216e76"/>
+    </a>
+   </g>
+   <g id="patch_22">
+    <path d="M 776 615
+L 1090 615
+Q 1099 615 1099 624
+L 1099 742
+Q 1099 751 1090 751
+L 776 751
+Q 767 751 767 742
+L 767 624
+Q 767 615 776 615
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #edf4f4"/>
+   </g>
+   <g id="patch_23">
+    <path d="M 354.003479 683
+Q 384.000266 683 412.599511 683
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 407.399511 680.4
+L 412.599511 683
+L 407.399511 685.6
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_24">
+    <path d="M 704.003479 683
+Q 734.000266 683 762.599511 683
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 757.399511 680.4
+L 762.599511 683
+L 757.399511 685.6
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_25">
+    <path d="M 559 753.002258
+Q 559 773.001299 559 791.602798
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke-dasharray: 4.625,2; stroke-dashoffset: 0; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 561.6 786.402798
+L 559 791.602798
+L 556.4 786.402798
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke-dasharray: 4.625,2; stroke-dashoffset: 0; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_26">
+    <path d="M 29 796
+L 343 796
+Q 352 796 352 805
+L 352 923
+Q 352 932 343 932
+L 29 932
+Q 20 932 20 923
+L 20 805
+Q 20 796 29 796
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #fff3e6"/>
+   </g>
+   <g id="patch_27">
+    <a xlink:href="report.html#flow-step-point_tree_build" target="_self">
+     <path d="M 426 796
+L 693 796
+Q 702 796 702 805
+L 702 923
+Q 702 932 693 932
+L 426 932
+Q 417 932 417 923
+L 417 805
+Q 417 796 426 796
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #216e76"/>
+    </a>
+   </g>
+   <g id="patch_28">
+    <path d="M 776 796
+L 1090 796
+Q 1099 796 1099 805
+L 1099 923
+Q 1099 932 1090 932
+L 776 932
+Q 767 932 767 923
+L 767 805
+Q 767 796 776 796
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #edf4f4"/>
+   </g>
+   <g id="patch_29">
+    <path d="M 354.003479 864
+Q 384.000266 864 412.599511 864
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 407.399511 861.4
+L 412.599511 864
+L 407.399511 866.6
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_30">
+    <path d="M 704.003479 864
+Q 734.000266 864 762.599511 864
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 757.399511 861.4
+L 762.599511 864
+L 757.399511 866.6
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_31">
+    <path d="M 559 934.002258
+Q 559 954.001299 559 972.602798
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke-dasharray: 4.625,2; stroke-dashoffset: 0; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 561.6 967.402798
+L 559 972.602798
+L 556.4 967.402798
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke-dasharray: 4.625,2; stroke-dashoffset: 0; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_32">
+    <path d="M 29 977
+L 343 977
+Q 352 977 352 986
+L 352 1104
+Q 352 1113 343 1113
+L 29 1113
+Q 20 1113 20 1104
+L 20 986
+Q 20 977 29 977
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #fff3e6"/>
+   </g>
+   <g id="patch_33">
+    <a xlink:href="report.html#flow-step-point_navigation_cuts" target="_self">
+     <path d="M 426 977
+L 693 977
+Q 702 977 702 986
+L 702 1104
+Q 702 1113 693 1113
+L 426 1113
+Q 417 1113 417 1104
+L 417 986
+Q 417 977 426 977
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #216e76"/>
+    </a>
+   </g>
+   <g id="patch_34">
+    <path d="M 776 977
+L 1090 977
+Q 1099 977 1099 986
+L 1099 1104
+Q 1099 1113 1090 1113
+L 776 1113
+Q 767 1113 767 1104
+L 767 986
+Q 767 977 776 977
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #edf4f4"/>
+   </g>
+   <g id="patch_35">
+    <path d="M 354.003479 1045
+Q 384.000266 1045 412.599511 1045
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 407.399511 1042.4
+L 412.599511 1045
+L 407.399511 1047.6
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_36">
+    <path d="M 704.003479 1045
+Q 734.000266 1045 762.599511 1045
+" clip-path="url(#p18e62e25b7)" style="fill: none; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 757.399511 1042.4
+L 762.599511 1045
+L 757.399511 1047.6
+z
+" clip-path="url(#p18e62e25b7)" style="fill: #586e77; stroke: #586e77; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 17px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="20" y="31.917344" transform="rotate(-0 20 31.917344)">F. Build the point hierarchy</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #586e77" x="20" y="49" transform="rotate(-0 20 49)">INPUT: existing data</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #586e77" x="417" y="49" transform="rotate(-0 417 49)">STEP: work done</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #586e77" x="767" y="49" transform="rotate(-0 767 49)">OUTPUT: data or state</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="101.258437" transform="rotate(-0 36 101.258437)">L + V.position + group ranges</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="126.71125" transform="rotate(-0 36 126.71125)">Use each marker ID to find its render position.</text>
+   </g>
+   <g id="text_7">
+    <a xlink:href="report.html#flow-step-point_range_bounds" target="_self">
+     <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="433" y="101.258437" transform="rotate(-0 433 101.258437)">Calculate point range bounds</text>
+    </a>
+   </g>
+   <g id="text_8">
+    <a xlink:href="report.html#flow-step-point_range_bounds" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 127.87375)">1.391 s · SSE2 median</text>
+    </a>
+    <a xlink:href="report.html#flow-step-point_range_bounds" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 143.51125)">Validate positions and calculate group</text>
+    </a>
+    <a xlink:href="report.html#flow-step-point_range_bounds" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 161.002187)">min/max.</text>
+    </a>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="783" y="101.258437" transform="rotate(-0 783 101.258437)">Point group bounds + L</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="783" y="126.71125" transform="rotate(-0 783 126.71125)">Small bounds used to normalize spatial keys</text>
+   </g>
+   <g id="text_11">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="282.313125" transform="rotate(-0 36 282.313125)">Point bounds + L + V.position</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="307.71125" transform="rotate(-0 36 307.71125)">38.414 M marker positions</text>
+   </g>
+   <g id="text_13">
+    <a xlink:href="report.html#flow-step-point_morton_keys" target="_self">
+     <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="433" y="282.258438" transform="rotate(-0 433 282.258438)">Create spatial sort keys</text>
+    </a>
+   </g>
+   <g id="text_14">
+    <a xlink:href="report.html#flow-step-point_morton_keys" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 308.87375)">1.562 s · SSE2 median</text>
+    </a>
+    <a xlink:href="report.html#flow-step-point_morton_keys" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 325.67375)">Interleave 10-bit coordinates into a</text>
+    </a>
+    <a xlink:href="report.html#flow-step-point_morton_keys" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 341.31125)">Morton key.</text>
+    </a>
+   </g>
+   <g id="text_15">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="783" y="282.258438" transform="rotate(-0 783 282.258438)">Kp: (key, marker ID)</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(783 307.71125)">8 bytes per point; ID retains the original</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(783 324.51125)">mapping.</text>
+   </g>
+   <g id="text_17">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="463.097656" transform="rotate(-0 36 463.097656)">Kp</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 488.71125)">Key array plus a same-size temporary scratch</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 504.312187)">array</text>
+   </g>
+   <g id="text_19">
+    <a xlink:href="report.html#flow-step-point_radix_sort" target="_self">
+     <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="433" y="463.258438" transform="rotate(-0 433 463.258438)">Sort point keys</text>
+    </a>
+   </g>
+   <g id="text_20">
+    <a xlink:href="report.html#flow-step-point_radix_sort" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 489.87375)">1.303 s · SSE2 median</text>
+    </a>
+    <a xlink:href="report.html#flow-step-point_radix_sort" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 505.51125)">Run four stable 8-bit radix passes.</text>
+    </a>
+   </g>
+   <g id="text_21">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="783" y="463.313125" transform="rotate(-0 783 463.313125)">Kp: spatial order</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="783" y="488.71125" transform="rotate(-0 783 488.71125)">Positions have not been rewritten or quantized.</text>
+   </g>
+   <g id="text_23">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="644.313125" transform="rotate(-0 36 644.313125)">Sorted Kp + L + V.position</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 670.87375)">Each marker ID still identifies its render</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 687.327812)">vertex.</text>
+   </g>
+   <g id="text_25">
+    <a xlink:href="report.html#flow-step-point_sorted_gather" target="_self">
+     <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="433" y="644.313125" transform="rotate(-0 433 644.313125)">Gather sorted point records</text>
+    </a>
+   </g>
+   <g id="text_26">
+    <a xlink:href="report.html#flow-step-point_sorted_gather" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 670.87375)">0.713 s · SSE2 median</text>
+    </a>
+    <a xlink:href="report.html#flow-step-point_sorted_gather" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 686.51125)">Copy positions and IDs into Q; release</text>
+    </a>
+    <a xlink:href="report.html#flow-step-point_sorted_gather" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 703.31125)">keys.</text>
+    </a>
+   </g>
+   <g id="text_27">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="783" y="644.747344" transform="rotate(-0 783 644.747344)">Q + retained L</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(783 670.185625)">38.414 M records; Q is 614.630 MB, L is 153.658</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(783 687.574375)">MB.</text>
+   </g>
+   <g id="text_29">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="825.62375" transform="rotate(-0 36 825.62375)">Q</text>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 850.71125)">Spatially ordered original points with persistent</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(36 868.489063)">IDs</text>
+   </g>
+   <g id="text_31">
+    <a xlink:href="report.html#flow-step-point_tree_build" target="_self">
+     <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="433" y="825.258438" transform="rotate(-0 433 825.258438)">Build tree and proxy samples</text>
+    </a>
+   </g>
+   <g id="text_32">
+    <a xlink:href="report.html#flow-step-point_tree_build" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 851.87375)">0.416 s · SSE2 median</text>
+    </a>
+    <a xlink:href="report.html#flow-step-point_tree_build" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 867.51125)">Split ranges, reduce bounds and sample</text>
+    </a>
+    <a xlink:href="report.html#flow-step-point_tree_build" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 884.31125)">original points.</text>
+    </a>
+   </g>
+   <g id="text_33">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="783" y="825.042969" transform="rotate(-0 783 825.042969)">T + R + group roots</text>
+   </g>
+   <g id="text_34">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="783" y="850.71125" transform="rotate(-0 783 850.71125)">32,767 nodes; 4,379,823 proxy points; Q remains.</text>
+   </g>
+   <g id="text_35">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="1006.042969" transform="rotate(-0 36 1006.042969)">T + R + group roots</text>
+   </g>
+   <g id="text_36">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="36" y="1031.71125" transform="rotate(-0 36 1031.71125)">Tree ranges and proxy counts</text>
+   </g>
+   <g id="text_37">
+    <a xlink:href="report.html#flow-step-point_navigation_cuts" target="_self">
+     <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="433" y="1006.258438" transform="rotate(-0 433 1006.258438)">Prepare navigation cuts</text>
+    </a>
+   </g>
+   <g id="text_38">
+    <a xlink:href="report.html#flow-step-point_navigation_cuts" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 1032.87375)">0.008 s · SSE2 median</text>
+    </a>
+    <a xlink:href="report.html#flow-step-point_navigation_cuts" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 1048.51125)">Choose camera-independent cuts for several</text>
+    </a>
+    <a xlink:href="report.html#flow-step-point_navigation_cuts" target="_self">
+     <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(433 1065.31125)">budgets.</text>
+    </a>
+   </g>
+   <g id="text_39">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #203139" x="783" y="1006.313125" transform="rotate(-0 783 1006.313125)">Cloud + prepared cuts</text>
+   </g>
+   <g id="text_40">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(783 1031.71125)">Q, R, T, L and group metadata; ready for upload</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #203139" transform="translate(783 1048.51125)">and picking</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p18e62e25b7">
+   <rect x="0" y="0" width="1120" height="1147"/>
+  </clipPath>
+ </defs>
+</svg>
