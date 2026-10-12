@@ -16,8 +16,10 @@
 ## Version update workflow
 
 - When the user asks for a version update, update the canonical application version in both `CMakeLists.txt` (`project(woby_obj_viewer VERSION ...)`) and `vcpkg.json` (`version-string`); keep the values identical.
+- Update `CHANGELOG.md` before committing the version update. Use the matching tag (`vX.Y.Z`) as the version heading and keep the newest version first.
+- Review commit messages and actual changes since the previous release tag. Add brief entries for notable changes. Omit minor fixes, agent instruction files, experiments, and investigations.
 - Validate the release version and tag with `uv run .github/scripts/package_manifest.py validate-tag vX.Y.Z`.
-- If there are no unrelated changes in the repository, commit the version update and wait for the commit to finish. Only after the commit succeeds, create the matching tag with `nu c:\tools\gittag.nu vX.Y.Z`.
+- If there are no unrelated changes in the repository, commit the version update, including `CHANGELOG.md`, and wait for the commit to finish. Only after the commit succeeds, create the matching tag with `nu c:\tools\gittag.nu vX.Y.Z`.
 
 ## Code changes
 - Build woby project in release mode, the build should succeed without any warnings.
