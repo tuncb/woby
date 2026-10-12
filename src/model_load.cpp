@@ -21,7 +21,7 @@ try {
         if (callbacks.stageProgress) { callbacks.stageProgress(update); }
     };
     try {
-        result.mesh = loadObjMesh(path, progress);
+        result.mesh = loadObjMesh(path, progress, callbacks.deferPreparation);
     } catch (const Canceled&) { result.canceled = true; }
     return result;
 } catch (const std::bad_alloc&) {

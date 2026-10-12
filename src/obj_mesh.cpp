@@ -148,7 +148,7 @@ void preflightObjCapacity(const std::filesystem::path& path, const ModelLoadProg
 template <bool Prototype = false>
 Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPatches,
     const std::filesystem::path& path, const ModelLoadProgressCallback& progress,
-    rapidobj::GeometryBuffers* buffers = nullptr)
+    rapidobj::GeometryBuffers* buffers = nullptr, bool deferPreparation = false)
 {
     const auto throwLoadError = [&](const char* operation) {
         std::string message = std::string(operation) + ": " + pathToUtf8(path);
@@ -221,9 +221,11 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     };
 
     Mesh mesh;
+    mesh.preparationDeferred = deferPreparation;
     auto& meshData = editMeshGeometry(mesh);
     auto source = std::make_shared<SourceMeshData>();
     source->provenance = SourceProvenance::objPositions;
+    source->indicesPending = deferPreparation;
     mesh.origin = origin;
     source->draftPositions = std::move(sourcePoints);
     publishSourcePositions(*source);
@@ -249,7 +251,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     meshData.pointIndices.reserve(pointIndexCount);
     meshData.vertices.reserve(vertexCapacity);
     meshData.nodes.reserve(shapes.size());
-    source->indices.reserve(indexCount);
+    if (!deferPreparation) { source->indices.reserve(indexCount); }
     reserveIndexTable(vertexMap, sourcePositions(*source).size(), vertexCapacity,
         Prototype ? buffers->normals.empty() && buffers->texcoords.empty() : attrib.normals.empty() && attrib.texcoords.empty());
     reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, totalIndices);
@@ -269,7 +271,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
             if (index.position_index < 0 || static_cast<size_t>(index.position_index) >= sourcePositions(*source).size()) {
                 throw std::runtime_error("OBJ contains an invalid source position index.");
             }
-            source->indices.push_back(static_cast<uint32_t>(index.position_index));
+            if (!deferPreparation) { source->indices.push_back(static_cast<uint32_t>(index.position_index)); }
             const IndexKey key{index.position_index, index.normal_index, index.texcoord_index};
             const auto mappedIndex = vertexIndex(vertexMap, key);
             if (mappedIndex < meshData.vertices.size()) {
@@ -597,7 +599,7 @@ Mesh buildObjPrototype(Parse parse, const std::filesystem::path& path,
     // Numeric records and sparse weights are no longer needed during mesh
     // expansion; analytic patches now own their original-frame control data.
     parsed.statements = decltype(parsed.statements){}; parsed.weights = decltype(parsed.weights){};
-    auto mesh = buildObjMesh<true>(std::move(parsed.polygons), std::move(patches), path, progress, &buffers);
+    auto mesh = buildObjMesh<true>(std::move(parsed.polygons), std::move(patches), path, progress, &buffers, options.deferPreparation);
     if (metrics) { metrics->prepareMs = std::chrono::duration<double, std::milli>(Clock::now() - resolvedAt).count(); }
     publishMeshGeometry(mesh);
     return mesh;
@@ -623,9 +625,11 @@ Mesh loadObjMeshTextPrototype(std::string_view text, const ModelLoadProgressCall
     }, "<memory>", progress, options, metrics);
 }
 
-Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
+Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress, bool deferPreparation)
 {
-    return loadObjMeshPrototype(path, progress);
+    ObjPrototypeOptions options;
+    options.deferPreparation = deferPreparation;
+    return loadObjMeshPrototype(path, progress, options);
 }
 
 Mesh loadObjMeshText(std::string_view text, const ModelLoadProgressCallback& progress)

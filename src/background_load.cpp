@@ -37,7 +37,7 @@ struct PrefetchedLoads {
 };
 
 template <typename PathAt>
-void prefetchSmallModels(PrefetchedLoads& loads, size_t current, size_t total, const PathAt& pathAt)
+void prefetchSmallModels(PrefetchedLoads& loads, size_t current, size_t total, const PathAt& pathAt, bool deferPreparation)
 {
     // Bounded look-ahead overlaps small-file I/O. Large OBJ files already use
     // RapidOBJ's own parallel parser; plugins keep their serial callback model.
@@ -56,7 +56,7 @@ void prefetchSmallModels(PrefetchedLoads& loads, size_t current, size_t total, c
         const auto bytes = std::filesystem::file_size(*path, error);
         if (error || bytes > 1024 * 1024) { break; }
         try {
-            pending = std::async(std::launch::async, [path = *path] { return timedModelLoad(path, {}, {}); });
+            pending = std::async(std::launch::async, [path = *path, deferPreparation] { ImportCallbacks callbacks; callbacks.deferPreparation = deferPreparation; return timedModelLoad(path, {}, callbacks); });
         } catch (const std::system_error&) {
             break; // Resource exhaustion: leave this and later inputs serial.
         }
@@ -115,7 +115,7 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
     const std::vector<std::filesystem::path>& modelPaths,
     size_t firstColorIndex,
     const BackgroundLoadProgressCallback& progress,
-    const BackgroundLoadCancelCallback& shouldCancel, bool prepareRenderData)
+    const BackgroundLoadCancelCallback& shouldCancel, bool prepareRenderData, bool deferPreparation)
 {
     const auto start = PerformanceClock::now();
     ModelBatchCpuLoadResult result;
@@ -146,7 +146,7 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
         try {
             prefetchSmallModels(prefetched, pathIndex, modelPaths.size(), [&](size_t index) {
                 return std::optional<std::filesystem::path>{modelPaths[index]};
-            });
+            }, deferPreparation);
             auto& pending = prefetched.pending[pathIndex % prefetched.pending.size()];
             const auto stageProgress = [&](const ModelLoadProgress& update) {
                 reportProgress(progress, modelPath, pathIndex, modelPaths.size(), modelLoadFraction(update), update);
@@ -154,7 +154,7 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
             auto parsed = pending.valid() ? pending.get() : timedModelLoad(modelPath, {}, {shouldCancel, [&](float fraction) {
                 reportProgress(progress, modelPath, pathIndex, modelPaths.size(), std::clamp(fraction, 0.0f, 1.0f) * 6.0f / 7.0f,
                     {ModelLoadStage::reading, static_cast<size_t>(std::clamp(fraction, 0.0f, 1.0f) * 1000), 1000});
-            }, stageProgress});
+            }, stageProgress, deferPreparation});
             auto& imported = parsed.imported;
             if (imported.canceled) {
                 result.canceled = true;
@@ -166,7 +166,7 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
                 modelPath, std::move(imported.mesh), colorIndex, std::move(imported.importerId), stageProgress);
             if (prepareRenderData) {
                 const auto prepareStart = PerformanceClock::now();
-                auto prepared = prepareSceneMesh(file.mesh, requestedGpuMeshFeatures(file), shouldCancel);
+                auto prepared = prepareSceneMesh(file.mesh, requestedGpuMeshFeatures(file), shouldCancel, !deferPreparation, !deferPreparation);
                 if (!prepared) {
                     result.canceled = true;
                     outcome.state = "canceled";
@@ -216,7 +216,7 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
 SceneCpuLoadResult loadSceneCpu(
     const std::filesystem::path& scenePath,
     const BackgroundLoadProgressCallback& progress,
-    const BackgroundLoadCancelCallback& shouldCancel, bool prepareRenderData)
+    const BackgroundLoadCancelCallback& shouldCancel, bool prepareRenderData, bool deferPreparation)
 {
     const auto totalStart = PerformanceClock::now();
     SceneCpuLoadResult result;
@@ -243,7 +243,7 @@ SceneCpuLoadResult loadSceneCpu(
             const auto& candidate = result.document.files[index];
             if (!candidate.importerId.empty()) { return std::optional<std::filesystem::path>{}; }
             return std::optional<std::filesystem::path>{sceneAbsolutePath(scenePath, candidate.path)};
-        });
+        }, deferPreparation);
         auto& pending = prefetched.pending[result.files.size() % prefetched.pending.size()];
         const auto stageProgress = [&](const ModelLoadProgress& update) {
             reportProgress(progress, modelPath, result.files.size(), result.document.files.size(), modelLoadFraction(update), update);
@@ -251,7 +251,7 @@ SceneCpuLoadResult loadSceneCpu(
         auto parsed = pending.valid() ? pending.get() : timedModelLoad(modelPath, record.importerId, {shouldCancel, [&](float fraction) {
             reportProgress(progress, modelPath, result.files.size(), result.document.files.size(), std::clamp(fraction, 0.0f, 1.0f) * 6.0f / 7.0f,
                 {ModelLoadStage::reading, static_cast<size_t>(std::clamp(fraction, 0.0f, 1.0f) * 1000), 1000});
-        }, stageProgress});
+        }, stageProgress, deferPreparation});
         auto& imported = parsed.imported;
         if (imported.canceled) {
             result.canceled = true;
@@ -260,7 +260,7 @@ SceneCpuLoadResult loadSceneCpu(
         UiFileState file = createUiFileState(modelPath, std::move(imported.mesh), colorIndex, std::move(imported.importerId), stageProgress);
         applySceneFileRecord(file, record);
         if (prepareRenderData) {
-            auto prepared = prepareSceneMesh(file.mesh, requestedGpuMeshFeatures(file), shouldCancel);
+            auto prepared = prepareSceneMesh(file.mesh, requestedGpuMeshFeatures(file), shouldCancel, !deferPreparation, !deferPreparation);
             if (!prepared) { result.canceled = true; break; }
             result.preparations.push_back(std::move(*prepared));
         }

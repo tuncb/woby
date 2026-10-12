@@ -84,7 +84,7 @@ void drawAnnotationTools(const UiState& state, AnnotationInteraction& interactio
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::BeginDisabled(disabled || state.files.empty() || interaction.dragging);
+    ImGui::BeginDisabled(disabled || !ready || state.files.empty() || interaction.dragging);
     const bool active = interaction.sectionTool;
     const bool sectionClicked = drawRenderModeIconButton("annotation_section", "", "Cross section: draw a line on the horizontal workplane. One section cuts all visible meshes.",
         active ? RenderModeState::on : RenderModeState::off, false);

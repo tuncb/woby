@@ -505,7 +505,7 @@ bool hasImporterForPath(const std::filesystem::path& path)
 
 Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy* hierarchy,
     const WobyImportLines* lines, const WobyImportPointIds* pointIds,
-    const WobyImportPoints* points, const WobyImportFreeform* freeform, const ModelLoadProgressCallback& progress)
+    const WobyImportPoints* points, const WobyImportFreeform* freeform, const ModelLoadProgressCallback& progress, bool deferPreparation)
 {
     if (lines && lines->struct_size < sizeof(WobyImportLines)) {
         throw std::runtime_error("Invalid importer line buffers or size limits.");
@@ -552,6 +552,7 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
         throw std::runtime_error("Importer exceeds combined group size limits.");
     }
     Mesh mesh;
+    mesh.preparationDeferred = deferPreparation;
     auto& buffers = editMeshGeometry(mesh);
     buffers.vertices.resize(result.vertex_count);
     buffers.precisePositions.resize(result.vertex_count);
@@ -778,7 +779,7 @@ ImportedModel importModel(const std::filesystem::path& path, const std::string& 
             importer.getLines ? importer.getLines(&result) : nullptr,
             importer.getPointIds ? importer.getPointIds(&result) : nullptr,
             importer.getPoints ? importer.getPoints(&result) : nullptr,
-            importer.getFreeform ? importer.getFreeform(&result) : nullptr, progress);
+            importer.getFreeform ? importer.getFreeform(&result) : nullptr, progress, callbacks.deferPreparation);
     } catch (const Canceled&) { model.mesh = {}; model.canceled = true; }
     if (isCanceled(&context) != 0u) {
         if (context.error) { std::rethrow_exception(context.error); }

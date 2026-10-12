@@ -1,6 +1,7 @@
 #include "graphics_helpers.h"
 #include "renderer_startup.h"
 #include "background_load.h"
+#include "post_loading.h"
 #include "camera.h"
 #include "scene_viewport.h"
 #include "command_line.h"
@@ -316,6 +317,8 @@ struct AutomationAppendRuntime {
     size_t firstFileIndex = 0;
     std::vector<woby::ModelInputOutcome> outcomes;
     bool canceled = false;
+    bool postLoadPending = false;
+    uint64_t generation = 0;
 };
 
 struct AutomationComparisonRuntime {
@@ -748,9 +751,13 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
         ImGui::TextUnformatted("Properties");
         ImGui::Separator();
         if (woby::selectedAnnotation(state)) {
+            ImGui::BeginDisabled(!woby::scenePostLoadReady(state));
             woby::drawAnnotationInspector(state, inspector.sharedQueries);
+            ImGui::EndDisabled();
         } else if (woby::selectedComparison(state)) {
+            ImGui::BeginDisabled(!woby::scenePostLoadReady(state));
             woby::drawComparisonPanelContents(state, runtimes);
+            ImGui::EndDisabled();
         } else {
             woby::drawSceneInspector(state, inspector);
         }
@@ -846,7 +853,7 @@ bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     }
     bool removeFile = false;
     if (ImGui::BeginPopupContextItem("scene_item_context")) {
-        if (ImGui::BeginMenu("Create analysis", !woby::comparisonObjectParts(state, state.selectedSceneObjects).empty())) {
+        if (ImGui::BeginMenu("Create analysis", woby::scenePostLoadReady(state) && !woby::comparisonObjectParts(state, state.selectedSceneObjects).empty())) {
             woby::drawAnalysisCreationMenu(state);
             ImGui::EndMenu();
         }
@@ -989,7 +996,7 @@ void drawSceneTreeNode(
         }
         ImGui::PopClipRect();
         ImGui::SameLine(analysisControlStartX, 0.0f);
-        const bool canAnalyze = woby::fileHasComparableParts(file);
+        const bool canAnalyze = woby::postLoadReady(file) && woby::fileHasComparableParts(file);
         if (woby::drawRenderModeIconButton("analysis", "\xef\x82\x80", "Create analysis for this file",
                 woby::RenderModeState::off, !canAnalyze)) {
             ImGui::OpenPopup("analysis_type");
@@ -1203,7 +1210,7 @@ LoadedModelFileWithRuntime loadModelFile(
     LoadedModelFileWithRuntime loaded;
     try {
         const auto parseStart = woby::PerformanceClock::now();
-        auto imported = woby::loadModel(modelPath, sceneRecord ? sceneRecord->importerId : std::string{});
+        auto imported = woby::loadModel(modelPath, sceneRecord ? sceneRecord->importerId : std::string{}, {{}, {}, {}, true});
         const double parseMilliseconds = elapsedMilliseconds(parseStart);
 
         loaded.file = woby::createUiFileState(modelPath, std::move(imported.mesh), firstColorIndex, std::move(imported.importerId));
@@ -1662,7 +1669,7 @@ bool startAppendModelBackgroundLoad(
                     },
                     [&load]() {
                         return load.cancelRequested.load();
-                    }, true);
+                    }, true, true);
             } catch (const std::exception& exception) {
                 outcome.failed = true;
                 outcome.error = exception.what();
@@ -1732,7 +1739,7 @@ bool startOpenSceneBackgroundLoad(
                     },
                     [&load]() {
                         return load.cancelRequested.load();
-                    }, true);
+                    }, true, true);
             } catch (const std::exception& exception) {
                 outcome.failed = true;
                 outcome.error = exception.what();
@@ -2402,6 +2409,7 @@ int main(int argc, char** argv)
         if (!headless) { woby::startRecentFiles(recentFiles); }
         // Destroyed before ui on every exit, including exception unwinding.
         woby::AnnotationPreparationRuntime annotationPreparation;
+        woby::PostLoadRuntime postLoading;
         woby::ComparisonRuntimes comparison;
         woby::ComparisonNameEdit comparisonNameEdit;
         woby::AnnotationNameEdit annotationNameEdit;
@@ -2489,6 +2497,8 @@ int main(int argc, char** argv)
         SceneScreenshotRuntime sceneScreenshot;
         std::optional<woby::AutomationCommandId> automationScreenshotCommandId;
         std::optional<woby::AutomationCommandId> automationOpenCommandId;
+        bool automationOpenPostLoad = false;
+        uint64_t automationOpenGeneration = 0;
         std::optional<AutomationAppendRuntime> automationAppend;
         std::optional<AutomationComparisonRuntime> automationComparison;
         std::vector<AutomationDifferenceRuntime> automationDifferences;
@@ -2854,6 +2864,11 @@ int main(int argc, char** argv)
                 currentScenePath,
                 cleanSceneDocument,
                 toast);
+            woby::updatePostLoading(postLoading, ui, runtimes, layout, woby::graphics::completedFrameToken());
+            const double postLoadNow = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+            const bool wasPostLoading = postLoading.noticePending;
+            woby::updatePostLoadNotice(postLoading, ui, postLoadNow);
+            if (!wasPostLoading && postLoading.noticePending) { toast.text.clear(); }
             if (finalized) {
                 woby::finishSceneHistoryInteraction(sceneHistory);
                 woby::recordSceneHistory(sceneHistory, ui);
@@ -2874,20 +2889,43 @@ int main(int argc, char** argv)
                 }
             }
             if (finalized && automationAppend) {
-                if (finalized->empty() || finalizeCanceled) { completeAppend(); }
-                else {
+                if (finalizeCanceled) { completeAppend(); }
+                else if (finalized->empty()) {
+                    automationAppend->postLoadPending = true;
+                    automationAppend->generation = ui.sceneGeneration;
+                } else {
                     woby::completeAutomationCommand(*automation, automationAppend->id, woby::AutomationCommandError{*finalized});
                     automationAppend.reset();
                 }
             }
             if (finalized && automationOpenCommandId) {
                 if (finalized->empty()) {
-                    woby::completeAutomationCommand(*automation, *automationOpenCommandId,
-                        woby::AutomationSceneResult{currentScenePath, ui.isDirty});
+                    automationOpenPostLoad = true;
+                    automationOpenGeneration = ui.sceneGeneration;
                 } else {
                     completeLifecycleError(*automationOpenCommandId, {finalizeCanceled ? "scene_canceled" : "open_failed", *finalized, finalizeCanceled ? -32017 : -32016});
+                    automationOpenCommandId.reset();
                 }
-                automationOpenCommandId.reset();
+            }
+
+            // RPC load completion includes preparation; the viewer renders and remains responsive while clients wait.
+            if (automationAppend && automationAppend->postLoadPending) {
+                if (automationAppend->generation != ui.sceneGeneration || !woby::postLoadError(ui).empty()) {
+                    woby::completeAutomationCommand(*automation, automationAppend->id,
+                        woby::AutomationCommandError{woby::postLoadError(ui).empty() ? "Loading canceled by a scene change." : std::string(woby::postLoadError(ui))});
+                    automationAppend.reset();
+                } else if (woby::scenePostLoadReady(ui)) { completeAppend(); }
+            }
+            if (automationOpenCommandId && automationOpenPostLoad) {
+                if (automationOpenGeneration != ui.sceneGeneration || !woby::postLoadError(ui).empty()) {
+                    completeLifecycleError(*automationOpenCommandId, {"open_failed", woby::postLoadError(ui).empty()
+                        ? "Loading canceled by a scene change." : std::string(woby::postLoadError(ui)), -32016});
+                    automationOpenCommandId.reset(); automationOpenPostLoad = false;
+                } else if (woby::scenePostLoadReady(ui)) {
+                    woby::completeAutomationCommand(*automation, *automationOpenCommandId,
+                        woby::AutomationSceneResult{currentScenePath, ui.isDirty});
+                    automationOpenCommandId.reset(); automationOpenPostLoad = false;
+                }
             }
 
             const auto saveDocument = [&](const std::filesystem::path& path) {
@@ -3312,6 +3350,7 @@ int main(int argc, char** argv)
                                     triangleCount != groupCount);
                             }
                             ImGui::SameLine();
+                            ImGui::BeginDisabled(!woby::scenePostLoadReady(ui));
                             const size_t vertexCount = woby::countEnabledSceneRenderMode(
                                 ui,
                                 woby::UiRenderMode::vertices);
@@ -3340,6 +3379,7 @@ int main(int argc, char** argv)
                                 woby::setMasterVertexPointSize(ui, editedMasterVertexPointSize);
                             }
                             ImGui::PopStyleVar();
+                            ImGui::EndDisabled();
                         }
                         ImGui::EndChild();
                     }
@@ -3347,6 +3387,7 @@ int main(int argc, char** argv)
                     if (scenePaneOpen) {
                         woby::drawAnnotationTools(ui, annotationInteraction, fileActionsDisabled());
                         ImGui::SameLine();
+                        ImGui::BeginDisabled(!woby::scenePostLoadReady(ui));
                         bool showDimensions = ui.showDimensions;
                         if (ImGui::Checkbox("Show dimensions", &showDimensions)) {
                             woby::setShowDimensions(ui, showDimensions);
@@ -3354,6 +3395,7 @@ int main(int argc, char** argv)
                         if (ImGui::IsItemHovered()) {
                             ImGui::SetTooltip("Size of visible selected geometry, including parent transforms.");
                         }
+                        ImGui::EndDisabled();
                         if (showDimensions && ui.selectedSceneObjects.empty()) {
                             ImGui::TextDisabled("Select a mesh to see its dimensions.");
                         }
@@ -3612,6 +3654,7 @@ int main(int argc, char** argv)
                             }
                             const bool historyOperation = payload.action == A::sceneUndo || payload.action == A::sceneRedo;
                             const bool busy = backgroundLoad.active || gpuFinalize.active
+                                || (automationAppend && automationAppend->postLoadPending) || automationOpenPostLoad
                                 || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending
                                 || modalDialogOpen || modelFileDialogIsOpen(modelFileDialogState)
                                 || sceneFileDialogIsOpen(sceneFileDialogState) || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState)
@@ -3630,6 +3673,12 @@ int main(int argc, char** argv)
                                 return;
                             }
                             Json result;
+                            if (!woby::scenePostLoadReady(ui) && (payload.vertices || payload.rotationDegrees || payload.scale
+                                || payload.action == A::comparisonCreate || payload.action == A::comparisonResults || payload.action == A::comparisonExport)) {
+                                woby::completeAutomationCommand(*automation, command->id,
+                                    woby::AutomationCommandError{"Model data is being prepared. Retry when postLoadReady is true.", -32014});
+                                return;
+                            }
                             if (!woby::annotationControlReady(ui, payload.action)) {
                                 woby::completeAutomationCommand(*automation, command->id,
                                     woby::AutomationCommandError{annotationPreparation.error.empty()
@@ -3752,9 +3801,11 @@ int main(int argc, char** argv)
                                 result = woby::automationInstanceInfo(*automation);
                                 result.update({{"path", currentScenePath ? Json(woby::pathToUtf8(*currentScenePath)) : Json(nullptr)},
                                     {"dirty", ui.isDirty}, {"loading", backgroundLoad.active}, {"gpuFinalizing", gpuFinalize.active},
-                                    {"annotationPreparing", annotationPreparation.job != nullptr},
+                                    {"annotationPreparing", annotationPreparation.job != nullptr || postLoading.noticePending},
                                     {"annotationReady", woby::annotationPreparationReady(ui)},
-                                    {"annotationPreparationError", annotationPreparation.error},
+                                    {"postLoading", postLoading.noticePending}, {"postLoadReady", woby::scenePostLoadReady(ui)},
+                                    {"annotationPreparationError", annotationPreparation.error.empty() ? std::string(woby::postLoadError(ui)) : annotationPreparation.error},
+                                    {"postLoadError", std::string(woby::postLoadError(ui))},
                                     {"capturing", sceneScreenshot.captureRequested || sceneScreenshot.readbackPending},
                                     {"busy", busy}, {"version", WOBY_VERSION},
                                     {"renderer", woby::graphics::getRendererName(woby::graphics::getRendererType())},
@@ -3845,6 +3896,7 @@ int main(int argc, char** argv)
                             woby::completeAutomationCommand(*automation, command->id, woby::AutomationControlResult{std::move(result)});
                         } else if constexpr (std::is_same_v<Command, woby::SceneLifecycleCommand>) {
                             const bool busy = backgroundLoad.active || gpuFinalize.active
+                                || (automationAppend && automationAppend->postLoadPending) || automationOpenPostLoad
                                 || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending
                                 || modalDialogOpen || modelFileDialogIsOpen(modelFileDialogState)
                                 || sceneFileDialogIsOpen(sceneFileDialogState)
@@ -4121,7 +4173,13 @@ int main(int argc, char** argv)
                         ui.selectedSceneObjects.empty() ? std::nullopt : renderScratch.queries.selection.dimensions,
                         currentPickView, {static_cast<float>(viewport.x) * pixelScale, static_cast<float>(viewport.y) * pixelScale}, pixelScale, ImGui::GetFontSize());
                 }
-                drawToastMessage(toast, viewport, width, std::max(annotationMessageBottom, static_cast<float>(viewport.y) / currentPickView.pixelScale));
+                const auto postMessage = woby::postLoadNotice(postLoading, ui, postLoadNow);
+                if (postMessage.empty()) {
+                    drawToastMessage(toast, viewport, width, std::max(annotationMessageBottom, static_cast<float>(viewport.y) / currentPickView.pixelScale));
+                } else {
+                    ToastMessage statusToast{std::string(postMessage), std::chrono::steady_clock::now()};
+                    drawToastMessage(statusToast, viewport, width, static_cast<float>(viewport.y) / currentPickView.pixelScale);
+                }
                 drawHoveredVertexOverlay(hoveredVertex, viewport, width, gpuHover);
                 if (adaptivePoints.active) {
                     const auto label = adaptivePoints.refined == adaptivePoints.total ? std::string("Points: full detail")
@@ -4171,6 +4229,7 @@ int main(int argc, char** argv)
             recordFrameStage(frameTimings, woby::FrameStage::imguiRender, stageStart);
 
             const uint32_t frameNumber = woby::graphics::frame();
+            woby::notePostLoadFrame(postLoading, ui, woby::graphics::submittedFrameToken());
             woby::pollGpuMarkerPicking(markerPicker, frameNumber, ui, runtimes,
                 woby::hoverSceneSignature(ui, runtimes) ^ woby::sceneComparisonRevision(ui, comparison));
             try {
@@ -4223,7 +4282,7 @@ int main(int argc, char** argv)
             if (headless && running && !gpuFinalize.active && !sceneScreenshot.readbackPending) {
                 // Wake promptly for commands; poll CPU workers without spinning at idle.
                 // GPU readback must keep advancing frames until its completion frame.
-                const bool processing = backgroundLoad.active || automationComparison.has_value()
+                const bool processing = backgroundLoad.active || gpuFinalize.active || postLoading.noticePending || automationComparison.has_value()
                     || annotationCommand.has_value() || sceneScreenshot.captureRequested;
                 woby::waitForAutomationWork(*automation, std::chrono::milliseconds(processing ? 10 : 50));
             }
@@ -4240,6 +4299,7 @@ int main(int argc, char** argv)
         if (backgroundLoad.worker.joinable()) {
             backgroundLoad.worker.join();
         }
+        woby::cancelPostLoading(postLoading);
         woby::cancelAnnotationPreparation(annotationPreparation);
         abortGpuFinalize(gpuFinalize);
         woby::unloadImporters();

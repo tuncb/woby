@@ -20,6 +20,7 @@ struct SourceMeshData {
     std::vector<std::array<double, 3>> draftPositions;
     std::shared_ptr<const std::vector<std::array<double, 3>>> positions;
     std::vector<uint32_t> indices;
+    bool indicesPending = false;
     // Optional importer identities, one per point. Only duplicate-point counting
     // uses these; connectivity and reported vertex indices remain unchanged.
     std::vector<uint64_t> originalPointIds;

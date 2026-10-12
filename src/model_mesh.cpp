@@ -13,7 +13,7 @@ Mesh::Mesh(const Mesh& other)
       bounds(other.bounds), originalBounds(other.originalBounds), origin(other.origin),
       sourceData(other.sourceData), duplicateInput(other.duplicateInput),
       annotationCache(other.draft ? nullptr : other.annotationCache), uvQuality(other.uvQuality),
-      freeform(other.freeform), contentRevision(other.contentRevision)
+      freeform(other.freeform), contentRevision(other.contentRevision), preparationDeferred(other.preparationDeferred)
 {
 }
 Mesh& Mesh::operator=(const Mesh& other)
@@ -416,7 +416,8 @@ void captureSourceMesh(Mesh& mesh, SourceProvenance provenance, std::span<const 
     std::vector<Coordinate>().swap(g.precisePositions);
     std::vector<uint32_t>().swap(g.positionIndices);
     g.positionIndexing = PositionIndexing::identity;
-    data->indices = meshGeometry(mesh).indices;
+    data->indicesPending = mesh.preparationDeferred;
+    if (!data->indicesPending) { data->indices = meshGeometry(mesh).indices; }
     data->originalPointIds.assign(originalPointIds.begin(), originalPointIds.end());
     mesh.sourceData = std::move(data);
 }
@@ -436,7 +437,7 @@ void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals, const ModelLoad
     reportModelLoadProgress(progress, ModelLoadStage::bounds);
     mesh.bounds = calculateBounds(meshGeometry(mesh).vertices, progress);
     mesh.originalBounds.reset();
-    mesh.originalBounds = originalMeshBounds(mesh);
+    if (!mesh.preparationDeferred) { mesh.originalBounds = originalMeshBounds(mesh); }
 }
 
 } // namespace woby

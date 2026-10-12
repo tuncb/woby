@@ -179,6 +179,9 @@ RendererType::Enum getRendererType();
 const char *getRendererName(RendererType::Enum type);
 void reset(uint32_t width, uint32_t height, uint32_t flags);
 uint32_t frame();
+// Submission/completion tokens; polling does not wait or measure display scanout.
+uint64_t submittedFrameToken();
+uint64_t completedFrameToken();
 void setDebug(uint32_t flags);
 void dbgTextClear();
 

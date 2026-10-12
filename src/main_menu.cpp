@@ -93,7 +93,7 @@ MainMenuResult drawMainMenu(UiState& state, AnnotationInteraction& annotation,
             fitCameraToSelection(state);
         }
         ImGui::Separator();
-        if (ImGui::MenuItem("Adaptive points while navigating", nullptr, state.adaptivePoints)) {
+        if (ImGui::MenuItem("Adaptive points while navigating", nullptr, state.adaptivePoints, scenePostLoadReady(state))) {
             setAdaptivePoints(state, !state.adaptivePoints);
         }
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("Opaque points refine to full detail when still. Picking and measurements use original points.");

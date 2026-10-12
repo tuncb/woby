@@ -267,6 +267,7 @@ SourceAnalysisGeometry buildSourceGeometry(const DuplicateSource& source, Topolo
     result.mode = mode;
     if (!source.data) { result.available = false; return result; }
     const auto& data = *source.data;
+    if (data.indicesPending) { result.available = false; return result; }
     result.provenance = data.provenance;
     if (data.indices.size() % 3) { throw std::invalid_argument("Invalid source triangle indices."); }
     for (const auto& point : sourcePositions(data)) {

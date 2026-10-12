@@ -8,6 +8,7 @@ namespace woby {
 struct PropertiesKey {
     uint64_t generation = 0, revision = 0;
     std::vector<SceneObjectId> selection;
+    uint64_t postLoadRevision = 0;
     bool operator==(const PropertiesKey&) const = default;
 };
 

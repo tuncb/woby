@@ -446,6 +446,7 @@ SceneObjectId createAnalysisFromSelection(UiState& state, AnalysisTask task)
 
 SceneObjectId createAnalysisFromObjects(UiState& state, AnalysisTask task, const std::vector<SceneObjectId>& objects)
 {
+    if (!scenePostLoadReady(state)) { return invalidSceneObjectId; }
     if (task < AnalysisTask::meshChecks || task > AnalysisTask::uvInspection) { return invalidSceneObjectId; }
     std::vector<SceneObjectId> sources;
     for (const auto id : objects) {
@@ -1412,6 +1413,7 @@ void setUiScale(UiState& state, float scale)
 
 void setAllSceneRenderModes(UiState& state, UiRenderMode mode, bool enabled)
 {
+    if (mode == UiRenderMode::vertices && !scenePostLoadReady(state)) { return; }
     bool changed = false;
     for (auto& file : state.files) {
         for (const auto& group : file.groupSettings) {

@@ -221,13 +221,14 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
         captureSourceMesh(mesh, mesh.sourceData ? mesh.sourceData->provenance : SourceProvenance::objPositions);
     }
     auto source = mesh.sourceData ? std::make_shared<SourceMeshData>(*mesh.sourceData) : std::make_shared<SourceMeshData>();
+    source->indicesPending = mesh.preparationDeferred;
     if (!mesh.sourceData) {
         source->provenance = SourceProvenance::objPositions;
         const auto& existing = meshGeometry(mesh);
         if (existing.sourcePositions) {
             source->positions = existing.sourcePositions;
-            source->indices.reserve(existing.indices.size());
-            for (const auto index : existing.indices) {
+            if (!source->indicesPending) { source->indices.reserve(existing.indices.size()); }
+            for (const auto index : source->indicesPending ? std::span<const uint32_t>{} : std::span<const uint32_t>{existing.indices}) {
                 source->indices.push_back(existing.positionIndexing == PositionIndexing::identity ? index : existing.positionIndices.at(index));
             }
         }
@@ -267,7 +268,8 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
     // Allocate once, without transient vector growth copies of a large model.
     editMeshGeometry(mesh).vertices.reserve(vertexCount);
     auto& positions = editSourcePositions(*source);
-    positions.reserve(sourceCount); source->indices.reserve(sourceIndexCount);
+    positions.reserve(sourceCount);
+    if (!source->indicesPending) { source->indices.reserve(sourceIndexCount); }
     editMeshGeometry(mesh).indices.reserve(triangleCount); editMeshGeometry(mesh).lineIndices.reserve(lineCount); editMeshGeometry(mesh).nodes.reserve(nodeCount);
     if (!usedIds.empty()) { source->originalPointIds.reserve(sourceCount); }
     size_t completed = 0;
@@ -296,7 +298,10 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
         };
         if (!grid.samples.empty()) {
             for (const auto& uv:grid.samples) { appendVertex(uv[0],uv[1]); }
-            for (auto index:grid.triangles) { editMeshGeometry(mesh).indices.push_back(grid.vertexOffset+index); source->indices.push_back(sourceOffset+index); }
+            for (auto index:grid.triangles) {
+                editMeshGeometry(mesh).indices.push_back(grid.vertexOffset+index);
+                if (!source->indicesPending) { source->indices.push_back(sourceOffset+index); }
+            }
         } else {
             for (const double v:grid.v) for (const double u:grid.u) { appendVertex(u,v); }
         }
@@ -306,7 +311,8 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
                 const uint32_t a = y*nu + x;
                 if (patch.surface) {
                     for (const auto index : {a,a+1,a+nu,a+1,a+nu+1,a+nu}) {
-                        editMeshGeometry(mesh).indices.push_back(grid.vertexOffset + index); source->indices.push_back(sourceOffset + index);
+                        editMeshGeometry(mesh).indices.push_back(grid.vertexOffset + index);
+                        if (!source->indicesPending) { source->indices.push_back(sourceOffset + index); }
                     }
                 } else { editMeshGeometry(mesh).lineIndices.push_back(grid.vertexOffset+a); editMeshGeometry(mesh).lineIndices.push_back(grid.vertexOffset+a+1); }
             }

@@ -66,6 +66,7 @@ struct GpuMeshUpload {
     std::vector<uint32_t> edgeIndices;
     uint8_t features = 0;
     uint8_t bufferIndex = 0;
+    bool pointsOnly = false;
     uint32_t bufferOffset = 0;
     uint32_t pointChunk = 0;
     size_t uploadedBytes = 0;
@@ -77,6 +78,9 @@ struct GpuMeshUpload {
 [[nodiscard]] bool stepGpuMeshUpload(GpuMeshUpload& upload, const Mesh& source,
     const woby::graphics::VertexLayout& layout, uint32_t byteBudget);
 void abortGpuMeshUpload(GpuMeshUpload& upload);
+// Optional point resources are staged separately; the existing surface stays drawable.
+[[nodiscard]] GpuMeshUpload beginGpuPointUpload(SceneMeshPreparation prepared, size_t vertexBytes = 0);
+void commitGpuPointUpload(GpuMesh& destination, GpuMeshUpload& upload);
 
 // Optional display buffers are retained once built; drawing never allocates.
 void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh, uint8_t features);

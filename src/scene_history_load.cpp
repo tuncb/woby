@@ -18,7 +18,7 @@ std::optional<UiState> loadSceneHistoryStep(const SceneHistory& history,
         if (std::any_of(current.files.begin(), current.files.end(),
                 [&](const auto& live) { return live.objectId == file.objectId; })) { continue; }
         try {
-            auto imported = loadModel(file.path, file.importerId);
+            auto imported = loadModel(file.path, file.importerId, {{}, {}, {}, true});
             rebaseMesh(imported.mesh, file.mesh.origin);
             auto restored = createUiFileState(file.path, std::move(imported.mesh), 0, std::move(imported.importerId));
             restored.objectId = file.objectId;

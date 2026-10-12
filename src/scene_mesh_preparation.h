@@ -34,6 +34,6 @@ struct SceneMeshPreparation {
 // Nullopt means cancellation. Invalid geometry/capacity throws before allocation.
 [[nodiscard]] std::optional<SceneMeshPreparation> prepareSceneMesh(
     const Mesh& mesh, uint8_t features = 0,
-    const std::function<bool()>& shouldCancel = {}, bool buildPointHierarchy = true);
+    const std::function<bool()>& shouldCancel = {}, bool buildPointHierarchy = true, bool preparePoints = true);
 
 } // namespace woby

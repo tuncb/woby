@@ -156,6 +156,7 @@ void finalizeBounds(Bounds& bounds)
 Bounds nodeBounds(const Mesh& mesh, const MeshNode& node, const ModelLoadProgressCallback& progress = {},
     size_t completed = 0, size_t total = 0)
 {
+    if (mesh.preparationDeferred) { return mesh.bounds; }
     Bounds bounds = emptyAccumulatedBounds();
     const auto indices = meshNodeIndices(mesh, node);
     for (size_t index = 0; index < indices.size(); ++index) {
@@ -440,6 +441,26 @@ void refreshFolderCentersRecursive(UiState& state, UiSceneNode& node)
 
 } // namespace
 
+bool scenePostLoadReady(const UiState& state)
+{
+    return std::all_of(state.files.begin(), state.files.end(), [](const auto& file) { return postLoadReady(file); });
+}
+
+bool postLoadGroupDrawable(const UiFileState& file, const UiGroupState& group)
+{
+    return postLoadReady(file) || (group.scale == 1.0f && group.rotationDegrees == std::array<float, 3>{});
+}
+
+bool postLoadNodeDrawable(const UiState& state, const UiSceneNode& node)
+{
+    if (node.kind != UiSceneNodeKind::folder || (node.settings.scale == 1.0f && node.settings.rotationDegrees == std::array<float, 3>{})) { return true; }
+    const auto ready = [&](auto&& self, const UiSceneNode& item) -> bool {
+        if (item.kind != UiSceneNodeKind::folder && item.fileIndex < state.files.size() && !postLoadReady(state.files[item.fileIndex])) { return false; }
+        return std::all_of(item.children.begin(), item.children.end(), [&](const auto& child) { return self(self, child); });
+    };
+    return ready(ready, node);
+}
+
 std::array<float, 4> defaultGroupColor(size_t groupIndex)
 {
     constexpr std::array<std::array<float, 4>, 12> palette = {{
@@ -485,9 +506,10 @@ std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColo
             setGroupColor(group, {color[0], color[1], color[2], 1.0f});
             setGroupOpacity(group, color[3]);
         }
-        group.localBounds = nodeBounds(mesh, meshGeometry(mesh).nodes[groupIndex], progress, completed, total);
-        group.localBoundsValid = true;
-        group.originalBounds = originalMeshBounds(mesh, &meshGeometry(mesh).nodes[groupIndex]);
+        group.localBounds = mesh.preparationDeferred ? mesh.bounds
+            : nodeBounds(mesh, meshGeometry(mesh).nodes[groupIndex], progress, completed, total);
+        group.localBoundsValid = !mesh.preparationDeferred;
+        if (!mesh.preparationDeferred) { group.originalBounds = originalMeshBounds(mesh, &meshGeometry(mesh).nodes[groupIndex]); }
         group.center = group.localBounds.center;
         completed += size_t(node.indexCount) + node.lineIndexCount + node.pointIndexCount;
         settings.push_back(group);
@@ -505,6 +527,7 @@ UiFileState createUiFileState(std::filesystem::path modelPath, Mesh mesh, size_t
     file.importerId = std::move(importerId);
     publishMeshGeometry(mesh);
     file.mesh = std::move(mesh);
+    if (file.mesh.preparationDeferred) { file.postLoadPhase = PostLoadPhase::waitingForFrame; }
     file.groupSettings = createUiGroupStates(file.mesh, firstColorIndex, progress);
     if (!file.groupSettings.empty()) {
         file.fileSettings.visible = std::any_of(file.groupSettings.begin(), file.groupSettings.end(),

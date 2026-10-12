@@ -2043,4 +2043,15 @@ void shutdown()
 #endif
     context.reset();
 }
+uint64_t submittedFrameToken()
+{
+    const auto& c = state();
+    return noop() ? c.frameNumber : c.submitted;
+}
+
+uint64_t completedFrameToken()
+{
+    const auto& c = state();
+    return noop() ? c.frameNumber : gpu::timeline_completed_value(c.timeline);
+}
 } // namespace woby::graphics

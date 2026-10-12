@@ -40,7 +40,7 @@ inline constexpr size_t objPreflightBlockBytes = 1024 * 1024;
     const ModelLoadProgressCallback& progress = {}, uintmax_t fileBytesHint = 0);
 
 // Unified polygon/freeform loading into caller-owned coordinate buffers.
-[[nodiscard]] Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress = {});
+[[nodiscard]] Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress = {}, bool deferPreparation = false);
 // OBJ held in memory, with no external material-library reads.
 [[nodiscard]] Mesh loadObjMeshText(std::string_view text, const ModelLoadProgressCallback& progress = {});
 
@@ -50,6 +50,7 @@ inline constexpr size_t objPreflightBlockBytes = 1024 * 1024;
 [[nodiscard]] Mesh loadObjMeshTextLegacy(std::string_view text, const ModelLoadProgressCallback& progress = {});
 struct ObjPrototypeOptions {
     size_t chunkBytes = 4 * 1024 * 1024, readBytes = 256 * 1024, workers = 0;
+    bool deferPreparation = false;
 };
 struct ObjPrototypeMetrics {
     size_t inputBytes = 0, chunks = 0, workers = 0, peakInflightTextBytes = 0, parsedChunkBytes = 0;

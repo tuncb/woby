@@ -393,6 +393,8 @@ bool setObjectUvGrid(UiState& state, const std::vector<SceneObjectId>& objects,
 
 UiPropertyValue selectedObjectProperty(const UiState& state, UiObjectProperty property)
 {
+    const bool preparing = !scenePostLoadReady(state) && (property == UiObjectProperty::vertices || property == UiObjectProperty::vertexSize
+        || (property >= UiObjectProperty::rotationX && property <= UiObjectProperty::scale) || property == UiObjectProperty::analysisMode);
     UiPropertyValue result;
     const auto targets = propertyTargets(state, property);
     std::vector<std::optional<float>> values;
@@ -428,6 +430,7 @@ UiPropertyValue selectedObjectProperty(const UiState& state, UiObjectProperty pr
         if (result.available) { result.mixed = result.mixed || result.value != *value; }
         else { result.value = *value; result.available = true; }
     }
+    if (preparing) { result.available = false; }
     return result;
 }
 
@@ -479,6 +482,9 @@ std::array<UiPropertyValue, uiObjectPropertyCount> selectedObjectProperties(cons
             if (value.available) { value.mixed = value.mixed || value.value != *item; }
             else { value.value = *item; value.available = true; }
         }
+    }
+    if (!scenePostLoadReady(state)) {
+        for (auto property : {P::vertices, P::vertexSize, P::rotationX, P::rotationY, P::rotationZ, P::scale, P::analysisMode}) { result[static_cast<size_t>(property)].available = false; }
     }
     return result;
 }

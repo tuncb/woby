@@ -12,6 +12,7 @@ void cancelAnnotationPreparation(AnnotationPreparationRuntime& runtime)
 
 bool annotationPreparationReady(const UiState& state)
 {
+    if (!scenePostLoadReady(state)) { return false; }
     const bool missing = std::any_of(state.files.begin(), state.files.end(),
         [](const auto& file) { return !annotationMeshSnapshotReady(file.mesh); });
     if (missing) {
@@ -54,7 +55,7 @@ void updateAnnotationPreparation(AnnotationPreparationRuntime& runtime, UiState&
     if (!runtime.error.empty()) { return; }
     for (auto& file : state.files) {
         auto& mesh = file.mesh;
-        if (meshGeometry(mesh).indices.empty() || meshGeometry(mesh).nodes.empty() || annotationMeshSnapshotReady(mesh)) { continue; }
+        if (!postLoadReady(file) || meshGeometry(mesh).indices.empty() || meshGeometry(mesh).nodes.empty() || annotationMeshSnapshotReady(mesh)) { continue; }
         publishMeshGeometry(mesh);
         auto job = std::make_unique<AnnotationPreparationJob>();
         job->owner = &state; job->generation = state.sceneGeneration;

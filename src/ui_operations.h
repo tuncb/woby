@@ -9,6 +9,10 @@
 #include <vector>
 
 namespace woby {
+struct PostLoadIdentity;
+struct PostLoadData;
+void setPostLoadPhase(UiState& state, SceneObjectId id, PostLoadPhase phase, std::string error = {});
+bool publishPostLoadData(UiState& state, const PostLoadIdentity& identity, PostLoadData data);
 struct DiagnosticEdge;
 struct MeshComparison;
 bool setUvProbe(UiState& state, SceneObjectId analysisId, SceneObjectId partId,
@@ -313,7 +317,7 @@ void setAllAnnotationsVisible(UiState& state, bool visible);
 void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometry geometry);
 void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometryOwner geometry);
 void deleteAnnotation(UiState& state, SceneObjectId id);
-void validateAnnotationTargets(UiState& state);
+void validateAnnotationTargets(UiState& state, bool notifyEdit = true);
 [[nodiscard]] std::vector<SceneAnnotationRecord> sceneAnnotationRecords(const UiState& state);
 void loadSceneAnnotations(UiState& state, const SceneDocument& document);
 

@@ -1736,10 +1736,10 @@ void drawAnalysisCreationMenu(UiState& state, const std::vector<SceneObjectId>& 
 {
     for (const auto task : {AnalysisTask::meshChecks, AnalysisTask::meshQuality,
             AnalysisTask::surfaceComparison, AnalysisTask::uvInspection}) {
-        const bool allowed = task != AnalysisTask::surfaceComparison || sources.size() <= 2;
+        const bool allowed = scenePostLoadReady(state) && (task != AnalysisTask::surfaceComparison || sources.size() <= 2);
         const char* label = task == AnalysisTask::surfaceComparison ? "Surface comparison" : analysisTaskLabel(task);
         if (ImGui::MenuItem(label, nullptr, false, allowed)) { createAnalysisFromObjects(state, task, sources); }
-        if (!allowed) { setLastItemTooltip("Select up to two sources, in A then B order."); }
+        if (!allowed) { setLastItemTooltip(scenePostLoadReady(state) ? "Select up to two sources, in A then B order." : "Available after model preparation."); }
     }
 }
 

@@ -9,6 +9,7 @@ namespace woby {
 uint8_t requestedGpuMeshFeatures(const UiFileState& file)
 {
     uint8_t features = 0;
+    if (!postLoadReady(file)) { return features; }
     if (!file.fileSettings.visible) { return features; }
     for (const auto& group : file.groupSettings) {
         if (!group.visible) { continue; }
@@ -19,7 +20,7 @@ uint8_t requestedGpuMeshFeatures(const UiFileState& file)
 }
 
 std::optional<SceneMeshPreparation> prepareSceneMesh(
-    const Mesh& mesh, uint8_t features, const std::function<bool()>& shouldCancel, bool buildPointHierarchy)
+    const Mesh& mesh, uint8_t features, const std::function<bool()>& shouldCancel, bool buildPointHierarchy, bool preparePoints)
 {
     const auto canceled = [&] { return shouldCancel && shouldCancel(); };
     if (canceled()) { return {}; }
@@ -43,8 +44,8 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
     SceneMeshPreparation result;
     result.features = features;
     result.nodeRanges.reserve(meshGeometry(mesh).nodes.size());
-    result.pointVertexIndices.reserve(meshGeometry(mesh).vertices.size());
-    std::vector<size_t> vertexGroups(meshGeometry(mesh).vertices.size(), meshGeometry(mesh).nodes.size());
+    if (preparePoints) { result.pointVertexIndices.reserve(meshGeometry(mesh).vertices.size()); }
+    std::vector<size_t> vertexGroups(preparePoints ? meshGeometry(mesh).vertices.size() : 0, meshGeometry(mesh).nodes.size());
     for (size_t nodeIndex = 0; nodeIndex < meshGeometry(mesh).nodes.size(); ++nodeIndex) {
         if (canceled()) { return {}; }
         const auto& node = meshGeometry(mesh).nodes[nodeIndex];
@@ -63,7 +64,7 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
         range.lineIndexOffset = node.indexOffset * 2u;
         range.lineIndexCount = node.indexCount * 2u;
         range.pointIndexOffset = static_cast<uint32_t>(result.pointVertexIndices.size());
-        const auto indices = meshNodeIndices(mesh, node);
+        const auto indices = preparePoints ? meshNodeIndices(mesh, node) : std::span<const uint32_t>{};
         for (size_t i = 0; i < indices.size(); ++i) {
             if (i % 65536 == 0 && canceled()) { return {}; }
             const auto vertex = indices[i];
@@ -88,6 +89,10 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
     result.uploadBytes = meshGeometry(mesh).vertices.size() * sizeof(Vertex)
         + (meshGeometry(mesh).indices.size() + meshGeometry(mesh).lineIndices.size() + result.edgeIndices.size()
             + ((features & gpuMeshPoints) ? result.pointVertexIndices.size() : 0)) * sizeof(uint32_t);
+    if (!preparePoints && meshGeometry(mesh).indices.empty() && meshGeometry(mesh).lineIndices.empty()) {
+        result.compactOnly = true;
+        result.uploadBytes = 0; // The first frame is a placeholder; every point resource is deferred.
+    }
     if (buildPointHierarchy && result.pointVertexIndices.size() >= 65536 && !mesh.freeform) {
         auto cloud = points::buildCloud(mesh, std::move(result.pointVertexIndices), result.nodeRanges, shouldCancel);
         if (!cloud) { return {}; }

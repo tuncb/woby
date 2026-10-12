@@ -36,9 +36,10 @@ Json boundsInfo(const Bounds& bounds, const Coordinate& origin = {})
     const auto original = [&](const auto& p) { return originalPosition({p[0],p[1],p[2]},origin); };
     return {{"min", original(bounds.min)}, {"max", original(bounds.max)}, {"center", original(bounds.center)}, {"radius", bounds.radius}};
 }
-Json originalBoundsInfo(const Mesh& mesh, float radius, const MeshNode* node = nullptr)
+Json originalBoundsInfo(const Mesh& mesh, float radius, const MeshNode* node = nullptr,
+    const std::array<Coordinate, 2>* cached = nullptr)
 {
-    const auto bounds = originalMeshBounds(mesh, node);
+    const auto bounds = cached ? *cached : originalMeshBounds(mesh, node);
     Coordinate center{};
     for (size_t k = 0; k < 3; ++k) { center[k] = bounds[0][k]*.5 + bounds[1][k]*.5; }
     return {{"min", bounds[0]}, {"max", bounds[1]}, {"center", center}, {"radius", radius}};
@@ -134,7 +135,8 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"vertexCount", meshGeometry(file.mesh).vertices.size()}, {"triangleCount", meshGeometry(file.mesh).indices.size() / 3},
                 {"lineSegmentCount", meshGeometry(file.mesh).lineIndices.size() / 2},
                 {"pointCount", meshGeometry(file.mesh).pointIndices.size()},
-                {"groupCount", file.groupSettings.size()}, {"localBounds", originalBoundsInfo(file.mesh, file.mesh.bounds.radius)}};
+                {"groupCount", file.groupSettings.size()}, {"postLoadReady", postLoadReady(file)},
+                {"localBounds", postLoadReady(file) ? originalBoundsInfo(file.mesh, file.mesh.bounds.radius) : Json(nullptr)}};
         }
         for (size_t index = 0; index < file.groupSettings.size(); ++index) {
             const auto& group = file.groupSettings[index];
@@ -144,7 +146,9 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                     {"lineSegmentCount", meshGeometry(file.mesh).nodes[index].lineIndexCount / 2},
                     {"pointCount", meshGeometry(file.mesh).nodes[index].pointIndexCount},
                     {"hasTexcoords", meshGeometry(file.mesh).nodes.at(index).hasTexcoords},
-                    {"localBounds", group.localBoundsValid ? originalBoundsInfo(file.mesh, group.localBounds.radius, &meshGeometry(file.mesh).nodes[index]) : Json(nullptr)}};
+                    {"postLoadReady", postLoadReady(file)},
+                    {"localBounds", postLoadReady(file) && group.localBoundsValid ? originalBoundsInfo(file.mesh, group.localBounds.radius,
+                        &meshGeometry(file.mesh).nodes[index], group.originalBounds ? &*group.originalBounds : nullptr) : Json(nullptr)}};
             }
         }
     }
@@ -366,6 +370,11 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     const ControlOperation& command, const ObjectIdFormatter& formatId, float minPaneWidth, float maxPaneWidth)
 {
     using A = ControlAction;
+    if (!scenePostLoadReady(state) && (command.vertices || command.rotationDegrees || command.scale
+        || command.action == A::comparisonCreate || command.action == A::comparisonRun
+        || command.action == A::comparisonEnable || command.action == A::comparisonSet)) {
+        throw std::runtime_error("Model data is being prepared. Retry when postLoadReady is true.");
+    }
     if (command.action == A::annotationList || command.action == A::annotationGet
         || command.action == A::annotationCreate || command.action == A::annotationSet
         || command.action == A::annotationMove || command.action == A::annotationReshape || command.action == A::annotationDelete

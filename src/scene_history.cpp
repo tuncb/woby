@@ -176,6 +176,8 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
             file.groupSettings[group].localBoundsValid = source->groupSettings[group].localBoundsValid;
             file.groupSettings[group].originalBounds = source->groupSettings[group].originalBounds;
         }
+        file.postLoadPhase = source->postLoadPhase;
+        file.postLoadError = source->postLoadError;
         file.fileSettings.center = source->fileSettings.center;
         if (live != current.files.end()) { file.mesh = live->mesh; }
         else { file.mesh = std::move(loaded->mesh); }

@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <memory>
 #include <stdexcept>
+#include <utility>
 
 namespace woby {
 namespace {
@@ -212,6 +213,7 @@ bool stepGpuMeshUpload(GpuMeshUpload& upload, const Mesh& source,
     // Keep chunks aligned for both Vulkan copies and vertex-buffer strides.
     byteBudget -= byteBudget % sizeof(Vertex);
     while (upload.bufferIndex < 7) {
+        if (upload.pointsOnly && upload.bufferIndex > 0 && upload.bufferIndex < 4) { upload.bufferIndex = 4; }
         if (upload.bufferIndex >= 5) {
             if (!upload.mesh.pointCloud) { ++upload.bufferIndex; continue; }
             const bool proxy = upload.bufferIndex == 6;
@@ -293,7 +295,7 @@ void abortGpuMeshUpload(GpuMeshUpload& upload)
 
 GpuMesh createGpuMesh(const Mesh& mesh, const woby::graphics::VertexLayout& meshLayout, uint8_t features)
 {
-    auto upload = beginGpuMeshUpload(*prepareSceneMesh(mesh, features));
+    auto upload = beginGpuMeshUpload(*prepareSceneMesh(mesh, features, {}, !mesh.preparationDeferred, !mesh.preparationDeferred));
     try {
         while (!stepGpuMeshUpload(upload, mesh, meshLayout, 4u * 1024 * 1024)) {}
     } catch (...) {
@@ -301,6 +303,44 @@ GpuMesh createGpuMesh(const Mesh& mesh, const woby::graphics::VertexLayout& mesh
         throw;
     }
     return std::move(upload.mesh);
+}
+
+GpuMeshUpload beginGpuPointUpload(SceneMeshPreparation prepared, size_t vertexBytes)
+{
+    const auto pointBytes = prepared.pointCloud
+        ? (prepared.pointCloud->points.size() + prepared.pointCloud->proxies.size()) * sizeof(points::Point)
+        : prepared.pointVertexIndices.size() * sizeof(uint32_t);
+    prepared.features = gpuMeshPoints;
+    prepared.uploadBytes = pointBytes + vertexBytes;
+    auto upload = beginGpuMeshUpload(std::move(prepared));
+    upload.bufferIndex = vertexBytes ? 0 : 4;
+    upload.pointsOnly = true;
+    return upload;
+}
+
+void commitGpuPointUpload(GpuMesh& destination, GpuMeshUpload& upload)
+{
+    if (upload.bufferIndex != 7) { throw std::invalid_argument("Point upload is incomplete."); }
+    if (graphics::isValid(upload.mesh.vertexBuffer)) {
+        graphics::destroy(destination.vertexBuffer);
+        destination.vertexBuffer = std::exchange(upload.mesh.vertexBuffer, WOBY_GPU_INVALID_HANDLE);
+    }
+    graphics::destroy(destination.pointIdBuffer);
+    for (auto chunk : destination.pointChunks) { graphics::destroy(chunk); }
+    for (auto chunk : destination.proxyChunks) { graphics::destroy(chunk); }
+    destination.pointIdBuffer = std::exchange(upload.mesh.pointIdBuffer, WOBY_GPU_INVALID_HANDLE);
+    destination.nodeRanges = std::move(upload.mesh.nodeRanges);
+    destination.pointVertexIndices = std::move(upload.mesh.pointVertexIndices);
+    destination.pointCloud = std::move(upload.mesh.pointCloud);
+    destination.pointChunks = std::move(upload.mesh.pointChunks);
+    destination.proxyChunks = std::move(upload.mesh.proxyChunks);
+    destination.compactOnly = upload.mesh.compactOnly;
+    destination.resourceRevision = nextMeshContentRevision();
+    if (destination.compactOnly && graphics::isValid(destination.vertexBuffer)) {
+        graphics::destroy(destination.vertexBuffer);
+        destination.vertexBuffer = WOBY_GPU_INVALID_HANDLE;
+    }
+    upload = {};
 }
 
 void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,

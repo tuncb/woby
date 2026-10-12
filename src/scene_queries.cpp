@@ -96,11 +96,12 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
             if (settings.localBoundsValid) { part.bounds = settings.localBounds; }
             part.solid = node.indexCount && settings.showSolidMesh;
             part.edges = node.lineIndexCount || (node.indexCount && settings.showTriangles);
-            part.vertices = settings.showVertices;
+            part.vertices = settings.showVertices && postLoadReady(file);
             part.opacity = opacity * settings.opacity;
             record.framingVisible = visible && settings.visible && !meshGeometry(file.mesh).vertices.empty();
-            record.visible = visible && settings.visible && (part.vertices || part.opacity > 0) && (node.pointIndexCount
-                ? settings.showVertices : node.lineIndexCount || settings.showSolidMesh || settings.showTriangles || settings.showVertices);
+            record.visible = visible && settings.visible && postLoadGroupDrawable(file, settings)
+                && (part.vertices || part.opacity > 0) && (node.pointIndexCount
+                ? part.vertices : node.lineIndexCount || settings.showSolidMesh || settings.showTriangles || part.vertices);
             cache.records.push_back(std::move(record));
         };
         const auto visit = [&](auto&& self, const UiSceneNode& node, const PickMatrix& parent, float opacity, bool visible) -> void {
@@ -110,7 +111,7 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
                 PickMatrix local, model;
                 if (node.kind == UiSceneNodeKind::folder) {
                     sceneNodeTransformMatrix(node.settings, local.data());
-                    opacity *= node.settings.opacity; visible = visible && node.settings.visible;
+                    opacity *= node.settings.opacity; visible = visible && node.settings.visible && postLoadNodeDrawable(state, node);
                 } else {
                     const auto& file = state.files[node.fileIndex];
                     fileTransformMatrix(file.fileSettings, local.data());
@@ -173,9 +174,17 @@ void resolveSceneParts(SceneQueryRuntime& runtime, const UiState& state, std::ve
 
 void updateSceneAnnotationQueries(SceneQueryRuntime& runtime, const UiState& state)
 {
-    const bool sectionChanged = updateCrossSections(runtime, state);
     auto& cache = runtime.annotations;
     const auto stamp = sceneQueryStamp(state);
+    if (!scenePostLoadReady(state)) {
+        if (cache.stamp != stamp || cache.revision != state.revisions.annotations) {
+            cache.objects.clear();
+            for (const auto& item : state.annotations) { cache.objects.try_emplace(item.objectId); }
+            cache.stamp = stamp; cache.revision = state.revisions.annotations;
+        }
+        return;
+    }
+    const bool sectionChanged = updateCrossSections(runtime, state);
     if (!sectionChanged && cache.stamp == stamp && cache.revision == state.revisions.annotations) { return; }
     const bool rebuild = cache.stamp != stamp;
     if (cache.stamp.owner != &state || cache.stamp.generation != state.sceneGeneration) { cache.objects.clear(); }

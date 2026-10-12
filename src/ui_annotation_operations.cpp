@@ -172,7 +172,7 @@ std::vector<Coordinate> annotationOriginalVertices(const UiState& state, const U
     for (const auto& p : annotationVertices(state, item)) { result.push_back(originalPosition({p[0],p[1],p[2]}, origin)); }
     return result;
 }
-void validateAnnotationTargets(UiState& state)
+void validateAnnotationTargets(UiState& state, bool notifyEdit)
 {
     bool changed = false;
     for (auto& item : state.annotations) {
@@ -191,7 +191,7 @@ void validateAnnotationTargets(UiState& state)
         item.targetValid = !item.targetPending && validAttachments(state, item);
         changed = changed || validBefore != item.targetValid || pendingBefore != item.targetPending;
     }
-    if (changed) { notifySceneEdit(state, SceneChange::annotations); }
+    if (changed && notifyEdit) { notifySceneEdit(state, SceneChange::annotations); }
 }
 SceneObjectId createCrossSection(UiState& state, CrossSectionSettings settings, std::vector<SceneObjectId> sources)
 {

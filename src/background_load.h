@@ -54,12 +54,12 @@ struct SceneCpuLoadResult {
     size_t firstColorIndex,
     const BackgroundLoadProgressCallback& progress,
     const BackgroundLoadCancelCallback& shouldCancel,
-    bool prepareRenderData = false);
+    bool prepareRenderData = false, bool deferPreparation = false);
 
 [[nodiscard]] SceneCpuLoadResult loadSceneCpu(
     const std::filesystem::path& scenePath,
     const BackgroundLoadProgressCallback& progress,
     const BackgroundLoadCancelCallback& shouldCancel,
-    bool prepareRenderData = false);
+    bool prepareRenderData = false, bool deferPreparation = false);
 
 } // namespace woby

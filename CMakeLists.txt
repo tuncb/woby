@@ -224,6 +224,9 @@ add_library(woby_core STATIC
     src/adaptive_points.cpp
     src/point_cloud.cpp
     src/scene_mesh_preparation.cpp
+    src/post_loading.cpp
+    src/post_loading.h
+    src/post_load_operations.cpp
     src/scene_mesh_preparation.h
     src/scene_draw_plan.cpp
     src/scene_draw_plan.h
@@ -478,9 +481,11 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_uv_quality_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_loading_preparation COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_loading_preparation_smoke.py" "$<TARGET_FILE:woby>")
+        add_test(NAME woby_post_loading COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_post_loading_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_coordinate_origin COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_coordinate_origin_smoke.py" "$<TARGET_FILE:woby>")
-        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_transparency_render woby_obj_primitives_render woby_freeform_render ${woby_uv_grid_tests} woby_uv_quality_render woby_loading_preparation woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics RESOURCE_LOCK woby_gpu)
+        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_transparency_render woby_obj_primitives_render woby_freeform_render ${woby_uv_grid_tests} woby_uv_quality_render woby_loading_preparation woby_post_loading woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics RESOURCE_LOCK woby_gpu)
     endif()
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
@@ -585,6 +590,7 @@ if(BUILD_TESTING)
         tests/automation_tests.cpp
         tests/background_load_tests.cpp
         tests/loading_preparation_tests.cpp
+        tests/post_loading_tests.cpp
         tests/dummy_tests.cpp
         tests/command_line_tests.cpp
         tests/file_discovery_tests.cpp

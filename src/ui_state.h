@@ -59,6 +59,8 @@ struct UiFileSettings {
     AnalysisMode analysisMode = AnalysisMode::perVolume;
 };
 
+enum class PostLoadPhase { waitingForFrame, preparing, uploading, ready, failed };
+
 struct UiFileState {
     std::filesystem::path path;
     std::string importerId;
@@ -67,7 +69,11 @@ struct UiFileState {
     UiFileSettings fileSettings;
     float vertexSizeScale = 1.0f;
     SceneObjectId objectId = invalidSceneObjectId;
+    PostLoadPhase postLoadPhase = PostLoadPhase::ready;
+    std::string postLoadError; // Transient; excluded from scene files and undo settings.
 };
+
+[[nodiscard]] inline bool postLoadReady(const UiFileState& file) { return file.postLoadPhase == PostLoadPhase::ready; }
 
 inline constexpr size_t invalidSceneNodeIndex = static_cast<size_t>(-1);
 
@@ -269,8 +275,12 @@ struct UiState {
     // Operation notification, not persisted content. Camera/selection/preferences
     // do not advance it. History consumes this revision at action boundaries.
     uint64_t sceneEditRevision = 0;
+    uint64_t postLoadRevision = 0; // Derived readiness; excluded from dirty tracking and history notifications.
 };
 
+[[nodiscard]] bool scenePostLoadReady(const UiState& state);
+[[nodiscard]] bool postLoadGroupDrawable(const UiFileState& file, const UiGroupState& group);
+[[nodiscard]] bool postLoadNodeDrawable(const UiState& state, const UiSceneNode& node);
 [[nodiscard]] std::array<float, 4> defaultGroupColor(size_t groupIndex);
 [[nodiscard]] std::array<float, 3> nodeCenter(const Mesh& mesh, const MeshNode& node);
 [[nodiscard]] std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColorIndex,

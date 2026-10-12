@@ -16,7 +16,8 @@ void updateSceneInspector(SceneInspectorRuntime& runtime, const UiState& state)
     const bool dimensionsChanged = runtime.queryOwner != &queries || runtime.dimensionBuilds != queries.selection.dimensionBuilds;
     // Compare before copying selection: unchanged frames allocate nothing.
     if (!dimensionsChanged && runtime.owner == &state && runtime.key && runtime.key->generation == state.sceneGeneration
-        && runtime.key->revision == state.sceneEditRevision && runtime.key->selection == state.selectedSceneObjects) { return; }
+        && runtime.key->revision == state.sceneEditRevision && runtime.key->selection == state.selectedSceneObjects
+        && runtime.key->postLoadRevision == state.postLoadRevision) { return; }
     SceneInspectorSnapshot next;
     next.properties = selectedObjectProperties(state);
     next.visibility = selectedObjectVisibility(state);
@@ -46,7 +47,7 @@ void updateSceneInspector(SceneInspectorRuntime& runtime, const UiState& state)
                     + std::to_string(meshGeometry(file.mesh).vertices.size()) + " vertices | " + std::to_string(meshGeometry(file.mesh).indices.size() / 3) + " triangles");
                 if (!meshGeometry(file.mesh).lineIndices.empty()) { next.statistics.push_back(std::to_string(meshGeometry(file.mesh).lineIndices.size() / 2) + " line segments"); }
                 if (!meshGeometry(file.mesh).pointIndices.empty()) { next.statistics.push_back(std::to_string(meshGeometry(file.mesh).pointIndices.size()) + " points"); }
-                next.bounds = originalMeshBounds(file.mesh);
+                if (postLoadReady(file)) { next.bounds = originalMeshBounds(file.mesh); }
                 break;
             }
             for (size_t i = 0; i < file.groupSettings.size() && i < meshGeometry(file.mesh).nodes.size(); ++i) {
@@ -55,7 +56,7 @@ void updateSceneInspector(SceneInspectorRuntime& runtime, const UiState& state)
                 next.statistics.push_back(node.pointIndexCount ? std::to_string(node.pointIndexCount) + " points"
                     : node.lineIndexCount ? std::to_string(node.lineIndexCount / 2) + " line segments"
                     : std::to_string(node.indexCount / 3) + " triangles");
-                if (file.groupSettings[i].localBoundsValid) {
+                if (postLoadReady(file) && file.groupSettings[i].localBoundsValid) {
                     next.bounds = file.groupSettings[i].originalBounds;
                     if (!next.bounds) { next.bounds = originalMeshBounds(file.mesh, &node); }
                 }
@@ -68,7 +69,7 @@ void updateSceneInspector(SceneInspectorRuntime& runtime, const UiState& state)
     runtime.queryOwner = &queries;
     runtime.snapshot = std::move(next);
     runtime.owner = &state;
-    runtime.key = PropertiesKey{state.sceneGeneration, state.sceneEditRevision, state.selectedSceneObjects};
+    runtime.key = PropertiesKey{state.sceneGeneration, state.sceneEditRevision, state.selectedSceneObjects, state.postLoadRevision};
     ++runtime.builds;
 }
 

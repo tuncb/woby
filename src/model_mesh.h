@@ -130,6 +130,7 @@ struct Mesh {
     std::shared_ptr<const UvQuality> uvQuality;
     std::shared_ptr<const FreeformGeometry> freeform;
     uint64_t contentRevision = nextMeshContentRevision();
+    bool preparationDeferred = false; // Viewer-derived data is prepared after the first frame.
 };
 
 [[nodiscard]] inline const MeshGeometry& meshGeometry(const Mesh& mesh) noexcept

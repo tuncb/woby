@@ -723,7 +723,7 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
             active += item.second.jobs.worker.valid(); active += item.second.jobs.intersection.worker.valid();
         }
         updateComparisonInspectorCache(runtime.inspector.queries, state, comparison.objectId);
-        updateComparisonRuntime(runtime, state, comparison.objectId, active < 2);
+        updateComparisonRuntime(runtime, state, comparison.objectId, active < 2 && scenePostLoadReady(state));
         updateDifferenceRuntime(runtime.difference, state, comparison.objectId, runtime.inspector.queries.signature);
         if (graphics::isValid(runtimes.program)) { uploadDifferenceMesh(runtime.difference); }
         if (comparison.settings.colorRangeMode != ComparisonColorRange::custom

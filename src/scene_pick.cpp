@@ -89,7 +89,10 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
     part.solid = node.indexCount && group.showSolidMesh;
     part.edges = node.lineIndexCount || (node.indexCount && group.showTriangles);
     part.edgeXray = node.lineIndexCount ? !group.lines.depthTest : state.triangleEdgeXray;
-    part.vertices = group.showVertices;
+    part.vertices = group.showVertices && postLoadReady(file);
+    if (!includeHidden && !postLoadReady(file) && !node.lineIndexCount
+        && (node.pointIndexCount || (!group.showSolidMesh && !group.showTriangles))) { return; }
+    if (!includeHidden && !postLoadGroupDrawable(file, group)) { return; }
     part.opacity = opacity;
     part.pointSize = std::round(std::clamp(state.masterVertexPointSize * file.vertexSizeScale * group.vertexSizeScale,
         minVertexPointSize, maxVertexPointSize));
@@ -107,7 +110,7 @@ void appendNode(std::vector<ScenePickPart>& parts, const UiState& state, const U
     }
     PickMatrix local;
     if (node.kind == UiSceneNodeKind::folder) {
-        if (!includeHidden && !node.settings.visible) { return; }
+        if (!includeHidden && (!node.settings.visible || !postLoadNodeDrawable(state, node))) { return; }
         opacity *= node.settings.opacity;
         sceneNodeTransformMatrix(node.settings, local.data());
     } else {
