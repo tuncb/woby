@@ -1043,6 +1043,7 @@ void printCommandLineHelp()
         "  --window-size WxH          Fixed client size in logical units (1..16384).\n"
         "  --drawable-size WxH        Fixed drawable pixel size; fails if unavailable.\n"
         "  --hidden-window            Create a hidden desktop window (not headless).\n"
+        "  --upload-buffer-mib N      Model upload staging capacity, 4..256 MiB (default 16).\n"
         "  --instance ID              Choose the viewer's instance ID.\n"
         "  --scene PATH | --woby PATH Open one saved .woby scene.\n"
         "  --file PATH                Add a model; repeat for multiple files.\n"

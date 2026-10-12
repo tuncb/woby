@@ -67,8 +67,8 @@ bool initialize(PointGpuFixture& f,uint32_t samples,bool requireAtomics=true,g::
     auto prepared=woby::prepareSceneMesh(source,woby::gpuMeshPoints,{},false); REQUIRE(prepared);
     prepared->pointCloud=std::make_shared<const woby::points::Cloud>(woby::points::buildCloud(source,32,8));
     prepared->pointVertexIndices.clear(); prepared->compactOnly=true;
-    auto upload=woby::beginGpuMeshUpload(std::move(*prepared));
-    while (!woby::stepGpuMeshUpload(upload,source,woby::meshVertexLayout(),64)) g::frame();
+    auto upload=woby::beginGpuMeshUpload(std::move(*prepared), source, woby::meshVertexLayout());
+    woby::waitGpuMeshUpload(upload);
     f.models.push_back({std::move(upload.mesh)});
     CHECK_FALSE(g::isValid(f.models[0].gpuMesh.vertexBuffer)); CHECK_FALSE(g::isValid(f.models[0].gpuMesh.pointIdBuffer));
     for (size_t i=0;i<2;++i) {

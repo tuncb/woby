@@ -24,6 +24,7 @@
 #include "scene_lifecycle.h"
 #include "scene_history.h"
 #include "scene_history_load.h"
+#include "scene_history_restore.h"
 #include "ui_history_controls.h"
 #include "scene_renderer.h"
 #include "annotation_ui.h"
@@ -226,7 +227,6 @@ using woby::SceneFileDialogState;
 using woby::SceneScreenshotDialogState;
 using woby::SceneScreenshotRuntime;
 using woby::completeSceneScreenshotReadback;
-using woby::createGpuMesh;
 using woby::destroyGpuMesh;
 using woby::destroyModelRuntimes;
 using woby::destroySceneScreenshotFramebuffer;
@@ -241,11 +241,6 @@ using woby::submitSceneHelpers;
 using woby::submitSceneScreenshotCapture;
 using woby::vertexPointSize;
 
-struct LoadedModelFileWithRuntime {
-    LoadedModelFile file;
-    LoadedModelRuntime runtime;
-};
-
 struct DragDropState {
     std::vector<std::filesystem::path> batchPaths;
     std::vector<std::filesystem::path> pendingPaths;
@@ -257,8 +252,21 @@ struct ToastMessage {
     std::chrono::steady_clock::time_point startedAt{};
 };
 
+struct ResolvedModelInputGroup {
+    bool folderTree = false;
+    std::filesystem::path root;
+    size_t firstPathIndex = 0;
+    size_t pathCount = 0;
+};
+
+struct ResolvedModelInputs {
+    std::vector<std::filesystem::path> paths;
+    std::vector<ResolvedModelInputGroup> groups;
+};
+
 enum class AsyncLoadKind {
     appendModel,
+    initialModels,
     appendFolderTree,
     openScene,
 };
@@ -295,11 +303,12 @@ struct GpuFinalizeRuntime {
     std::filesystem::path folderTreeRoot;
     std::filesystem::path scenePath;
     woby::SceneDocument sceneDocument;
+    ResolvedModelInputs initialInputs;
     std::vector<LoadedModelFile> files;
     std::vector<woby::SceneMeshPreparation> preparations;
-    std::optional<woby::GpuMeshUpload> upload;
-    double uploadMilliseconds = 0;
-    double longestUploadStepMilliseconds = 0;
+    std::vector<std::optional<woby::GpuMeshUpload>> uploads;
+    std::vector<std::string> uploadErrors;
+    uint64_t sceneGeneration = 0;
     bool cancelRequested = false;
     std::vector<LoadedModelFile> finalizedFiles;
     std::vector<LoadedModelRuntime> finalizedRuntimes;
@@ -342,26 +351,15 @@ struct AutomationDifferenceRuntime {
     bool exporting = false;
 };
 
-struct ResolvedModelInputGroup {
-    bool folderTree = false;
-    std::filesystem::path root;
-    size_t firstPathIndex = 0;
-    size_t pathCount = 0;
-};
-
-struct ResolvedModelInputs {
-    std::vector<std::filesystem::path> paths;
-    std::vector<ResolvedModelInputGroup> groups;
-};
-
 bool isAppendModelLoadKind(AsyncLoadKind kind)
 {
-    return kind == AsyncLoadKind::appendModel || kind == AsyncLoadKind::appendFolderTree;
+    return kind == AsyncLoadKind::appendModel || kind == AsyncLoadKind::initialModels || kind == AsyncLoadKind::appendFolderTree;
 }
 
 const char* backgroundLoadDescription(AsyncLoadKind kind)
 {
     switch (kind) {
+    case AsyncLoadKind::initialModels:
     case AsyncLoadKind::appendModel:
         return "Loading model files...";
     case AsyncLoadKind::appendFolderTree:
@@ -376,6 +374,7 @@ const char* backgroundLoadDescription(AsyncLoadKind kind)
 const char* backgroundLoadFailurePrefix(AsyncLoadKind kind)
 {
     switch (kind) {
+    case AsyncLoadKind::initialModels:
     case AsyncLoadKind::appendModel:
         return "Open model files failed: ";
     case AsyncLoadKind::appendFolderTree:
@@ -1200,82 +1199,6 @@ void appendSceneNodesForResolvedInputs(
     woby::refreshSceneTreeFolderCenters(state);
 }
 
-LoadedModelFileWithRuntime loadModelFile(
-    const std::filesystem::path& modelPath,
-    const woby::graphics::VertexLayout& meshLayout,
-    size_t firstColorIndex,
-    const woby::SceneFileRecord* sceneRecord = nullptr)
-{
-    const auto totalStart = woby::PerformanceClock::now();
-    LoadedModelFileWithRuntime loaded;
-    try {
-        const auto parseStart = woby::PerformanceClock::now();
-        auto imported = woby::loadModel(modelPath, sceneRecord ? sceneRecord->importerId : std::string{}, {{}, {}, {}, true});
-        const double parseMilliseconds = elapsedMilliseconds(parseStart);
-
-        loaded.file = woby::createUiFileState(modelPath, std::move(imported.mesh), firstColorIndex, std::move(imported.importerId));
-        if (sceneRecord != nullptr) {
-            woby::applySceneFileRecord(loaded.file, *sceneRecord);
-        }
-
-        const auto gpuStart = woby::PerformanceClock::now();
-        loaded.runtime.gpuMesh = createGpuMesh(loaded.file.mesh, meshLayout,
-            woby::requestedGpuMeshFeatures(loaded.file));
-        const double gpuMilliseconds = elapsedMilliseconds(gpuStart);
-
-        spdlog::info(
-            "perf model_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} gpu_ms={} total_ms={}",
-            woby::pathToUtf8(modelPath),
-            meshGeometry(loaded.file.mesh).vertices.size(),
-            meshGeometry(loaded.file.mesh).indices.size() / 3u,
-            loaded.file.groupSettings.size(),
-            parseMilliseconds,
-            gpuMilliseconds,
-            elapsedMilliseconds(totalStart));
-    } catch (const std::exception& exception) {
-        spdlog::info(
-            "perf model_load_failed path=\"{}\" duration_ms={} error=\"{}\"",
-            woby::pathToUtf8(modelPath),
-            elapsedMilliseconds(totalStart),
-            exception.what());
-        throw;
-    }
-
-    return loaded;
-}
-
-std::vector<LoadedModelFile> loadModelFiles(
-    const std::vector<std::filesystem::path>& modelPaths,
-    const woby::graphics::VertexLayout& meshLayout,
-    std::vector<LoadedModelRuntime>& runtimes,
-    size_t firstColorIndex = 0)
-{
-    const auto start = woby::PerformanceClock::now();
-    std::vector<LoadedModelFile> files;
-    files.reserve(modelPaths.size());
-    runtimes.reserve(modelPaths.size());
-    size_t colorIndex = firstColorIndex;
-
-    try {
-        for (const auto& modelPath : modelPaths) {
-            LoadedModelFileWithRuntime loaded = loadModelFile(modelPath, meshLayout, colorIndex);
-            colorIndex += loaded.file.groupSettings.size();
-            files.push_back(std::move(loaded.file));
-            runtimes.push_back(std::move(loaded.runtime));
-        }
-    } catch (...) {
-        destroyModelRuntimes(runtimes);
-        throw;
-    }
-
-    spdlog::info(
-        "perf model_load_batch requested_count={} loaded_count={} duration_ms={}",
-        modelPaths.size(),
-        files.size(),
-        elapsedMilliseconds(start));
-    return files;
-}
-
 void rememberAddedModels(woby::RecentFilesRuntime& recentFiles, const woby::UiState& state, size_t firstFileIndex)
 {
     const size_t retainedStart = state.files.size() > woby::recentFileLimit
@@ -1283,43 +1206,6 @@ void rememberAddedModels(woby::RecentFilesRuntime& recentFiles, const woby::UiSt
     for (size_t i = std::max(firstFileIndex, retainedStart); i < state.files.size(); ++i) {
         woby::rememberRecentFile(recentFiles, woby::RecentFileKind::model, state.files[i].path);
     }
-}
-
-void appendInitialModelFiles(
-    const ResolvedModelInputs& modelInputs,
-    const woby::graphics::VertexLayout& meshLayout,
-    woby::UiState& state,
-    std::vector<LoadedModelRuntime>& runtimes)
-{
-    if (modelInputs.paths.empty()) {
-        return;
-    }
-
-    const auto start = woby::PerformanceClock::now();
-    std::vector<LoadedModelRuntime> loadedRuntimes;
-    std::vector<LoadedModelFile> loadedFiles = loadModelFiles(
-        modelInputs.paths,
-        meshLayout,
-        loadedRuntimes,
-        woby::totalGroupCount(state));
-
-    const size_t firstFileIndex = state.files.size();
-    state.files.insert(
-        state.files.end(),
-        std::make_move_iterator(loadedFiles.begin()),
-        std::make_move_iterator(loadedFiles.end()));
-    runtimes.insert(
-        runtimes.end(),
-        std::make_move_iterator(loadedRuntimes.begin()),
-        std::make_move_iterator(loadedRuntimes.end()));
-    appendSceneNodesForResolvedInputs(state, modelInputs, firstFileIndex);
-    woby::recalculateSceneBounds(state);
-    woby::frameCameraToScene(state);
-    woby::markSceneDirty(state);
-    spdlog::info(
-        "perf append_initial_model_files requested_count={} duration_ms={}",
-        modelInputs.paths.size(),
-        elapsedMilliseconds(start));
 }
 
 void removeModelFile(
@@ -1332,44 +1218,10 @@ void removeModelFile(
     }
 
     woby::cancelAnnotationPreparation(preparation);
+    woby::graphics::cancelBufferUpload(runtimes[fileIndex].featureUpload);
     destroyGpuMesh(runtimes[fileIndex].gpuMesh);
     runtimes.erase(runtimes.begin() + static_cast<std::ptrdiff_t>(fileIndex));
     (void)woby::removeFileFromState(state, fileIndex);
-}
-
-bool applySceneHistory(woby::SceneHistory& history, woby::UiState& state,
-    const woby::SceneDocument& cleanDocument, std::vector<LoadedModelRuntime>& runtimes,
-    const woby::graphics::VertexLayout& layout, bool redo, woby::AnnotationPreparationRuntime& preparation)
-{
-    woby::cancelAnnotationPreparation(preparation);
-    auto prepared = woby::loadSceneHistoryStep(history, state, cleanDocument, redo);
-    if (!prepared) { return false; }
-    std::vector<LoadedModelRuntime> staged(prepared->files.size());
-    std::vector<size_t> reuse(prepared->files.size(), woby::invalidSceneNodeIndex);
-    try {
-        for (size_t index = 0; index < prepared->files.size(); ++index) {
-            const auto& file = prepared->files[index];
-            for (size_t old = 0; old < state.files.size(); ++old) {
-                if (state.files[old].objectId == file.objectId) { reuse[index] = old; break; }
-            }
-            if (reuse[index] == woby::invalidSceneNodeIndex) {
-                staged[index].gpuMesh = createGpuMesh(file.mesh, layout,
-                    woby::requestedGpuMeshFeatures(file));
-            }
-        }
-    } catch (...) {
-        destroyModelRuntimes(staged);
-        throw;
-    }
-    for (size_t index = 0; index < staged.size(); ++index) {
-        if (reuse[index] != woby::invalidSceneNodeIndex) {
-            staged[index] = std::exchange(runtimes[reuse[index]], LoadedModelRuntime{});
-        }
-    }
-    destroyModelRuntimes(runtimes);
-    runtimes = std::move(staged);
-    woby::commitSceneHistoryStep(history, state, std::move(*prepared), redo);
-    return true;
 }
 
 void pushDroppedPath(DragDropState& state, const char* data)
@@ -1487,75 +1339,6 @@ void appendDropClassificationStatus(
     }
 }
 
-std::vector<LoadedModelFile> loadSceneFiles(
-    const std::filesystem::path& scenePath,
-    const woby::SceneDocument& document,
-    const woby::graphics::VertexLayout& meshLayout,
-    std::vector<LoadedModelRuntime>& runtimes)
-{
-    std::vector<LoadedModelFile> loadedFiles;
-    std::vector<LoadedModelRuntime> loadedRuntimes;
-    loadedFiles.reserve(document.files.size());
-    loadedRuntimes.reserve(document.files.size());
-    size_t colorIndex = 0;
-
-    try {
-        for (const auto& record : document.files) {
-            const std::filesystem::path modelPath = woby::sceneAbsolutePath(scenePath, record.path);
-            LoadedModelFileWithRuntime loaded = loadModelFile(modelPath, meshLayout, colorIndex, &record);
-            colorIndex += loaded.file.groupSettings.size();
-            loadedRuntimes.push_back(std::move(loaded.runtime));
-            loadedFiles.push_back(std::move(loaded.file));
-        }
-    } catch (...) {
-        destroyModelRuntimes(loadedRuntimes);
-        throw;
-    }
-
-    runtimes = std::move(loadedRuntimes);
-    return loadedFiles;
-}
-
-void loadScene(
-    const std::filesystem::path& scenePath,
-    const woby::graphics::VertexLayout& meshLayout,
-    woby::UiState& state,
-    std::vector<LoadedModelRuntime>& runtimes)
-{
-    const auto totalStart = woby::PerformanceClock::now();
-    const auto readStart = woby::PerformanceClock::now();
-    const woby::SceneDocument document = woby::readSceneDocument(scenePath);
-    const double readMilliseconds = elapsedMilliseconds(readStart);
-
-    const auto filesStart = woby::PerformanceClock::now();
-    std::vector<LoadedModelRuntime> loadedRuntimes;
-    std::vector<LoadedModelFile> loadedFiles = loadSceneFiles(
-        scenePath,
-        document,
-        meshLayout,
-        loadedRuntimes);
-    const double filesMilliseconds = elapsedMilliseconds(filesStart);
-
-    const auto applyStart = woby::PerformanceClock::now();
-    try {
-        auto prepared = woby::prepareSceneReplacement(state, std::move(loadedFiles), document);
-        destroyModelRuntimes(runtimes);
-        runtimes = std::move(loadedRuntimes);
-        state = std::move(prepared);
-    } catch (...) {
-        destroyModelRuntimes(loadedRuntimes);
-        throw;
-    }
-    spdlog::info(
-        "perf scene_load path=\"{}\" files={} read_ms={} files_ms={} apply_ms={} total_ms={}",
-        woby::pathToUtf8(scenePath),
-        state.files.size(),
-        readMilliseconds,
-        filesMilliseconds,
-        elapsedMilliseconds(applyStart),
-        elapsedMilliseconds(totalStart));
-}
-
 void resetSceneToUntitled(
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes,
@@ -1571,26 +1354,6 @@ void resetSceneToUntitled(
     state = std::move(prepared);
     cleanSceneDocument = std::move(clean);
     currentScenePath.reset();
-}
-
-void loadSceneFromPath(
-    const std::filesystem::path& requestedScenePath,
-    const woby::graphics::VertexLayout& meshLayout,
-    woby::UiState& state,
-    std::vector<LoadedModelRuntime>& runtimes,
-    std::optional<std::filesystem::path>& currentScenePath,
-    woby::SceneDocument& cleanSceneDocument)
-{
-    const auto start = woby::PerformanceClock::now();
-    const std::filesystem::path scenePath = normalizedPath(requestedScenePath);
-    loadScene(scenePath, meshLayout, state, runtimes);
-    currentScenePath = scenePath;
-    cleanSceneDocument = woby::createSceneDocument(state);
-    woby::clearSceneDirty(state);
-    spdlog::info(
-        "perf scene_open path=\"{}\" duration_ms={}",
-        woby::pathToUtf8(scenePath),
-        elapsedMilliseconds(start));
 }
 
 std::filesystem::path saveSceneToPath(
@@ -1779,9 +1542,10 @@ std::optional<AsyncLoadOutcome> takeBackgroundLoadOutcome(BackgroundLoadRuntime&
     return outcome;
 }
 
-void startGpuFinalize(GpuFinalizeRuntime& finalize, AsyncLoadOutcome outcome)
+void startGpuFinalize(GpuFinalizeRuntime& finalize, AsyncLoadOutcome outcome, const woby::UiState& state, const woby::graphics::VertexLayout& layout, const ResolvedModelInputs& initialInputs)
 {
     finalize = GpuFinalizeRuntime{};
+    if (outcome.kind == AsyncLoadKind::initialModels) { finalize.initialInputs = initialInputs; }
     finalize.kind = outcome.kind;
     finalize.folderTreeRoot = std::move(outcome.folderTreeRoot);
     if (isAppendModelLoadKind(outcome.kind)) {
@@ -1795,6 +1559,13 @@ void startGpuFinalize(GpuFinalizeRuntime& finalize, AsyncLoadOutcome outcome)
         finalize.sceneDocument = std::move(outcome.scene.document);
         finalize.files = std::move(outcome.scene.files);
         finalize.preparations = std::move(outcome.scene.preparations);
+    }
+    finalize.sceneGeneration = state.sceneGeneration;
+    finalize.uploads.resize(finalize.files.size());
+    finalize.uploadErrors.resize(finalize.files.size());
+    for (size_t i = 0; i < finalize.files.size(); ++i) {
+        try { finalize.uploads[i] = woby::beginGpuMeshUpload(std::move(finalize.preparations[i]), finalize.files[i].mesh, layout); }
+        catch (const std::exception& error) { finalize.uploadErrors[i] = error.what(); }
     }
     finalize.finalizedFiles.reserve(finalize.files.size());
     finalize.finalizedRuntimes.reserve(finalize.files.size());
@@ -1822,7 +1593,7 @@ std::string appendFinalizeStatus(const GpuFinalizeRuntime& finalize)
 
 void abortGpuFinalize(GpuFinalizeRuntime& finalize)
 {
-    if (finalize.upload) { woby::abortGpuMeshUpload(*finalize.upload); }
+    for (auto& upload : finalize.uploads) { if (upload) { woby::abortGpuMeshUpload(*upload); } }
     destroyModelRuntimes(finalize.finalizedRuntimes);
     finalize = GpuFinalizeRuntime{};
 }
@@ -1847,7 +1618,9 @@ void commitGpuFinalize(
             std::make_move_iterator(finalize.finalizedRuntimes.begin()),
             std::make_move_iterator(finalize.finalizedRuntimes.end()));
         if (addedAnyFiles) {
-            if (finalize.kind == AsyncLoadKind::appendFolderTree) {
+            if (finalize.kind == AsyncLoadKind::initialModels) {
+                appendSceneNodesForResolvedInputs(state, finalize.initialInputs, firstFileIndex);
+            } else if (finalize.kind == AsyncLoadKind::appendFolderTree) {
                 woby::appendFolderTreeSceneNode(
                     state,
                     finalize.folderTreeRoot,
@@ -1879,7 +1652,6 @@ void commitGpuFinalize(
 
 std::optional<std::string> processGpuFinalizeStep(
     GpuFinalizeRuntime& finalize,
-    const woby::graphics::VertexLayout& meshLayout,
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes,
     std::optional<std::filesystem::path>& currentScenePath,
@@ -1890,7 +1662,7 @@ std::optional<std::string> processGpuFinalizeStep(
         return {};
     }
 
-    if (finalize.cancelRequested) {
+    if (finalize.cancelRequested || finalize.sceneGeneration != state.sceneGeneration) {
         abortGpuFinalize(finalize);
         setToastMessage(toast, "Loading canceled");
         return std::string("Loading canceled");
@@ -1908,57 +1680,35 @@ std::optional<std::string> processGpuFinalizeStep(
         }
     }
 
-    const auto uploadStart = woby::PerformanceClock::now();
-    size_t frameBytes = 0;
-    // Bound work within a file as well as between files. Four MiB chunks keep
-    // staging-ring copies/waits short; the byte cap also bounds GPU work per frame.
-    do {
-        const auto remainingBytes = 16u * 1024 * 1024 - static_cast<uint32_t>(frameBytes);
-        if (remainingBytes < sizeof(woby::Vertex)) { break; }
+    while (finalize.nextFileIndex < finalize.files.size()) {
+        auto& upload = finalize.uploads[finalize.nextFileIndex];
         auto& file = finalize.files[finalize.nextFileIndex];
         try {
-            if (!finalize.upload) {
-                finalize.upload = woby::beginGpuMeshUpload(std::move(finalize.preparations[finalize.nextFileIndex]));
-                finalize.uploadMilliseconds = finalize.longestUploadStepMilliseconds = 0;
-            }
-            const auto stepStart = woby::PerformanceClock::now();
-            const auto previousBytes = finalize.upload->uploadedBytes;
-            const bool complete = woby::stepGpuMeshUpload(*finalize.upload, file.mesh, meshLayout,
-                std::min(remainingBytes, 4u * 1024 * 1024));
-            const auto stepMilliseconds = elapsedMilliseconds(stepStart);
-            finalize.uploadMilliseconds += stepMilliseconds;
-            finalize.longestUploadStepMilliseconds = std::max(finalize.longestUploadStepMilliseconds, stepMilliseconds);
-            frameBytes += finalize.upload->uploadedBytes - previousBytes;
-            if (complete) {
-                spdlog::info("perf model_gpu_finalize path=\"{}\" bytes={} upload_ms={} longest_step_ms={}",
-                    woby::pathToUtf8(file.path), finalize.upload->uploadedBytes, finalize.uploadMilliseconds,
-                    finalize.longestUploadStepMilliseconds);
-                LoadedModelRuntime runtime;
-                runtime.requestedFeatures = finalize.upload->features;
-                runtime.gpuMesh = std::move(finalize.upload->mesh);
-                finalize.finalizedRuntimes.push_back(std::move(runtime));
-                finalize.finalizedFiles.push_back(std::move(file));
-                finalize.upload.reset();
-                ++finalize.nextFileIndex;
-            }
-        } catch (const std::exception& exception) {
-            if (finalize.upload) {
-                woby::abortGpuMeshUpload(*finalize.upload);
-                finalize.upload.reset();
-            }
+            if (!finalize.uploadErrors[finalize.nextFileIndex].empty()) { throw std::runtime_error(finalize.uploadErrors[finalize.nextFileIndex]); }
+            if (!woby::pollGpuMeshUpload(*upload)) { return {}; }
+            const auto stats = woby::graphics::bufferUploadStats(upload->ticket);
+            spdlog::info("perf model_gpu_finalize path=\"{}\" bytes={} upload_ms={} submissions={} waits={} staging_bytes={} peak_staging_bytes={}",
+                woby::pathToUtf8(file.path), stats.uploadedBytes, stats.milliseconds, stats.submissions, stats.waits, stats.stagingBytes, stats.peakStagingBytes);
+            LoadedModelRuntime runtime;
+            runtime.requestedFeatures = upload->features;
+            runtime.gpuMesh = std::move(upload->mesh);
+            finalize.finalizedRuntimes.push_back(std::move(runtime));
+            finalize.finalizedFiles.push_back(std::move(file));
+            upload.reset();
             ++finalize.nextFileIndex;
-            ++finalize.gpuFailedCount;
+        } catch (const std::exception& exception) {
+            if (upload) { woby::abortGpuMeshUpload(*upload); upload.reset(); }
+            ++finalize.nextFileIndex; ++finalize.gpuFailedCount;
             finalize.lastError = exception.what();
             finalize.gpuFailures.push_back({file.path, "failed", exception.what()});
-            if (finalize.kind == AsyncLoadKind::openScene) {
+            if (!isAppendModelLoadKind(finalize.kind) || finalize.kind == AsyncLoadKind::initialModels) {
                 const std::string error = exception.what();
                 setToastMessage(toast, "Open scene failed: " + error);
                 abortGpuFinalize(finalize);
                 return error;
             }
         }
-    } while (finalize.nextFileIndex < finalize.files.size() && frameBytes < 16u * 1024 * 1024
-        && elapsedMilliseconds(uploadStart) < 4.0);
+    }
     return {};
 }
 
@@ -2147,9 +1897,10 @@ bool drawProcessingDialog(BackgroundLoadRuntime& backgroundLoad, GpuFinalizeRunt
                     fileDisplayName(gpuFinalize.files[gpuFinalize.nextFileIndex].path).c_str());
             }
             if (!gpuFinalize.files.empty()) {
-                const auto* upload = gpuFinalize.upload ? &*gpuFinalize.upload : nullptr;
+                const auto* upload = gpuFinalize.nextFileIndex < gpuFinalize.uploads.size() && gpuFinalize.uploads[gpuFinalize.nextFileIndex]
+                    ? &*gpuFinalize.uploads[gpuFinalize.nextFileIndex] : nullptr;
                 const float currentFraction = upload && upload->totalBytes
-                    ? static_cast<float>(upload->uploadedBytes) / static_cast<float>(upload->totalBytes) : 0.0f;
+                    ? static_cast<float>(woby::graphics::bufferUploadStats(upload->ticket).uploadedBytes) / static_cast<float>(upload->totalBytes) : 0.0f;
                 const float fraction = (static_cast<float>(std::min(gpuFinalize.nextFileIndex, gpuFinalize.files.size())) + currentFraction)
                     / static_cast<float>(gpuFinalize.files.size());
                 ImGui::ProgressBar(
@@ -2366,6 +2117,7 @@ int main(int argc, char** argv)
 
         const auto graphicsStart = woby::PerformanceClock::now();
         woby::graphics::Init init;
+        init.modelUploadStagingBytes = uint64_t(commandLine.uploadBufferMiB.value_or(16)) * 1024 * 1024;
         init.type = woby::graphics::RendererType::Count;
         if (headless) {
             // Use a backend with a windowless device and packaged shaders.
@@ -2420,27 +2172,8 @@ int main(int argc, char** argv)
         woby::SceneDocument cleanSceneDocument = woby::createSceneDocument(ui);
 
         const auto initialLoadStart = woby::PerformanceClock::now();
-        size_t firstInitialModel = 0;
-        if (commandLine.scenePath.has_value()) {
-            loadSceneFromPath(
-                commandLine.scenePath.value(),
-                layout,
-                ui,
-                runtimes,
-                currentScenePath,
-                cleanSceneDocument);
-            firstInitialModel = ui.files.size();
-            appendInitialModelFiles(modelInputs, layout, ui, runtimes);
-        } else {
-            ui.files = loadModelFiles(modelInputs.paths, layout, runtimes);
-            appendSceneNodesForResolvedInputs(ui, modelInputs, 0u);
-            woby::recalculateSceneBounds(ui);
-            woby::frameCameraToScene(ui);
-            woby::updateSceneDirty(ui, cleanSceneDocument);
-        }
-        if (currentScenePath) { woby::rememberRecentFile(recentFiles, woby::RecentFileKind::scene, *currentScenePath); }
-        rememberAddedModels(recentFiles, ui, firstInitialModel);
-        woby::logDuration("startup_initial_scene", elapsedMilliseconds(initialLoadStart));
+        bool initialLoading = commandLine.scenePath.has_value() || !modelInputs.paths.empty();
+        bool initialModelsStarted = modelInputs.paths.empty();
         woby::SceneHistory sceneHistory;
         woby::resetSceneHistory(sceneHistory, ui);
 
@@ -2494,6 +2227,8 @@ int main(int argc, char** argv)
         static SceneScreenshotDialogState sceneScreenshotDialogState;
         BackgroundLoadRuntime backgroundLoad;
         GpuFinalizeRuntime gpuFinalize;
+        woby::SceneHistoryRestore historyRestore;
+        std::optional<woby::AutomationCommandId> automationHistory;
         SceneScreenshotRuntime sceneScreenshot;
         std::optional<woby::AutomationCommandId> automationScreenshotCommandId;
         std::optional<woby::AutomationCommandId> automationOpenCommandId;
@@ -2616,9 +2351,14 @@ int main(int argc, char** argv)
             }
         };
         bool documentShortcutHeld = false;
-        woby::setAutomationReady(*automation);
+        if (commandLine.scenePath) {
+            startOpenSceneBackgroundLoad(backgroundLoad, *commandLine.scenePath);
+        } else if (!modelInputs.paths.empty()) {
+            startAppendModelBackgroundLoad(backgroundLoad, modelInputs.paths, 0, AsyncLoadKind::initialModels);
+            initialModelsStarted = true;
+        } else { woby::setAutomationReady(*automation); }
         while (running) {
-            if (!backgroundLoad.active && !gpuFinalize.active) {
+            if (!backgroundLoad.active && !gpuFinalize.active && !historyRestore.active) {
                 const bool preparationFailed = !annotationPreparation.error.empty();
                 woby::updateAnnotationPreparation(annotationPreparation, ui);
                 if (!preparationFailed && !annotationPreparation.error.empty()) {
@@ -2761,7 +2501,7 @@ int main(int argc, char** argv)
                 }
                 if (event.type == SDL_EVENT_MOUSE_MOTION) {
                     const bool wasDragging = scenePointer.dragging;
-                    if (scenePointer.active && (!scenePointerAvailable || backgroundLoad.active || gpuFinalize.active)) {
+                    if (scenePointer.active && (!scenePointerAvailable || backgroundLoad.active || gpuFinalize.active || historyRestore.active)) {
                         scenePointer = {};
                         woby::setCameraOrbiting(ui, false);
                         woby::setCameraRolling(ui, false);
@@ -2800,6 +2540,9 @@ int main(int argc, char** argv)
             if (window) { getDrawableSize(window.get(), width, height); }
 
             if (auto outcome = takeBackgroundLoadOutcome(backgroundLoad); outcome.has_value()) {
+                if (initialLoading && (outcome->failed || outcome->modelBatch.failedCount)) {
+                    throw std::runtime_error(outcome->failed ? outcome->error : outcome->modelBatch.lastError);
+                }
                 if (outcome->failed) {
                     if (automationAppend) {
                         woby::completeAutomationCommand(*automation, automationAppend->id, woby::AutomationCommandError{outcome->error});
@@ -2819,7 +2562,7 @@ int main(int argc, char** argv)
                         setToastMessage(toast, outcome->modelBatch.status);
                         completeAppend();
                     } else {
-                        try { startGpuFinalize(gpuFinalize, std::move(outcome.value())); }
+                        try { startGpuFinalize(gpuFinalize, std::move(outcome.value()), ui, layout, modelInputs); }
                         catch (const std::exception& error) {
                             abortGpuFinalize(gpuFinalize);
                             if (automationAppend) {
@@ -2836,7 +2579,7 @@ int main(int argc, char** argv)
                     }
                 } else {
                     try {
-                        startGpuFinalize(gpuFinalize, std::move(outcome.value()));
+                        startGpuFinalize(gpuFinalize, std::move(outcome.value()), ui, layout, modelInputs);
                     } catch (const std::exception& exception) {
                         abortGpuFinalize(gpuFinalize);
                         setToastMessage(toast, std::string("Open scene failed: ") + exception.what());
@@ -2858,13 +2601,28 @@ int main(int argc, char** argv)
             }
             const auto finalized = processGpuFinalizeStep(
                 gpuFinalize,
-                layout,
                 ui,
                 runtimes,
                 currentScenePath,
                 cleanSceneDocument,
                 toast);
-            woby::updatePostLoading(postLoading, ui, runtimes, layout, woby::graphics::completedFrameToken());
+            if (initialLoading && finalized && !finalized->empty() && !finalizeCanceled) { throw std::runtime_error(*finalized); }
+            if (initialLoading && !backgroundLoad.active && !gpuFinalize.active && !initialModelsStarted) {
+                startAppendModelBackgroundLoad(backgroundLoad, modelInputs.paths, woby::totalGroupCount(ui), AsyncLoadKind::initialModels);
+                initialModelsStarted = true;
+            }
+            if (!historyRestore.active) { woby::updatePostLoading(postLoading, ui, runtimes, layout, woby::graphics::completedFrameToken()); }
+            if (initialLoading && (!woby::postLoadError(ui).empty() || !annotationPreparation.error.empty())) {
+                throw std::runtime_error(annotationPreparation.error.empty() ? std::string(woby::postLoadError(ui)) : annotationPreparation.error);
+            }
+            if (initialLoading && initialModelsStarted && !backgroundLoad.active && !gpuFinalize.active && woby::scenePostLoadReady(ui)
+                && woby::annotationPreparationReady(ui)) {
+                initialLoading = false;
+                woby::updateSceneDirty(ui, cleanSceneDocument);
+                woby::resetSceneHistory(sceneHistory, ui);
+                woby::logDuration("startup_initial_scene", elapsedMilliseconds(initialLoadStart));
+                woby::setAutomationReady(*automation);
+            }
             const double postLoadNow = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
             const bool wasPostLoading = postLoading.noticePending;
             woby::updatePostLoadNotice(postLoading, ui, postLoadNow);
@@ -2908,6 +2666,30 @@ int main(int argc, char** argv)
                 }
             }
 
+            if (historyRestore.active) {
+                const bool redo = historyRestore.redo;
+                try {
+                    if (const auto applied = woby::pollSceneHistoryRestore(historyRestore, sceneHistory, ui, runtimes)) {
+                        if (*applied) {
+                            woby::cancelAnnotationPreparation(annotationPreparation);
+                            setToastMessage(toast, redo ? "Redid scene edit" : "Undid scene edit");
+                        }
+                        if (automationHistory) {
+                            woby::completeAutomationCommand(*automation, *automationHistory, woby::AutomationControlResult{
+                                {{"action", redo ? "redo" : "undo"}, {"applied", *applied}, {"dirty", ui.isDirty}}});
+                            automationHistory.reset();
+                        }
+                    }
+                } catch (const std::exception& error) {
+                    const auto message = std::string(redo ? "Redo skipped: " : "Undo skipped: ") + error.what();
+                    setToastMessage(toast, message);
+                    if (automationHistory) {
+                        woby::completeAutomationCommand(*automation, *automationHistory, woby::AutomationCommandError{message});
+                        automationHistory.reset();
+                    }
+                }
+            }
+
             // RPC load completion includes preparation; the viewer renders and remains responsive while clients wait.
             if (automationAppend && automationAppend->postLoadPending) {
                 if (automationAppend->generation != ui.sceneGeneration || !woby::postLoadError(ui).empty()) {
@@ -2944,7 +2726,7 @@ int main(int argc, char** argv)
                 setToastMessage(toast, warning);
             }
             if (!headless) {
-                const bool processingFiles = backgroundLoad.active || gpuFinalize.active;
+                const bool processingFiles = backgroundLoad.active || gpuFinalize.active || historyRestore.active;
                 const auto pendingModelPaths = takePendingModelPaths(modelFileDialogState);
                 if (!pendingModelPaths.empty()) {
                     if (processingFiles) {
@@ -2958,7 +2740,7 @@ int main(int argc, char** argv)
                 }
                 const auto pendingFolderTreeRoots = takePendingModelFolderTreeRoots(modelFileDialogState);
                 for (const auto& folderTreeRoot : pendingFolderTreeRoots) {
-                    if (backgroundLoad.active || gpuFinalize.active) {
+                    if (backgroundLoad.active || gpuFinalize.active || historyRestore.active) {
                         setModelFileDialogStatus(modelFileDialogState, "Already processing files");
                         break;
                     }
@@ -3077,7 +2859,7 @@ int main(int argc, char** argv)
             bool modalDialogOpen = false;
             // Recheck after each action: opening a dialog blocks other entry points in this frame.
             const auto fileActionsDisabled = [&]() {
-                return headless || modalDialogOpen || backgroundLoad.active || gpuFinalize.active
+                return headless || modalDialogOpen || backgroundLoad.active || gpuFinalize.active || historyRestore.active
                     || modelFileDialogIsOpen(modelFileDialogState)
                     || sceneFileDialogIsOpen(sceneFileDialogState)
                     || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
@@ -3531,19 +3313,7 @@ int main(int argc, char** argv)
             // Both UI and CTL use the same restoration and failure-consumption path.
             const auto runSceneHistory = [&](bool redo) {
                 woby::finishSceneHistoryInteraction(sceneHistory);
-                try {
-                    const bool applied = applySceneHistory(sceneHistory, ui, cleanSceneDocument, runtimes, layout, redo, annotationPreparation);
-                    if (applied) {
-                        setToastMessage(toast, redo ? "Redid scene edit" : "Undid scene edit");
-                        updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId, windowTitleCache);
-                    }
-                    return applied;
-                } catch (const std::exception& error) {
-                    woby::skipSceneHistoryStep(sceneHistory, ui, redo);
-                    const auto message = std::string(redo ? "Redo skipped: " : "Undo skipped: ") + error.what();
-                    setToastMessage(toast, message);
-                    throw std::runtime_error(message);
-                }
+                return woby::beginSceneHistoryRestore(historyRestore, sceneHistory, ui, cleanSceneDocument, layout, redo);
             };
             // UI and loading commits have finished. No logical edits occur between
             // executing commands here and submitting their screenshots below.
@@ -3638,7 +3408,7 @@ int main(int argc, char** argv)
                     std::visit([&](const auto& payload) {
                         using Command = std::decay_t<decltype(payload)>;
                         if constexpr (std::is_same_v<Command, woby::AutomationScreenshotCommand>) {
-                            if (backgroundLoad.active || gpuFinalize.active) {
+                            if (backgroundLoad.active || gpuFinalize.active || historyRestore.active) {
                                 throw std::runtime_error("Cannot capture while model files are being processed.");
                             }
                             requestSceneScreenshotCapture(sceneScreenshot, payload.outputPath, ui.screenshotSettings);
@@ -3653,7 +3423,7 @@ int main(int argc, char** argv)
                                 throw std::invalid_argument("Desktop pane and performance capture controls are unavailable in headless mode.");
                             }
                             const bool historyOperation = payload.action == A::sceneUndo || payload.action == A::sceneRedo;
-                            const bool busy = backgroundLoad.active || gpuFinalize.active
+                            const bool busy = backgroundLoad.active || gpuFinalize.active || historyRestore.active
                                 || (automationAppend && automationAppend->postLoadPending) || automationOpenPostLoad
                                 || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending
                                 || modalDialogOpen || modelFileDialogIsOpen(modelFileDialogState)
@@ -3704,6 +3474,7 @@ int main(int argc, char** argv)
                             if (historyOperation) {
                                 const bool redo = payload.action == A::sceneRedo;
                                 const bool applied = runSceneHistory(redo);
+                                if (applied) { automationHistory = command->id; return; }
                                 result = {{"action", redo ? "redo" : "undo"}, {"applied", applied}, {"dirty", ui.isDirty}};
                             } else if (payload.action >= A::differenceCreate && payload.action <= A::differenceDelete) {
                                 auto& runtime = comparison.objects[payload.objectId].difference;
@@ -3895,7 +3666,7 @@ int main(int argc, char** argv)
                             }
                             woby::completeAutomationCommand(*automation, command->id, woby::AutomationControlResult{std::move(result)});
                         } else if constexpr (std::is_same_v<Command, woby::SceneLifecycleCommand>) {
-                            const bool busy = backgroundLoad.active || gpuFinalize.active
+                            const bool busy = backgroundLoad.active || gpuFinalize.active || historyRestore.active
                                 || (automationAppend && automationAppend->postLoadPending) || automationOpenPostLoad
                                 || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending
                                 || modalDialogOpen || modelFileDialogIsOpen(modelFileDialogState)
@@ -4022,12 +3793,8 @@ int main(int argc, char** argv)
             woby::updateComparisonRuntimes(comparison, ui);
 
             for (size_t i = 0; i < std::min(files.size(), runtimes.size()); ++i) {
-                const auto features = woby::requestedGpuMeshFeatures(files[i]);
-                auto& runtime = runtimes[i];
-                if (runtime.requestedFeatures == features) { continue; }
-                runtime.requestedFeatures = features;
                 try {
-                    woby::prepareGpuMeshFeatures(runtime.gpuMesh, files[i].mesh, features);
+                    woby::updateGpuMeshFeatures(runtimes[i], files[i].mesh, woby::requestedGpuMeshFeatures(files[i]));
                 } catch (const std::exception& error) {
                     setToastMessage(toast, std::string("Display buffer upload failed: ") + error.what());
                 }
@@ -4282,7 +4049,7 @@ int main(int argc, char** argv)
             if (headless && running && !gpuFinalize.active && !sceneScreenshot.readbackPending) {
                 // Wake promptly for commands; poll CPU workers without spinning at idle.
                 // GPU readback must keep advancing frames until its completion frame.
-                const bool processing = backgroundLoad.active || gpuFinalize.active || postLoading.noticePending || automationComparison.has_value()
+                const bool processing = backgroundLoad.active || gpuFinalize.active || historyRestore.active || postLoading.noticePending || automationComparison.has_value()
                     || annotationCommand.has_value() || sceneScreenshot.captureRequested;
                 woby::waitForAutomationWork(*automation, std::chrono::milliseconds(processing ? 10 : 50));
             }
@@ -4299,6 +4066,7 @@ int main(int argc, char** argv)
         if (backgroundLoad.worker.joinable()) {
             backgroundLoad.worker.join();
         }
+        woby::cancelSceneHistoryRestore(historyRestore);
         woby::cancelPostLoading(postLoading);
         woby::cancelAnnotationPreparation(annotationPreparation);
         abortGpuFinalize(gpuFinalize);

@@ -202,16 +202,7 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
     notifySceneEdit(prepared);
     prepared.nextObjectId = current.nextObjectId;
     prepared.nextViewId = current.nextViewId;
-    prepared.activeViewId = findView(prepared, current.activeViewId) ? current.activeViewId : 0;
-    prepared.uiScale = current.uiScale;
-    prepared.screenshotSettings = current.screenshotSettings;
-    prepared.viewerPaneVisible = current.viewerPaneVisible;
-    prepared.viewerPaneWidth = current.viewerPaneWidth;
-    prepared.propertiesPaneVisible = current.propertiesPaneVisible;
-    prepared.propertiesPaneWidth = current.propertiesPaneWidth;
-    prepared.camera = current.camera;
-    prepared.cameraInput = current.cameraInput;
-    prepared.selectedSceneObjects = current.selectedSceneObjects;
+    refreshSceneHistoryRuntimeState(prepared, current, false);
     const auto& application = redo ? target.viewApplication : history.snapshots[history.cursor].viewApplication;
     if (application) {
         const auto& navigation = redo ? application->after : application->before;
@@ -220,14 +211,32 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
         prepared.cameraInput = {};
     }
     std::erase_if(prepared.selectedSceneObjects, [&](SceneObjectId id) { return !findSceneObject(prepared, id); });
-    prepared.activeComparisonId = findComparison(prepared, current.activeComparisonId)
-        ? current.activeComparisonId
-        : (prepared.comparisons.empty() ? invalidSceneObjectId : prepared.comparisons.front().objectId);
     refreshSceneTreeFolderCenters(prepared);
     recalculateSceneBounds(prepared);
     if (application) { restoreViewDiagnostics(prepared, (redo ? application->after : application->before).diagnostics); }
     updateSceneDirty(prepared, cleanDocument);
     return prepared;
+}
+
+void refreshSceneHistoryRuntimeState(UiState& prepared, const UiState& current, bool restoreNavigation)
+{
+    prepared.running = current.running;
+    prepared.uiScale = current.uiScale;
+    prepared.screenshotSettings = current.screenshotSettings;
+    prepared.viewerPaneVisible = current.viewerPaneVisible;
+    prepared.viewerPaneWidth = current.viewerPaneWidth;
+    prepared.propertiesPaneVisible = current.propertiesPaneVisible;
+    prepared.propertiesPaneWidth = current.propertiesPaneWidth;
+    prepared.activeViewId = findView(prepared, current.activeViewId) ? current.activeViewId : 0;
+    prepared.activeComparisonId = findComparison(prepared, current.activeComparisonId)
+        ? current.activeComparisonId
+        : (prepared.comparisons.empty() ? invalidSceneObjectId : prepared.comparisons.front().objectId);
+    if (!restoreNavigation) {
+        prepared.camera = current.camera;
+        prepared.cameraInput = current.cameraInput;
+        prepared.selectedSceneObjects = current.selectedSceneObjects;
+        std::erase_if(prepared.selectedSceneObjects, [&](SceneObjectId id) { return !findSceneObject(prepared, id); });
+    }
 }
 
 void commitSceneHistoryStep(SceneHistory& history, UiState& state, UiState prepared, bool redo)

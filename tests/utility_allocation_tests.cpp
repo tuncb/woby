@@ -7,6 +7,7 @@
 #include <NoGraphicsAPIUtility/upload_queue.hpp>
 #include <NoGraphicsAPIUtility/texture_upload.hpp>
 #include <memory>
+#include <utility>
 
 namespace
 {
@@ -150,6 +151,37 @@ TEST_CASE("Upload command warmup failures unwind every pool without waiting for 
         CHECK(utilityProbe.commandStep == step);
         checkReleased();
     }
+}
+
+TEST_CASE("Upload submission hooks cover automatic flushes and survive both moves")
+{
+    utilityProbe = {};
+    int calls = 0;
+    {
+        const auto created = gpu::create_utility<gpu::UploadQueue>(utilityTestDevice(), 64u, 0u, 2u);
+        auto queue = own(created.value);
+        REQUIRE(queue);
+        queue->submit_context = &calls;
+        queue->submit_function = [](void* context, gpu::Device* device, const gpu::SubmitDesc& submission, gpu::uint32 index) noexcept {
+            ++*static_cast<int*>(context);
+            return gpu::submit(device, submission, index);
+        };
+        gpu::UploadQueue moved(std::move(*queue));
+        queue.reset();
+        const auto destination = gpu::create_utility<gpu::UploadQueue>(utilityTestDevice(), 64u, 0u, 2u);
+        auto assigned = own(destination.value);
+        REQUIRE(assigned);
+        *assigned = std::move(moved);
+        const gpu::byte bytes[128]{};
+        gpu::byte target[128]{};
+        assigned->upload_buffer({target, sizeof(target)}, {bytes, sizeof(bytes)});
+        CHECK(calls >= 1); // A full ring submits inside upload_buffer.
+        assigned->flush(); assigned->wait();
+        CHECK(assigned->error == nullptr);
+        CHECK(calls == utilityProbe.submissions);
+        CHECK(calls == 2);
+    }
+    checkReleased();
 }
 
 TEST_CASE("Upload failures keep completion and retirement at the last successful submission")

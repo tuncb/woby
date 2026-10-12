@@ -23,20 +23,6 @@ static_assert(sizeof(Vertex) == 32 && offsetof(Vertex, position) == 0);
 
 using HelperLineVertex = std::array<float, 3>;
 
-template <typename T>
-const woby::graphics::Memory* ownedBuffer(std::vector<T> values)
-{
-    const auto bytes = sceneBufferBytes(values.size(), sizeof(T));
-    auto owner = std::make_unique<std::vector<T>>(std::move(values));
-    // graphics releases this allocation on its render thread after consuming it.
-    // The callback owns only immutable upload data, never UI state or a mesh.
-    const auto* memory = woby::graphics::makeRef(owner->data(), bytes, [](void*, void* data) {
-        delete static_cast<std::vector<T>*>(data);
-    }, owner.get());
-    owner.release();
-    return memory;
-}
-
 std::array<float, 4> scaledRgbColor(const std::array<float, 4>& color, float scale)
 {
     return {
@@ -193,180 +179,6 @@ woby::graphics::VertexLayout helperLineVertexLayout()
     return {static_cast<uint16_t>(3 * sizeof(float))};
 }
 
-GpuMeshUpload beginGpuMeshUpload(SceneMeshPreparation prepared)
-{
-    GpuMeshUpload upload;
-    upload.mesh.nodeRanges = std::move(prepared.nodeRanges);
-    upload.mesh.pointVertexIndices = std::move(prepared.pointVertexIndices);
-    upload.mesh.pointCloud = std::move(prepared.pointCloud);
-    upload.mesh.compactOnly = prepared.compactOnly;
-    upload.edgeIndices = std::move(prepared.edgeIndices);
-    upload.features = prepared.features;
-    upload.totalBytes = prepared.uploadBytes;
-    return upload;
-}
-
-bool stepGpuMeshUpload(GpuMeshUpload& upload, const Mesh& source,
-    const woby::graphics::VertexLayout& layout, uint32_t byteBudget)
-{
-    if (byteBudget < sizeof(Vertex)) { throw std::invalid_argument("Mesh upload budget must fit one vertex."); }
-    // Keep chunks aligned for both Vulkan copies and vertex-buffer strides.
-    byteBudget -= byteBudget % sizeof(Vertex);
-    while (upload.bufferIndex < 7) {
-        if (upload.pointsOnly && upload.bufferIndex > 0 && upload.bufferIndex < 4) { upload.bufferIndex = 4; }
-        if (upload.bufferIndex >= 5) {
-            if (!upload.mesh.pointCloud) { ++upload.bufferIndex; continue; }
-            const bool proxy = upload.bufferIndex == 6;
-            const auto& points = proxy ? upload.mesh.pointCloud->proxies : upload.mesh.pointCloud->points;
-            auto& chunks = proxy ? upload.mesh.proxyChunks : upload.mesh.pointChunks;
-            const size_t begin = size_t(upload.pointChunk) * pointChunkSize;
-            if (begin >= points.size()) { ++upload.bufferIndex; upload.pointChunk = 0; continue; }
-            if (byteBudget < sizeof(Vertex)) { return false; }
-            const auto bytes = sceneBufferBytes(std::min<size_t>(pointChunkSize, points.size() - begin), sizeof(points::Point));
-            if (!upload.bufferOffset) { chunks.push_back(graphics::createVertexBufferStorage(bytes, {sizeof(points::Point)})); }
-            const auto count = std::min(bytes - upload.bufferOffset, byteBudget);
-            graphics::uploadBufferRange(chunks.back(), upload.bufferOffset,
-                reinterpret_cast<const uint8_t*>(points.data() + begin) + upload.bufferOffset, count);
-            upload.bufferOffset += count; upload.uploadedBytes += count; byteBudget -= count;
-            if (upload.bufferOffset == bytes) { upload.bufferOffset = 0; ++upload.pointChunk; }
-            continue;
-        }
-        const void* data = nullptr;
-        uint32_t bytes = 0;
-        woby::graphics::IndexBufferHandle* indexBuffer = nullptr;
-        uint16_t flags = WOBY_GPU_BUFFER_INDEX32;
-        switch (upload.bufferIndex) {
-        case 0:
-            data = meshGeometry(source).vertices.data();
-            bytes = upload.mesh.compactOnly ? 0 : sceneBufferBytes(meshGeometry(source).vertices.size(), sizeof(Vertex));
-            break;
-        case 1:
-            data = meshGeometry(source).indices.data();
-            bytes = sceneBufferBytes(meshGeometry(source).indices.size(), sizeof(uint32_t));
-            indexBuffer = &upload.mesh.triangleIndexBuffer;
-            flags |= WOBY_GPU_BUFFER_COMPUTE_READ;
-            break;
-        case 2:
-            data = meshGeometry(source).lineIndices.data();
-            bytes = sceneBufferBytes(meshGeometry(source).lineIndices.size(), sizeof(uint32_t));
-            indexBuffer = &upload.mesh.importedLineBuffer;
-            flags |= WOBY_GPU_BUFFER_COMPUTE_READ;
-            break;
-        case 3:
-            data = upload.edgeIndices.data();
-            bytes = sceneBufferBytes(upload.edgeIndices.size(), sizeof(uint32_t));
-            indexBuffer = &upload.mesh.lineIndexBuffer;
-            break;
-        case 4:
-            data = upload.mesh.pointVertexIndices.data();
-            if ((upload.features & gpuMeshPoints) && !upload.mesh.pointCloud) {
-                bytes = sceneBufferBytes(upload.mesh.pointVertexIndices.size(), sizeof(uint32_t));
-            }
-            indexBuffer = &upload.mesh.pointIdBuffer;
-            flags |= WOBY_GPU_BUFFER_COMPUTE_READ;
-            break;
-        }
-        if (bytes == upload.bufferOffset) {
-            ++upload.bufferIndex;
-            upload.bufferOffset = 0;
-            continue;
-        }
-        if (byteBudget < sizeof(Vertex)) { return false; }
-        if (upload.bufferOffset == 0) {
-            if (indexBuffer) { *indexBuffer = woby::graphics::createIndexBufferStorage(bytes, flags); }
-            else { upload.mesh.vertexBuffer = woby::graphics::createVertexBufferStorage(bytes, layout); }
-        }
-        const uint32_t count = std::min(bytes - upload.bufferOffset, byteBudget);
-        const auto* chunk = static_cast<const uint8_t*>(data) + upload.bufferOffset;
-        if (indexBuffer) { woby::graphics::uploadBufferRange(*indexBuffer, upload.bufferOffset, chunk, count); }
-        else { woby::graphics::uploadBufferRange(upload.mesh.vertexBuffer, upload.bufferOffset, chunk, count); }
-        upload.bufferOffset += count;
-        upload.uploadedBytes += count;
-        byteBudget -= count;
-    }
-    return true;
-}
-
-void abortGpuMeshUpload(GpuMeshUpload& upload)
-{
-    destroyGpuMesh(upload.mesh);
-    upload = {};
-}
-
-GpuMesh createGpuMesh(const Mesh& mesh, const woby::graphics::VertexLayout& meshLayout, uint8_t features)
-{
-    auto upload = beginGpuMeshUpload(*prepareSceneMesh(mesh, features, {}, !mesh.preparationDeferred, !mesh.preparationDeferred));
-    try {
-        while (!stepGpuMeshUpload(upload, mesh, meshLayout, 4u * 1024 * 1024)) {}
-    } catch (...) {
-        abortGpuMeshUpload(upload);
-        throw;
-    }
-    return std::move(upload.mesh);
-}
-
-GpuMeshUpload beginGpuPointUpload(SceneMeshPreparation prepared, size_t vertexBytes)
-{
-    const auto pointBytes = prepared.pointCloud
-        ? (prepared.pointCloud->points.size() + prepared.pointCloud->proxies.size()) * sizeof(points::Point)
-        : prepared.pointVertexIndices.size() * sizeof(uint32_t);
-    prepared.features = gpuMeshPoints;
-    prepared.uploadBytes = pointBytes + vertexBytes;
-    auto upload = beginGpuMeshUpload(std::move(prepared));
-    upload.bufferIndex = vertexBytes ? 0 : 4;
-    upload.pointsOnly = true;
-    return upload;
-}
-
-void commitGpuPointUpload(GpuMesh& destination, GpuMeshUpload& upload)
-{
-    if (upload.bufferIndex != 7) { throw std::invalid_argument("Point upload is incomplete."); }
-    if (graphics::isValid(upload.mesh.vertexBuffer)) {
-        graphics::destroy(destination.vertexBuffer);
-        destination.vertexBuffer = std::exchange(upload.mesh.vertexBuffer, WOBY_GPU_INVALID_HANDLE);
-    }
-    graphics::destroy(destination.pointIdBuffer);
-    for (auto chunk : destination.pointChunks) { graphics::destroy(chunk); }
-    for (auto chunk : destination.proxyChunks) { graphics::destroy(chunk); }
-    destination.pointIdBuffer = std::exchange(upload.mesh.pointIdBuffer, WOBY_GPU_INVALID_HANDLE);
-    destination.nodeRanges = std::move(upload.mesh.nodeRanges);
-    destination.pointVertexIndices = std::move(upload.mesh.pointVertexIndices);
-    destination.pointCloud = std::move(upload.mesh.pointCloud);
-    destination.pointChunks = std::move(upload.mesh.pointChunks);
-    destination.proxyChunks = std::move(upload.mesh.proxyChunks);
-    destination.compactOnly = upload.mesh.compactOnly;
-    destination.resourceRevision = nextMeshContentRevision();
-    if (destination.compactOnly && graphics::isValid(destination.vertexBuffer)) {
-        graphics::destroy(destination.vertexBuffer);
-        destination.vertexBuffer = WOBY_GPU_INVALID_HANDLE;
-    }
-    upload = {};
-}
-
-void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
-    uint8_t features)
-{
-    gpuMesh.resourceRevision = nextMeshContentRevision();
-    if ((features & gpuMeshEdges) && !meshGeometry(mesh).indices.empty() && !woby::graphics::isValid(gpuMesh.lineIndexBuffer)) {
-        (void)sceneBufferBytes(meshGeometry(mesh).indices.size(), 2 * sizeof(uint32_t));
-        gpuMesh.lineIndexBuffer = woby::graphics::createIndexBuffer(
-            ownedBuffer(buildLineIndices(meshGeometry(mesh).indices)),
-            WOBY_GPU_BUFFER_INDEX32);
-        if (!woby::graphics::isValid(gpuMesh.lineIndexBuffer)) { throw std::runtime_error("Failed to allocate scene edge buffer."); }
-    }
-    if ((features & gpuMeshPoints) && !gpuMesh.pointCloud && !woby::graphics::isValid(gpuMesh.pointIdBuffer)) {
-        const auto& pointIndices = gpuMesh.pointVertexIndices;
-        if (pointIndices.empty()) { return; }
-        // copy owns the asynchronous upload; CPU IDs remain available for picking.
-        gpuMesh.pointIdBuffer = woby::graphics::createIndexBuffer(
-            woby::graphics::copy(pointIndices.data(), sceneBufferBytes(pointIndices.size(), sizeof(uint32_t))),
-            WOBY_GPU_BUFFER_INDEX32 | WOBY_GPU_BUFFER_COMPUTE_READ);
-        if (!woby::graphics::isValid(gpuMesh.pointIdBuffer)) {
-            throw std::runtime_error("Failed to allocate scene point-ID buffer.");
-        }
-    }
-}
-
 void destroyGpuMesh(GpuMesh& mesh)
 {
     mesh.resourceRevision = nextMeshContentRevision();
@@ -402,6 +214,7 @@ void destroyGpuMesh(GpuMesh& mesh)
 void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes)
 {
     for (auto& runtime : runtimes) {
+        graphics::cancelBufferUpload(runtime.featureUpload);
         destroyGpuMesh(runtime.gpuMesh);
     }
     runtimes.clear();

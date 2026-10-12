@@ -1,5 +1,6 @@
 #include "graphics.h"
 #include "graphics_diagnostics.h"
+#include "graphics_upload.h"
 #include "frame_pacing.h"
 #include "root.h"
 #include "opaque_points.h"
@@ -54,13 +55,6 @@ void require(bool value, const char *message)
 }
 void checkCommands(const char* error) { require(error == nullptr, error); }
 
-struct Buffer
-{
-    gpu::GpuHeap heap{};
-    uint32_t bytes = 0;
-    uint16_t stride = 0;
-    bool index32 = false;
-};
 struct TexturePage
 {
     gpu::TextureHeap heap{};
@@ -212,6 +206,10 @@ struct Context
     gpu::TextureDescriptorHeap *descriptors = nullptr;
     gpu::SamplerDescriptorHeap *samplers = nullptr;
     std::unique_ptr<gpu::UploadQueue> uploads;
+    std::mutex submissionMutex;
+    std::unique_ptr<BufferUploadRuntime> modelUploads;
+    std::vector<gpu::TimelinePoint> uploadWaits;
+    std::vector<std::shared_ptr<BufferUpload>> uploadOwners;
     std::unique_ptr<gpu::DeleteQueue> deletes;
     Caps caps;
     Stats stats;
@@ -575,39 +573,7 @@ void uploadTexture(const std::shared_ptr<Texture> &texture)
 }
 std::shared_ptr<Buffer> createBufferStorage(uint32_t bytes, uint16_t stride, bool index32)
 {
-    require(bytes > 0, "Cannot create an empty GPU buffer");
-    require(stride > 0 && bytes % stride == 0, "GPU buffer size must match its element stride");
-    auto result = std::shared_ptr<Buffer>(new Buffer,
-                                          [](Buffer *value)
-                                          {
-                                              gpu::destroy_gpu_heap(value->heap);
-                                              delete value;
-                                          });
-    result->bytes = bytes;
-    result->stride = stride;
-    result->index32 = index32;
-    if (!noop())
-    {
-        const auto heapBytes = (uint64_t(bytes) + 15) & ~uint64_t{15};
-#if defined(__APPLE__)
-        result->heap = gpu::create_gpu_heap(state().device, heapBytes, gpu::MemoryType::gpu_only);
-#else
-        gpu::HeapAllocationFailure failure;
-        result->heap = gpu::try_create_gpu_heap(state().device, heapBytes, gpu::MemoryType::gpu_only, failure);
-        if (!result->heap.owner) {
-            const char* reason = failure.api_result == VK_ERROR_OUT_OF_DEVICE_MEMORY ? " (out of device memory)"
-                : failure.api_result == VK_ERROR_OUT_OF_HOST_MEMORY ? " (out of host memory)"
-                : failure.api_result == VK_ERROR_DEVICE_LOST ? " (device lost)" : "";
-            throw std::runtime_error("Cannot allocate GPU geometry: requested " + std::to_string(bytes)
-                + " bytes; " + (failure.operation ? failure.operation : "unknown operation")
-                + " returned VkResult " + std::to_string(failure.api_result) + reason
-                + " (allocation " + std::to_string(failure.allocation_bytes)
-                + " bytes, memory type " + std::to_string(failure.memory_type) + ").");
-        }
-#endif
-        require(result->heap.owner != nullptr, "Cannot allocate GPU geometry");
-    }
-    return result;
+    return createNativeBuffer(state().device, noop(), bytes, stride, index32);
 }
 void uploadBufferRange(const std::shared_ptr<Buffer>& buffer, uint32_t offset, const void* data, uint32_t bytes)
 {
@@ -1034,10 +1000,25 @@ bool init(const Init &options)
         c.width = std::max(1u, options.resolution.width);
         c.height = std::max(1u, options.resolution.height);
         c.flags = options.resolution.reset;
+        if (options.modelUploadStagingBytes < 4ull * 1024 * 1024
+            || options.modelUploadStagingBytes > 256ull * 1024 * 1024
+            || options.modelUploadStagingBytes % (1024 * 1024)) {
+            throw std::invalid_argument("Model upload staging must be 4..256 whole MiB.");
+        }
+        c.modelUploads = std::make_unique<BufferUploadRuntime>();
+        static std::atomic<uint64_t> uploadGeneration = 0;
+        c.modelUploads->generation = ++uploadGeneration;
+        c.modelUploads->capacity = options.modelUploadStagingBytes;
+        c.modelUploads->submissionMutex = &c.submissionMutex;
+        c.modelUploads->noop = options.type == RendererType::Noop;
         if (options.type == RendererType::Noop)
+        {
+            startBufferUploadWorker(*c.modelUploads);
             return true;
+        }
         auto *window = static_cast<SDL_Window *>(options.platformData.window);
         gpu::DeviceDesc deviceOptions{.swapchain_format = gpu::Format::bgra8_unorm};
+        deviceOptions.desired_queue_count = 2;
 #if defined(_WIN32)
         deviceOptions.allow_mailbox_presentation = window != nullptr;
 #endif
@@ -1083,6 +1064,8 @@ bool init(const Init &options)
 #endif
                 ));
         c.device = initialized.device;
+        c.modelUploads->device = c.device;
+        c.modelUploads->queueIndex = gpu::get_device_caps(c.device).general_queue_count > 1 ? 1u : 0u;
         c.window = window;
         c.windowed = window != nullptr;
 #if defined(__APPLE__)
@@ -1118,6 +1101,8 @@ bool init(const Init &options)
         const auto uploads = gpu::create_utility<gpu::UploadQueue>(c.device, 16ull * 1024 * 1024);
         c.uploads.reset(uploads.value);
         require(uploads.value != nullptr, uploads.error);
+        c.uploads->submit_context = &c.submissionMutex;
+        c.uploads->submit_function = submitUploadCommands;
         const auto deletes = gpu::create_utility<gpu::DeleteQueue>(c.timeline, 64u);
         c.deletes.reset(deletes.value);
         require(deletes.value != nullptr, deletes.error);
@@ -1125,6 +1110,7 @@ bool init(const Init &options)
             f.pool = gpu::create_command_pool(c.device);
             require(f.pool != nullptr, "GPU frame command pool allocation failed");
         }
+        startBufferUploadWorker(*c.modelUploads);
         return true;
     }
     catch (const std::exception &error)
@@ -1173,6 +1159,48 @@ void reset(uint32_t width, uint32_t height, uint32_t flags)
     c.width = std::max(1u, width);
     c.height = std::max(1u, height);
     c.flags = flags;
+}
+std::shared_ptr<BufferUpload> beginBufferUpload(std::vector<BufferUploadSource> sources)
+{
+    return enqueueBufferUpload(*state().modelUploads, std::move(sources));
+}
+std::shared_ptr<BufferUpload> beginBufferUpload(BufferUploadSourceFactory prepare)
+{
+    return enqueueBufferUpload(*state().modelUploads, std::move(prepare));
+}
+UploadedBufferHandles adoptBufferUpload(const std::shared_ptr<BufferUpload>& job)
+{
+    auto& c = state();
+    if (!bufferUploadComplete(job)) { throw std::runtime_error("GPU upload is not complete."); }
+    if (job->generation != c.modelUploads->generation) { throw std::runtime_error("GPU upload belongs to another renderer."); }
+    if (job->canceled.load(std::memory_order_acquire)) { throw std::runtime_error("GPU upload was canceled."); }
+    if (!job->error.empty()) { throw std::runtime_error(job->error); }
+    if (job->adopted) { throw std::runtime_error("GPU upload was already registered."); }
+    size_t vertices = 0, indices = 0;
+    for (const auto& buffer : job->buffers) { if (buffer->index) { ++indices; } else { ++vertices; } }
+    require(c.vertexBuffers.size() + vertices < kInvalidHandle && c.indexBuffers.size() + indices < kInvalidHandle,
+        "Graphics handle namespace exhausted");
+    UploadedBufferHandles result;
+    result.vertices.reserve(vertices); result.indices.reserve(indices);
+    c.vertexBuffers.reserve(c.vertexBuffers.size() + vertices);
+    c.indexBuffers.reserve(c.indexBuffers.size() + indices);
+    if (job->completion.semaphore) {
+        c.uploadWaits.reserve(c.uploadWaits.size() + 1); c.uploadOwners.reserve(c.uploadOwners.size() + 1);
+    }
+    for (const auto& buffer : job->buffers) {
+        if (buffer->index) { result.indices.push_back(insert<IndexBufferHandle>(c.indexBuffers, buffer)); }
+        else { result.vertices.push_back(insert<VertexBufferHandle>(c.vertexBuffers, buffer)); }
+    }
+    if (job->completion.semaphore) {
+        const auto wait = std::find_if(c.uploadWaits.begin(), c.uploadWaits.end(), [&](const auto& point) {
+            return point.semaphore == job->completion.semaphore;
+        });
+        if (wait == c.uploadWaits.end()) { c.uploadWaits.push_back(job->completion); }
+        else { wait->value = std::max(wait->value, job->completion.value); }
+        c.uploadOwners.push_back(job);
+    }
+    job->adopted = true;
+    return result;
 }
 void setDebug(uint32_t) {}
 void dbgTextClear() {}
@@ -1945,16 +1973,21 @@ try
     // SubmitDesc borrows its spans. Initializer-list storage would expire at
     // the declaration below, before submit() reads it in an optimized build.
     const std::array submittedCommands{f.preparations, commands};
-    const std::array uploadWaits{uploaded};
+    c.uploadWaits.push_back(uploaded);
+    for (const auto& owner : c.uploadOwners) { f.retained.push_back(owner); }
     const gpu::SubmitDesc submission{
-        .commands = submittedCommands, .waits = uploadWaits, .completion = {c.timeline, signal}};
-    const auto submitted = swap.render_view ? gpu::submit_and_present(c.device, submission)
-                                           : gpu::submit(c.device, submission);
+        .commands = submittedCommands, .waits = c.uploadWaits, .completion = {c.timeline, signal}};
+    const auto submitted = [&] {
+        const std::lock_guard lock(c.submissionMutex);
+        return swap.render_view ? gpu::submit_and_present(c.device, submission)
+                                : gpu::submit(c.device, submission);
+    }();
     if (submitted.submitted) {
         c.submitted = signal;
         f.completion = signal;
     }
     checkCommands(submitted.error);
+    c.uploadWaits.clear(); c.uploadOwners.clear();
     if (!c.trash->empty())
     {
         auto nextTrash = std::make_unique<std::vector<std::shared_ptr<void>>>();
@@ -1973,6 +2006,7 @@ try
 catch (...) {
     if (context) {
         context->frameFailed = true;
+        if (context->modelUploads) { stopBufferUploadWorker(*context->modelUploads); }
         gpu::abandon_acquired_image(context->device);
     }
     throw;
@@ -1982,6 +2016,7 @@ void shutdown()
     if (!context)
         return;
     auto &c = *context;
+    if (c.modelUploads) { stopBufferUploadWorker(*c.modelUploads); }
     gpu::abandon_acquired_image(c.device);
     if (c.uploads)
         c.uploads->wait();
@@ -1992,6 +2027,8 @@ void shutdown()
         if (c.deletes)
             c.deletes->drain();
     }
+    c.uploadWaits.clear(); c.uploadOwners.clear();
+    if (c.modelUploads) { releaseBufferUploadOwners(*c.modelUploads); }
     c.encoder = Encoder{};
     c.views = {};
     c.reads.clear();
@@ -2028,6 +2065,7 @@ void shutdown()
     }
     c.pages.clear();
     c.uploads.reset();
+    c.modelUploads.reset();
     c.deletes.reset();
     if (c.descriptors)
         gpu::destroy_texture_descriptor_heap(c.descriptors);

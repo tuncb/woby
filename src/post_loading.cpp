@@ -31,7 +31,6 @@ void retireJob(PostLoadRuntime& runtime)
         runtime.retired.push_back(std::move(runtime.job));
     }
     if (runtime.upload) { abortGpuMeshUpload(*runtime.upload); runtime.upload.reset(); }
-    runtime.uploadFrame = 0; runtime.uploadNeedsFrame = false;
 }
 }
 
@@ -127,11 +126,10 @@ void notePostLoadFrame(PostLoadRuntime& runtime, const UiState& state, uint64_t 
             return frame.identity.fileId == file.objectId && postLoadCurrent(frame.identity, state);
         })) { runtime.frames.push_back({identity, token}); }
     }
-    if (runtime.uploadNeedsFrame) { runtime.uploadFrame = token; runtime.uploadNeedsFrame = false; }
 }
 
 void updatePostLoading(PostLoadRuntime& runtime, UiState& state, std::vector<LoadedModelRuntime>& models,
-    const graphics::VertexLayout& layout, uint64_t completedFrame, uint32_t uploadBudget)
+    const graphics::VertexLayout& layout, uint64_t completedFrame)
 {
     std::erase_if(runtime.retired, [](const auto& job) { return job->done.load(std::memory_order_acquire); });
     std::erase_if(runtime.frames, [&](const auto& frame) {
@@ -156,21 +154,17 @@ void updatePostLoading(PostLoadRuntime& runtime, UiState& state, std::vector<Loa
             if (!job.error.empty()) { throw std::runtime_error(job.error); }
             if (!job.result) { throw std::runtime_error("Model preparation was canceled."); }
             if (!runtime.upload) {
-                const auto vertexBytes = !graphics::isValid(models[index].gpuMesh.vertexBuffer) && !job.result->points.pointCloud
-                    ? meshGeometry(found->mesh).vertices.size() * sizeof(Vertex) : 0;
-                runtime.upload = beginGpuPointUpload(std::move(job.result->points), vertexBytes);
+                const bool includeVertices = !graphics::isValid(models[index].gpuMesh.vertexBuffer) && !job.result->points.pointCloud;
+                runtime.upload = beginGpuPointUpload(std::move(job.result->points), found->mesh, layout, includeVertices);
                 setPostLoadPhase(state, job.identity.fileId, PostLoadPhase::uploading);
+                return;
             }
-            if (!runtime.uploadFrame && !runtime.uploadNeedsFrame) {
-                if (!stepGpuMeshUpload(*runtime.upload, found->mesh, layout, uploadBudget)) { return; }
-                runtime.uploadNeedsFrame = true;
-            }
-            if (runtime.uploadFrame && runtime.uploadFrame <= completedFrame) {
+            if (pollGpuMeshUpload(*runtime.upload)) {
                 commitGpuPointUpload(models[index].gpuMesh, *runtime.upload);
                 models[index].requestedFeatures = 0;
                 publishPostLoadData(state, job.identity, std::move(*job.result));
                 ++runtime.completions;
-                runtime.upload.reset(); runtime.uploadFrame = 0;
+                runtime.upload.reset();
                 runtime.job.reset();
             }
         } catch (const std::exception& error) {

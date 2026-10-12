@@ -124,7 +124,7 @@ def main():
 
         help_result = run(executable, "--headless", "--help", env=env)
         assert help_result.returncode == 0, help_result.stderr
-        for text in ("--headless", "ready=true", "camera frame", "screenshot", "GPU readback", "not a ctl option",
+        for text in ("--headless", "--upload-buffer-mib", "ready=true", "camera frame", "screenshot", "GPU readback", "not a ctl option",
                      "analysis findings", "--collection", "--revision", "analysis export-status",
                      "analysis export-cancel", "--intersection-pair-limit", "--intersection-candidate-limit", "0 explicitly means unlimited"):
             assert text in help_result.stdout, text
@@ -247,6 +247,28 @@ def main():
             ctl("scene", "open", scene)
             assert ctl("camera", "get")["camera"] == final_camera
             ctl("quit")
+            assert viewer.wait(timeout=15) == 0
+        # Initial batches use the same worker path and retain folder grouping.
+        with session(executable, root, env, "--upload-buffer-mib", 4, "--folder-tree", root) as (ctl, viewer):
+            assert ctl("scene", "info")["fileCount"] == 2
+            assert ctl("status")["postLoadReady"]
+            assert any(item["kind"] == "folder" for item in ctl("objects")["objects"])
+            assert not ctl("scene", "undo")["applied"]
+            ctl("quit", "--on-dirty", "discard")
+            assert viewer.wait(timeout=15) == 0
+        third = root / "third.obj"
+        third.write_bytes(model.read_bytes())
+        with session(executable, root, env, "--upload-buffer-mib", 8, "--scene", scene, "--file", third) as (ctl, viewer):
+            assert ctl("scene", "info")["fileCount"] == 3
+            assert ctl("scene", "info")["dirty"]
+            assert ctl("status")["postLoadReady"]
+            assert not ctl("scene", "undo")["applied"]
+            third_id = next(item["id"] for item in ctl("objects")["objects"]
+                            if item["kind"] == "file" and Path(item["path"]) == third)
+            ctl("model", "remove", third_id)
+            assert ctl("scene", "undo")["applied"]
+            capture(ctl, root / "history-restored.png")
+            ctl("quit", "--on-dirty", "discard")
             assert viewer.wait(timeout=15) == 0
         assert not (root / "imgui.ini").exists(), "Headless viewer wrote desktop preferences"
     print("Headless smoke passed: no SDL video/windows, real pixels, camera/retries, annotations/labels, analysis readiness, persistence/history, errors, idle pacing, and shutdown.")

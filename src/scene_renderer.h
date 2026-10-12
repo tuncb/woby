@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model_mesh.h"
+#include "scene_mesh_upload.h"
 #include "scene_mesh_preparation.h"
 #include "ui_state.h"
 #include "scene_pick.h"
@@ -28,64 +29,6 @@ struct SceneRenderScratch {
     std::vector<std::array<float, 3>> focusPoints;
     AnnotationQuery annotationPreview;
 };
-
-struct GpuMesh {
-    uint64_t resourceRevision = nextMeshContentRevision();
-    woby::graphics::VertexBufferHandle vertexBuffer = WOBY_GPU_INVALID_HANDLE;
-    woby::graphics::IndexBufferHandle triangleIndexBuffer = WOBY_GPU_INVALID_HANDLE;
-    woby::graphics::IndexBufferHandle lineIndexBuffer = WOBY_GPU_INVALID_HANDLE;
-    woby::graphics::IndexBufferHandle pointIdBuffer = WOBY_GPU_INVALID_HANDLE;
-    woby::graphics::IndexBufferHandle importedLineBuffer = WOBY_GPU_INVALID_HANDLE;
-    std::vector<GpuNodeRange> nodeRanges;
-    std::vector<uint32_t> pointVertexIndices;
-    std::shared_ptr<const points::Cloud> pointCloud;
-    std::vector<graphics::VertexBufferHandle> pointChunks, proxyChunks;
-    bool compactOnly = false;
-};
-inline constexpr uint32_t pointChunkSize = 1048576;
-[[nodiscard]] inline std::span<const uint32_t> meshPointVertexIndices(const GpuMesh& mesh) {
-    return mesh.pointCloud ? std::span<const uint32_t>(mesh.pointCloud->sourceVertices) : mesh.pointVertexIndices;
-}
-
-struct LoadedModelRuntime {
-    GpuMesh gpuMesh;
-    // Retry failed optional uploads only when the requested modes change.
-    uint8_t requestedFeatures = 0;
-};
-
-[[nodiscard]] woby::graphics::VertexLayout meshVertexLayout();
-[[nodiscard]] woby::graphics::VertexLayout helperLineVertexLayout();
-
-[[nodiscard]] GpuMesh createGpuMesh(
-    const Mesh& mesh,
-    const woby::graphics::VertexLayout& meshLayout,
-    uint8_t features = 0);
-// A staged mesh is never published to the scene until all buffers are uploaded.
-struct GpuMeshUpload {
-    GpuMesh mesh;
-    std::vector<uint32_t> edgeIndices;
-    uint8_t features = 0;
-    uint8_t bufferIndex = 0;
-    bool pointsOnly = false;
-    uint32_t bufferOffset = 0;
-    uint32_t pointChunk = 0;
-    size_t uploadedBytes = 0;
-    size_t totalBytes = 0;
-};
-[[nodiscard]] GpuMeshUpload beginGpuMeshUpload(SceneMeshPreparation prepared);
-// Source geometry must remain unchanged until completion. Each call copies at
-// most byteBudget bytes into graphics-owned staging; no source pointer escapes.
-[[nodiscard]] bool stepGpuMeshUpload(GpuMeshUpload& upload, const Mesh& source,
-    const woby::graphics::VertexLayout& layout, uint32_t byteBudget);
-void abortGpuMeshUpload(GpuMeshUpload& upload);
-// Optional point resources are staged separately; the existing surface stays drawable.
-[[nodiscard]] GpuMeshUpload beginGpuPointUpload(SceneMeshPreparation prepared, size_t vertexBytes = 0);
-void commitGpuPointUpload(GpuMesh& destination, GpuMeshUpload& upload);
-
-// Optional display buffers are retained once built; drawing never allocates.
-void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh, uint8_t features);
-void destroyGpuMesh(GpuMesh& mesh);
-void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes);
 
 [[nodiscard]] uint32_t vertexPointSize(float masterSize, float groupScale);
 // Runtime parameters preserve integer offsets and keep minimized viewports nonzero.

@@ -8,17 +8,18 @@
 namespace woby {
 
 std::optional<UiState> loadSceneHistoryStep(const SceneHistory& history,
-    const UiState& current, const SceneDocument& cleanDocument, bool redo)
+    const UiState& current, const SceneDocument& cleanDocument, bool redo, const std::function<bool()>& shouldCancel)
 {
     if (!(redo ? canRedoScene(history) : canUndoScene(history))) { return {}; }
     const auto& target = history.snapshots[redo ? history.cursor + 1 : history.cursor - 1];
     if (target.content.sceneGeneration != current.sceneGeneration) { return {}; }
     std::vector<UiFileState> reloaded;
     for (const auto& file : target.content.files) {
+        if (shouldCancel && shouldCancel()) { return {}; }
         if (std::any_of(current.files.begin(), current.files.end(),
                 [&](const auto& live) { return live.objectId == file.objectId; })) { continue; }
         try {
-            auto imported = loadModel(file.path, file.importerId, {{}, {}, {}, true});
+            auto imported = loadModel(file.path, file.importerId, {shouldCancel, {}, {}, true});
             rebaseMesh(imported.mesh, file.mesh.origin);
             auto restored = createUiFileState(file.path, std::move(imported.mesh), 0, std::move(imported.importerId));
             restored.objectId = file.objectId;

@@ -49,8 +49,6 @@ struct PostLoadRuntime {
     std::unique_ptr<PostLoadJob> job;
     std::vector<std::unique_ptr<PostLoadJob>> retired;
     std::optional<GpuMeshUpload> upload;
-    uint64_t uploadFrame = 0;
-    bool uploadNeedsFrame = false;
     uint64_t noticeGeneration = 0, completions = 0, noticeCompletions = 0;
     const UiState* noticeOwner = nullptr;
     bool noticePending = false, noticeReady = false;
@@ -61,7 +59,7 @@ struct PostLoadRuntime {
 void notePostLoadFrame(PostLoadRuntime& runtime, const UiState& state, uint64_t token);
 void updatePostLoading(PostLoadRuntime& runtime, UiState& state,
     std::vector<LoadedModelRuntime>& models, const graphics::VertexLayout& layout,
-    uint64_t completedFrame, uint32_t uploadBudget = 4u * 1024 * 1024);
+    uint64_t completedFrame);
 void cancelPostLoading(PostLoadRuntime& runtime);
 // Time is supplied by the adapter, so notice transitions can be tested without sleeps.
 void updatePostLoadNotice(PostLoadRuntime& runtime, const UiState& state, double now);

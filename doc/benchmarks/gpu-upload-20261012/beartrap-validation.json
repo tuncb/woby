@@ -1,0 +1,28 @@
+{
+  "method": "Fresh hidden viewer; cached file; RPC model.add followed by a screenshot readback",
+  "executable_sha256": "c083286840871effbd68607530edfd02d76ebd61fc6f9ad6517e10d109503102",
+  "source_revision": "c68de54",
+  "working_tree_modified": true,
+  "gpu": "NVIDIA GeForce RTX 3070 Laptop GPU",
+  "driver": "616.92",
+  "model_bytes": 7108991827,
+  "initial_gpu_upload": {
+    "bytes": 2138524344,
+    "milliseconds": 683.7305,
+    "submissions": 256,
+    "waits": 3,
+    "staging_bytes": 16777216,
+    "peak_staging_bytes": 16777216
+  },
+  "load_rpc_milliseconds": 58712.970600005065,
+  "load_to_screenshot_milliseconds": 59592.790900002,
+  "hidden_window_pacing": {
+    "msaaSamples": 4,
+    "periodNanoseconds": 50000000,
+    "resetFlags": 3,
+    "targetFps": 20.0
+  },
+  "screenshot_rendered": true,
+  "clean_exit": true,
+  "limitations": "One end-to-end validation run. Initial upload includes allocation; full load includes deferred CPU preparation and later point uploads. Capacity comparisons are in summary.json."
+}

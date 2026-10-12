@@ -48,6 +48,19 @@ TEST_CASE("update command is independent of viewer and control arguments")
     }
 }
 
+TEST_CASE("Upload staging is a runtime option with a validated whole MiB capacity")
+{
+    CHECK_FALSE(parse({"woby"}).uploadBufferMiB);
+    for (const auto& value : {"4", "16", "32", "256"}) {
+        CHECK(parse({"woby", "--upload-buffer-mib", value}).uploadBufferMiB == static_cast<uint32_t>(std::stoul(value)));
+    }
+    for (const auto& value : {"0", "3", "257", "-1", "16.5", "16MiB", "4294967296"}) {
+        CHECK_THROWS(parse({"woby", "--upload-buffer-mib", value}));
+    }
+    CHECK_THROWS(parse({"woby", "--upload-buffer-mib"}));
+    CHECK_THROWS(parse({"woby", "--upload-buffer-mib", "16", "--upload-buffer-mib", "32"}));
+}
+
 TEST_CASE("command line defaults keep logging off")
 {
     const woby::AppArguments arguments = parse({"woby"});

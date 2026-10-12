@@ -214,6 +214,8 @@ add_library(woby_core STATIC
     src/performance_log.h
     src/scene_history_load.cpp
     src/scene_history_load.h
+    src/scene_history_restore.cpp
+    src/scene_history_restore.h
     src/scene_history.cpp
     src/scene_history.h
     src/ui_history_controls.h
@@ -224,6 +226,7 @@ add_library(woby_core STATIC
     src/adaptive_points.cpp
     src/point_cloud.cpp
     src/scene_mesh_preparation.cpp
+    src/scene_mesh_upload.cpp
     src/post_loading.cpp
     src/post_loading.h
     src/post_load_operations.cpp
@@ -345,6 +348,10 @@ if(WOBY_BUILD_NOGRAPHICSAPI_PROTOTYPE)
 endif()
 
 option(WOBY_BUILD_BENCHMARKS "Build standalone CPU performance workloads" OFF)
+option(WOBY_BUILD_GPU_UPLOAD_BENCHMARK "Build the native GPU upload capacity benchmark" OFF)
+if(WOBY_BUILD_GPU_UPLOAD_BENCHMARK)
+    add_subdirectory(experiments/gpu-upload)
+endif()
 option(WOBY_BUILD_SIMPLIFICATION_PROBES "Build the items 10-19 investigation probes" OFF)
 if(WOBY_BUILD_SIMPLIFICATION_PROBES)
     foreach(item RANGE 10 16)
@@ -557,6 +564,7 @@ if(BUILD_TESTING)
         tests/shared_geometry_tests.cpp
         tests/math_utils_tests.cpp
         tests/graphics_tests.cpp
+        tests/graphics_upload_tests.cpp
         tests/graphics_diagnostics_tests.cpp
         tests/shader_types_tests.cpp
         tests/frame_pacing_tests.cpp

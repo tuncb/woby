@@ -51,37 +51,23 @@ TEST_CASE("Scene upload preparation is owned worker data with cancellable valida
     CHECK(woby::prepareSceneMesh(mesh).has_value());
 }
 
-TEST_CASE("Staged mesh uploads bound bytes and complete every primitive buffer before publication")
+TEST_CASE("Mesh uploads preserve every primitive buffer and complete without rendered frames")
 {
     RendererFixture fixture;
-    woby::graphics::Init init;
-    init.type = woby::graphics::RendererType::Noop;
-    fixture.initialized = woby::graphics::init(init);
-    REQUIRE(fixture.initialized);
+    woby::graphics::Init init; init.type = woby::graphics::RendererType::Noop;
+    fixture.initialized = woby::graphics::init(init); REQUIRE(fixture.initialized);
     woby::Mesh mesh;
     editMeshGeometry(mesh).vertices.resize(8);
     editMeshGeometry(mesh).indices = {6, 1, 3, 3, 1, 7};
-    editMeshGeometry(mesh).lineIndices = {0, 2};
-    editMeshGeometry(mesh).pointIndices = {5, 4, 5};
+    editMeshGeometry(mesh).lineIndices = {0, 2}; editMeshGeometry(mesh).pointIndices = {5, 4, 5};
     editMeshGeometry(mesh).nodes = {{"triangles", 0, 6}, {"lines"}, {"points"}};
     editMeshGeometry(mesh).nodes[1].lineIndexCount = 2;
     editMeshGeometry(mesh).nodes[2].pointIndexCount = 3;
-    auto prepared = woby::prepareSceneMesh(mesh, woby::gpuMeshEdges | woby::gpuMeshPoints);
-    REQUIRE(prepared);
-    auto upload = woby::beginGpuMeshUpload(std::move(*prepared));
-    // Moving the source between steps is safe: no pointer is retained by upload.
-    auto moved = std::move(mesh);
-    bool complete = false;
-    size_t steps = 0;
-    while (!complete && steps < 100) {
-        const auto previous = upload.uploadedBytes;
-        complete = woby::stepGpuMeshUpload(upload, moved, woby::meshVertexLayout(), 32);
-        CHECK(upload.uploadedBytes - previous <= 32);
-        if (!complete) { CHECK(upload.bufferIndex < 5); }
-        ++steps;
-    }
-    REQUIRE(complete);
-    CHECK(steps > 1);
+    auto prepared = woby::prepareSceneMesh(mesh, woby::gpuMeshEdges | woby::gpuMeshPoints); REQUIRE(prepared);
+    auto upload = woby::beginGpuMeshUpload(std::move(*prepared), mesh, woby::meshVertexLayout());
+    mesh = {}; // The request owns the source snapshot.
+    woby::waitGpuMeshUpload(upload);
+    CHECK(woby::graphics::submittedFrameToken() == 0);
     CHECK(upload.uploadedBytes == 256 + 24 + 8 + 48 + 32);
     CHECK(upload.uploadedBytes == upload.totalBytes);
     fixture.mesh = std::move(upload.mesh);
@@ -93,27 +79,81 @@ TEST_CASE("Staged mesh uploads bound bytes and complete every primitive buffer b
     CHECK(fixture.mesh.pointVertexIndices == std::vector<uint32_t>{6, 1, 3, 7, 0, 2, 5, 4});
 }
 
-TEST_CASE("Canceling a partial mesh upload destroys its buffers and allows a fresh upload")
+TEST_CASE("Optional mesh features prepare asynchronously and reject a changed geometry snapshot") {
+    RendererFixture fixture;
+    woby::graphics::Init options; options.type = woby::graphics::RendererType::Noop;
+    fixture.initialized = woby::graphics::init(options); REQUIRE(fixture.initialized);
+    woby::Mesh source;
+    editMeshGeometry(source).vertices.resize(3);
+    editMeshGeometry(source).indices = {0, 1, 2};
+    editMeshGeometry(source).nodes = {{"triangle", 0, 3}};
+    publishMeshGeometry(source);
+    woby::LoadedModelRuntime runtime;
+    runtime.gpuMesh = woby::createGpuMesh(source, woby::meshVertexLayout());
+    std::promise<void> entered, release;
+    auto ready = release.get_future().share();
+    auto blocker = woby::graphics::beginBufferUpload([&entered, ready](const std::atomic<bool>&) {
+        entered.set_value(); ready.wait(); return std::vector<woby::graphics::BufferUploadSource>{};
+    });
+    entered.get_future().wait();
+    const uint8_t features = woby::gpuMeshEdges | woby::gpuMeshPoints;
+    woby::updateGpuMeshFeatures(runtime, source, features);
+    auto old = runtime.featureUpload;
+    CHECK(old != nullptr);
+    CHECK_FALSE(woby::graphics::isValid(runtime.gpuMesh.lineIndexBuffer));
+    editMeshGeometry(source).indices = {2, 1, 0}; publishMeshGeometry(source);
+    woby::updateGpuMeshFeatures(runtime, source, features);
+    CHECK(runtime.featureUpload != old);
+    release.set_value();
+    woby::graphics::waitBufferUpload(blocker);
+    woby::graphics::waitBufferUpload(old);
+    CHECK_THROWS_WITH(woby::graphics::adoptBufferUpload(old), "GPU upload was canceled.");
+    REQUIRE(runtime.featureUpload);
+    woby::graphics::waitBufferUpload(runtime.featureUpload);
+    woby::updateGpuMeshFeatures(runtime, source, features);
+    CHECK_FALSE(runtime.featureUpload);
+    CHECK(woby::graphics::isValid(runtime.gpuMesh.lineIndexBuffer));
+    CHECK(woby::graphics::isValid(runtime.gpuMesh.pointIdBuffer));
+    CHECK(woby::graphics::submittedFrameToken() == 0);
+    fixture.mesh = std::move(runtime.gpuMesh);
+}
+
+TEST_CASE("A line-only model can asynchronously request edges and points together") {
+    RendererFixture fixture;
+    woby::graphics::Init options; options.type = woby::graphics::RendererType::Noop;
+    fixture.initialized = woby::graphics::init(options); REQUIRE(fixture.initialized);
+    woby::Mesh source; editMeshGeometry(source).vertices.resize(3);
+    editMeshGeometry(source).lineIndices = {0, 1, 1, 2};
+    editMeshGeometry(source).nodes = {{"lines"}};
+    editMeshGeometry(source).nodes[0].lineIndexCount = 4;
+    woby::LoadedModelRuntime runtime;
+    runtime.gpuMesh = woby::createGpuMesh(source, woby::meshVertexLayout());
+    const uint8_t features = woby::gpuMeshEdges | woby::gpuMeshPoints;
+    woby::updateGpuMeshFeatures(runtime, source, features);
+    REQUIRE(runtime.featureUpload);
+    woby::graphics::waitBufferUpload(runtime.featureUpload);
+    woby::updateGpuMeshFeatures(runtime, source, features);
+    CHECK_FALSE(woby::graphics::isValid(runtime.gpuMesh.lineIndexBuffer));
+    CHECK(woby::graphics::isValid(runtime.gpuMesh.pointIdBuffer));
+    fixture.mesh = std::move(runtime.gpuMesh);
+}
+
+TEST_CASE("Canceled mesh requests cannot publish and do not prevent a fresh upload")
 {
     RendererFixture fixture;
-    woby::graphics::Init init;
-    init.type = woby::graphics::RendererType::Noop;
-    fixture.initialized = woby::graphics::init(init);
-    REQUIRE(fixture.initialized);
+    woby::graphics::Init init; init.type = woby::graphics::RendererType::Noop;
+    fixture.initialized = woby::graphics::init(init); REQUIRE(fixture.initialized);
     woby::Mesh mesh;
-    editMeshGeometry(mesh).vertices.resize(3);
-    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).vertices.resize(3); editMeshGeometry(mesh).indices = {0, 1, 2};
     editMeshGeometry(mesh).nodes = {{"triangle", 0, 3}};
-    auto upload = woby::beginGpuMeshUpload(*woby::prepareSceneMesh(mesh));
-    CHECK_FALSE(woby::stepGpuMeshUpload(upload, mesh, woby::meshVertexLayout(), 32));
-    const auto canceledBuffer = upload.mesh.vertexBuffer;
+    auto upload = woby::beginGpuMeshUpload(*woby::prepareSceneMesh(mesh), mesh, woby::meshVertexLayout());
+    const auto ticket = upload.ticket;
     woby::abortGpuMeshUpload(upload);
-    CHECK_FALSE(woby::graphics::isValid(upload.mesh.vertexBuffer));
-    CHECK(upload.mesh.pointVertexIndices.empty());
-    const std::array<uint32_t, 8> data{};
-    CHECK_THROWS(woby::graphics::uploadBufferRange(canceledBuffer, 0, data.data(), 32));
+    woby::graphics::waitBufferUpload(ticket);
+    CHECK_THROWS_WITH(woby::graphics::adoptBufferUpload(ticket), "GPU upload was canceled.");
     fixture.mesh = woby::createGpuMesh(mesh, woby::meshVertexLayout());
     CHECK(woby::graphics::isValid(fixture.mesh.triangleIndexBuffer));
+    const std::array<uint32_t, 8> data{};
     CHECK_THROWS(woby::graphics::uploadBufferRange(fixture.mesh.vertexBuffer, 92, data.data(), 8));
     CHECK_THROWS(woby::graphics::uploadBufferRange(fixture.mesh.vertexBuffer, 1, data.data(), 4));
     CHECK_THROWS(woby::graphics::uploadBufferRange(fixture.mesh.vertexBuffer, 0, nullptr, 4));

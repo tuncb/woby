@@ -58,9 +58,9 @@ struct PostLoadFixture {
         woby::graphics::frame();
         woby::notePostLoadFrame(runtime, state, woby::graphics::submittedFrameToken());
     }
-    void update(uint32_t budget = 32)
+    void update()
     {
-        woby::updatePostLoading(runtime, state, models, woby::meshVertexLayout(), woby::graphics::completedFrameToken(), budget);
+        woby::updatePostLoading(runtime, state, models, woby::meshVertexLayout(), woby::graphics::completedFrameToken());
     }
 };
 
@@ -134,8 +134,10 @@ TEST_CASE("Post loading waits for frame completion and publishes GPU points with
     CHECK_FALSE(woby::graphics::isValid(fixture.models[0].gpuMesh.pointIdBuffer));
     fixture.update();
     CHECK_FALSE(woby::scenePostLoadReady(fixture.state));
-    fixture.frame();
+    const auto frameToken = woby::graphics::submittedFrameToken();
+    woby::waitGpuMeshUpload(*fixture.runtime.upload);
     fixture.update();
+    CHECK(woby::graphics::submittedFrameToken() == frameToken);
     CHECK(woby::scenePostLoadReady(fixture.state));
     CHECK(fixture.models[0].gpuMesh.vertexBuffer.idx == vertex.idx);
     CHECK(fixture.models[0].gpuMesh.triangleIndexBuffer.idx == triangles.idx);
@@ -146,7 +148,7 @@ TEST_CASE("Post loading waits for frame completion and publishes GPU points with
     CHECK(woby::postLoadNotice(fixture.runtime, fixture.state, 103).empty());
 }
 
-TEST_CASE("Point-only models render a placeholder frame before bounded hierarchy uploads")
+TEST_CASE("Point-only models render a placeholder then upload independently of later frames")
 {
     PostLoadFixture fixture;
     woby::Mesh mesh; mesh.preparationDeferred = true;
@@ -166,14 +168,14 @@ TEST_CASE("Point-only models render a placeholder frame before bounded hierarchy
     fixture.frame(); fixture.update();
     REQUIRE(fixture.runtime.job);
     fixture.runtime.job->worker.join();
-    fixture.update(32768);
+    fixture.update();
     REQUIRE(fixture.runtime.upload);
-    CHECK(fixture.runtime.upload->uploadedBytes <= 32768);
     CHECK_FALSE(woby::scenePostLoadReady(fixture.state));
-    size_t frames = 0;
-    while (!woby::scenePostLoadReady(fixture.state) && frames++ < 100) { fixture.frame(); fixture.update(32768); }
+    const auto frameToken = woby::graphics::submittedFrameToken();
+    woby::waitGpuMeshUpload(*fixture.runtime.upload);
+    fixture.update();
+    CHECK(woby::graphics::submittedFrameToken() == frameToken);
     REQUIRE(woby::scenePostLoadReady(fixture.state));
-    CHECK(frames > 1);
     REQUIRE(fixture.models[0].gpuMesh.pointCloud);
     CHECK(fixture.models[0].gpuMesh.pointCloud->sourceVertices.size() == 65536);
     CHECK_FALSE(fixture.models[0].gpuMesh.pointChunks.empty());
@@ -215,8 +217,10 @@ TEST_CASE("Small point-only models defer their vertex and ID buffers without a h
     fixture.frame(); fixture.update();
     REQUIRE(fixture.runtime.job);
     fixture.runtime.job->worker.join();
-    size_t frames = 0;
-    while (!woby::scenePostLoadReady(fixture.state) && frames++ < 20) { fixture.update(32); fixture.frame(); }
+    fixture.update();
+    REQUIRE(fixture.runtime.upload);
+    woby::waitGpuMeshUpload(*fixture.runtime.upload);
+    fixture.update();
     REQUIRE(woby::scenePostLoadReady(fixture.state));
     CHECK(woby::graphics::isValid(fixture.models[0].gpuMesh.vertexBuffer));
     CHECK(woby::graphics::isValid(fixture.models[0].gpuMesh.pointIdBuffer));
@@ -253,7 +257,14 @@ TEST_CASE("Failed post uploads keep the surface available and never report Ready
     fixture.frame(); fixture.update();
     REQUIRE(fixture.runtime.job);
     fixture.runtime.job->worker.join();
-    fixture.update(0);
+    fixture.update();
+    REQUIRE(fixture.runtime.upload);
+    woby::graphics::cancelBufferUpload(fixture.runtime.upload->ticket);
+    fixture.runtime.upload->ticket = woby::graphics::beginBufferUpload([](const std::atomic<bool>&) -> std::vector<woby::graphics::BufferUploadSource> {
+        throw std::runtime_error("fixture upload failed");
+    });
+    woby::graphics::waitBufferUpload(fixture.runtime.upload->ticket);
+    fixture.update();
     CHECK(fixture.state.files[0].postLoadPhase == woby::PostLoadPhase::failed);
     CHECK(woby::graphics::isValid(fixture.models[0].gpuMesh.vertexBuffer));
     CHECK_FALSE(woby::scenePostLoadReady(fixture.state));

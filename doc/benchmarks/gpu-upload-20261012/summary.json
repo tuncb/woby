@@ -1,0 +1,146 @@
+{
+  "gpu": "NVIDIA GeForce RTX 3070 Laptop GPU",
+  "driver": "616.92",
+  "vram_mib": 8192,
+  "payload_mib": 512,
+  "rounds": 5,
+  "warmup_round_excluded": 0,
+  "method": "Fresh staging ring per sample; allocation separate; host staging and GPU completion included; five 4 KiB readback samples outside timing. No rendered frames. Rotating capacity order.",
+  "recommendation_mib": 16,
+  "measurements": [
+    {
+      "capacity_mib": 4,
+      "burst": {
+        "median_ms": 157.351,
+        "min_ms": 135.229,
+        "max_ms": 197.877,
+        "allocation_median_ms": 0.8322,
+        "submissions": 128,
+        "median_waits": 128
+      },
+      "overlap": {
+        "median_ms": 116.215,
+        "min_ms": 114.125,
+        "max_ms": 127.948,
+        "allocation_median_ms": 1.1725,
+        "submissions": 256,
+        "median_waits": 15
+      }
+    },
+    {
+      "capacity_mib": 8,
+      "burst": {
+        "median_ms": 141.578,
+        "min_ms": 124.02,
+        "max_ms": 163.173,
+        "allocation_median_ms": 1.8887,
+        "submissions": 64,
+        "median_waits": 64
+      },
+      "overlap": {
+        "median_ms": 108.61,
+        "min_ms": 106.038,
+        "max_ms": 113.377,
+        "allocation_median_ms": 1.7818,
+        "submissions": 128,
+        "median_waits": 5
+      }
+    },
+    {
+      "capacity_mib": 16,
+      "burst": {
+        "median_ms": 125.321,
+        "min_ms": 121.721,
+        "max_ms": 143.578,
+        "allocation_median_ms": 3.0896,
+        "submissions": 32,
+        "median_waits": 32
+      },
+      "overlap": {
+        "median_ms": 107.533,
+        "min_ms": 105.583,
+        "max_ms": 109.086,
+        "allocation_median_ms": 3.2265,
+        "submissions": 64,
+        "median_waits": 2
+      }
+    },
+    {
+      "capacity_mib": 32,
+      "burst": {
+        "median_ms": 132.041,
+        "min_ms": 121.81,
+        "max_ms": 134.249,
+        "allocation_median_ms": 6.7654,
+        "submissions": 16,
+        "median_waits": 16
+      },
+      "overlap": {
+        "median_ms": 111.862,
+        "min_ms": 110.323,
+        "max_ms": 114.435,
+        "allocation_median_ms": 6.7385,
+        "submissions": 32,
+        "median_waits": 2
+      }
+    },
+    {
+      "capacity_mib": 64,
+      "burst": {
+        "median_ms": 137.571,
+        "min_ms": 126.973,
+        "max_ms": 144.836,
+        "allocation_median_ms": 14.0603,
+        "submissions": 8,
+        "median_waits": 8
+      },
+      "overlap": {
+        "median_ms": 121.21,
+        "min_ms": 119.142,
+        "max_ms": 124.31,
+        "allocation_median_ms": 13.8555,
+        "submissions": 16,
+        "median_waits": 2
+      }
+    },
+    {
+      "capacity_mib": 128,
+      "burst": {
+        "median_ms": 151.415,
+        "min_ms": 142.382,
+        "max_ms": 169.165,
+        "allocation_median_ms": 1.8725,
+        "submissions": 4,
+        "median_waits": 4
+      },
+      "overlap": {
+        "median_ms": 138.214,
+        "min_ms": 136.112,
+        "max_ms": 140.216,
+        "allocation_median_ms": 29.0715,
+        "submissions": 8,
+        "median_waits": 2
+      }
+    },
+    {
+      "capacity_mib": 256,
+      "burst": {
+        "median_ms": 190.916,
+        "min_ms": 184.16,
+        "max_ms": 197.106,
+        "allocation_median_ms": 1.5729,
+        "submissions": 2,
+        "median_waits": 2
+      },
+      "overlap": {
+        "median_ms": 182.5,
+        "min_ms": 179.963,
+        "max_ms": 198.383,
+        "allocation_median_ms": 2.2215,
+        "submissions": 4,
+        "median_waits": 2
+      }
+    }
+  ],
+  "source_sha256": "e211c34d432e04f84f289924c564fdc555c0bb3a5f585521420b92e534315a35"
+}

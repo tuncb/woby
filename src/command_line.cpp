@@ -330,6 +330,18 @@ AppArguments parseCommandLine(int argc, char** argv)
             (argument == "--window-size" ? arguments.windowSize : arguments.drawableSize) = size;
             continue;
         }
+        if (argument == "--upload-buffer-mib") {
+            requireValue(argc, index, argument, "a size in MiB");
+            if (arguments.uploadBufferMiB) { throw std::runtime_error("Specify --upload-buffer-mib once."); }
+            const std::string value = argv[++index];
+            uint32_t size = 0;
+            const auto parsed = std::from_chars(value.data(), value.data() + value.size(), size);
+            if (parsed.ec != std::errc{} || parsed.ptr != value.data() + value.size() || size < 4 || size > 256) {
+                throw std::runtime_error("--upload-buffer-mib must be a whole number from 4 to 256.");
+            }
+            arguments.uploadBufferMiB = size;
+            continue;
+        }
         if (argument == "--hidden-window") {
             if (arguments.hiddenWindow) { throw std::runtime_error("Specify --hidden-window once."); }
             arguments.hiddenWindow = true;

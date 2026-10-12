@@ -1,0 +1,1 @@
+NVIDIA GeForce RTX 3070 Laptop GPU; queues=2; upload_queue=1

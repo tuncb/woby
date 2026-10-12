@@ -41,6 +41,8 @@ void finishSceneHistoryInteraction(SceneHistory& history);
     const UiState& current, const SceneDocument& cleanDocument, bool redo,
     std::vector<UiFileState> reloaded = {});
 void commitSceneHistoryStep(SceneHistory& history, UiState& state, UiState prepared, bool redo);
+// Refresh values that can change while the runtime stages a history transaction.
+void refreshSceneHistoryRuntimeState(UiState& prepared, const UiState& current, bool restoreNavigation);
 
 void skipSceneHistoryStep(SceneHistory& history, const UiState& current, bool redo);
 

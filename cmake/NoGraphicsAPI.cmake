@@ -6,6 +6,17 @@ FetchContent_Declare(woby_ngapi
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(woby_ngapi)
 set(NGAPI_SOURCE "${woby_ngapi_SOURCE_DIR}")
+# Normalize the later upload callback before the existing command patch checks
+# its exact body. The callback is reapplied after all upstream patches.
+file(READ "${NGAPI_SOURCE}/utility/src/upload_queue.cpp" upload_source)
+string(REPLACE [=[const auto submitted = submit_function
+        ? submit_function(submit_context, state.device, {.commands = {state.commands}, .completion = completion}, state.queue_index)
+        : submit(state.device, {.commands = {state.commands}, .completion = completion}, state.queue_index);]=]
+    "const auto submitted = submit(state.device, {.commands = {state.commands}, .completion = completion}, state.queue_index);"
+    normalized_upload_source "${upload_source}")
+if(NOT upload_source STREQUAL normalized_upload_source)
+    file(WRITE "${NGAPI_SOURCE}/utility/src/upload_queue.cpp" "${normalized_upload_source}")
+endif()
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPI.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIPacing.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIDiagnostics.cmake")
@@ -14,6 +25,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIUtilities.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIBarycentrics.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIPoints.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPICommands.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIUploadSubmission.cmake")
 target_compile_definitions(NoGraphicsAPI PRIVATE WOBY_FRAGMENT_BARYCENTRICS)
 
 find_program(WOBY_SLANGC slangc HINTS "$ENV{SLANG_ROOT}/bin" REQUIRED)
@@ -34,7 +46,7 @@ else()
 endif()
 message(STATUS "Woby renderer: NoGraphicsAPI, Slang ${slang_version_number}")
 
-add_library(woby_graphics STATIC "${PROJECT_SOURCE_DIR}/src/graphics.cpp" "${PROJECT_SOURCE_DIR}/src/frame_pacing.cpp"
+add_library(woby_graphics STATIC "${PROJECT_SOURCE_DIR}/src/graphics.cpp" "${PROJECT_SOURCE_DIR}/src/graphics_upload.cpp" "${PROJECT_SOURCE_DIR}/src/frame_pacing.cpp"
     "${PROJECT_SOURCE_DIR}/src/graphics_diagnostics.cpp")
 target_include_directories(woby_graphics PUBLIC "${PROJECT_SOURCE_DIR}/src" PRIVATE "${PROJECT_SOURCE_DIR}/shaders/native")
 target_link_libraries(woby_graphics PUBLIC NoGraphicsAPI::NoGraphicsAPI PRIVATE

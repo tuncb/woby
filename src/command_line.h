@@ -5,6 +5,7 @@
 #include "update.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -63,6 +64,7 @@ struct AppArguments {
     bool showVersion = false;
     bool headless = false;
     bool hiddenWindow = false;
+    std::optional<uint32_t> uploadBufferMiB;
     // Fixed client size in logical units or drawable pixels; runtime-only.
     std::optional<std::array<int, 2>> windowSize;
     std::optional<std::array<int, 2>> drawableSize;

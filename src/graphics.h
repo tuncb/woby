@@ -8,6 +8,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <memory>
+#include <string>
+#include <vector>
+#include <atomic>
+#include <functional>
 
 #define WOBY_GPU_INVALID_HANDLE {woby::graphics::kInvalidHandle}
 inline constexpr uint64_t WOBY_GPU_STATE_WRITE_RGB = 1ull << 0, WOBY_GPU_STATE_WRITE_A = 1ull << 1,
@@ -51,6 +56,20 @@ inline constexpr uint64_t WOBY_GPU_CAPS_COMPUTE = 1ull << 0, WOBY_GPU_CAPS_VERTE
 
 namespace woby::graphics
 {
+struct BufferUpload;
+struct BufferUploadSource {
+    std::shared_ptr<const void> owner;
+    const void* data = nullptr;
+    SceneBufferSize bytes = 0;
+    uint16_t stride = 0;
+    bool index32 = false;
+    bool index = false;
+};
+struct BufferUploadStats {
+    uint64_t uploadedBytes = 0, stagingBytes = 0, peakStagingBytes = 0, submissions = 0, waits = 0;
+    double milliseconds = 0;
+};
+using BufferUploadSourceFactory = std::function<std::vector<BufferUploadSource>(const std::atomic<bool>&)>;
 constexpr uint32_t kInvalidHandle = UINT32_MAX;
 using ViewId = uint16_t;
 template <typename Tag> struct Handle
@@ -138,6 +157,7 @@ struct PlatformData
 };
 struct Init
 {
+    uint64_t modelUploadStagingBytes = 16ull * 1024 * 1024;
     RendererType::Enum type = RendererType::Count;
     PlatformData platformData;
     struct
@@ -182,6 +202,18 @@ uint32_t frame();
 // Submission/completion tokens; polling does not wait or measure display scanout.
 uint64_t submittedFrameToken();
 uint64_t completedFrameToken();
+// One worker path for all owned model buffers. Completion is independent of frames.
+std::shared_ptr<BufferUpload> beginBufferUpload(std::vector<BufferUploadSource> sources);
+std::shared_ptr<BufferUpload> beginBufferUpload(BufferUploadSourceFactory prepare);
+bool bufferUploadComplete(const std::shared_ptr<BufferUpload>&);
+void cancelBufferUpload(const std::shared_ptr<BufferUpload>&);
+void waitBufferUpload(const std::shared_ptr<BufferUpload>&); // Synchronous adapters/tests only; runtime loading polls.
+BufferUploadStats bufferUploadStats(const std::shared_ptr<BufferUpload>&);
+struct UploadedBufferHandles {
+    std::vector<VertexBufferHandle> vertices;
+    std::vector<IndexBufferHandle> indices;
+};
+UploadedBufferHandles adoptBufferUpload(const std::shared_ptr<BufferUpload>&);
 void setDebug(uint32_t flags);
 void dbgTextClear();
 

@@ -25,7 +25,7 @@ struct RendererFixture {
 
 } // namespace
 
-TEST_CASE("Staged native GPU uploads preserve complete geometry across frames and source destruction")
+TEST_CASE("Worker GPU uploads preserve complete geometry without frames and after source destruction")
 {
     namespace g = woby::graphics;
     RendererFixture fixture;
@@ -43,10 +43,11 @@ TEST_CASE("Staged native GPU uploads preserve complete geometry across frames an
     editMeshGeometry(source).nodes[1].lineIndexCount = 2;
     editMeshGeometry(source).nodes[2].pointIndexCount = 3;
     const auto expected = source;
-    auto upload = woby::beginGpuMeshUpload(*woby::prepareSceneMesh(source, woby::gpuMeshEdges | woby::gpuMeshPoints));
-    while (!woby::stepGpuMeshUpload(upload, source, woby::meshVertexLayout(), 64)) { g::frame(); }
+    auto upload = woby::beginGpuMeshUpload(*woby::prepareSceneMesh(source, woby::gpuMeshEdges | woby::gpuMeshPoints), source, woby::meshVertexLayout());
+    source = {};
+    woby::waitGpuMeshUpload(upload);
+    CHECK(g::submittedFrameToken() == 0);
     fixture.mesh = std::move(upload.mesh);
-    source = {}; // Including the last chunk, staging must own bytes before frame().
     upload = {};
     std::vector<woby::Vertex> vertices(meshGeometry(expected).vertices.size());
     std::vector<uint32_t> triangles(meshGeometry(expected).indices.size()), lines(meshGeometry(expected).lineIndices.size());
@@ -63,11 +64,47 @@ TEST_CASE("Staged native GPU uploads preserve complete geometry across frames an
     CHECK(edges == std::vector<uint32_t>{2, 0, 0, 1, 1, 2, 1, 3, 3, 2, 2, 1});
     CHECK(points == fixture.mesh.pointVertexIndices);
 
-    upload = woby::beginGpuMeshUpload(*woby::prepareSceneMesh(expected));
-    CHECK_FALSE(woby::stepGpuMeshUpload(upload, expected, woby::meshVertexLayout(), 32));
-    woby::abortGpuMeshUpload(upload); // Destroy before queued GPU copy has been submitted.
+    upload = woby::beginGpuMeshUpload(*woby::prepareSceneMesh(expected), expected, woby::meshVertexLayout());
+    woby::abortGpuMeshUpload(upload);
     for (int i = 0; i < 4; ++i) { g::frame(); }
     CHECK_NOTHROW(g::setVertexBuffer(0, fixture.mesh.vertexBuffer)); // Existing scene still usable.
+}
+
+TEST_CASE("Native upload rings stay bounded while frames and multiple requests proceed")
+{
+    namespace g = woby::graphics;
+    RendererFixture fixture;
+    g::Init options; options.modelUploadStagingBytes = 4ull * 1024 * 1024;
+    fixture.initialized = g::init(options); REQUIRE(fixture.initialized);
+    constexpr size_t count = 16ull * 1024 * 1024;
+    auto values = std::make_shared<std::vector<uint32_t>>(count);
+    for (size_t i = 0; i < count; ++i) { (*values)[i] = static_cast<uint32_t>(i) ^ 0xabcd1234u; }
+    auto large = g::beginBufferUpload(std::vector<g::BufferUploadSource>{
+        {values, values->data(), static_cast<uint32_t>(count * sizeof(uint32_t)), sizeof(uint32_t), true, true}});
+    auto small = g::beginBufferUpload(std::vector<g::BufferUploadSource>{
+        {values, values->data() + count - 4, 4 * sizeof(uint32_t), sizeof(uint32_t), true, true}});
+    values.reset();
+    do { g::frame(); } while (!g::bufferUploadComplete(small));
+    REQUIRE(g::bufferUploadComplete(large));
+    const auto stats = g::bufferUploadStats(large);
+    CHECK(stats.uploadedBytes == count * sizeof(uint32_t));
+    CHECK(stats.stagingBytes == options.modelUploadStagingBytes);
+    CHECK(stats.peakStagingBytes <= options.modelUploadStagingBytes);
+    CHECK(stats.submissions >= 32);
+    auto handles = g::adoptBufferUpload(large);
+    const auto tail = g::adoptBufferUpload(small);
+    REQUIRE(handles.indices.size() == 1); REQUIRE(tail.indices.size() == 1);
+    fixture.mesh.triangleIndexBuffer = handles.indices[0];
+    fixture.mesh.pointIdBuffer = tail.indices[0];
+    std::vector<uint32_t> copied(count);
+    std::array<uint32_t, 4> ending{};
+    g::readBuffer(handles.indices[0], copied.data());
+    const auto ready = g::readBuffer(tail.indices[0], ending.data());
+    while (g::frame() < ready) {}
+    for (size_t i = 0; i < count; ++i) {
+        if (copied[i] != (static_cast<uint32_t>(i) ^ 0xabcd1234u)) { FAIL("Upload readback differs at " << i); break; }
+    }
+    for (size_t i = 0; i < ending.size(); ++i) { CHECK(ending[i] == (static_cast<uint32_t>(count - 4 + i) ^ 0xabcd1234u)); }
 }
 
 namespace {

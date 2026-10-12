@@ -1,0 +1,4 @@
+add_executable(woby_gpu_upload_benchmark benchmark.cpp)
+target_compile_features(woby_gpu_upload_benchmark PRIVATE cxx_std_20)
+target_link_libraries(woby_gpu_upload_benchmark PRIVATE NoGraphicsAPI::NoGraphicsAPI NoGraphicsAPIUtility::uploads)
+woby_enable_project_warnings(woby_gpu_upload_benchmark)

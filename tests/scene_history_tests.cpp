@@ -1,5 +1,6 @@
 #include "scene_history.h"
 #include "scene_history_load.h"
+#include "scene_history_restore.h"
 #include "model_load.h"
 #include "scene_lifecycle.h"
 #include "ui_operations.h"
@@ -10,6 +11,7 @@
 #include <doctest/doctest.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <future>
 
 namespace {
 
@@ -71,6 +73,94 @@ woby::SceneObjectId addHistoryAnnotation(HistoryFixture& fixture, size_t fileInd
 }
 
 } // namespace
+
+namespace {
+struct HistoryGpuFixture {
+    woby::SceneHistoryRestore restore;
+    std::vector<woby::LoadedModelRuntime> runtimes;
+    HistoryGpuFixture() {
+        woby::graphics::Init init; init.type = woby::graphics::RendererType::Noop;
+        REQUIRE(woby::graphics::init(init));
+    }
+    ~HistoryGpuFixture() {
+        woby::cancelSceneHistoryRestore(restore);
+        woby::destroyModelRuntimes(runtimes);
+        woby::graphics::shutdown();
+    }
+    void prepared() { restore.prepared.wait(false); }
+};
+}
+
+TEST_CASE("History restoration stages missing models without frames or blocking publication") {
+    HistoryFixture f; HistoryGpuFixture gpu;
+    const auto id = f.state.files[0].objectId;
+    REQUIRE(woby::removeFileFromState(f.state, 0));
+    REQUIRE(woby::recordSceneHistory(f.history, f.state));
+    std::promise<void> entered, release;
+    auto ready = release.get_future().share();
+    auto blocker = woby::graphics::beginBufferUpload([&entered, ready](const std::atomic<bool>&) {
+        entered.set_value(); ready.wait(); return std::vector<woby::graphics::BufferUploadSource>{};
+    });
+    entered.get_future().wait();
+    const auto started = woby::beginSceneHistoryRestore(gpu.restore, f.history, f.state, f.clean, woby::meshVertexLayout(), false);
+    CHECK(started);
+    gpu.prepared();
+    const auto pending = woby::pollSceneHistoryRestore(gpu.restore, f.history, f.state, gpu.runtimes);
+    CHECK_FALSE(pending);
+    CHECK(f.state.files.empty()); CHECK(f.history.cursor == 1);
+    release.set_value(); // Release even when a check fails.
+    woby::graphics::waitBufferUpload(blocker);
+    REQUIRE(gpu.restore.uploads.size() == 1);
+    woby::graphics::waitBufferUpload(gpu.restore.uploads[0]->ticket);
+    CHECK(woby::pollSceneHistoryRestore(gpu.restore, f.history, f.state, gpu.runtimes) == true);
+    REQUIRE(f.state.files.size() == 1);
+    CHECK(f.state.files[0].objectId == id);
+    CHECK(woby::meshGeometry(f.state.files[0].mesh).vertices.size() == 3);
+    CHECK(f.history.cursor == 0);
+    REQUIRE(gpu.runtimes.size() == 1);
+    CHECK(woby::graphics::isValid(gpu.runtimes[0].gpuMesh.vertexBuffer));
+    CHECK_NOTHROW(woby::graphics::setVertexBuffer(0, gpu.runtimes[0].gpuMesh.vertexBuffer));
+    CHECK(woby::graphics::submittedFrameToken() == 0);
+}
+
+TEST_CASE("History restoration reuses live GPU resources and rejects changed inputs") {
+    HistoryFixture f; HistoryGpuFixture gpu;
+    gpu.runtimes.resize(1);
+    gpu.runtimes[0].gpuMesh = woby::createGpuMesh(f.state.files[0].mesh, woby::meshVertexLayout());
+    const auto handle = gpu.runtimes[0].gpuMesh.vertexBuffer;
+    f.translate(5);
+    REQUIRE(woby::beginSceneHistoryRestore(gpu.restore, f.history, f.state, f.clean, woby::meshVertexLayout(), false));
+    gpu.prepared();
+    woby::orbitUiCamera(f.state, 10, 5);
+    woby::setUiScale(f.state, 1.5f);
+    const auto camera = f.state.camera;
+    CHECK(woby::pollSceneHistoryRestore(gpu.restore, f.history, f.state, gpu.runtimes) == true);
+    CHECK(f.state.camera.yawRadians == camera.yawRadians);
+    CHECK(f.state.camera.pitchRadians == camera.pitchRadians);
+    CHECK(f.state.uiScale == 1.5f);
+    CHECK(gpu.runtimes[0].gpuMesh.vertexBuffer.idx == handle.idx);
+    f.translate(7);
+    REQUIRE(woby::beginSceneHistoryRestore(gpu.restore, f.history, f.state, f.clean, woby::meshVertexLayout(), false));
+    f.translate(9);
+    const auto cursor = f.history.cursor;
+    CHECK(woby::pollSceneHistoryRestore(gpu.restore, f.history, f.state, gpu.runtimes) == false);
+    CHECK(f.history.cursor == cursor);
+    CHECK(f.state.files[0].groupSettings[0].translation[0] == 9);
+    CHECK(gpu.runtimes[0].gpuMesh.vertexBuffer.idx == handle.idx);
+}
+
+TEST_CASE("History reload failures preserve the scene and consume the failed action") {
+    HistoryFixture f; HistoryGpuFixture gpu;
+    REQUIRE(woby::removeFileFromState(f.state, 0));
+    REQUIRE(woby::recordSceneHistory(f.history, f.state));
+    std::filesystem::remove(f.source);
+    REQUIRE(woby::beginSceneHistoryRestore(gpu.restore, f.history, f.state, f.clean, woby::meshVertexLayout(), false));
+    gpu.prepared();
+    CHECK_THROWS_AS(woby::pollSceneHistoryRestore(gpu.restore, f.history, f.state, gpu.runtimes), std::runtime_error);
+    CHECK(f.state.files.empty()); CHECK(gpu.runtimes.empty());
+    CHECK(f.history.cursor == 0); CHECK_FALSE(gpu.restore.active);
+    CHECK_FALSE(woby::canUndoScene(f.history));
+}
 
 TEST_CASE("analysis renaming is one undoable scene edit")
 {
