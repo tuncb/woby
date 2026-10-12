@@ -179,8 +179,7 @@ the old name-based baseline; new runs do not measure that baseline.
 Validation results:
 
 - `cmake --build --preset vs2026-vcpkg` passed in Debug with no compiler or
-  linker warnings. Headless tests, simplification probes and the optional
-  mesh-memory viewer were enabled.
+  linker warnings. Headless tests and simplification probes were enabled.
 - The full CTest run completed all 117 registered tests in 580.42 seconds.
   It passed 116 tests. `woby_freeform_render` failed during `ctl instances`
   discovery before rendering, with an empty application log. Fixture cleanup

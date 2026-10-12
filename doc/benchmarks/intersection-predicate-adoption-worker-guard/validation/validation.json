@@ -3,6 +3,7 @@
   "recorded_utc": "2026-10-11T11:37:56.7284273Z",
   "platform": "Windows x64, MSVC 19.51, AMD Ryzen 7 5800H",
   "preset": "vs2026-vcpkg",
+  "evidence_note": "Historical totals include retired experimental targets. Raw Debug build and test logs were removed with those targets.",
   "debug": {
     "failures": 0,
     "skipped": 0,
@@ -65,9 +66,6 @@
     "experiments/simplification-19-dense-set/CMakeLists.txt": "c9e9c76d799fa7e82c2400f4830d3a89cb71427c4f7faa5a5e1b0b62bc1a6ad6"
   },
   "evidence_sha256": {
-    "debug-build.log": "386c8fd71ed47a6e76b6be393d23e1817ff82d047285ede1dab0f0de718f2349",
-    "debug-ctest.log": "f6cb312a2b1af3fc4ff9ff93cc3430a4cd38572e96f71b848732ed952cc4f90d",
-    "debug-ctest.xml": "e564a1bec0160ec474dda288a34e07ee3eb466b5cee946e2066b29ed630d1f31",
     "release-build.log": "fc42c537a24ea4084a573864ba7187308e33ef272feed86db333015ab2a8399c",
     "release-contracts.log": "d92867df4745a6a27c3d8bfa8e8fa819f2c0078dc95a59ca9b33ffb4b880aa5b",
     "compiler-settings.json": "68d305e47767db3bc5fa077f329c3ddcd1993f861f97561f23a4926365af4af8"

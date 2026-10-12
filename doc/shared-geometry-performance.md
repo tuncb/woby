@@ -73,8 +73,7 @@ Coverage includes shared buffer identity, draft isolation, mixed primitives, hie
 
 ```powershell
 cmake --preset vs2026-vcpkg -DWOBY_TEST_HEADLESS=ON `
-    -DWOBY_BUILD_BENCHMARKS=ON -DWOBY_BUILD_HASH_BENCHMARKS=ON `
-    -DWOBY_BUILD_MESH_MEMORY_LAB=ON
+    -DWOBY_BUILD_BENCHMARKS=ON -DWOBY_BUILD_HASH_BENCHMARKS=ON
 cmake --build --preset vs2026-vcpkg
 ctest --test-dir build/vs2026-vcpkg -C Debug --output-on-failure -j 2
 cmake --build --preset vs2026-vcpkg --config Release --target woby_tests

@@ -57,7 +57,6 @@
   "cmake_options": {
     "WOBY_TEST_HEADLESS": true,
     "WOBY_BUILD_BENCHMARKS": true,
-    "WOBY_BUILD_HASH_BENCHMARKS": true,
-    "WOBY_BUILD_MESH_MEMORY_LAB": true
+    "WOBY_BUILD_HASH_BENCHMARKS": true
   }
 }

@@ -81,7 +81,7 @@ The new and extended tests cover shared owners in live/clean/history records, in
 
 Save/load fixtures use one unique temporary directory per test. Related source and scene paths are absolute or resolved against an explicit scene path in that directory. They do not depend on the build directory's drive.
 
-The final `vs2026-vcpkg` Debug build passed with zero warnings. All **129 CTest entries passed**, with no failed, disabled or skipped entries, in **530.14 seconds**. This includes the CPU, graphics and slow integration suites. The Release benchmark/probe build had no warnings; both affected Release probe contracts passed. The [validation record](benchmarks/shared-annotation-geometry/validation.json), [Debug build output](benchmarks/shared-annotation-geometry/debug-build.txt), [CTest output](benchmarks/shared-annotation-geometry/debug-ctest.txt) and [JUnit record](benchmarks/shared-annotation-geometry/debug-ctest.xml) preserve the result.
+The final `vs2026-vcpkg` Debug build passed with zero warnings. All **129 CTest entries passed**, with no failed, disabled or skipped entries, in **530.14 seconds**. This includes the CPU, graphics and slow integration suites. The Release benchmark/probe build had no warnings; both affected Release probe contracts passed. The [validation record](benchmarks/shared-annotation-geometry/validation.json) preserves the result. The historical test count includes retired experimental targets. The raw Debug build and test logs were removed with those targets.
 
 ## Reproduction
 

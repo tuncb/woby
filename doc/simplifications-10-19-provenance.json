@@ -20,7 +20,6 @@
   "options": {
     "WOBY_BUILD_BENCHMARKS": "ON",
     "WOBY_BUILD_HASH_BENCHMARKS": "ON",
-    "WOBY_BUILD_MESH_MEMORY_LAB": "ON",
     "WOBY_BUILD_SIMPLIFICATION_FMA_CONTRACT": "ON",
     "WOBY_BUILD_SIMPLIFICATION_PROBES": "ON",
     "WOBY_TEST_HEADLESS": "ON"
@@ -37,9 +36,7 @@
     "ctest_jobs": 2,
     "junit_timestamp_local": "2026-10-11T02:24:16",
     "timezone": "Europe/Amsterdam",
-    "build_log": "doc/benchmarks/simplifications-10-19-validation/debug-build.log",
-    "ctest_log": "doc/benchmarks/simplifications-10-19-validation/debug-ctest.log",
-    "junit": "doc/benchmarks/simplifications-10-19-validation/debug-ctest.xml",
+    "evidence_note": "Historical totals include retired experimental targets. Raw Debug build and test logs were removed with those targets.",
     "production_optimization_changes": false,
     "packaging_fix": "Remove the obsolete cs_freeform asset requirement; update its regression test."
   },
@@ -248,11 +245,6 @@
       "path": "doc/benchmarks/simplification-19/uploads_files_2720101_BusGameMap-1-custom.csv",
       "bytes": 292,
       "sha256": "ca9d21eddc1c6ae46288e95f833168d7d7135edef2e487cbb286abb18aaa5e65"
-    },
-    {
-      "path": "doc/benchmarks/simplifications-10-19-validation/debug-ctest.xml",
-      "bytes": 113063,
-      "sha256": "9a97ee40a2ff1443dc131521e98fbb01646727f812993bfd8f1fa4cc91bb1afe"
     },
     {
       "path": "doc/data-structure-algorithm-simplifications.md",
@@ -851,16 +843,6 @@
       "path": "doc/benchmarks/simplifications-10-19-validation/capacity-release-build.log",
       "bytes": 1427,
       "sha256": "68918f54b2cda369a3d38adf4d15eef7a4c7b91de49151a6215ee8ec76f337f6"
-    },
-    {
-      "path": "doc/benchmarks/simplifications-10-19-validation/debug-build.log",
-      "bytes": 6818,
-      "sha256": "a13a66643cedce9809ce864f8286536412b98d0a9ec6a2ce3fc67e1f9ded5ffc"
-    },
-    {
-      "path": "doc/benchmarks/simplifications-10-19-validation/debug-ctest.log",
-      "bytes": 22450,
-      "sha256": "2ed71943be037008f8addbe6630e79f9b9db9b9f71c740f6ba6f02a4fdc2a3bf"
     },
     {
       "path": "doc/benchmarks/simplifications-10-19-validation/dense-set-contracts-debug.log",

@@ -9,6 +9,7 @@
   "release_probe_build_exit_code": 0,
   "release_probe_build_warning_count": 0,
   "release_probe_contracts": "2/2 passed",
+  "evidence_note": "Historical totals include retired experimental targets. Raw Debug build and test logs were removed with those targets.",
   "debug_ctest": {
     "tests": 129,
     "failures": 0,
@@ -153,18 +154,6 @@
     {
       "path": "baseline-build.txt",
       "sha256": "629db13aa9c8f8db969750a8a7565531497c8421f8aa758ac1546d3626c5f450"
-    },
-    {
-      "path": "debug-build.txt",
-      "sha256": "80033135d46acc8355d96de15afdecce1b508055c7131bdb1e23ca344ddc636d"
-    },
-    {
-      "path": "debug-ctest.txt",
-      "sha256": "75ceb36841fb383a56b5ba4c246f9d94c6f1e2c499532599b980d0d1c33f90e6"
-    },
-    {
-      "path": "debug-ctest.xml",
-      "sha256": "1604e0b0988aba5c05f92d1f55ce559963aaf670651a03bb25f657260f4b43b2"
     },
     {
       "path": "release-build.txt",
