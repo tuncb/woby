@@ -1,0 +1,891 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-10-12T21:57:53.018360+00:00",
+  "source_head": "b83bd7150bbd08bfa2da7e467754b3a3ca6dcb3e",
+  "source_head_short": "b83bd71",
+  "source_state": "Experimental corner-mapping and test changes are uncommitted over this HEAD.",
+  "evidence_method": "Read saved validation logs and current Python test ASTs. No build or test process was started to create this manifest.",
+  "release_build": {
+    "result": "passed",
+    "configure_preset": "vs2026-vcpkg",
+    "configuration": "Release",
+    "warning_lines_in_saved_log": 0,
+    "compiler_or_linker_error_lines_in_saved_log": 0,
+    "success_evidence": "Parent confirmed successful final Release build; saved log contains woby and woby_tests Release target outputs.",
+    "log": {
+      "original_path": "build/corner-mapping-release-build-final.log",
+      "saved_path": "build/corner-mapping/validation/corner-mapping-release-build-final.log",
+      "sha256": "a006cd1b67c5dbce312c4d9f01d4af224adf9511cc8c4bfa2bcdf683e9ad86aa",
+      "bytes": 15034
+    }
+  },
+  "default_ctest": {
+    "result": "passed",
+    "registered_ctest_tests": 103,
+    "failed": 0,
+    "seconds": 49.32,
+    "tests": [
+      {
+        "id": 69,
+        "name": "woby_tests::update_tests",
+        "result": "passed",
+        "seconds": 13.1
+      },
+      {
+        "id": 7,
+        "name": "woby_tests::automation_tests",
+        "result": "passed",
+        "seconds": 13.73
+      },
+      {
+        "id": 118,
+        "name": "woby_simplification_10_fma_contract",
+        "result": "passed",
+        "seconds": 7.32
+      },
+      {
+        "id": 117,
+        "name": "woby_simplification_10_contract",
+        "result": "passed",
+        "seconds": 7.24
+      },
+      {
+        "id": 107,
+        "name": "woby_intersection_fma_contract",
+        "result": "passed",
+        "seconds": 7.48
+      },
+      {
+        "id": 114,
+        "name": "woby_test_suite_selection",
+        "result": "passed",
+        "seconds": 28.15
+      },
+      {
+        "id": 43,
+        "name": "woby_tests::mesh_intersection_predicates_tests",
+        "result": "passed",
+        "seconds": 7.36
+      },
+      {
+        "id": 127,
+        "name": "woby_analysis_index_dense_set_exit_contract",
+        "result": "passed",
+        "seconds": 2.07
+      },
+      {
+        "id": 93,
+        "name": "woby_update_packaging",
+        "result": "passed",
+        "seconds": 4.2
+      },
+      {
+        "id": 44,
+        "name": "woby_tests::mesh_intersections_tests",
+        "result": "passed",
+        "seconds": 2.08
+      },
+      {
+        "id": 94,
+        "name": "woby_marker_shaders",
+        "result": "passed",
+        "seconds": 5.14
+      },
+      {
+        "id": 31,
+        "name": "woby_tests::importer_tests",
+        "result": "passed",
+        "seconds": 1.94
+      },
+      {
+        "id": 66,
+        "name": "woby_tests::surface_annotation_tests",
+        "result": "passed",
+        "seconds": 1.51
+      },
+      {
+        "id": 137,
+        "name": "woby_corner_mapping_runner",
+        "result": "passed",
+        "seconds": 2.28
+      },
+      {
+        "id": 48,
+        "name": "woby_tests::obj_prototype_tests",
+        "result": "passed",
+        "seconds": 1.17
+      },
+      {
+        "id": 92,
+        "name": "woby_python_selection",
+        "result": "passed",
+        "seconds": 1.37
+      },
+      {
+        "id": 112,
+        "name": "woby_test_discovery",
+        "result": "passed",
+        "seconds": 1.32
+      },
+      {
+        "id": 47,
+        "name": "woby_tests::obj_mesh_tests",
+        "result": "passed",
+        "seconds": 0.97
+      },
+      {
+        "id": 75,
+        "name": "woby_point_benchmark_reporting",
+        "result": "passed",
+        "seconds": 1.0
+      },
+      {
+        "id": 116,
+        "name": "woby_windows_launch",
+        "result": "passed",
+        "seconds": 1.12
+      },
+      {
+        "id": 87,
+        "name": "woby_uv_grid_suite_selection",
+        "result": "passed",
+        "seconds": 0.82
+      },
+      {
+        "id": 71,
+        "name": "woby_tests::uv_grid_tests",
+        "result": "passed",
+        "seconds": 0.88
+      },
+      {
+        "id": 134,
+        "name": "woby_uv_overlap_contract",
+        "result": "passed",
+        "seconds": 1.0
+      },
+      {
+        "id": 45,
+        "name": "woby_tests::mesh_topology_tests",
+        "result": "passed",
+        "seconds": 0.64
+      },
+      {
+        "id": 38,
+        "name": "woby_tests::mesh_comparison_tests",
+        "result": "passed",
+        "seconds": 0.69
+      },
+      {
+        "id": 12,
+        "name": "woby_tests::comparison_name_tests",
+        "result": "passed",
+        "seconds": 0.77
+      },
+      {
+        "id": 33,
+        "name": "woby_tests::loading_preparation_tests",
+        "result": "passed",
+        "seconds": 0.75
+      },
+      {
+        "id": 110,
+        "name": "woby_runtime_staging",
+        "result": "passed",
+        "seconds": 0.71
+      },
+      {
+        "id": 97,
+        "name": "woby_update_helper_fixtures",
+        "result": "passed",
+        "seconds": 0.74
+      },
+      {
+        "id": 67,
+        "name": "woby_tests::ui_operations_tests",
+        "result": "passed",
+        "seconds": 0.58
+      },
+      {
+        "id": 5,
+        "name": "woby_tests::analysis_results_tests",
+        "result": "passed",
+        "seconds": 0.65
+      },
+      {
+        "id": 52,
+        "name": "woby_tests::recent_files_tests",
+        "result": "passed",
+        "seconds": 0.7
+      },
+      {
+        "id": 56,
+        "name": "woby_tests::scene_file_edge_tests",
+        "result": "passed",
+        "seconds": 0.26
+      },
+      {
+        "id": 32,
+        "name": "woby_tests::keyboard_input_tests",
+        "result": "passed",
+        "seconds": 0.42
+      },
+      {
+        "id": 74,
+        "name": "woby_detector_benchmarks",
+        "result": "passed",
+        "seconds": 0.53
+      },
+      {
+        "id": 61,
+        "name": "woby_tests::scene_queries_tests",
+        "result": "passed",
+        "seconds": 0.41
+      },
+      {
+        "id": 59,
+        "name": "woby_tests::scene_lifecycle_tests",
+        "result": "passed",
+        "seconds": 0.33
+      },
+      {
+        "id": 73,
+        "name": "woby_tests::windows_paths_tests",
+        "result": "passed",
+        "seconds": 0.35
+      },
+      {
+        "id": 21,
+        "name": "woby_tests::freeform_tests",
+        "result": "passed",
+        "seconds": 0.29
+      },
+      {
+        "id": 4,
+        "name": "woby_tests::analysis_presentation_tests",
+        "result": "passed",
+        "seconds": 0.29
+      },
+      {
+        "id": 22,
+        "name": "woby_tests::freeform_trim_tests",
+        "result": "passed",
+        "seconds": 0.24
+      },
+      {
+        "id": 11,
+        "name": "woby_tests::comparison_inspector_tests",
+        "result": "passed",
+        "seconds": 0.28
+      },
+      {
+        "id": 9,
+        "name": "woby_tests::background_load_tests",
+        "result": "passed",
+        "seconds": 0.24
+      },
+      {
+        "id": 103,
+        "name": "woby_rapidobj_reader",
+        "result": "passed",
+        "seconds": 0.24
+      },
+      {
+        "id": 15,
+        "name": "woby_tests::cross_section_tests",
+        "result": "passed",
+        "seconds": 0.25
+      },
+      {
+        "id": 101,
+        "name": "woby_windows_manifests",
+        "result": "passed",
+        "seconds": 0.24
+      },
+      {
+        "id": 14,
+        "name": "woby_tests::coordinate_origin_tests",
+        "result": "passed",
+        "seconds": 0.24
+      },
+      {
+        "id": 2,
+        "name": "woby_tests::adaptive_points_tests",
+        "result": "passed",
+        "seconds": 0.2
+      },
+      {
+        "id": 72,
+        "name": "woby_tests::uv_quality_tests",
+        "result": "passed",
+        "seconds": 0.19
+      },
+      {
+        "id": 28,
+        "name": "woby_tests::importer_geometry_tests",
+        "result": "passed",
+        "seconds": 0.16
+      },
+      {
+        "id": 13,
+        "name": "woby_tests::control_tests",
+        "result": "passed",
+        "seconds": 0.17
+      },
+      {
+        "id": 95,
+        "name": "woby_graphics_root_layout",
+        "result": "passed",
+        "seconds": 0.21
+      },
+      {
+        "id": 34,
+        "name": "woby_tests::manual_path_dialog_tests",
+        "result": "passed",
+        "seconds": 0.18
+      },
+      {
+        "id": 29,
+        "name": "woby_tests::importer_lines_tests",
+        "result": "passed",
+        "seconds": 0.13
+      },
+      {
+        "id": 42,
+        "name": "woby_tests::mesh_duplicates_tests",
+        "result": "passed",
+        "seconds": 0.19
+      },
+      {
+        "id": 16,
+        "name": "woby_tests::difference_mesh_tests",
+        "result": "passed",
+        "seconds": 0.32
+      },
+      {
+        "id": 58,
+        "name": "woby_tests::scene_inspector_queries_tests",
+        "result": "passed",
+        "seconds": 0.2
+      },
+      {
+        "id": 120,
+        "name": "woby_simplification_12_contract",
+        "result": "passed",
+        "seconds": 0.27
+      },
+      {
+        "id": 68,
+        "name": "woby_tests::ui_view_tests",
+        "result": "passed",
+        "seconds": 0.24
+      },
+      {
+        "id": 132,
+        "name": "woby_freeform_evaluation_contract",
+        "result": "passed",
+        "seconds": 0.34
+      },
+      {
+        "id": 128,
+        "name": "woby_simplification_14_capacity_contract",
+        "result": "passed",
+        "seconds": 0.33
+      },
+      {
+        "id": 129,
+        "name": "woby_position_production_contract",
+        "result": "passed",
+        "seconds": 0.22
+      },
+      {
+        "id": 123,
+        "name": "woby_simplification_15_contract",
+        "result": "passed",
+        "seconds": 0.35
+      },
+      {
+        "id": 99,
+        "name": "woby_graphics_diagnostics_allocations",
+        "result": "passed",
+        "seconds": 0.26
+      },
+      {
+        "id": 131,
+        "name": "woby_analysis_stages_contract",
+        "result": "passed",
+        "seconds": 0.16
+      },
+      {
+        "id": 53,
+        "name": "woby_tests::scene_dimensions_tests",
+        "result": "passed",
+        "seconds": 0.08
+      },
+      {
+        "id": 41,
+        "name": "woby_tests::mesh_degenerates_tests",
+        "result": "passed",
+        "seconds": 0.18
+      },
+      {
+        "id": 60,
+        "name": "woby_tests::scene_pick_tests",
+        "result": "passed",
+        "seconds": 0.17
+      },
+      {
+        "id": 124,
+        "name": "woby_simplification_16_contract",
+        "result": "passed",
+        "seconds": 0.15
+      },
+      {
+        "id": 55,
+        "name": "woby_tests::scene_edge_tests",
+        "result": "passed",
+        "seconds": 0.09
+      },
+      {
+        "id": 30,
+        "name": "woby_tests::importer_point_ids_tests",
+        "result": "passed",
+        "seconds": 0.11
+      },
+      {
+        "id": 135,
+        "name": "woby_trim_input_contract",
+        "result": "passed",
+        "seconds": 0.24
+      },
+      {
+        "id": 17,
+        "name": "woby_tests::file_associations_tests",
+        "result": "passed",
+        "seconds": 0.19
+      },
+      {
+        "id": 119,
+        "name": "woby_simplification_11_contract",
+        "result": "passed",
+        "seconds": 0.25
+      },
+      {
+        "id": 6,
+        "name": "woby_tests::app_icon_tests",
+        "result": "passed",
+        "seconds": 0.15
+      },
+      {
+        "id": 130,
+        "name": "woby_face_display_contract",
+        "result": "passed",
+        "seconds": 0.24
+      },
+      {
+        "id": 25,
+        "name": "woby_tests::graphics_tests",
+        "result": "passed",
+        "seconds": 0.13
+      },
+      {
+        "id": 133,
+        "name": "woby_uv_stages_contract",
+        "result": "passed",
+        "seconds": 0.13
+      },
+      {
+        "id": 65,
+        "name": "woby_tests::shared_geometry_tests",
+        "result": "passed",
+        "seconds": 0.13
+      },
+      {
+        "id": 18,
+        "name": "woby_tests::file_discovery_tests",
+        "result": "passed",
+        "seconds": 0.16
+      },
+      {
+        "id": 121,
+        "name": "woby_instance_query_contract",
+        "result": "passed",
+        "seconds": 0.23
+      },
+      {
+        "id": 115,
+        "name": "woby_version",
+        "result": "passed",
+        "seconds": 0.14
+      },
+      {
+        "id": 122,
+        "name": "woby_simplification_14_contract",
+        "result": "passed",
+        "seconds": 0.13
+      },
+      {
+        "id": 27,
+        "name": "woby_tests::hover_pick_tests",
+        "result": "passed",
+        "seconds": 0.06
+      },
+      {
+        "id": 37,
+        "name": "woby_tests::math_utils_tests",
+        "result": "passed",
+        "seconds": 0.06
+      },
+      {
+        "id": 111,
+        "name": "woby_shared_sources",
+        "result": "passed",
+        "seconds": 0.09
+      },
+      {
+        "id": 23,
+        "name": "woby_tests::graphics_diagnostics_tests",
+        "result": "passed",
+        "seconds": 0.06
+      },
+      {
+        "id": 46,
+        "name": "woby_tests::model_mesh_tests",
+        "result": "passed",
+        "seconds": 0.08
+      },
+      {
+        "id": 51,
+        "name": "woby_tests::post_loading_tests",
+        "result": "passed",
+        "seconds": 0.13
+      },
+      {
+        "id": 50,
+        "name": "woby_tests::performance_capture_tests",
+        "result": "passed",
+        "seconds": 0.07
+      },
+      {
+        "id": 64,
+        "name": "woby_tests::shader_types_tests",
+        "result": "passed",
+        "seconds": 0.06
+      },
+      {
+        "id": 19,
+        "name": "woby_tests::frame_pacing_tests",
+        "result": "passed",
+        "seconds": 0.07
+      },
+      {
+        "id": 126,
+        "name": "woby_analysis_index_dense_set_contract",
+        "result": "passed",
+        "seconds": 0.07
+      },
+      {
+        "id": 36,
+        "name": "woby_tests::marker_pick_tests",
+        "result": "passed",
+        "seconds": 0.08
+      },
+      {
+        "id": 104,
+        "name": "woby_native_allocations",
+        "result": "passed",
+        "seconds": 0.07
+      },
+      {
+        "id": 105,
+        "name": "woby_native_commands",
+        "result": "passed",
+        "seconds": 0.05
+      },
+      {
+        "id": 125,
+        "name": "woby_analysis_index_contract",
+        "result": "passed",
+        "seconds": 0.04
+      },
+      {
+        "id": 10,
+        "name": "woby_tests::command_line_tests",
+        "result": "passed",
+        "seconds": 0.07
+      },
+      {
+        "id": 63,
+        "name": "woby_tests::scene_renderer_tests",
+        "result": "passed",
+        "seconds": 0.08
+      },
+      {
+        "id": 26,
+        "name": "woby_tests::graphics_upload_tests",
+        "result": "passed",
+        "seconds": 0.21
+      },
+      {
+        "id": 100,
+        "name": "woby_utility_allocations",
+        "result": "passed",
+        "seconds": 0.11
+      },
+      {
+        "id": 57,
+        "name": "woby_tests::scene_history_tests",
+        "result": "passed",
+        "seconds": 0.37
+      },
+      {
+        "id": 136,
+        "name": "woby_corner_mapping_contract",
+        "result": "passed",
+        "seconds": 49.29
+      }
+    ],
+    "preset": "vs2026-vcpkg",
+    "configuration": "Release",
+    "source_filter": {
+      "exclude": {
+        "label": "^(slow|graphics)$"
+      }
+    },
+    "log": {
+      "original_path": "build/corner-mapping-release-tests-final.log",
+      "saved_path": "build/corner-mapping/validation/corner-mapping-release-tests-final.log",
+      "sha256": "a8e3592d58f8abd1ec0025c2fe4532239f4fdf809e8836524be5965acce89b1b",
+      "bytes": 14932
+    }
+  },
+  "slow_ctest": {
+    "result": "passed",
+    "registered_ctest_tests": 8,
+    "failed": 0,
+    "seconds": 74.5,
+    "tests": [
+      {
+        "id": 70,
+        "name": "updater removes obsolete renderer assets and restores them on rollback",
+        "result": "passed",
+        "seconds": 6.44
+      },
+      {
+        "id": 98,
+        "name": "woby_rapidobj_stress",
+        "result": "passed",
+        "seconds": 1.73
+      },
+      {
+        "id": 40,
+        "name": "detector snapshots and stages accept meshes beyond the distance heatmap limit",
+        "result": "passed",
+        "seconds": 1.52
+      },
+      {
+        "id": 49,
+        "name": "OBJ prototype preserves continued bodies at every raw block alignment",
+        "result": "passed",
+        "seconds": 1.49
+      },
+      {
+        "id": 39,
+        "name": "analysis measures both surfaces above the former triangle cap",
+        "result": "passed",
+        "seconds": 0.64
+      },
+      {
+        "id": 113,
+        "name": "woby_runtime_build_graph",
+        "result": "passed",
+        "seconds": 18.21
+      },
+      {
+        "id": 8,
+        "name": "command history evicts results without ever reusing admitted retry keys",
+        "result": "passed",
+        "seconds": 21.38
+      },
+      {
+        "id": 96,
+        "name": "woby_update_helper_smoke",
+        "result": "passed",
+        "seconds": 74.04
+      }
+    ],
+    "preset": "vs2026-vcpkg-slow",
+    "configuration": "Release",
+    "log": {
+      "original_path": "build/corner-mapping-slow-tests.log",
+      "saved_path": "build/corner-mapping/validation/corner-mapping-slow-tests.log",
+      "sha256": "3d07ad261747ad9a1809a8092e96d4698b129411f67f2dd14bb58384575eb47c",
+      "bytes": 1764
+    }
+  },
+  "post_loading_repetitions": {
+    "result": "passed",
+    "ctest_name": "woby_tests::post_loading_tests",
+    "passed_repetitions": 100,
+    "requested_repetitions": 100,
+    "failed_repetitions": 0,
+    "seconds": 9.93,
+    "command": "ctest --test-dir build/vs2026-vcpkg -C Release -R '^woby_tests::post_loading_tests$' --repeat until-fail:100 --output-on-failure",
+    "scope": "Repeated the existing post-loading test group with the Noop graphics backend and deterministic pending-upload gate.",
+    "log": {
+      "original_path": "build/corner-mapping-post-loading-repeat.log",
+      "saved_path": "build/corner-mapping/validation/corner-mapping-post-loading-repeat.log",
+      "sha256": "5612f5a182ce7c8076135cffc9e083cd0d026eda5efba76a9a37c95870484826",
+      "bytes": 11921
+    }
+  },
+  "profile_tooling": {
+    "result": "passed",
+    "python_cases": 8,
+    "seconds": 0.706,
+    "case_names": [
+      "test_profile_generation_current_sources",
+      "test_generation_rejects_anchor_drift",
+      "test_log_and_instruction_decoding",
+      "test_qpc_range_and_event_scaling",
+      "test_map_alias_and_range_resolution",
+      "test_reuse_preserves_the_captured_binary",
+      "test_memory_map_grouping",
+      "test_native_memory_map"
+    ],
+    "source_path": "experiments/obj-profile/tooling_tests.py",
+    "source_sha256": "dcb97b3556b36ae0db49c6090f6f36e799b0da079e07fb03907656b04293e50e",
+    "log": {
+      "original_path": "build/corner-mapping-profile-tooling.log",
+      "saved_path": "build/corner-mapping/validation/corner-mapping-profile-tooling.log",
+      "sha256": "37cd13068f541d181bbaed87acb9939e602c020c9ad12ee3cd798104befd69df",
+      "bytes": 890
+    }
+  },
+  "corner_runner": {
+    "result": "passed",
+    "python_cases": 10,
+    "python_seconds": 1.772,
+    "command": "\"C:/Users/tuncb/AppData/Roaming/uv/python/cpython-3.13.14-windows-x86_64-none/python.exe\" \"D:/woby/experiments/corner-mapping/runner_tests.py\"",
+    "log": {
+      "saved_path": "build/corner-mapping/validation/woby_corner_mapping_runner.log",
+      "sha256": "f7d0e88ab0033e449882d5c4123c98c6a338db0df01c6e8b7c3e08e94de0b1d6",
+      "bytes": 2330
+    },
+    "case_names": [
+      "check_schedule_rotation_and_serial_controls",
+      "check_comparison_keeps_normal_source_and_order",
+      "check_summaries_pair_same_round_and_preparation",
+      "check_mapping_measurement_includes_allocation_once",
+      "check_raw_snapshots_and_existing_output_protection",
+      "check_geometry_failure_is_saved_before_rejection",
+      "check_process_failure_preserves_stderr",
+      "check_generation_uses_current_loader_and_rejects_anchor_drift",
+      "check_environment_modes_have_separate_pairs",
+      "check_measurement_freezes_reserve_environment"
+    ],
+    "source_path": "experiments/corner-mapping/runner_tests.py",
+    "source_sha256": "0b4dfea1ce9a22fd045611cb5b0825a4ab4881640380b682b587064af2daab2f"
+  },
+  "corner_contract": {
+    "result": "passed",
+    "python_cases": 27,
+    "python_seconds": 48.939,
+    "command": "\"C:/Users/tuncb/AppData/Roaming/uv/python/cpython-3.13.14-windows-x86_64-none/python.exe\" \"D:/woby/experiments/corner-mapping/tests.py\" \"--bin\" \"D:/woby/build/vs2026-vcpkg/bin/Release\"",
+    "log": {
+      "saved_path": "build/corner-mapping/validation/woby_corner_mapping_contract.log",
+      "sha256": "bee13a207dd32e555b088da1f0a62639fbf0243582fa0fa5819e62e55184bc1d",
+      "bytes": 2983
+    },
+    "fixture_cases": 23,
+    "extra_cases": 4,
+    "fixture_names": [
+      "uv_seams_across_groups",
+      "hard_normals",
+      "missing_and_unused_attributes",
+      "unused_attributes_position_faces",
+      "uv_float_overflow_used",
+      "uv_float_overflow_unused",
+      "uv_overflow_then_valid_group",
+      "position_only",
+      "source_positions_without_primitives",
+      "unused_source_positions",
+      "sparse_attribute_positions",
+      "out_of_order_first_use",
+      "lines",
+      "points",
+      "unused_attributes_lines",
+      "unused_attributes_vertex_cloud",
+      "mixed_primitives",
+      "negative_indices_concave_polygon",
+      "freeform_surface",
+      "freeform_mixed_authored_normals",
+      "face_and_freeform_without_explicit_primitives",
+      "many_secondary_table_seams",
+      "large_coordinate_precision"
+    ],
+    "extra_case_names": [
+      "mapping cancellation",
+      "parallel gather",
+      "serial gather-worker controls",
+      "invalid UV and normal indices"
+    ],
+    "source_path": "experiments/corner-mapping/tests.py",
+    "source_sha256": "6f5144a8872ac00d053e3c9e3887c3e7a5be49f577d2c72ae7f31be638977ee7",
+    "scope": {
+      "variants": [
+        "baseline",
+        "pointer",
+        "split",
+        "dense",
+        "compact",
+        "release",
+        "compact_release",
+        "fast",
+        "fast_release"
+      ],
+      "fixture_parser_workers_requested": 2,
+      "fixture_gather_workers_requested": [
+        1,
+        8
+      ],
+      "preparation_modes": [
+        "deferred",
+        "eager"
+      ],
+      "unique_uv_validation": [
+        true,
+        false
+      ],
+      "parallel_gather_workers_requested": [
+        1,
+        2,
+        8
+      ],
+      "parallel_fixture_render_vertices": 144000,
+      "parallel_fixture_secondary_seams": 72000,
+      "checks": [
+        "ordered geometry, normal and source fingerprints",
+        "node names, ranges and UV availability",
+        "render and original bounds",
+        "parallel primary and seam attribute gathering",
+        "cancellation and unchanged serial output for gather-worker arguments",
+        "positive and negative UV and normal index rejection"
+      ],
+      "scope_evidence": "Executed CTest command and current test source; no test was rerun to create this manifest.",
+      "serial_variants_fixture_workers_requested": [
+        1
+      ],
+      "serial_worker_argument_test_requested": [
+        1,
+        8
+      ]
+    }
+  },
+  "final_ctest_detail": {
+    "original_path": "build/vs2026-vcpkg/Testing/Temporary/LastTest.log",
+    "saved_path": "build/corner-mapping/validation/final-ctest-detail.log",
+    "sha256": "e8386edbbc7425576e3d3a6474629b344688781734b38e9f00cdedf55ee9be85",
+    "bytes": 493195
+  },
+  "scope": "This manifest records the Release build, default and slow CTest runs, profile tooling tests, mapping runner/contract cases, and the repeated post-load test. The default preset excludes slow and graphics labels; slow results are recorded separately. Native performance measurements are separate benchmark artifacts."
+}

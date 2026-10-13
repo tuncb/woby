@@ -168,7 +168,8 @@ def generate(root, output):
         ('    if (generateMissingSmoothNormals && !hasCompleteNormals(meshGeometry(mesh).vertices)) {', '    const bool missing = generateMissingSmoothNormals && !hasCompleteNormals(meshGeometry(mesh).vertices);\n    obj_profile::next(measuredFinalize, "normal_generation");\n    if (missing) {'),
         ('    reportModelLoadProgress(progress, ModelLoadStage::bounds);', '    obj_profile::next(measuredFinalize, "render_bounds");\n    reportModelLoadProgress(progress, ModelLoadStage::bounds);'),
         ('    mesh.originalBounds.reset();', '    obj_profile::next(measuredFinalize, "original_bounds");\n    mesh.originalBounds.reset();'),
-        ('    mesh.originalBounds = originalMeshBounds(mesh);', '    mesh.originalBounds = originalMeshBounds(mesh);\n    obj_profile::end(measuredFinalize);'),
+        ('    if (!mesh.preparationDeferred) { mesh.originalBounds = originalMeshBounds(mesh); }',
+         '    if (!mesh.preparationDeferred) { mesh.originalBounds = originalMeshBounds(mesh); }\n    obj_profile::end(measuredFinalize);'),
     ])
     (output / "model_mesh.cpp").write_text('#include "profile.h"\n' + text, encoding="utf-8")
     text = (root / "src/scene_mesh_preparation.cpp").read_text(encoding="utf-8")
@@ -203,8 +204,10 @@ def generate(root, output):
     (output / "surface_annotation.cpp").write_text('#include "profile.h"\n' + text, encoding="utf-8")
     text = (root / "src/ui_state.cpp").read_text(encoding="utf-8")
     text = section(text, 'std::vector<UiGroupState> createUiGroupStates(', 'UiFileState createUiFileState(', [
-        ('        group.localBounds = nodeBounds(', '        auto measuredGroup = obj_profile::begin("group_render_bounds");\n        group.localBounds = nodeBounds('),
-        ('        group.originalBounds = originalMeshBounds(', '        obj_profile::next(measuredGroup, "group_original_bounds");\n        group.originalBounds = originalMeshBounds('),
+        ('        group.localBounds = mesh.preparationDeferred ? mesh.bounds',
+         '        auto measuredGroup = obj_profile::begin("group_render_bounds");\n        group.localBounds = mesh.preparationDeferred ? mesh.bounds'),
+        ('        if (!mesh.preparationDeferred) { group.originalBounds = originalMeshBounds(',
+         '        obj_profile::next(measuredGroup, "group_original_bounds");\n        if (!mesh.preparationDeferred) { group.originalBounds = originalMeshBounds('),
         ('        group.center = group.localBounds.center;', '        obj_profile::end(measuredGroup);\n        group.center = group.localBounds.center;'),
     ])
     (output / "ui_state.cpp").write_text('#include "profile.h"\n' + text, encoding="utf-8")

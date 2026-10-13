@@ -1,0 +1,80 @@
+136/137 Testing: woby_corner_mapping_contract
+136/137 Test: woby_corner_mapping_contract
+Command: "C:/Users/tuncb/AppData/Roaming/uv/python/cpython-3.13.14-windows-x86_64-none/python.exe" "D:/woby/experiments/corner-mapping/tests.py" "--bin" "D:/woby/build/vs2026-vcpkg/bin/Release"
+Directory: D:/woby/build/vs2026-vcpkg/experiments/corner-mapping
+"woby_corner_mapping_contract" start time: Oct 12 23:53 W. Europe Daylight Time
+Output:
+----------------------------------------------------------
+unittest.case.FunctionTestCase (<lambda>)
+uv_seams_across_groups ... ok
+unittest.case.FunctionTestCase (<lambda>)
+hard_normals ... ok
+unittest.case.FunctionTestCase (<lambda>)
+missing_and_unused_attributes ... ok
+unittest.case.FunctionTestCase (<lambda>)
+unused_attributes_position_faces ... ok
+unittest.case.FunctionTestCase (<lambda>)
+uv_float_overflow_used ... ok
+unittest.case.FunctionTestCase (<lambda>)
+uv_float_overflow_unused ... ok
+unittest.case.FunctionTestCase (<lambda>)
+uv_overflow_then_valid_group ... ok
+unittest.case.FunctionTestCase (<lambda>)
+position_only ... ok
+unittest.case.FunctionTestCase (<lambda>)
+source_positions_without_primitives ... ok
+unittest.case.FunctionTestCase (<lambda>)
+unused_source_positions ... ok
+unittest.case.FunctionTestCase (<lambda>)
+sparse_attribute_positions ... ok
+unittest.case.FunctionTestCase (<lambda>)
+out_of_order_first_use ... ok
+unittest.case.FunctionTestCase (<lambda>)
+lines ... ok
+unittest.case.FunctionTestCase (<lambda>)
+points ... ok
+unittest.case.FunctionTestCase (<lambda>)
+unused_attributes_lines ... ok
+unittest.case.FunctionTestCase (<lambda>)
+unused_attributes_vertex_cloud ... ok
+unittest.case.FunctionTestCase (<lambda>)
+mixed_primitives ... ok
+unittest.case.FunctionTestCase (<lambda>)
+negative_indices_concave_polygon ... ok
+unittest.case.FunctionTestCase (<lambda>)
+freeform_surface ... ok
+unittest.case.FunctionTestCase (<lambda>)
+freeform_mixed_authored_normals ... ok
+unittest.case.FunctionTestCase (<lambda>)
+face_and_freeform_without_explicit_primitives ... ok
+unittest.case.FunctionTestCase (<lambda>)
+many_secondary_table_seams ... ok
+unittest.case.FunctionTestCase (<lambda>)
+large_coordinate_precision ... ok
+unittest.case.FunctionTestCase (<lambda>)
+mapping cancellation ... ok
+unittest.case.FunctionTestCase (<lambda>)
+parallel gather ... ok
+unittest.case.FunctionTestCase (<lambda>)
+serial gather-worker controls ... ok
+unittest.case.FunctionTestCase (<lambda>)
+invalid UV and normal indices ... ok
+
+----------------------------------------------------------------------
+Ran 27 tests in 48.939s
+
+OK
+<end of output>
+Test time =  49.29 sec
+----------------------------------------------------------
+Test Passed.
+"woby_corner_mapping_contract" end time: Oct 12 23:54 W. Europe Daylight Time
+"woby_corner_mapping_contract" time elapsed: 00:00:49
+----------------------------------------------------------
+
+End testing: Oct 12 23:54 W. Europe Daylight Time
+
+cpu = 136.89 sec*proc
+
+unit = 136.89 sec*proc
+

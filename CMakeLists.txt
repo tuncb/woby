@@ -864,6 +864,11 @@ option(WOBY_BUILD_OBJ_PROFILE "Build the Windows OBJ stage and instruction resea
 if(WOBY_BUILD_OBJ_PROFILE)
     add_subdirectory(experiments/obj-profile)
 endif()
+
+option(WOBY_BUILD_CORNER_MAPPING "Build the Windows OBJ corner mapping research probes" OFF)
+if(WOBY_BUILD_CORNER_MAPPING)
+    add_subdirectory(experiments/corner-mapping)
+endif()
 if(WOBY_BUILD_OBJ_BENCHMARKS)
     include(cmake/WobyObjBenchmarks.cmake)
     include(cmake/WobyMappingBenchmarks.cmake)

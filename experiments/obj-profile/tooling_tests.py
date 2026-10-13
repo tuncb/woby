@@ -2,7 +2,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["duckdb>=1.3", "pefile>=2024", "capstone>=5"]
 # ///
-"""Test PMU time ranges, sample scaling, and native instruction decoding."""
+"""Test source generation, PMU ranges, sample scaling, and instruction decoding."""
 import json
 import ctypes
 import mmap
@@ -16,6 +16,52 @@ import duckdb
 from deep_tools import find_counted_loop, instruction_category, preserve_capture_symbols, record_from_log, summarize
 from production_tools import map_functions, nearest_function
 from memory_map import MEM_COMMIT, MEM_FREE, MEM_IMAGE, MEM_MAPPED, MEM_PRIVATE, MEM_RESERVE, MBI64, read_process_map, summarize_regions
+from generate import generate as generate_profile, replace
+from gpu_viewer_generate import generate as generate_upload_viewer
+
+
+def test_profile_generation_current_sources():
+    check = unittest.TestCase()
+    source_root = Path(__file__).resolve().parents[2]
+    sources = {name: (source_root / "src" / name).read_bytes()
+               for name in ("model_mesh.cpp", "ui_state.cpp", "main.cpp", "frame_pacing.cpp")}
+    with tempfile.TemporaryDirectory(prefix="woby_profile_generation_") as directory:
+        fixture_root = Path(directory).resolve()
+        profile_output = fixture_root / "profile"
+        generate_profile(source_root, profile_output)
+        for name in ("obj_mesh.cpp", "model_mesh.cpp", "scene_mesh_preparation.cpp", "point_cloud.cpp",
+                     "surface_annotation.cpp", "ui_state.cpp", "rapidobj/rapidobj.hpp", "rapidobj/prototype.hpp"):
+            check.assertTrue((profile_output / name).is_file(), name)
+        model = (profile_output / "model_mesh.cpp").read_text(encoding="utf-8")
+        check.assertIn('    if (!mesh.preparationDeferred) { mesh.originalBounds = originalMeshBounds(mesh); }\n'
+                       '    obj_profile::end(measuredFinalize);', model)
+        groups = (profile_output / "ui_state.cpp").read_text(encoding="utf-8")
+        check.assertIn('obj_profile::begin("group_render_bounds");\n'
+                       '        group.localBounds = mesh.preparationDeferred ? mesh.bounds', groups)
+        check.assertIn('obj_profile::next(measuredGroup, "group_original_bounds");\n'
+                       '        if (!mesh.preparationDeferred) { group.originalBounds = originalMeshBounds(', groups)
+        upload_output = fixture_root / "upload"
+        generate_upload_viewer(source_root, upload_output)
+        pacing = (upload_output / "frame_pacing.cpp").read_text(encoding="utf-8")
+        check.assertIn("uint64_t{1'000'000}", pacing)
+        check.assertNotIn("uint64_t{50'000'000}", pacing)
+        viewer = (upload_output / "main.cpp").read_text(encoding="utf-8")
+        check.assertIn("finalize.researchUploadedBytes.resize(finalize.files.size());", viewer)
+        check.assertIn("researchStats.uploadedBytes - researchPreviousBytes", viewer)
+        check.assertLess(viewer.index("researchPreviousBytes = researchStats.uploadedBytes;"),
+                         viewer.index('spdlog::info("research upload_frame bytes={} wall_ms={}"'))
+        check.assertLess(viewer.index('spdlog::info("research upload_frame bytes={} wall_ms={}"'),
+                         viewer.index("if (!researchComplete) { return {}; }"))
+    for name, original in sources.items():
+        check.assertEqual((source_root / "src" / name).read_bytes(), original)
+
+
+def test_generation_rejects_anchor_drift():
+    check = unittest.TestCase()
+    for text in ("missing marker", "anchor anchor"):
+        with check.assertRaisesRegex(ValueError, "Profile anchor drift"):
+            replace(text, "anchor", "replacement")
+    check.assertEqual(replace("one anchor only", "anchor", "replacement"), "one replacement only")
 
 
 def test_memory_map_grouping():
@@ -169,7 +215,8 @@ def test_reuse_preserves_the_captured_binary():
 
 if __name__ == "__main__":
     tests = unittest.TestSuite(unittest.FunctionTestCase(test) for test in
-                               (test_log_and_instruction_decoding, test_qpc_range_and_event_scaling,
+                               (test_profile_generation_current_sources, test_generation_rejects_anchor_drift,
+                                test_log_and_instruction_decoding, test_qpc_range_and_event_scaling,
                                 test_map_alias_and_range_resolution, test_reuse_preserves_the_captured_binary,
                                 test_memory_map_grouping, test_native_memory_map))
     result = unittest.TextTestRunner(verbosity=2).run(tests)

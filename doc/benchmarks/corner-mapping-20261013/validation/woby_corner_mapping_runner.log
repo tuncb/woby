@@ -1,0 +1,37 @@
+137/137 Testing: woby_corner_mapping_runner
+137/137 Test: woby_corner_mapping_runner
+Command: "C:/Users/tuncb/AppData/Roaming/uv/python/cpython-3.13.14-windows-x86_64-none/python.exe" "D:/woby/experiments/corner-mapping/runner_tests.py"
+Directory: D:/woby/build/vs2026-vcpkg/experiments/corner-mapping
+"woby_corner_mapping_runner" start time: Oct 12 23:53 W. Europe Daylight Time
+Output:
+----------------------------------------------------------
+unittest.case.FunctionTestCase (check_schedule_rotation_and_serial_controls) ... ok
+unittest.case.FunctionTestCase (check_comparison_keeps_normal_source_and_order) ... ok
+unittest.case.FunctionTestCase (check_summaries_pair_same_round_and_preparation) ... ok
+unittest.case.FunctionTestCase (check_mapping_measurement_includes_allocation_once) ... ok
+unittest.case.FunctionTestCase (check_raw_snapshots_and_existing_output_protection) ... round=1 configuration=baseline-p2-g1-deferred-u1
+{"round": 1, "configuration": "baseline-p2-g1-deferred-u1", "cpu_load_ms": 100, "mapping_pipeline_ms": 50.0, "corner_mapping_ms": 50.0}
+round=2 configuration=baseline-p2-g1-deferred-u1
+{"round": 2, "configuration": "baseline-p2-g1-deferred-u1", "cpu_load_ms": 100, "mapping_pipeline_ms": 50.0, "corner_mapping_ms": 50.0}
+ok
+unittest.case.FunctionTestCase (check_geometry_failure_is_saved_before_rejection) ... round=1 configuration=baseline-p2-g1-deferred-u1
+{"round": 1, "configuration": "baseline-p2-g1-deferred-u1", "cpu_load_ms": 100, "mapping_pipeline_ms": 50.0, "corner_mapping_ms": 50.0}
+round=2 configuration=baseline-p2-g1-deferred-u1
+ok
+unittest.case.FunctionTestCase (check_process_failure_preserves_stderr) ... ok
+unittest.case.FunctionTestCase (check_generation_uses_current_loader_and_rejects_anchor_drift) ... ok
+unittest.case.FunctionTestCase (check_environment_modes_have_separate_pairs) ... ok
+unittest.case.FunctionTestCase (check_measurement_freezes_reserve_environment) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 1.772s
+
+OK
+<end of output>
+Test time =   2.28 sec
+----------------------------------------------------------
+Test Passed.
+"woby_corner_mapping_runner" end time: Oct 12 23:53 W. Europe Daylight Time
+"woby_corner_mapping_runner" time elapsed: 00:00:02
+----------------------------------------------------------
+

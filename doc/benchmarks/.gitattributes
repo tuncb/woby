@@ -1,0 +1,2 @@
+# Preserve raw validation output, including Windows line endings and whitespace.
+*/validation/*.log -text -diff

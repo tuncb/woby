@@ -1,0 +1,15 @@
+unittest.case.FunctionTestCase (test_profile_generation_current_sources) ... ok
+unittest.case.FunctionTestCase (test_generation_rejects_anchor_drift) ... ok
+unittest.case.FunctionTestCase (test_log_and_instruction_decoding) ... ok
+{"session": "uprof-synthetic", "qpc_offset_ms": 0.0, "stages": 1, "instruction_categories": {"unresolved": 18.0}}
+unittest.case.FunctionTestCase (test_qpc_range_and_event_scaling) ... ok
+unittest.case.FunctionTestCase (test_map_alias_and_range_resolution) ... ok
+Existing capture uses its preserved executable; the current build differs
+unittest.case.FunctionTestCase (test_reuse_preserves_the_captured_binary) ... ok
+unittest.case.FunctionTestCase (test_memory_map_grouping) ... ok
+unittest.case.FunctionTestCase (test_native_memory_map) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.706s
+
+OK

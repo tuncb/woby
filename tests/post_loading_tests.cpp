@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <atomic>
 #include <fstream>
+#include <future>
 
 namespace {
 constexpr std::string_view seamModel =
@@ -64,6 +65,29 @@ struct PostLoadFixture {
     }
 };
 
+struct UploadBlocker {
+    std::promise<void> release;
+    std::shared_ptr<woby::graphics::BufferUpload> ticket;
+    bool blocked = true;
+    UploadBlocker()
+    {
+        std::promise<void> entered;
+        const auto ready = release.get_future().share();
+        ticket = woby::graphics::beginBufferUpload([&entered, ready](const std::atomic<bool>&) {
+            entered.set_value(); ready.wait(); return std::vector<woby::graphics::BufferUploadSource>{};
+        });
+        entered.get_future().wait();
+    }
+    void unblock()
+    {
+        if (!blocked) { return; }
+        release.set_value();
+        blocked = false;
+        woby::graphics::waitBufferUpload(ticket);
+    }
+    ~UploadBlocker() { unblock(); }
+};
+
 woby::Mesh deferred(std::string_view text)
 {
     woby::ObjPrototypeOptions options; options.deferPreparation = true; options.workers = 1;
@@ -114,6 +138,8 @@ TEST_CASE("Post loading waits for frame completion and publishes GPU points with
     fixture.add(deferred(seamModel));
     fixture.state.files[0].groupSettings[0].showVertices = true;
     fixture.initializeGraphics();
+    // Keep the pending-upload assertions independent of worker scheduling.
+    UploadBlocker uploads;
     const auto vertex = fixture.models[0].gpuMesh.vertexBuffer;
     const auto triangles = fixture.models[0].gpuMesh.triangleIndexBuffer;
     CHECK_FALSE(woby::graphics::isValid(fixture.models[0].gpuMesh.pointIdBuffer));
@@ -134,7 +160,9 @@ TEST_CASE("Post loading waits for frame completion and publishes GPU points with
     CHECK_FALSE(woby::graphics::isValid(fixture.models[0].gpuMesh.pointIdBuffer));
     fixture.update();
     CHECK_FALSE(woby::scenePostLoadReady(fixture.state));
+    REQUIRE(fixture.runtime.upload);
     const auto frameToken = woby::graphics::submittedFrameToken();
+    uploads.unblock();
     woby::waitGpuMeshUpload(*fixture.runtime.upload);
     fixture.update();
     CHECK(woby::graphics::submittedFrameToken() == frameToken);

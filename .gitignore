@@ -16,3 +16,5 @@ CMakeUserPresets.json
 *.so
 __pycache__/
 imgui.ini
+# Sites checkouts have their own Git history and hosting workflow.
+sites/

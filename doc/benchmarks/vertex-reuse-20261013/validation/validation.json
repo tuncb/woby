@@ -1,0 +1,33 @@
+{
+  "release_build": {
+    "preset": "vs2026-vcpkg",
+    "configuration": "Release",
+    "exit_code": 0,
+    "warnings": 0,
+    "log": "validation/vertex-reuse-release-build.log"
+  },
+  "full_unit_suite": {
+    "passed_targets": 104,
+    "failed_targets": 0,
+    "seconds": 52.02,
+    "log": "validation/vertex-reuse-release-tests.log"
+  },
+  "final_measurement_unit_tests": {
+    "passed_cases": 12,
+    "failed_cases": 0,
+    "ctest_target": "woby_corner_mapping_storage_stats",
+    "ctest_exit_code": 0
+  },
+  "browser_check": {
+    "desktop_width": 1280,
+    "mobile_width": 390,
+    "page_overflow": false,
+    "csv_http_status": 200,
+    "json_http_status": 200
+  },
+  "source_sha256": {
+    "experiments/corner-mapping/storage_stats.py": "24dfce0320d8b87e6cab5efc45d54f0bf5a773bc906b06276cc5806091927ddf",
+    "experiments/corner-mapping/storage_stats_tests.py": "14ef22174a80050ed26c03c980062dbfb1902e1137075d51785aaa830b5c83b9",
+    "experiments/corner-mapping/CMakeLists.txt": "4590f89a8ccb90e95a463f0cadd87639fed504d0569461f7f85284d0567a2188"
+  }
+}
