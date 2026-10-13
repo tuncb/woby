@@ -19,15 +19,15 @@
 <li>Mesh and group radius rules, finite-coordinate validation, source IDs, seams, progress callbacks, and worker cancellation remain covered by tests.</li>
 <li>Integer bit checks normalize signed zero in analysis and scene hashes. This fixes a regression exposed by the AVX2 build.</li></ul>
 <h2>AVX-512 and Apple M1</h2>
-<p><code>WOBY_ENABLE_AVX512_REBASE=ON</code> adds a separate AVX-512 translation unit for coordinate rebasing. CPU feature and OS register-state checks guard each dispatch. The option is off by default. The measured build included it, but this Ryzen CPU selected AVX2.</p>
-<p>AVX-512 compilation and instruction inspection passed. Native AVX-512 execution was not available. The NEON headers passed an ARM64 Clang compile with warnings treated as errors. That check used an ARM64 Windows target; a native macOS build and M1 timing remain open.</p>
+<p>Every x64 build now includes a separate AVX-512 translation unit for coordinate rebasing. CPU feature and OS register-state checks select AVX-512 or the AVX2 fallback. There is no build option. The measured build included this backend through the former option, but this Ryzen CPU selected AVX2.</p>
+<p>After the local measurements, <a href="https://github.com/tuncb/woby/actions/runs/38465370089">GitHub CI passed on all three platforms</a>. Linux used an AVX-512-capable Intel Xeon Platinum 8370C. Windows passed with AVX2 fallback on an AMD EPYC 9V74. The native Apple M1 build and NEON tests also passed. AVX-512 and M1 performance measurements remain open. The JSON and archive retain the original local measurement and validation records.</p>
 <p>The report supports faster bounds selection and access. It does not establish a benefit from 512-bit vectors on this workload. See the <a href="https://learn.microsoft.com/en-us/cpp/build/reference/arch-x64?view=msvc-170">MSVC ISA option reference</a> and the <a href="https://arm-software.github.io/acle/neon_intrinsics/">Arm NEON intrinsic reference</a>.</p>
-<h2>Validation</h2><p>The Release application and tests build without warnings. All 82 default test groups and all 8 slow tests pass. Affected geometry tests were repeated after the final code changes. New cases cover storage modes, primitive ranges, invalid indices, signed zero, NaNs, subnormal hashes, vector tails, progress, and radius rules.</p>
+<h2>Validation</h2><p>The local Windows Release application and tests build without warnings. All 82 default test groups and all 8 slow tests pass. Affected geometry tests were repeated after the measured code changes. New cases cover storage modes, primitive ranges, invalid indices, signed zero, NaNs, subnormal hashes, vector tails, progress, and radius rules.</p>
 <p>A small compiler check reproduces the hash issue: MSVC 19.51 with <code>/O2 /arch:AVX2</code> removes the floating-point zero selection before a bit cast. The SSE2 build retains it. Integer normalization retains the check in both builds. The source and assembly listings are in the archive.</p>
 <h2>Method and reproduction</h2>
 <p>Input: 7,108,991,827 bytes; 75,771,986 triangles; 38,414,391 render vertices; 37,890,645 source positions. Each run uses a fresh process and 16 parser workers. The runner warms the input and rotates build order. No build or test job runs during measurement. Geometry validation occurs after the timed preparation phases.</p>
 <p>The original executables were saved from revision <code>039eed0ebab1</code> before changes. The compiler-only control applies AVX2 to the six instrumented source units and harness; its common libraries retain the original ISA. The final build applies the new x64 baseline to woby targets. The archive includes an earlier three-way comparison; the tables above use only <code>final-measurements.json</code>.</p>
-<pre>cmake --preset vs2026-vcpkg -DWOBY_BUILD_OBJ_PROFILE=ON -DWOBY_ENABLE_AVX512_REBASE=ON
+<pre>cmake --preset vs2026-vcpkg -DWOBY_BUILD_OBJ_PROFILE=ON
 cmake --build --preset vs2026-vcpkg --config Release
 ctest --preset vs2026-vcpkg -C Release
 ctest --preset vs2026-vcpkg-slow -C Release
@@ -35,5 +35,5 @@ ctest --preset vs2026-vcpkg-slow -C Release
 # Save the two original executables and their DLLs before changing the source.
 # Rename the saved AVX2 executable to woby_obj_profile_compiler_avx2.exe.
 uv run doc/benchmarks/simd-20261013/run.py   build/simd-before/woby_obj_profile_compiler_avx2.exe   D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj   --modes prepare --workers 16 --rounds 3   --compare-executable build/vs2026-vcpkg/bin/Release/woby_obj_profile_avx2.exe   --compare-executable build/simd-before/woby_obj_profile_sse2.exe   --output final-measurements.json</pre>
-<p>Enter the runner command on one line in PowerShell. The runner accepts repeated <code>--compare-executable</code> options. The summary contains executable, input, and final source hashes.</p>
+<p>Enter the runner command on one line in PowerShell. The runner accepts repeated <code>--compare-executable</code> options. The summary contains executable, input, and measured source hashes.</p>
 <p><a href="summary.json">Summary JSON</a> · <a href="measurements.zip">Raw records and validation archive</a> · <a href="run.py">Comparison runner</a> · <a href="../obj-beartrap-20261011/report.html">Original investigation</a></p></main></html>

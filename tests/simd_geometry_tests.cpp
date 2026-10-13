@@ -82,12 +82,15 @@ TEST_CASE("SIMD coordinate rebasing handles every tail and leaves adjacent point
         auto dispatched = input;
         woby::rebaseCoordinates(std::span(dispatched).subspan(1, count), origin);
         check(dispatched);
-#ifdef WOBY_ENABLE_AVX512_REBASE
+#if defined(_M_X64) || defined(__x86_64__)
+        // An ordinary x64 build must provide the wide backend without an option.
         if (woby::avx512CoordinateRebaseAvailable()) {
             auto wide = input;
             woby::rebaseCoordinatesAvx512(std::span(wide).subspan(1, count), origin);
             check(wide);
         }
+#else
+        CHECK_FALSE(woby::avx512CoordinateRebaseAvailable());
 #endif
     }
 }

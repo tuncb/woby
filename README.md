@@ -31,9 +31,9 @@ Recent file history is saved for each user. On Windows, the file is `%LOCALAPPDA
 The x64 CPU minimum is AVX2. The operating system must enable AVX register state.
 The Mac hardware minimum is Apple M1 or newer. Mac builds use ARM NEON.
 
-`WOBY_ENABLE_AVX512_REBASE=ON` adds an experimental AVX-512 coordinate rebase path.
-It checks CPU and operating system support before use. It is off by default because
-performance has not been measured on AVX-512 hardware.
+Every x64 build includes AVX-512 coordinate rebasing. Woby selects it automatically
+when the CPU and operating system support the required instructions and register
+state. Other x64 systems use AVX2. No build option is needed.
 
 | GPU and system | Minimum feature generation | Examples |
 | --- | --- | --- |

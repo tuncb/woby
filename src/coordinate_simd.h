@@ -26,7 +26,7 @@ inline bool avx512RebaseFeatures(uint32_t leaf1Ecx, uint32_t leaf7Ebx, uint64_t 
 
 inline bool avx512CoordinateRebaseAvailable()
 {
-#if defined(WOBY_ENABLE_AVX512_REBASE) && defined(_M_X64)
+#if defined(WOBY_HAS_AVX512_REBASE) && defined(_M_X64)
     static const bool supported = [] {
         int leaf[4]{};
         __cpuid(leaf, 0);
@@ -39,7 +39,7 @@ inline bool avx512CoordinateRebaseAvailable()
         return avx512RebaseFeatures(ecx, static_cast<uint32_t>(leaf[1]), state);
     }();
     return supported;
-#elif defined(WOBY_ENABLE_AVX512_REBASE) && defined(__x86_64__)
+#elif defined(WOBY_HAS_AVX512_REBASE) && defined(__x86_64__)
     // GCC and Clang include OS XSAVE state in their CPU feature checks.
     return __builtin_cpu_supports("avx2") && __builtin_cpu_supports("avx512f")
         && __builtin_cpu_supports("avx512dq") && __builtin_cpu_supports("avx512cd")
@@ -49,7 +49,7 @@ inline bool avx512CoordinateRebaseAvailable()
 #endif
 }
 
-#ifdef WOBY_ENABLE_AVX512_REBASE
+#ifdef WOBY_HAS_AVX512_REBASE
 void rebaseCoordinatesAvx512(std::span<std::array<double, 3>> points, const std::array<double, 3>& origin);
 #endif
 
@@ -97,7 +97,7 @@ static inline void rebaseCoordinatesNative(std::span<std::array<double, 3>> poin
 
 static inline void rebaseCoordinates(std::span<std::array<double, 3>> points, const std::array<double, 3>& origin)
 {
-#ifdef WOBY_ENABLE_AVX512_REBASE
+#ifdef WOBY_HAS_AVX512_REBASE
     if (points.size() >= 8 && avx512CoordinateRebaseAvailable()) {
         rebaseCoordinatesAvx512(points, origin);
         return;
