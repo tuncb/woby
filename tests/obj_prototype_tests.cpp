@@ -4,8 +4,11 @@
 #include <rapidobj/prototype.hpp>
 #include <doctest/doctest.h>
 #include <chrono>
+#include <atomic>
+#include <cstring>
 #include <fstream>
 #include <sstream>
+#include <thread>
 
 namespace {
 struct PrototypeFixture {
@@ -100,6 +103,109 @@ TEST_CASE("Standard OBJ loaders preserve mixed primitives and weighted trimmed f
     const auto reference = woby::loadObjMeshLegacy(path);
     sameMesh(reference, woby::loadObjMesh(path));
     sameMesh(reference, woby::loadObjMeshText(*text));
+}
+
+TEST_CASE("Staged OBJ corners preserve global first-use IDs attributes and group UV flags") {
+    const std::string text = "v 99 99 99\nv 1 0 0\nv 0 1 0\nv 0 0 0\n"
+        "vt .125 .25\nvt .5 .75\nvt 1 0\nvt 1e40 .5\nvn 0 0 1\nvn 0 0 -1\n"
+        "g first\nf 4/2/1 2/1/1 3/3/1\n"
+        "g second\nf 3/3/2 2/1/1 4/4/1\n"
+        "g reuse\nf 4/2/1 2/1/1 3/3/1\n";
+    for (const bool deferred : {false,true}) {
+        woby::ObjPrototypeOptions options; options.deferPreparation = deferred; options.stagedCornerMapping = false;
+        const auto reference = woby::loadObjMeshTextPrototype(text,{},options);
+        options.stagedCornerMapping = true;
+        for (const size_t workers : {size_t{1},size_t{8}}) {
+            options.gatherWorkers = workers; woby::ObjPrototypeMetrics metrics;
+            const auto mesh = woby::loadObjMeshTextPrototype(text,{},options,&metrics);
+            sameMesh(reference,mesh);
+            CHECK(metrics.mapping.staged); CHECK(metrics.mapping.releasedTriangleBytes > 0);
+            CHECK(metrics.mapping.primaryCapacityBytes == 4*12);
+            CHECK(meshGeometry(mesh).indices == std::vector<uint32_t>{0,1,2,3,1,4,0,1,2});
+            CHECK(meshGeometry(mesh).positionIndices == std::vector<uint32_t>{3,1,2,2,3});
+            REQUIRE(meshGeometry(mesh).nodes.size() == 3);
+            CHECK(meshGeometry(mesh).nodes[0].hasTexcoords);
+            CHECK_FALSE(meshGeometry(mesh).nodes[1].hasTexcoords);
+            CHECK(meshGeometry(mesh).nodes[2].hasTexcoords);
+            CHECK(mesh.sourceData->indicesPending == deferred);
+        }
+    }
+}
+
+TEST_CASE("Staged OBJ mapping retains identity positions with unused trailing source records") {
+    const std::string text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 99 99 99\nv 98 98 98\n"
+        "vn 0 0 1\nf 1//1 2//1 3//1\nf 3//1 2//1 1//1\n";
+    woby::ObjPrototypeMetrics metrics;
+    const auto mesh = woby::loadObjMeshTextPrototype(text,{}, {},&metrics);
+    CHECK(metrics.mapping.staged);
+    CHECK(meshGeometry(mesh).positionIndexing == woby::PositionIndexing::identity);
+    CHECK(meshGeometry(mesh).positionIndices.empty());
+    REQUIRE(mesh.sourceData); CHECK(woby::sourcePositions(*mesh.sourceData).size() == 5);
+    CHECK(meshGeometry(mesh).indices == std::vector<uint32_t>{0,1,2,2,1,0});
+}
+
+TEST_CASE("OBJ mapping uses the smaller source lookup for sparse positions and mixed primitives") {
+    std::string text = "v 0 0 0\nv 1 0 0\nv 0 1 0\n";
+    bool sparse = false, attributes = true, freeform = false;
+    SUBCASE("many unused source positions") { sparse = true; }
+    SUBCASE("explicit lines and points") {}
+    SUBCASE("position-only triangles") { attributes = false; }
+    SUBCASE("freeform patches") { freeform = true; }
+    if (sparse) { for (size_t i = 0; i < 40; ++i) { text += "v 99 99 99\n"; } }
+    if (attributes) { text += "vt .125 .25\nvt .5 .75\nvn 0 0 1\nf 3/1/1 1/1/1 2/2/1\nf 2/2/1 1/2/1 3/1/1\n"; }
+    else { text += "f 3 1 2\nf 2 1 3\n"; }
+    if (!sparse && attributes) { text += "l 1 2\np 3\n"; }
+    if (freeform) {
+        text = rationalTrimmed;
+        const auto primitives = text.find("l 1 3\np 2\n");
+        REQUIRE(primitives != std::string::npos); text.erase(primitives,std::string_view("l 1 3\np 2\n").size());
+    }
+    woby::ObjPrototypeOptions options; options.stagedCornerMapping = false;
+    const auto reference = woby::loadObjMeshTextPrototype(text,{},options);
+    options.stagedCornerMapping = true; woby::ObjPrototypeMetrics metrics;
+    const auto mesh = woby::loadObjMeshTextPrototype(text,{},options,&metrics);
+    sameMesh(reference,mesh); CHECK_FALSE(metrics.mapping.staged);
+    CHECK(metrics.mapping.releasedTriangleBytes == 0);
+    if (!freeform) { CHECK(metrics.mapping.primaryCapacityBytes == woby::sourcePositions(*mesh.sourceData).size()*sizeof(uint32_t)); }
+}
+
+TEST_CASE("Parallel OBJ gathering is byte exact and reports progress only on the caller") {
+    std::string text; constexpr size_t count = 3*65536;
+    text.reserve(count*26);
+    for (size_t i = 0; i < count; ++i) { text += "v "+std::to_string(i%997)+" "+std::to_string(i/997)+" 0\n"; }
+    text += "vt .125 .25\nvn 0 0 1\n";
+    for (size_t i = 1; i < count; i += 3) {
+        text += "f "+std::to_string(i)+"/1/1 "+std::to_string(i+1)+"/1/1 "+std::to_string(i+2)+"/1/1\n";
+    }
+    const auto caller = std::this_thread::get_id(); std::atomic<bool> wrongThread = false;
+    const auto progress = [&](const woby::ModelLoadProgress& p) {
+        if (p.stage == woby::ModelLoadStage::buildingMesh && std::this_thread::get_id() != caller) { wrongThread.store(true); }
+    };
+    woby::ObjPrototypeOptions options; options.gatherWorkers = 1; options.deferPreparation = true;
+    woby::ObjPrototypeMetrics serialMetrics, parallelMetrics;
+    const auto serial = woby::loadObjMeshTextPrototype(text,progress,options,&serialMetrics);
+    options.gatherWorkers = 8;
+    const auto parallel = woby::loadObjMeshTextPrototype(text,progress,options,&parallelMetrics);
+    CHECK(serialMetrics.mapping.staged); CHECK(serialMetrics.mapping.gatherWorkers == 1);
+    CHECK(parallelMetrics.mapping.gatherWorkers == 3); CHECK_FALSE(wrongThread.load());
+    const auto& a = meshGeometry(serial); const auto& b = meshGeometry(parallel);
+    REQUIRE(a.vertices.size() == b.vertices.size());
+    CHECK(std::memcmp(a.vertices.data(),b.vertices.data(),a.vertices.size()*sizeof(woby::Vertex)) == 0);
+    CHECK(a.indices == b.indices); CHECK(a.positionIndices == b.positionIndices);
+    CHECK(woby::sourcePositions(*serial.sourceData) == woby::sourcePositions(*parallel.sourceData));
+    CHECK(serial.bounds.min == parallel.bounds.min); CHECK(serial.bounds.max == parallel.bounds.max);
+    size_t terminalCalls = 0;
+    CHECK_THROWS_WITH((void)woby::loadObjMeshTextPrototype(text,[&](const woby::ModelLoadProgress& p) {
+        if (p.stage == woby::ModelLoadStage::buildingMesh && p.total && p.completed == p.total && ++terminalCalls == 6) {
+            throw std::runtime_error("cancel attribute gathering");
+        }
+    },options),"cancel attribute gathering");
+    CHECK(terminalCalls == 6);
+}
+
+TEST_CASE("OBJ gathering validates worker limits before parsing") {
+    woby::ObjPrototypeOptions options; options.gatherWorkers = 9;
+    CHECK_THROWS_AS((void)woby::loadObjMeshTextPrototype("malformed",{},options),std::invalid_argument);
 }
 
 TEST_CASE("RapidOBJ prototype merges into caller storage and triangulates borrowed positions") {

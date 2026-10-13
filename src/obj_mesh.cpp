@@ -7,6 +7,7 @@
 
 #include <rapidobj/rapidobj.hpp>
 #include <rapidobj/prototype.hpp>
+#include "obj_corner_mapping.h"
 
 #include <algorithm>
 #include <cmath>
@@ -149,7 +150,8 @@ void preflightObjCapacity(const std::filesystem::path& path, const ModelLoadProg
 template <bool Prototype = false>
 Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPatches,
     const std::filesystem::path& path, const ModelLoadProgressCallback& progress,
-    rapidobj::GeometryBuffers* buffers = nullptr, bool deferPreparation = false)
+    rapidobj::GeometryBuffers* buffers = nullptr, bool deferPreparation = false,
+    size_t gatherWorkers = 0, bool stagedCornerMapping = true, ObjCornerMappingMetrics* mappingMetrics = nullptr)
 {
     const auto throwLoadError = [&](const char* operation) {
         std::string message = std::string(operation) + ": " + pathToUtf8(path);
@@ -247,80 +249,108 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     // Position count is only an estimate: normal/UV seams can split vertices.
     const size_t vertexCapacity = std::min({sourcePositions(*source).size(), totalIndices,
         size_t(std::numeric_limits<SceneBufferSize>::max() / sizeof(Vertex))});
+    ObjCornerMappingMetrics cornerMetrics;
+    const auto mappingStart = obj_mapping::Clock::now();
+    const bool attributes = Prototype ? !buffers->normals.empty() || !buffers->texcoords.empty()
+        : !attrib.normals.empty() || !attrib.texcoords.empty();
+    // A 12-byte dense primary slot is useful for attribute-bearing triangles.
+    // Retain the 4-byte lookup for plain positions, mixed primitives, and sparse
+    // files. More than two source positions per corner guarantees that the old
+    // primary + full-key upper bound is smaller than the dense primary array.
+    const bool sparsePositions = sourcePositions(*source).size() > totalIndices
+        && sourcePositions(*source).size()-totalIndices > totalIndices;
+    const bool staged = stagedCornerMapping && attributes && indexCount != 0
+        && lineIndexCount == 0 && pointIndexCount == 0 && freeformPatches.empty() && !sparsePositions;
     meshData.indices.reserve(indexCount);
     meshData.lineIndices.reserve(lineIndexCount);
     meshData.pointIndices.reserve(pointIndexCount);
-    meshData.vertices.reserve(vertexCapacity);
+    if (!staged) {
+        meshData.vertices.reserve(vertexCapacity);
+    }
     meshData.nodes.reserve(shapes.size());
     if (!deferPreparation) { source->indices.reserve(indexCount); }
-    reserveIndexTable(vertexMap, sourcePositions(*source).size(), vertexCapacity,
-        Prototype ? buffers->normals.empty() && buffers->texcoords.empty() : attrib.normals.empty() && attrib.texcoords.empty());
+    if (!staged) {
+        reserveIndexTable(vertexMap, sourcePositions(*source).size(), vertexCapacity,
+            Prototype ? buffers->normals.empty() && buffers->texcoords.empty() : attrib.normals.empty() && attrib.texcoords.empty());
+    }
     reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, totalIndices);
 
-    for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
-        const auto& shape = shapes[shapeIndex];
-        const uint32_t nodeIndexOffset = static_cast<uint32_t>(meshData.indices.size());
-        bool hasTexcoords = true;
+    if (staged) {
+        obj_mapping::buildFaces<Prototype>(result,meshData,*source,buffers,progress,indexCount,
+            deferPreparation,gatherWorkers,cornerMetrics);
+    } else {
+        for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
+            const auto& shape = shapes[shapeIndex];
+            const uint32_t nodeIndexOffset = static_cast<uint32_t>(meshData.indices.size());
+            bool hasTexcoords = true;
 
-        for (const auto& index : shape.mesh.indices) {
-            hasTexcoords = hasTexcoords && index.texcoord_index >= 0;
-            if (index.texcoord_index >= 0) {
-                const auto uv = static_cast<size_t>(index.texcoord_index) * 2u;
-                hasTexcoords = hasTexcoords && std::isfinite(uvValue(uv)) && std::isfinite(uvValue(uv + 1u));
-            }
-            if (meshData.indices.size() % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, meshData.indices.size(), totalIndices); }
-            if (index.position_index < 0 || static_cast<size_t>(index.position_index) >= sourcePositions(*source).size()) {
-                throw std::runtime_error("OBJ contains an invalid source position index.");
-            }
-            if (!deferPreparation) { source->indices.push_back(static_cast<uint32_t>(index.position_index)); }
-            const IndexKey key{index.position_index, index.normal_index, index.texcoord_index};
-            const auto mappedIndex = vertexIndex(vertexMap, key);
-            if (mappedIndex < meshData.vertices.size()) {
-                meshData.indices.push_back(mappedIndex);
-                continue;
+            for (const auto& index : shape.mesh.indices) {
+                hasTexcoords = hasTexcoords && index.texcoord_index >= 0;
+                if (index.texcoord_index >= 0) {
+                    const auto uv = static_cast<size_t>(index.texcoord_index) * 2u;
+                    hasTexcoords = hasTexcoords && std::isfinite(uvValue(uv)) && std::isfinite(uvValue(uv + 1u));
+                }
+                if (meshData.indices.size() % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, meshData.indices.size(), totalIndices); }
+                if (index.position_index < 0 || static_cast<size_t>(index.position_index) >= sourcePositions(*source).size()) {
+                    throw std::runtime_error("OBJ contains an invalid source position index.");
+                }
+                if (!deferPreparation) { source->indices.push_back(static_cast<uint32_t>(index.position_index)); }
+                const IndexKey key{index.position_index, index.normal_index, index.texcoord_index};
+                const auto mappedIndex = vertexIndex(vertexMap, key);
+                if (mappedIndex < meshData.vertices.size()) {
+                    meshData.indices.push_back(mappedIndex);
+                    continue;
+                }
+
+                if (index.position_index < 0) {
+                    throw std::runtime_error("OBJ contains a face vertex without a position index.");
+                }
+
+                Vertex vertex{};
+                const auto& point = sourcePositions(*source)[static_cast<size_t>(index.position_index)];
+                appendMeshPositionIndex(meshData, static_cast<uint32_t>(index.position_index));
+                vertex.position = renderPosition(point);
+
+                if (index.normal_index >= 0) {
+                    const auto normalIndex = static_cast<size_t>(index.normal_index) * 3u;
+                    vertex.normal = {
+                        normalValue(normalIndex + 0u),
+                        normalValue(normalIndex + 1u),
+                        normalValue(normalIndex + 2u),
+                    };
+                }
+
+                if (index.texcoord_index >= 0) {
+                    const auto texcoordIndex = static_cast<size_t>(index.texcoord_index) * 2u;
+                    vertex.texcoord = {
+                        uvValue(texcoordIndex + 0u),
+                        1.0f - uvValue(texcoordIndex + 1u),
+                    };
+                }
+
+                const uint32_t newIndex = static_cast<uint32_t>(meshData.vertices.size());
+                meshData.vertices.push_back(vertex);
+                meshData.indices.push_back(newIndex);
             }
 
-            if (index.position_index < 0) {
-                throw std::runtime_error("OBJ contains a face vertex without a position index.");
+            const uint32_t nodeIndexCount = static_cast<uint32_t>(meshData.indices.size()) - nodeIndexOffset;
+            if (nodeIndexCount > 0) {
+                MeshNode node;
+                node.hasTexcoords = hasTexcoords;
+                node.name = shape.name.empty() ? "shape " + std::to_string(shapeIndex + 1u) : shape.name;
+                node.indexOffset = nodeIndexOffset;
+                node.indexCount = nodeIndexCount;
+                meshData.nodes.push_back(std::move(node));
             }
-
-            Vertex vertex{};
-            const auto& point = sourcePositions(*source)[static_cast<size_t>(index.position_index)];
-            appendMeshPositionIndex(meshData, static_cast<uint32_t>(index.position_index));
-            vertex.position = renderPosition(point);
-
-            if (index.normal_index >= 0) {
-                const auto normalIndex = static_cast<size_t>(index.normal_index) * 3u;
-                vertex.normal = {
-                    normalValue(normalIndex + 0u),
-                    normalValue(normalIndex + 1u),
-                    normalValue(normalIndex + 2u),
-                };
-            }
-
-            if (index.texcoord_index >= 0) {
-                const auto texcoordIndex = static_cast<size_t>(index.texcoord_index) * 2u;
-                vertex.texcoord = {
-                    uvValue(texcoordIndex + 0u),
-                    1.0f - uvValue(texcoordIndex + 1u),
-                };
-            }
-
-            const uint32_t newIndex = static_cast<uint32_t>(meshData.vertices.size());
-            meshData.vertices.push_back(vertex);
-            meshData.indices.push_back(newIndex);
         }
-
-        const uint32_t nodeIndexCount = static_cast<uint32_t>(meshData.indices.size()) - nodeIndexOffset;
-        if (nodeIndexCount > 0) {
-            MeshNode node;
-            node.hasTexcoords = hasTexcoords;
-            node.name = shape.name.empty() ? "shape " + std::to_string(shapeIndex + 1u) : shape.name;
-            node.indexOffset = nodeIndexOffset;
-            node.indexCount = nodeIndexCount;
-            meshData.nodes.push_back(std::move(node));
-        }
+        cornerMetrics.primaryCapacityBytes = vertexMap.primary.capacity()*sizeof(uint32_t);
+        cornerMetrics.keyCapacityBytes = vertexMap.keys.capacity()*sizeof(decltype(vertexMap.keys)::value_type);
+        cornerMetrics.bucketCapacityBytes = vertexMap.buckets.capacity()*sizeof(uint32_t);
     }
+    cornerMetrics.vertexCapacityBytes = meshData.vertices.capacity()*sizeof(Vertex);
+    cornerMetrics.positionMapCapacityBytes = meshData.positionIndices.capacity()*sizeof(uint32_t);
+    cornerMetrics.totalMs = obj_mapping::elapsed(mappingStart);
+    if (mappingMetrics) { *mappingMetrics = cornerMetrics; }
 
     // Append new primitive groups after all face groups, preserving existing
     // face group indexes and saved appearance in older mixed-geometry scenes.
@@ -572,6 +602,7 @@ Mesh buildObjPrototype(Parse parse, const std::filesystem::path& path,
 {
     using Clock = std::chrono::steady_clock;
     if (metrics) { *metrics = {}; }
+    if (options.gatherWorkers > 8) { throw std::invalid_argument("OBJ gathering supports zero to eight requested workers."); }
     reportModelLoadProgress(progress, ModelLoadStage::reading);
     std::vector<Coordinate> positions, normals;
     std::vector<std::array<double, 2>> texcoords;
@@ -600,7 +631,8 @@ Mesh buildObjPrototype(Parse parse, const std::filesystem::path& path,
     // Numeric records and sparse weights are no longer needed during mesh
     // expansion; analytic patches now own their original-frame control data.
     parsed.statements = decltype(parsed.statements){}; parsed.weights = decltype(parsed.weights){};
-    auto mesh = buildObjMesh<true>(std::move(parsed.polygons), std::move(patches), path, progress, &buffers, options.deferPreparation);
+    auto mesh = buildObjMesh<true>(std::move(parsed.polygons), std::move(patches), path, progress, &buffers, options.deferPreparation,
+        options.gatherWorkers,options.stagedCornerMapping,metrics ? &metrics->mapping : nullptr);
     if (metrics) { metrics->prepareMs = std::chrono::duration<double, std::milli>(Clock::now() - resolvedAt).count(); }
     publishMeshGeometry(mesh);
     return mesh;

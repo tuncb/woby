@@ -123,7 +123,7 @@ def generate(root, output):
     obj_profile::end(measuredUvCache, {{"bytes", validUvs.size()}});
 #endif
     Mesh mesh;'''),
-        ('                const auto uv = static_cast<size_t>(index.texcoord_index) * 2u;\n                hasTexcoords = hasTexcoords && std::isfinite(uvValue(uv)) && std::isfinite(uvValue(uv + 1u));',
+        ('                    const auto uv = static_cast<size_t>(index.texcoord_index) * 2u;\n                    hasTexcoords = hasTexcoords && std::isfinite(uvValue(uv)) && std::isfinite(uvValue(uv + 1u));',
          '''#ifdef OBJ_PROFILE_UV_CHECK
                 hasTexcoords = hasTexcoords && validUvs[static_cast<size_t>(index.texcoord_index)];
 #else
@@ -135,7 +135,11 @@ def generate(root, output):
         {"key_capacity_bytes", vertexMap.keys.capacity()*sizeof(IndexKey)},
         {"bucket_bytes", vertexMap.buckets.size()*sizeof(uint32_t)},
         {"secondary_vertices", vertexMap.secondaryCount}, {"vertex_capacity", meshData.vertices.capacity()},
-        {"position_map_capacity", meshData.positionIndices.capacity()}, {"direct", vertexMap.direct}};
+        {"position_map_capacity", meshData.positionIndices.capacity()},
+        {"production_staged", cornerMetrics.staged},
+        {"production_primary_capacity_bytes", cornerMetrics.primaryCapacityBytes},
+        {"production_key_capacity_bytes", cornerMetrics.keyCapacityBytes},
+        {"production_released_triangle_bytes", cornerMetrics.releasedTriangleBytes}, {"direct", vertexMap.direct}};
 #ifdef OBJ_PROFILE_DIAGNOSTIC
     mappingData["diagnostic_counts"] = {{"first_positions", vertexMap.firstPositions}, {"primary_hits", vertexMap.primaryHits},
         {"secondary_lookups", vertexMap.secondaryLookups}, {"secondary_hits", vertexMap.secondaryHits},

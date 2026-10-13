@@ -27,6 +27,9 @@ def generate(root, output):
         if path.read_bytes() == content:
             os.utime(path, ns=(atime, mtime))
     baseline = (output / "base/obj_mesh.cpp").read_text(encoding="utf-8")
+    # Keep the research reference at its original fused mapper after the
+    # staged design becomes the production default.
+    baseline = replace(baseline, "const bool staged = stagedCornerMapping", "const bool staged = false && stagedCornerMapping")
     baseline = replace(baseline, '    obj_profile::next(measuredMesh, "corner_mapping");', '''    size_t parserTriangleBytes = 0, parserFaceMetadataBytes = 0;
     for (const auto& shape : shapes) {
         parserTriangleBytes += shape.mesh.indices.size() * sizeof(rapidobj::Index);
@@ -57,7 +60,7 @@ def generate(root, output):
         "        Prototype ? buffers->normals.empty() && buffers->texcoords.empty() : attrib.normals.empty() && attrib.texcoords.empty());",
         "        indexCount == 0 || (Prototype ? buffers->normals.empty() && buffers->texcoords.empty() : attrib.normals.empty() && attrib.texcoords.empty()));")
     start = text.index("    for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {", text.index("Mesh buildObjMesh("))
-    end = text.index("    // Append new primitive groups", start)
+    end = text.index("    cornerMetrics.primaryCapacityBytes", start)
     original_loop = text[start:end]
     original_loop = replace(original_loop, "const auto mappedIndex = vertexIndex(vertexMap, key);", "const auto mappedIndex = vertexIndex(vertexMap, key) & renderIdMask;")
     replacement = """    if (!vertexMap.direct) {

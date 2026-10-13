@@ -1,0 +1,61 @@
+Test project D:/woby/build/vs2026-vcpkg
+      Start   1: woby_tests::adaptive_points_gpu_tests
+ 1/26 Test   #1: woby_tests::adaptive_points_gpu_tests ....   Passed    9.48 sec
+      Start   3: woby_tests::analysis_display_gpu_tests
+ 2/26 Test   #3: woby_tests::analysis_display_gpu_tests ...   Passed    1.92 sec
+      Start  20: woby_tests::freeform_gpu_tests
+ 3/26 Test  #20: woby_tests::freeform_gpu_tests ...........   Passed    0.64 sec
+      Start  24: woby_tests::graphics_gpu_tests
+ 4/26 Test  #24: woby_tests::graphics_gpu_tests ...........   Passed    2.31 sec
+      Start  35: woby_tests::marker_pick_gpu_tests
+ 5/26 Test  #35: woby_tests::marker_pick_gpu_tests ........   Passed    0.86 sec
+      Start  54: woby_tests::scene_edge_gpu_tests
+ 6/26 Test  #54: woby_tests::scene_edge_gpu_tests .........   Passed    1.67 sec
+      Start  62: woby_tests::scene_renderer_gpu_tests
+ 7/26 Test  #62: woby_tests::scene_renderer_gpu_tests .....   Passed    5.65 sec
+      Start  77: woby_headless
+ 8/26 Test  #77: woby_headless ............................   Passed   17.52 sec
+      Start  78: woby_headless_camera
+ 9/26 Test  #78: woby_headless_camera .....................   Passed   24.20 sec
+      Start  79: woby_vertex_render
+10/26 Test  #79: woby_vertex_render .......................   Passed   13.63 sec
+      Start  80: woby_transparency_render
+11/26 Test  #80: woby_transparency_render .................   Passed   13.27 sec
+      Start  81: woby_obj_primitives_render
+12/26 Test  #81: woby_obj_primitives_render ...............   Passed   14.70 sec
+      Start  82: woby_freeform_render
+13/26 Test  #82: woby_freeform_render .....................   Passed   10.32 sec
+      Start  83: woby_uv_grid_render
+14/26 Test  #83: woby_uv_grid_render ......................   Passed   11.51 sec
+      Start  84: woby_uv_grid_analysis_render
+15/26 Test  #84: woby_uv_grid_analysis_render .............   Passed    7.43 sec
+      Start  85: woby_uv_grid_inspection_render
+16/26 Test  #85: woby_uv_grid_inspection_render ...........   Passed   13.33 sec
+      Start  86: woby_uv_grid_layout_uv_render
+17/26 Test  #86: woby_uv_grid_layout_uv_render ............   Passed   38.27 sec
+      Start  87: woby_uv_grid_layout_quality_render
+18/26 Test  #87: woby_uv_grid_layout_quality_render .......   Passed   35.48 sec
+      Start  89: woby_uv_quality_render
+19/26 Test  #89: woby_uv_quality_render ...................   Passed   12.81 sec
+      Start  90: woby_loading_preparation
+20/26 Test  #90: woby_loading_preparation .................   Passed    3.05 sec
+      Start  91: woby_post_loading
+21/26 Test  #91: woby_post_loading ........................   Passed    6.13 sec
+      Start  92: woby_coordinate_origin
+22/26 Test  #92: woby_coordinate_origin ...................   Passed   10.45 sec
+      Start 104: woby_windows_paths
+23/26 Test #104: woby_windows_paths .......................   Passed    5.59 sec
+      Start 108: woby_native_device_allocations
+24/26 Test #108: woby_native_device_allocations ...........   Passed    7.03 sec
+      Start 110: woby_portable_importers
+25/26 Test #110: woby_portable_importers ..................   Passed    3.69 sec
+      Start 111: woby_ctl_lines
+26/26 Test #111: woby_ctl_lines ...........................   Passed   14.03 sec
+
+100% tests passed, 0 tests failed out of 26
+
+Label Time Summary:
+graphics    = 284.98 sec*proc (26 tests)
+unit        =  29.56 sec*proc (8 tests)
+
+Total Test time (real) = 285.10 sec

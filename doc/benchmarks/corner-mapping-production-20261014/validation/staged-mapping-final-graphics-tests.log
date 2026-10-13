@@ -1,0 +1,24 @@
+Test project D:/woby/build/vs2026-vcpkg
+    Start  3: woby_tests::analysis_display_gpu_tests
+1/7 Test  #3: woby_tests::analysis_display_gpu_tests ...   Passed    2.01 sec
+    Start 20: woby_tests::freeform_gpu_tests
+2/7 Test #20: woby_tests::freeform_gpu_tests ...........   Passed    0.64 sec
+    Start 24: woby_tests::graphics_gpu_tests
+3/7 Test #24: woby_tests::graphics_gpu_tests ...........   Passed    2.22 sec
+    Start 35: woby_tests::marker_pick_gpu_tests
+4/7 Test #35: woby_tests::marker_pick_gpu_tests ........   Passed    1.10 sec
+    Start 54: woby_tests::scene_edge_gpu_tests
+5/7 Test #54: woby_tests::scene_edge_gpu_tests .........   Passed    1.91 sec
+    Start 62: woby_tests::scene_renderer_gpu_tests
+6/7 Test #62: woby_tests::scene_renderer_gpu_tests .....   Passed    5.93 sec
+    Start 72: woby_tests::uv_grid_tests
+7/7 Test #72: woby_tests::uv_grid_tests ................   Passed    0.79 sec
+
+100% tests passed, 0 tests failed out of 7
+
+Label Time Summary:
+cpu         =   0.79 sec*proc (1 test)
+graphics    =  13.82 sec*proc (6 tests)
+unit        =  14.62 sec*proc (7 tests)
+
+Total Test time (real) =  14.66 sec

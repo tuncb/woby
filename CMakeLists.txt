@@ -210,6 +210,7 @@ add_library(woby_core STATIC
     src/freeform.cpp
     src/freeform_trim.cpp
     src/obj_mesh.h
+    src/obj_corner_mapping.h
     src/performance_log.cpp
     src/performance_log.h
     src/scene_history_load.cpp

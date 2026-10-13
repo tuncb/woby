@@ -1,0 +1,26 @@
+Test project D:/woby/build/vs2026-vcpkg
+    Start  97: woby_update_helper_smoke
+    Start   8: command history evicts results without ever reusing admitted retry keys
+    Start 115: woby_runtime_build_graph
+    Start  71: updater removes obsolete renderer assets and restores them on rollback
+1/8 Test  #71: updater removes obsolete renderer assets and restores them on rollback ..........   Passed    7.91 sec
+    Start  99: woby_rapidobj_stress
+2/8 Test  #99: woby_rapidobj_stress ............................................................   Passed    1.89 sec
+    Start  40: detector snapshots and stages accept meshes beyond the distance heatmap limit
+3/8 Test  #40: detector snapshots and stages accept meshes beyond the distance heatmap limit ...   Passed    1.61 sec
+    Start  49: OBJ prototype preserves continued bodies at every raw block alignment
+4/8 Test  #49: OBJ prototype preserves continued bodies at every raw block alignment ...........   Passed    1.53 sec
+    Start  39: analysis measures both surfaces above the former triangle cap
+5/8 Test  #39: analysis measures both surfaces above the former triangle cap ...................   Passed    0.68 sec
+6/8 Test #115: woby_runtime_build_graph ........................................................   Passed   19.32 sec
+7/8 Test   #8: command history evicts results without ever reusing admitted retry keys .........   Passed   21.27 sec
+8/8 Test  #97: woby_update_helper_smoke ........................................................   Passed   75.64 sec
+
+100% tests passed, 0 tests failed out of 8
+
+Label Time Summary:
+cpu     =  34.88 sec*proc (6 tests)
+slow    = 129.84 sec*proc (8 tests)
+unit    =  34.88 sec*proc (6 tests)
+
+Total Test time (real) =  75.67 sec

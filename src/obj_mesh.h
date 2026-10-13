@@ -51,11 +51,21 @@ inline constexpr size_t objPreflightBlockBytes = 1024 * 1024;
 struct ObjPrototypeOptions {
     size_t chunkBytes = 4 * 1024 * 1024, readBytes = 256 * 1024, workers = 0;
     bool deferPreparation = false;
+    size_t gatherWorkers = 0; // Zero selects up to eight hardware workers.
+    bool stagedCornerMapping = true; // Disable only for reference tests and benchmarks.
+};
+struct ObjCornerMappingMetrics {
+    bool staged = false;
+    size_t gatherWorkers = 0, primaryCapacityBytes = 0, keyCapacityBytes = 0, bucketCapacityBytes = 0;
+    size_t releasedTriangleBytes = 0, vertexCapacityBytes = 0, positionMapCapacityBytes = 0;
+    double resolveMs = 0, releaseMs = 0, vertexAllocationMs = 0, positionMapMs = 0;
+    double primaryGatherMs = 0, seamGatherMs = 0, totalMs = 0;
 };
 struct ObjPrototypeMetrics {
     size_t inputBytes = 0, chunks = 0, workers = 0, peakInflightTextBytes = 0, parsedChunkBytes = 0;
     size_t positionCopyBytesAvoided = 0;
     double parseMs = 0, freeformMs = 0, prepareMs = 0;
+    ObjCornerMappingMetrics mapping;
 };
 [[nodiscard]] Mesh loadObjMeshPrototype(const std::filesystem::path& path,
     const ModelLoadProgressCallback& progress = {}, const ObjPrototypeOptions& options = {},

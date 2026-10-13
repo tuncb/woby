@@ -66,7 +66,7 @@ size_t retainedBytes(const woby::Mesh& mesh) {
     }
     return bytes;
 }
-int run(bool prototype, const std::filesystem::path& path, size_t workers) {
+int run(bool prototype, const std::filesystem::path& path, size_t workers, bool staged = true, bool deferred = false) {
     try {
         std::vector<std::filesystem::path> paths;
         if (std::filesystem::is_directory(path)) {
@@ -77,6 +77,7 @@ int run(bool prototype, const std::filesystem::path& path, size_t workers) {
         } else { paths.push_back(path); }
         if (paths.empty()) { throw std::runtime_error("Benchmark input contains no OBJ files."); }
         woby::ObjPrototypeOptions options; options.workers = workers;
+        options.stagedCornerMapping = staged; options.deferPreparation = deferred;
         woby::ObjPrototypeMetrics metrics;
         std::vector<woby::Mesh> meshes; meshes.reserve(paths.size());
         const auto begin = std::chrono::steady_clock::now();
@@ -88,6 +89,19 @@ int run(bool prototype, const std::filesystem::path& path, size_t workers) {
             metrics.parsedChunkBytes += current.parsedChunkBytes; metrics.positionCopyBytesAvoided += current.positionCopyBytesAvoided;
             metrics.workers = std::max(metrics.workers, current.workers);
             metrics.peakInflightTextBytes = std::max(metrics.peakInflightTextBytes, current.peakInflightTextBytes);
+            const auto& mapping = current.mapping;
+            metrics.mapping.staged = metrics.mapping.staged || mapping.staged;
+            metrics.mapping.gatherWorkers = std::max(metrics.mapping.gatherWorkers,mapping.gatherWorkers);
+            metrics.mapping.primaryCapacityBytes += mapping.primaryCapacityBytes;
+            metrics.mapping.keyCapacityBytes += mapping.keyCapacityBytes;
+            metrics.mapping.bucketCapacityBytes += mapping.bucketCapacityBytes;
+            metrics.mapping.releasedTriangleBytes += mapping.releasedTriangleBytes;
+            metrics.mapping.vertexCapacityBytes += mapping.vertexCapacityBytes;
+            metrics.mapping.positionMapCapacityBytes += mapping.positionMapCapacityBytes;
+            metrics.mapping.resolveMs += mapping.resolveMs; metrics.mapping.releaseMs += mapping.releaseMs;
+            metrics.mapping.vertexAllocationMs += mapping.vertexAllocationMs; metrics.mapping.positionMapMs += mapping.positionMapMs;
+            metrics.mapping.primaryGatherMs += mapping.primaryGatherMs; metrics.mapping.seamGatherMs += mapping.seamGatherMs;
+            metrics.mapping.totalMs += mapping.totalMs;
         }
         const double elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count();
         size_t vertices = 0, points = 0, indices = 0, retained = 0;
@@ -95,7 +109,7 @@ int run(bool prototype, const std::filesystem::path& path, size_t workers) {
             vertices += meshGeometry(mesh).vertices.size(); indices += meshGeometry(mesh).indices.size(); retained += retainedBytes(mesh);
             points += mesh.sourceData ? woby::sourcePositions(*mesh.sourceData).size() : 0;
         }
-        nlohmann::json result{{"mode", prototype ? "prototype" : "legacy"}, {"cpu_load_ms", elapsed}, {"files", paths.size()},
+        nlohmann::json result{{"mode", prototype ? staged ? "prototype" : "fused" : "legacy"}, {"cpu_load_ms", elapsed}, {"files", paths.size()},
             {"render_vertices", vertices}, {"source_points", points},
             {"triangle_indices", indices}, {"retained_mesh_buffer_capacity_bytes", retained}};
 #ifdef _WIN32
@@ -112,6 +126,14 @@ int run(bool prototype, const std::filesystem::path& path, size_t workers) {
             result["input_bytes"] = metrics.inputBytes; result["parsed_chunk_bytes"] = metrics.parsedChunkBytes;
             result["peak_inflight_text_bytes"] = metrics.peakInflightTextBytes;
             result["position_copy_bytes_avoided"] = metrics.positionCopyBytesAvoided;
+            result["deferred"] = deferred;
+            const auto& m = metrics.mapping;
+            result["corner_mapping"] = {{"staged",m.staged},{"gather_workers",m.gatherWorkers},
+                {"primary_capacity_bytes",m.primaryCapacityBytes},{"key_capacity_bytes",m.keyCapacityBytes},
+                {"bucket_capacity_bytes",m.bucketCapacityBytes},{"released_triangle_bytes",m.releasedTriangleBytes},
+                {"vertex_capacity_bytes",m.vertexCapacityBytes},{"position_map_capacity_bytes",m.positionMapCapacityBytes},
+                {"resolve_ms",m.resolveMs},{"release_ms",m.releaseMs},{"vertex_allocation_ms",m.vertexAllocationMs},
+                {"position_map_ms",m.positionMapMs},{"primary_gather_ms",m.primaryGatherMs},{"seam_gather_ms",m.seamGatherMs},{"total_ms",m.totalMs}};
         }
         // Validation is outside the timed load and memory snapshot.
         Fingerprint combined;
@@ -128,18 +150,20 @@ int run(bool prototype, const std::filesystem::path& path, size_t workers) {
 
 #ifdef _WIN32
 int wmain(int argc, wchar_t** argv) {
-    if (argc < 3 || argc > 4 || (std::wstring_view(argv[1]) != L"prototype" && std::wstring_view(argv[1]) != L"legacy")) {
+    if (argc < 3 || argc > 5 || (std::wstring_view(argv[1]) != L"prototype" && std::wstring_view(argv[1]) != L"legacy" && std::wstring_view(argv[1]) != L"fused") || (argc == 5 && std::wstring_view(argv[4]) != L"deferred")) {
 #else
 int main(int argc, char** argv) {
-    if (argc < 3 || argc > 4 || (std::string_view(argv[1]) != "prototype" && std::string_view(argv[1]) != "legacy")) {
+    if (argc < 3 || argc > 5 || (std::string_view(argv[1]) != "prototype" && std::string_view(argv[1]) != "legacy" && std::string_view(argv[1]) != "fused") || (argc == 5 && std::string_view(argv[4]) != "deferred")) {
 #endif
-        std::cerr << "Usage: woby_obj_prototype_benchmark legacy|prototype absolute.obj [workers]\n";
+        std::cerr << "Usage: woby_obj_prototype_benchmark legacy|prototype|fused absolute.obj [workers] [deferred]\n";
         return 2;
     }
 #ifdef _WIN32
-    const bool prototype = std::wstring_view(argv[1]) == L"prototype";
+    const bool prototype = std::wstring_view(argv[1]) != L"legacy";
+    const bool staged = std::wstring_view(argv[1]) != L"fused";
 #else
-    const bool prototype = std::string_view(argv[1]) == "prototype";
+    const bool prototype = std::string_view(argv[1]) != "legacy";
+    const bool staged = std::string_view(argv[1]) != "fused";
 #endif
-    return run(prototype, std::filesystem::path(argv[2]), argc == 4 ? static_cast<size_t>(std::stoull(argv[3])) : 0);
+    return run(prototype, std::filesystem::path(argv[2]), argc >= 4 ? static_cast<size_t>(std::stoull(argv[3])) : 0, staged, argc == 5);
 }

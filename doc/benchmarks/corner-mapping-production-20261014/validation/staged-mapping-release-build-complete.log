@@ -1,0 +1,263 @@
+CMake is re-running because D:/woby/build/vs2026-vcpkg/experiments/simplification-14/CMakeFiles/generate.stamp is out-of-date.
+  the file 'D:/woby/src/obj_mesh.cpp'
+  is newer than 'D:/woby/build/vs2026-vcpkg/experiments/simplification-14/CMakeFiles/generate.stamp.depend'
+  result='-1'
+-- Running vcpkg install
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe
+The following packages are already installed:
+  * boost-assert:x64-windows@1.90.0#1
+  * boost-cmake:x64-windows@1.90.0#1
+  * boost-concept-check:x64-windows@1.90.0#1
+  * boost-config:x64-windows@1.90.0#1
+  * boost-container:x64-windows@1.90.0#1
+  * boost-container-hash:x64-windows@1.90.0#1
+  * boost-core:x64-windows@1.90.0#1
+  * boost-describe:x64-windows@1.90.0#1
+  * boost-dynamic-bitset:x64-windows@1.90.0#1
+  * boost-headers:x64-windows@1.90.0#1
+  * boost-integer:x64-windows@1.90.0#1
+  * boost-intrusive:x64-windows@1.90.0#1
+  * boost-io:x64-windows@1.90.0#1
+  * boost-lexical-cast:x64-windows@1.90.0#1
+  * boost-math:x64-windows@1.90.0#1
+  * boost-move:x64-windows@1.90.0#1
+  * boost-mp11:x64-windows@1.90.0#1
+    boost-multiprecision:x64-windows@1.90.0#1
+  * boost-predef:x64-windows@1.90.0#1
+  * boost-preprocessor:x64-windows@1.90.0#1
+  * boost-random:x64-windows@1.90.0#1
+  * boost-static-assert:x64-windows@1.90.0#1
+  * boost-system:x64-windows@1.90.0#1
+  * boost-throw-exception:x64-windows@1.90.0#1
+  * boost-type-traits:x64-windows@1.90.0#1
+  * boost-uninstall:x64-windows@1.90.0#1
+    boost-unordered:x64-windows@1.90.0#1
+  * boost-utility:x64-windows@1.90.0#1
+  * boost-variant2:x64-windows@1.90.0#1
+  * boost-winapi:x64-windows@1.90.0#1
+    cdt:x64-windows@1.4.4
+  * clipper2:x64-windows@2.0.1
+    cpp-httplib:x64-windows@0.43.1
+    curl[core,sspi,ssl]:x64-windows@8.19.0
+    doctest:x64-windows@2.5.2
+  * fmt:x64-windows@12.1.0
+  * hwloc:x64-windows@2.11.2
+    imgui[core,wchar32,sdl3-binding]:x64-windows@1.92.7
+    libarchive:x64-windows@3.8.7
+    manifold:x64-windows@3.4.1
+    nlohmann-json:x64-windows@3.12.0#2
+    sdl3[core,vulkan]:x64-windows@3.4.4
+    spdlog[core,tz-offset,fmt]:x64-windows@1.17.0
+  * tbb[core,hwloc]:x64-windows@2022.3.0
+    unordered-dense:x64-windows@4.8.1
+  * vcpkg-boost:x64-windows@2025-03-29
+  * vcpkg-cmake:x64-windows@2024-04-23
+  * vcpkg-cmake-config:x64-windows@2024-05-23
+  * zlib:x64-windows@1.3.2
+boost-multiprecision provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(boost_multiprecision CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE Boost::multiprecision)
+
+The package boost-unordered is compatible with built-in CMake targets of FindBoost.cmake:
+
+    find_package(Boost REQUIRED COMPONENTS unordered)
+    target_link_libraries(main PRIVATE Boost::unordered)
+
+or the generated cmake configs via:
+
+    find_package( REQUIRED CONFIG)
+    target_link_libraries(main PRIVATE Boost::unordered)
+
+cdt provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(CDT CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE CDT::CDT)
+
+cpp-httplib provides CMake targets:
+
+    find_package(httplib CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE httplib::httplib)
+
+curl is compatible with built-in CMake targets:
+
+    find_package(CURL REQUIRED)
+    target_link_libraries(main PRIVATE CURL::libcurl)
+
+doctest provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(doctest CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE doctest::doctest)
+
+sdl3 provides CMake targets:
+
+  find_package(SDL3 CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE SDL3::SDL3)
+
+imgui provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(imgui CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE imgui::imgui)
+
+libarchive is compatible with the CMake Find Module:
+
+  find_package(LibArchive REQUIRED)
+  target_link_libraries(main PRIVATE LibArchive::LibArchive) # since CMake 3.17
+
+libarchive provides pkg-config modules:
+
+  # library that can create and read several streaming archive formats
+  libarchive
+
+manifold provides CMake targets:
+
+  find_package(manifold CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE manifold::manifold)
+
+The package nlohmann-json provides CMake targets:
+
+    find_package(nlohmann_json CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
+
+The package nlohmann-json can be configured to not provide implicit conversions via a custom triplet file:
+
+    set(nlohmann-json_IMPLICIT_CONVERSIONS OFF)
+
+For more information, see the docs here:
+    
+    https://json.nlohmann.me/api/macros/json_use_implicit_conversions/
+
+The package spdlog provides CMake targets:
+
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog)
+
+    # Or use the header-only version
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog_header_only)
+
+unordered-dense provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(unordered_dense CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE unordered_dense::unordered_dense)
+
+All requested installations completed successfully in: 2.72 ms
+-- Running vcpkg install - done
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26200.
+-- Found Vulkan: C:/VulkanSDK/1.4.357.0/Lib/vulkan-1.lib (found suitable version "1.4.357", minimum required is "1.4.357") found components: glslc glslangValidator
+-- Using Vulkan 1.4.357: C:/VulkanSDK/1.4.357.0/Lib/vulkan-1.lib
+-- Using Vulkan headers: C:/VulkanSDK/1.4.357.0/include
+-- Woby renderer: NoGraphicsAPI, Slang 2026.18.3
+-- Found Python3: C:/Users/tuncb/AppData/Roaming/uv/python/cpython-3.13.14-windows-x86_64-none/python.exe (found suitable exact version "3.13.14") found components: Interpreter
+-- Found Vulkan: C:/VulkanSDK/1.4.357.0/Lib/vulkan-1.lib (found version "1.4.357") found components: glslc glslangValidator
+-- Found Python3: C:/Users/tuncb/AppData/Roaming/uv/python/cpython-3.13.14-windows-x86_64-none/python.exe (found version "3.13.14") found components: Interpreter
+-- Configuring done (20.0s)
+-- Generating done (3.0s)
+-- Build files have been written to: D:/woby/build/vs2026-vcpkg
+MSBuild version 18.6.3+84d3e95b4 for .NET Framework
+
+  Checking File Globs
+  NoGraphicsAPI.vcxproj -> D:\woby\build\vs2026-vcpkg\_deps\woby_ngapi-build\Release\NoGraphicsAPI.lib
+  woby_update_core.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_update_core.lib
+  woby_automation.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_automation.lib
+  woby_coordinate_avx512.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_coordinate_avx512.lib
+  woby-update-helper.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby-update-helper.exe
+  woby_analysis_index_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_analysis_index_probe.exe
+  woby_analysis_index_dense_set_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_analysis_index_dense_set_probe.exe
+  NoGraphicsAPIUtility_allocators.vcxproj -> D:\woby\build\vs2026-vcpkg\_deps\woby_ngapi-build\utility\Release\NoGraphicsAPIUtility_allocators.lib
+  NoGraphicsAPIUtility_textures.vcxproj -> D:\woby\build\vs2026-vcpkg\_deps\woby_ngapi-build\utility\Release\NoGraphicsAPIUtility_textures.lib
+  upload_queue.cpp
+  woby_file_associations.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_file_associations.lib
+  obj_mesh.cpp
+  woby_math.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_math.lib
+  woby_recent_files.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_recent_files.lib
+  woby_update.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_update.lib
+  NoGraphicsAPIUtility_uploads.vcxproj -> D:\woby\build\vs2026-vcpkg\_deps\woby_ngapi-build\utility\Release\NoGraphicsAPIUtility_uploads.lib
+  obj_mesh.cpp
+  obj_mesh.cpp
+  woby_core.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_core.lib
+  obj_mesh.cpp
+  woby_benchmarks.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_benchmarks.exe
+  obj_mesh.cpp
+  woby_benchmarks_ankerl.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_benchmarks_ankerl.exe
+  obj_mesh.cpp
+  woby_benchmarks_boost.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_benchmarks_boost.exe
+  woby_console_parent.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_console_parent.exe
+  woby_console_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_console_probe.exe
+  woby_graphics.vcxproj -> D:\woby\build\vs2026-vcpkg\Release\woby_graphics.lib
+  obj_compact.cpp
+  woby_analysis_stages_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_analysis_stages_probe.exe
+  woby_annotation_history_benchmark.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_annotation_history_benchmark.exe
+  obj_baseline.cpp
+  woby_benchmarks_dense_set_custom.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_benchmarks_dense_set_custom.exe
+  woby_benchmarks_dense_set.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_benchmarks_dense_set.exe
+  obj_compact_release.cpp
+  woby_corner_mapping_compact.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_corner_mapping_compact.exe
+  woby.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby.exe
+  obj_dense.cpp
+  woby_corner_mapping_baseline.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_corner_mapping_baseline.exe
+  obj_fast.cpp
+  woby_corner_mapping_compact_release.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_corner_mapping_compact_release.exe
+  obj_fast_release.cpp
+  woby_corner_mapping_dense.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_corner_mapping_dense.exe
+  obj_release.cpp
+  obj_pointer.cpp
+  woby_corner_mapping_fast_release.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_corner_mapping_fast_release.exe
+  woby_corner_mapping_fast.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_corner_mapping_fast.exe
+  obj_split.cpp
+  woby_corner_mapping_pointer.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_corner_mapping_pointer.exe
+  woby_corner_mapping_release.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_corner_mapping_release.exe
+  woby_face_display_gpu_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_face_display_gpu_probe.exe
+  woby_face_display_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_face_display_probe.exe
+  woby_freeform_evaluation_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_freeform_evaluation_probe.exe
+  woby_gpu_upload_benchmark.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_gpu_upload_benchmark.exe
+  woby_hash_benchmarks.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_hash_benchmarks.exe
+  woby_graphics_diagnostics_allocation_tests.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_graphics_diagnostics_allocation_tests.exe
+  woby_importer_bad_abi.vcxproj -> D:\woby\build\vs2026-vcpkg\test-plugins\Release\woby_importer_bad_abi.dll
+  woby_importer_conflict.vcxproj -> D:\woby\build\vs2026-vcpkg\test-plugins\Release\woby_importer_conflict.dll
+  woby_importer_fixture.vcxproj -> D:\woby\build\vs2026-vcpkg\test-plugins\Release\woby_importer_fixture.dll
+  woby_importer_geometry_fixture.vcxproj -> D:\woby\build\vs2026-vcpkg\test-plugins\Release\woby_importer_geometry_fixture.dll
+  woby_importer_hierarchy_fixture.vcxproj -> D:\woby\build\vs2026-vcpkg\test-plugins\Release\woby_importer_hierarchy_fixture.dll
+  woby_importer_lines_fixture.vcxproj -> D:\woby\build\vs2026-vcpkg\test-plugins\Release\woby_importer_lines_fixture.dll
+  woby_importer_missing_export.vcxproj -> D:\woby\build\vs2026-vcpkg\test-plugins\Release\woby_importer_missing_export.dll
+  woby_importer_point_ids_fixture.vcxproj -> D:\woby\build\vs2026-vcpkg\test-plugins\Release\woby_importer_point_ids_fixture.dll
+  woby_importer_reserved.vcxproj -> D:\woby\build\vs2026-vcpkg\test-plugins\Release\woby_importer_reserved.dll
+  woby_intersection_adoption_benchmark.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_intersection_adoption_benchmark.exe
+  woby_instance_query_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_instance_query_probe.exe
+  woby_native_allocation_tests.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_native_allocation_tests.exe
+  woby_intersection_fma_tests.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_intersection_fma_tests.exe
+  woby_native_command_tests.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_native_command_tests.exe
+  woby_native_device_allocation_tests.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_native_device_allocation_tests.exe
+  woby_off_importer.vcxproj -> D:\woby\build\vs2026-vcpkg\example-plugins\Release\woby_off_importer.dll
+  obj_mesh.cpp
+  benchmark.cpp
+  woby_corner_mapping_split.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_corner_mapping_split.exe
+  woby_position_production.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_position_production.exe
+  woby_rapidobj_reader_tests.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_rapidobj_reader_tests.exe
+  woby_rapidobj_stress_tests.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_rapidobj_stress_tests.exe
+  woby_simplification_10_fma_contract.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_simplification_10_fma_contract.exe
+  woby_simplification_10_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_simplification_10_probe.exe
+  woby_simplification_11_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_simplification_11_probe.exe
+  woby_simplification_12.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_simplification_12.exe
+  main.cpp
+  woby_obj_prototype_benchmark.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_obj_prototype_benchmark.exe
+  woby_simplification_14_capacity.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_simplification_14_capacity.exe
+  main.cpp
+  woby_parser_benchmark.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_parser_benchmark.exe
+  woby_simplification_16_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_simplification_16_probe.exe
+  woby_trim_input_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_trim_input_probe.exe
+  woby_update_viewer_fixture.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_update_viewer_fixture.exe
+  woby_tests.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_tests.exe
+  utility_allocation_fixture.cpp
+  woby_utility_allocation_fixture.vcxproj -> D:\woby\build\vs2026-vcpkg\tests\utility_fixture\Release\woby_utility_allocation_fixture.lib
+  woby_utility_allocation_tests.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_utility_allocation_tests.exe
+  woby_uv_overlap_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_uv_overlap_probe.exe
+  woby_uv_stages_probe.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_uv_stages_probe.exe
+  woby_simplification_15.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_simplification_15.exe
+  woby_simplification_14.vcxproj -> D:\woby\build\vs2026-vcpkg\bin\Release\woby_simplification_14.exe
