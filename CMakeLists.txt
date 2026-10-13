@@ -275,6 +275,7 @@ set_target_properties(woby_core PROPERTIES OPTIMIZE_DEPENDENCIES ON)
 woby_enable_project_warnings(woby_core)
 woby_enable_enum_switch_warnings(woby_core)
 woby_enable_precompiled_headers(woby_core)
+woby_configure_avx512_rebase()
 
 add_executable(woby
     src/console.cpp
@@ -613,6 +614,7 @@ if(BUILD_TESTING)
         tests/scene_edge_tests.cpp
         tests/coordinate_origin_tests.cpp
         tests/model_mesh_tests.cpp
+        tests/simd_geometry_tests.cpp
         tests/obj_mesh_tests.cpp
         tests/obj_prototype_tests.cpp
         tests/freeform_tests.cpp

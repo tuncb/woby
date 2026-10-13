@@ -28,7 +28,12 @@ Recent file history is saved for each user. On Windows, the file is `%LOCALAPPDA
 | AMD on Windows | Adrenalin **26.6.1**, with applicable RDNA 3 or later hardware | This is the first listed regular release with descriptor heaps and device-address commands. Preview **25.30.17.02** added descriptor heaps only. Refer to the [AMD Vulkan release history](https://www.amd.com/en/resources/support-articles/release-notes/rn-rad-win-vulkan.html). |
 | AMD on Linux | **Mesa RADV 26.2.0** or later | This release enables descriptor heaps by default. Refer to the [Mesa 26.2 release notes](https://docs.mesa3d.org/relnotes/26.2.0.html). |
 
-The Mac hardware minimum is Apple M1 or newer.
+The x64 CPU minimum is AVX2. The operating system must enable AVX register state.
+The Mac hardware minimum is Apple M1 or newer. Mac builds use ARM NEON.
+
+`WOBY_ENABLE_AVX512_REBASE=ON` adds an experimental AVX-512 coordinate rebase path.
+It checks CPU and operating system support before use. It is off by default because
+performance has not been measured on AVX-512 hardware.
 
 | GPU and system | Minimum feature generation | Examples |
 | --- | --- | --- |

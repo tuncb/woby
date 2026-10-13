@@ -28,7 +28,10 @@ size_t analysisKeyHash(const std::array<T, N>& key)
         uint64_t bits;
         if constexpr (std::is_floating_point_v<T>) {
             // Equality treats signed zeros alike; all callers validate finiteness.
-            bits = std::bit_cast<uint64_t>(static_cast<double>(value == 0 ? 0 : value));
+            bits = std::bit_cast<uint64_t>(static_cast<double>(value));
+            // Normalize in integer space. Optimized FP value selection can
+            // retain the sign of zero, which would disagree with key equality.
+            if ((bits & 0x7fffffffffffffffull) == 0) { bits = 0; }
         } else { bits = static_cast<uint64_t>(value); }
         bits ^= bits >> 30; bits *= 0xbf58476d1ce4e5b9ull;
         bits ^= bits >> 27; bits *= 0x94d049bb133111ebull;

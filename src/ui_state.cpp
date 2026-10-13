@@ -1,4 +1,5 @@
 #include "ui_state.h"
+#include "simd_bounds.h"
 #include "surface_annotation.h"
 #include "ui_operations.h"
 #include "comparison_scene.h"
@@ -158,6 +159,7 @@ Bounds nodeBounds(const Mesh& mesh, const MeshNode& node, const ModelLoadProgres
 {
     if (mesh.preparationDeferred) { return mesh.bounds; }
     Bounds bounds = emptyAccumulatedBounds();
+    auto reduction = floatBoundsReduction(bounds.min, bounds.max);
     const auto indices = meshNodeIndices(mesh, node);
     for (size_t index = 0; index < indices.size(); ++index) {
         if (index % 16384 == 0) {
@@ -165,9 +167,11 @@ Bounds nodeBounds(const Mesh& mesh, const MeshNode& node, const ModelLoadProgres
         }
         const uint32_t vertexIndex = indices[index];
         if (vertexIndex < meshGeometry(mesh).vertices.size()) {
-            expandBounds(bounds, meshGeometry(mesh).vertices[vertexIndex].position);
+            expand(reduction, meshGeometry(mesh).vertices[vertexIndex].position);
         }
     }
+    const auto box = boundsResult(reduction);
+    bounds.min = box[0]; bounds.max = box[1];
 
     if (!boundsContainFinitePoints(bounds)) {
         return mesh.bounds;

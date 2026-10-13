@@ -1,0 +1,433 @@
+{
+  "base_revision": "039eed0ebab1cae5026cdb7a2728952cc0d66c8c",
+  "method": "Fresh Release processes; sequential runs; file warmed before each process; rotating configuration order",
+  "rounds_per_build": 3,
+  "model_bytes": 7108991827,
+  "model_sha256": "7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329",
+  "cpu": {
+    "avx": true,
+    "avx2": true,
+    "avx512f": false,
+    "avx_os_enabled": true,
+    "bmi1": true,
+    "bmi2": true,
+    "brand": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+    "fma": true,
+    "logical_processors": 16,
+    "sse2": true,
+    "sse42": true,
+    "xcr0": 7
+  },
+  "results": {
+    "woby_obj_profile_sse2.exe": {
+      "total": {
+        "median_s": 43.5687865,
+        "min_s": 41.8297463,
+        "max_s": 47.510563600000005,
+        "runs_s": [
+          47.510563600000005,
+          43.5687865,
+          41.8297463
+        ]
+      },
+      "cpu_import": {
+        "median_s": 27.782216000000002,
+        "min_s": 26.054093,
+        "max_s": 30.3257194,
+        "runs_s": [
+          30.3257194,
+          27.782216000000002,
+          26.054093
+        ]
+      },
+      "parser_total": {
+        "median_s": 5.5385564,
+        "min_s": 5.3525213,
+        "max_s": 5.7881933,
+        "runs_s": [
+          5.5385564,
+          5.3525213,
+          5.7881933
+        ]
+      },
+      "coordinate_origin": {
+        "median_s": 0.35421980000000003,
+        "min_s": 0.3003978,
+        "max_s": 0.3544175,
+        "runs_s": [
+          0.35421980000000003,
+          0.3003978,
+          0.3544175
+        ]
+      },
+      "coordinate_rebase": {
+        "median_s": 0.5377182,
+        "min_s": 0.5354159,
+        "max_s": 0.5485449,
+        "runs_s": [
+          0.5377182,
+          0.5485449,
+          0.5354159
+        ]
+      },
+      "corner_mapping": {
+        "median_s": 16.2605774,
+        "min_s": 14.592732700000001,
+        "max_s": 18.722099399999998,
+        "runs_s": [
+          18.722099399999998,
+          16.2605774,
+          14.592732700000001
+        ]
+      },
+      "normal_generation": {
+        "median_s": 2.7044256,
+        "min_s": 2.3075739,
+        "max_s": 2.9770468,
+        "runs_s": [
+          2.7044256,
+          2.9770468,
+          2.3075739
+        ]
+      },
+      "render_bounds": {
+        "median_s": 0.4893573,
+        "min_s": 0.4877278,
+        "max_s": 0.5386877,
+        "runs_s": [
+          0.5386877,
+          0.4877278,
+          0.4893573
+        ]
+      },
+      "original_bounds": {
+        "median_s": 1.1977192,
+        "min_s": 1.1936737,
+        "max_s": 1.2062222,
+        "runs_s": [
+          1.1936737,
+          1.1977192,
+          1.2062222
+        ]
+      },
+      "group_render_bounds": {
+        "median_s": 2.1541078000000002,
+        "min_s": 2.0873765,
+        "max_s": 2.3217748,
+        "runs_s": [
+          2.3217748,
+          2.0873765,
+          2.1541078000000002
+        ]
+      },
+      "group_original_bounds": {
+        "median_s": 5.953352,
+        "min_s": 5.9527055,
+        "max_s": 6.3778787,
+        "runs_s": [
+          6.3778787,
+          5.9527055,
+          5.953352
+        ]
+      },
+      "scene_cpu_preparation": {
+        "median_s": 7.7461362,
+        "min_s": 7.6677960999999994,
+        "max_s": 8.4847777,
+        "runs_s": [
+          8.4847777,
+          7.7461362,
+          7.6677960999999994
+        ]
+      }
+    },
+    "woby_obj_profile_compiler_avx2.exe": {
+      "total": {
+        "median_s": 36.8427554,
+        "min_s": 35.8081941,
+        "max_s": 37.9303425,
+        "runs_s": [
+          37.9303425,
+          36.8427554,
+          35.8081941
+        ]
+      },
+      "cpu_import": {
+        "median_s": 25.1494221,
+        "min_s": 24.4009014,
+        "max_s": 26.0596271,
+        "runs_s": [
+          26.0596271,
+          25.1494221,
+          24.4009014
+        ]
+      },
+      "parser_total": {
+        "median_s": 5.4923632,
+        "min_s": 5.3256131,
+        "max_s": 5.5735554,
+        "runs_s": [
+          5.5735554,
+          5.4923632,
+          5.3256131
+        ]
+      },
+      "coordinate_origin": {
+        "median_s": 0.1895701,
+        "min_s": 0.18432980000000002,
+        "max_s": 0.30441660000000004,
+        "runs_s": [
+          0.1895701,
+          0.30441660000000004,
+          0.18432980000000002
+        ]
+      },
+      "coordinate_rebase": {
+        "median_s": 0.5128323,
+        "min_s": 0.5088998,
+        "max_s": 0.5343605,
+        "runs_s": [
+          0.5128323,
+          0.5343605,
+          0.5088998
+        ]
+      },
+      "corner_mapping": {
+        "median_s": 14.8674418,
+        "min_s": 14.4797608,
+        "max_s": 15.507963799999999,
+        "runs_s": [
+          15.507963799999999,
+          14.8674418,
+          14.4797608
+        ]
+      },
+      "normal_generation": {
+        "median_s": 2.2867422,
+        "min_s": 2.1720411,
+        "max_s": 2.2936587,
+        "runs_s": [
+          2.2867422,
+          2.1720411,
+          2.2936587
+        ]
+      },
+      "render_bounds": {
+        "median_s": 0.3434954,
+        "min_s": 0.3387336,
+        "max_s": 0.39965629999999996,
+        "runs_s": [
+          0.39965629999999996,
+          0.3434954,
+          0.3387336
+        ]
+      },
+      "original_bounds": {
+        "median_s": 0.6677706,
+        "min_s": 0.5960561,
+        "max_s": 0.7337804,
+        "runs_s": [
+          0.6677706,
+          0.7337804,
+          0.5960561
+        ]
+      },
+      "group_render_bounds": {
+        "median_s": 1.2239534,
+        "min_s": 1.1521242999999999,
+        "max_s": 1.3745467,
+        "runs_s": [
+          1.2239534,
+          1.1521242999999999,
+          1.3745467
+        ]
+      },
+      "group_original_bounds": {
+        "median_s": 2.8942483,
+        "min_s": 2.6586586000000003,
+        "max_s": 3.0907289999999996,
+        "runs_s": [
+          3.0907289999999996,
+          2.6586586000000003,
+          2.8942483
+        ]
+      },
+      "scene_cpu_preparation": {
+        "median_s": 7.5555753,
+        "min_s": 7.1381133,
+        "max_s": 7.8821404,
+        "runs_s": [
+          7.5555753,
+          7.8821404,
+          7.1381133
+        ]
+      }
+    },
+    "woby_obj_profile_avx2.exe": {
+      "total": {
+        "median_s": 34.1808186,
+        "min_s": 32.9544574,
+        "max_s": 37.7149253,
+        "runs_s": [
+          34.1808186,
+          37.7149253,
+          32.9544574
+        ]
+      },
+      "cpu_import": {
+        "median_s": 24.6482165,
+        "min_s": 23.9697918,
+        "max_s": 26.5574253,
+        "runs_s": [
+          24.6482165,
+          26.5574253,
+          23.9697918
+        ]
+      },
+      "parser_total": {
+        "median_s": 5.788341,
+        "min_s": 5.5099084000000005,
+        "max_s": 6.1538486,
+        "runs_s": [
+          5.5099084000000005,
+          5.788341,
+          6.1538486
+        ]
+      },
+      "coordinate_origin": {
+        "median_s": 0.1864564,
+        "min_s": 0.18036519999999998,
+        "max_s": 0.2684568,
+        "runs_s": [
+          0.1864564,
+          0.2684568,
+          0.18036519999999998
+        ]
+      },
+      "coordinate_rebase": {
+        "median_s": 0.07806579999999999,
+        "min_s": 0.0732123,
+        "max_s": 0.0909181,
+        "runs_s": [
+          0.0732123,
+          0.0909181,
+          0.07806579999999999
+        ]
+      },
+      "corner_mapping": {
+        "median_s": 15.2167481,
+        "min_s": 14.099780500000001,
+        "max_s": 16.193689,
+        "runs_s": [
+          15.2167481,
+          16.193689,
+          14.099780500000001
+        ]
+      },
+      "normal_generation": {
+        "median_s": 2.2412436,
+        "min_s": 2.1580906,
+        "max_s": 2.4916391,
+        "runs_s": [
+          2.2412436,
+          2.4916391,
+          2.1580906
+        ]
+      },
+      "render_bounds": {
+        "median_s": 0.2446123,
+        "min_s": 0.2246087,
+        "max_s": 0.32723110000000005,
+        "runs_s": [
+          0.2446123,
+          0.32723110000000005,
+          0.2246087
+        ]
+      },
+      "original_bounds": {
+        "median_s": 0.2831324,
+        "min_s": 0.2274338,
+        "max_s": 0.3435713,
+        "runs_s": [
+          0.2274338,
+          0.3435713,
+          0.2831324
+        ]
+      },
+      "group_render_bounds": {
+        "median_s": 1.0452254,
+        "min_s": 0.9602837,
+        "max_s": 1.297045,
+        "runs_s": [
+          1.0452254,
+          1.297045,
+          0.9602837
+        ]
+      },
+      "group_original_bounds": {
+        "median_s": 0.9871781999999999,
+        "min_s": 0.8216334000000001,
+        "max_s": 1.1246505,
+        "runs_s": [
+          0.9871781999999999,
+          1.1246505,
+          0.8216334000000001
+        ]
+      },
+      "scene_cpu_preparation": {
+        "median_s": 7.4997848000000005,
+        "min_s": 7.2023354,
+        "max_s": 8.735424199999999,
+        "runs_s": [
+          7.4997848000000005,
+          8.735424199999999,
+          7.2023354
+        ]
+      }
+    }
+  },
+  "geometry": {
+    "geometry_fingerprint": 9680906644937202356,
+    "groups": 1,
+    "groups_with_texcoords": 1,
+    "index_bytes": 909263832,
+    "normal_fingerprint": 8942492572770678859,
+    "retained_buffer_capacity_bytes": 4773997956,
+    "source_positions": 37890645,
+    "triangles": 75771986,
+    "vertex_bytes": 1229260512,
+    "vertex_stride": 32,
+    "vertices": 38414391
+  },
+  "all_geometry_and_normal_fingerprints_match": true,
+  "executable_sha256": {
+    "C:\\Users\\tuncb\\.t3\\worktrees\\woby\\t3code-22153d28\\build\\simd-before\\woby_obj_profile_compiler_avx2.exe": "d259671ea055ec4b3e9596d213e19e8af317b662ec3637361ac1b1da21931e0b",
+    "C:\\Users\\tuncb\\.t3\\worktrees\\woby\\t3code-22153d28\\build\\vs2026-vcpkg\\bin\\Release\\woby_obj_profile_avx2.exe": "aad40c2caff1a3d339f4b67659aa9a397e9fd36c5b430cdf60ae601028edd5db",
+    "C:\\Users\\tuncb\\.t3\\worktrees\\woby\\t3code-22153d28\\build\\simd-before\\woby_obj_profile_sse2.exe": "d993aad9d33dec1fd1d74c10406450d95f82dd7c9c861f4e0ed4425b89d74485"
+  },
+  "source_sha256": {
+    "CMakeLists.txt": "3d427226e78968f303815b4b6ac562e1e7cb1a2e6a2b513697b80a5bcd573856",
+    "cmake/WobyCpu.cmake": "958a3d3dd9b1b996244ee6ad2b28545e602cd43f054e1de21e12ac33b71e3025",
+    "cmake/WobyWarnings.cmake": "f04409c53bba480f3a0bf761476edc0632fb0b8fa232b721477297a0969502f1",
+    "src/model_mesh.cpp": "3ff7ec17b848e598b68997506504993ae144705dc1196630957f02296b60720a",
+    "src/obj_mesh.cpp": "7b07853da71bbf246879bc9c9a86ddaeacec79b73a6bfb478a0b189cc870e075",
+    "src/post_loading.cpp": "9655fc233ba91cf4a1e872939a8e2004eac632b590fb81a7ea6d3586fc2ca71d",
+    "src/ui_state.cpp": "2fe81d7517018c10032fee21e6639cb7d9203afdd547ba0b4d4bc5c642a7f32f",
+    "src/simd_bounds.h": "ae95bf7d9cca022b89703b46a42c1bbd5c7fb209db447dbd4206240e45696259",
+    "src/coordinate_simd.h": "af7d9ebb59f7dd3ae747eae3e48e5cb514534320b3d1a8dc82641c3c738d6c42",
+    "src/coordinate_simd_avx512.cpp": "72ed473e51dbc7aaf6ac4c3aefc88339d405e34804d2eb5dae62bc825ec556d8",
+    "src/analysis_index.h": "15c762c0b13c4651d99d659fdc96911a143059a228f1378ca5b8b5a857c9e414",
+    "src/hash_utils.cpp": "145e4f8ffbd0a51be9d1a34d61c9718251498f4a6a22e1a7a27fb5c3b6f0087c",
+    "tests/simd_geometry_tests.cpp": "1dbc623bf8d6948ef33f10073e2aa14542c20bf0c883256ecbc9c889b21bf118",
+    "tests/mesh_duplicates_tests.cpp": "bffc8e6548d7ace5bc061c42137d7d29adb995272805df83e4ca362081db4bcf"
+  },
+  "validation": {
+    "default_test_groups": 82,
+    "slow_tests": 8,
+    "release_build_warnings": 0,
+    "avx512_execution_tested": false,
+    "native_macos_tested": false,
+    "arm64_kernel_compile_check": "Clang, aarch64-pc-windows-msvc, /W4 /WX",
+    "measured_avx512_build_option": "ON; CPU guard selected AVX2"
+  }
+}

@@ -1,4 +1,5 @@
 #include "obj_mesh.h"
+#include "coordinate_simd.h"
 #include "obj_freeform.h"
 #include "scene_buffer_size.h"
 #include <sstream>
@@ -200,8 +201,8 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
         }
     }
     const auto origin = coordinateOrigin(sourcePoints);
+    rebaseCoordinates(sourcePoints, origin);
     for (size_t i = 0; i < sourcePoints.size(); ++i) {
-        sourcePoints[i] = relativePosition(sourcePoints[i], origin);
         if constexpr (!Prototype) {
             for (size_t k = 0; k < 3; ++k) { result.attributes.positions[i*3+k] = sourcePoints[i][k]; }
         }

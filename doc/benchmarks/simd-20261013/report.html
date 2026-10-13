@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>woby SIMD results — 13 October 2026</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;color:#182538;background:#f4f6f9;margin:0}main{max-width:1000px;margin:auto;padding:36px 24px 70px}h1{font-size:36px;line-height:1.15}h2{font-size:22px;margin-top:36px}.lead{font-size:21px}.note{border-left:4px solid #5377b4;padding:12px 18px;background:#e9eef6}table{width:100%;border-collapse:collapse;background:white;margin:16px 0;font-variant-numeric:tabular-nums}th,td{padding:10px 14px;border-bottom:1px solid #dce2eb}th{text-align:left}td{text-align:right}thead{background:#dfe8f5}tbody tr:first-child{font-weight:650}code,pre{font:13px/1.5 ui-monospace,monospace}pre{padding:18px;background:#182538;color:#e5edf8;overflow:auto}a{color:#245db4}.small{font-size:14px;color:#4a586c}</style>
+<main><p class="small">woby • 13 October 2026 • AMD Ryzen 7 5800H</p>
+<h1>SIMD geometry preparation</h1>
+<p class="lead">CPU import and preparation: <strong>43.57 → 34.18 seconds</strong> (21.5% less time).</p>
+<p>Original-coordinate group bounds use 83.4% less time. All nine final runs have identical geometry and normal fingerprints.</p>
+<p class="note">These figures measure eager CPU preparation of the Bear Trap OBJ. The current viewer defers group and point work. First display, GPU upload, and rendering need separate measurements. Three runs per build do not establish a confidence interval.</p>
+<h2>Measured times</h2><p>Median seconds. The total is calculated for each run before taking the median. Rows below the total include nested phases; do not add them together.</p>
+<table><thead><tr><th>Phase</th><th>Original SSE2</th><th>Compiler AVX2</th><th>New SIMD</th></tr></thead><tbody><tr><th>CPU import + preparation</th><td>43.569</td><td>36.843</td><td>34.181</td></tr><tr><th>CPU import</th><td>27.782</td><td>25.149</td><td>24.648</td></tr><tr><th>Text parser</th><td>5.539</td><td>5.492</td><td>5.788</td></tr><tr><th>Coordinate origin</th><td>0.354</td><td>0.190</td><td>0.186</td></tr><tr><th>Coordinate rebase</th><td>0.538</td><td>0.513</td><td>0.078</td></tr><tr><th>Corner mapping</th><td>16.261</td><td>14.867</td><td>15.217</td></tr><tr><th>Normal generation</th><td>2.704</td><td>2.287</td><td>2.241</td></tr><tr><th>Mesh display bounds</th><td>0.489</td><td>0.343</td><td>0.245</td></tr><tr><th>Mesh original bounds</th><td>1.198</td><td>0.668</td><td>0.283</td></tr><tr><th>Group display bounds</th><td>2.154</td><td>1.224</td><td>1.045</td></tr><tr><th>Group original bounds</th><td>5.953</td><td>2.894</td><td>0.987</td></tr><tr><th>Scene CPU preparation</th><td>7.746</td><td>7.556</td><td>7.500</td></tr></tbody></table>
+<p>The new build uses 7.2% less time than compiler-only AVX2 in this comparison. The ranges below show the variation in whole-run timing.</p>
+<table><thead><tr><th>Build</th><th>Total range, seconds</th></tr></thead><tbody><tr><th>Original SSE2</th><td>41.830–47.511</td></tr><tr><th>Compiler AVX2</th><td>35.808–37.930</td></tr><tr><th>New SIMD</th><td>32.954–37.715</td></tr></tbody></table>
+<h2>What changed</h2><ul>
+<li>AVX2 is the x64 minimum for woby targets. Apple ARM64 builds target M1 and use NEON.</li>
+<li>Bounds use explicit compare-and-select reductions. They retain the first value on equal or unordered comparisons. This preserves signed-zero and NaN behavior.</li>
+<li>Original-coordinate bounds select position storage once. Index checks remain in the loop. This removes a function call and repeated SIMD register spills for each corner.</li>
+<li>Coordinate rebasing uses contiguous vector loads and subtracts. Its loop stays outside the large importer function.</li>
+<li>Mesh and group radius rules, finite-coordinate validation, source IDs, seams, progress callbacks, and worker cancellation remain covered by tests.</li>
+<li>Integer bit checks normalize signed zero in analysis and scene hashes. This fixes a regression exposed by the AVX2 build.</li></ul>
+<h2>AVX-512 and Apple M1</h2>
+<p><code>WOBY_ENABLE_AVX512_REBASE=ON</code> adds a separate AVX-512 translation unit for coordinate rebasing. CPU feature and OS register-state checks guard each dispatch. The option is off by default. The measured build included it, but this Ryzen CPU selected AVX2.</p>
+<p>AVX-512 compilation and instruction inspection passed. Native AVX-512 execution was not available. The NEON headers passed an ARM64 Clang compile with warnings treated as errors. That check used an ARM64 Windows target; a native macOS build and M1 timing remain open.</p>
+<p>The report supports faster bounds selection and access. It does not establish a benefit from 512-bit vectors on this workload. See the <a href="https://learn.microsoft.com/en-us/cpp/build/reference/arch-x64?view=msvc-170">MSVC ISA option reference</a> and the <a href="https://arm-software.github.io/acle/neon_intrinsics/">Arm NEON intrinsic reference</a>.</p>
+<h2>Validation</h2><p>The Release application and tests build without warnings. All 82 default test groups and all 8 slow tests pass. Affected geometry tests were repeated after the final code changes. New cases cover storage modes, primitive ranges, invalid indices, signed zero, NaNs, subnormal hashes, vector tails, progress, and radius rules.</p>
+<p>A small compiler check reproduces the hash issue: MSVC 19.51 with <code>/O2 /arch:AVX2</code> removes the floating-point zero selection before a bit cast. The SSE2 build retains it. Integer normalization retains the check in both builds. The source and assembly listings are in the archive.</p>
+<h2>Method and reproduction</h2>
+<p>Input: 7,108,991,827 bytes; 75,771,986 triangles; 38,414,391 render vertices; 37,890,645 source positions. Each run uses a fresh process and 16 parser workers. The runner warms the input and rotates build order. No build or test job runs during measurement. Geometry validation occurs after the timed preparation phases.</p>
+<p>The original executables were saved from revision <code>039eed0ebab1</code> before changes. The compiler-only control applies AVX2 to the six instrumented source units and harness; its common libraries retain the original ISA. The final build applies the new x64 baseline to woby targets. The archive includes an earlier three-way comparison; the tables above use only <code>final-measurements.json</code>.</p>
+<pre>cmake --preset vs2026-vcpkg -DWOBY_BUILD_OBJ_PROFILE=ON -DWOBY_ENABLE_AVX512_REBASE=ON
+cmake --build --preset vs2026-vcpkg --config Release
+ctest --preset vs2026-vcpkg -C Release
+ctest --preset vs2026-vcpkg-slow -C Release
+
+# Save the two original executables and their DLLs before changing the source.
+# Rename the saved AVX2 executable to woby_obj_profile_compiler_avx2.exe.
+uv run doc/benchmarks/simd-20261013/run.py   build/simd-before/woby_obj_profile_compiler_avx2.exe   D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj   --modes prepare --workers 16 --rounds 3   --compare-executable build/vs2026-vcpkg/bin/Release/woby_obj_profile_avx2.exe   --compare-executable build/simd-before/woby_obj_profile_sse2.exe   --output final-measurements.json</pre>
+<p>Enter the runner command on one line in PowerShell. The runner accepts repeated <code>--compare-executable</code> options. The summary contains executable, input, and final source hashes.</p>
+<p><a href="summary.json">Summary JSON</a> · <a href="measurements.zip">Raw records and validation archive</a> · <a href="run.py">Comparison runner</a> · <a href="../obj-beartrap-20261011/report.html">Original investigation</a></p></main></html>

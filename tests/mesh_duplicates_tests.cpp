@@ -408,6 +408,25 @@ TEST_CASE("analysis index preserves insertion IDs through growth and signed zero
     CHECK(woby::analysisIndex(index, std::array<double, 3>{std::numeric_limits<double>::denorm_min(),0,0}) == 10000);
 }
 
+TEST_CASE("analysis key hashes normalize signed zero without losing subnormal coordinates")
+{
+    for (size_t axis = 0; axis < 3; ++axis) {
+        std::array<double, 3> positive{1, 2, 3}, negative = positive;
+        positive[axis] = 0.0; negative[axis] = -0.0;
+        CHECK(woby::analysisKeyHash(positive) == woby::analysisKeyHash(negative));
+        woby::AnalysisIndex<double, 3> index;
+        CHECK(woby::analysisIndex(index, negative) == 0);
+        CHECK(woby::analysisIndex(index, positive) == 0);
+        positive[axis] = std::numeric_limits<double>::denorm_min();
+        CHECK(woby::analysisIndex(index, positive) == 1);
+        positive[axis] = -positive[axis];
+        CHECK(woby::analysisIndex(index, positive) == 2);
+        std::array<float, 3> positiveFloat{1, 2, 3}, negativeFloat = positiveFloat;
+        positiveFloat[axis] = 0.0f; negativeFloat[axis] = -0.0f;
+        CHECK(woby::analysisKeyHash(positiveFloat) == woby::analysisKeyHash(negativeFloat));
+    }
+}
+
 TEST_CASE("duplicate buckets retain dense repeated faces and transformed overlapping selections")
 {
     auto data = triangle();

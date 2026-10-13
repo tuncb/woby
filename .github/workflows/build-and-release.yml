@@ -44,6 +44,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Report runner CPU features
+        shell: pwsh
+        run: |
+          "Process architecture: $([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)"
+          "AVX2 available to the OS: $([System.Runtime.Intrinsics.X86.Avx2]::IsSupported)"
+          "AVX-512F available to the OS: $([System.Runtime.Intrinsics.X86.Avx512F]::IsSupported)"
+          "ARM64 NEON available to the OS: $([System.Runtime.Intrinsics.Arm.AdvSimd+Arm64]::IsSupported)"
+          if ($IsWindows) {
+            Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors
+          } elseif ($IsMacOS) {
+            sysctl machdep.cpu.brand_string hw.optional.neon
+          } else {
+            lscpu
+          }
+
       - name: Set up MSVC
         if: runner.os == 'Windows'
         shell: pwsh
@@ -418,3 +433,15 @@ jobs:
           name: ${{ matrix.package_name }}
           path: ${{ steps.package.outputs.archive }}
           if-no-files-found: error
+
+      # Keep release packages on the default ISA. Also compile the optional path
+      # and test its CPU/OS dispatch, including AVX2 fallback, on each x64 runner.
+      - name: Test optional AVX-512 coordinate rebasing
+        if: runner.arch == 'X64'
+        shell: pwsh
+        run: |
+          cmake -S . -B "build/${{ matrix.package_name }}" -DWOBY_ENABLE_AVX512_REBASE=ON
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build "build/${{ matrix.package_name }}" --config Release --target woby_tests --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir "build/${{ matrix.package_name }}" --build-config Release --output-on-failure --no-tests=error -R '^woby_tests::(simd_geometry_tests|mesh_duplicates_tests|importer_point_ids_tests)$'

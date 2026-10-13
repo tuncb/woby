@@ -25,7 +25,9 @@ void hashFloat(uint64_t& seed, float value)
 
 void hashDouble(uint64_t& seed, double value)
 {
-    hashCombine(seed, std::bit_cast<uint64_t>(value == 0 ? 0.0 : value));
+    auto bits = std::bit_cast<uint64_t>(value);
+    if ((bits & 0x7fffffffffffffffull) == 0) { bits = 0; }
+    hashCombine(seed, bits);
 }
 void hashBool(uint64_t& seed, bool value)
 {

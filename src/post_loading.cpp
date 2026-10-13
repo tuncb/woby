@@ -1,4 +1,5 @@
 #include "post_loading.h"
+#include "simd_bounds.h"
 #include "mesh_duplicates.h"
 #include "surface_annotation.h"
 #include "ui_operations.h"
@@ -56,16 +57,15 @@ std::optional<PostLoadData> preparePostLoadData(const Mesh& mesh, const std::fun
         }
         result.source = std::move(source);
     } else { result.source = mesh.sourceData; }
+    auto originalReduction = doubleBoundsReduction({});
     for (size_t i = 0; i < geometry.vertices.size(); ++i) {
         if (i % 65536 == 0 && stop()) { return {}; }
         const auto point = originalPosition(meshPosition(mesh, i), mesh.origin);
         if (!finiteCoordinate(point)) { throw std::runtime_error("Non-finite original coordinate."); }
-        if (!i) { result.originalBounds = {point, point}; }
-        else { for (size_t k = 0; k < 3; ++k) {
-            result.originalBounds[0][k] = std::min(result.originalBounds[0][k], point[k]);
-            result.originalBounds[1][k] = std::max(result.originalBounds[1][k], point[k]);
-        } }
+        if (!i) { originalReduction = doubleBoundsReduction(point); }
+        else { expand(originalReduction, point); }
     }
+    result.originalBounds = boundsResult(originalReduction);
     auto points = prepareSceneMesh(mesh, gpuMeshPoints, stop);
     if (!points) { return {}; }
     const auto vertices = points->pointCloud ? std::span<const uint32_t>{points->pointCloud->sourceVertices}
@@ -79,19 +79,24 @@ std::optional<PostLoadData> preparePostLoadData(const Mesh& mesh, const std::fun
             if (range.pointIndexCount) { finishBox(bounds.local); }
             bounds.original = range.pointIndexCount ? result.originalBounds : std::array<Coordinate, 2>{};
         } else {
+            auto localReduction = floatBoundsReduction({}, {});
+            auto groupOriginalReduction = doubleBoundsReduction({});
             for (size_t i = 0; i < range.pointIndexCount; ++i) {
                 if (i % 65536 == 0 && stop()) { return {}; }
                 const auto vertex = vertices[range.pointIndexOffset + i];
                 const auto& local = geometry.vertices[vertex].position;
                 const auto original = originalPosition(meshPosition(mesh, vertex), mesh.origin);
-                if (!i) { bounds.local.min = bounds.local.max = local; bounds.original = {original, original}; }
-                else { for (size_t k = 0; k < 3; ++k) {
-                    bounds.local.min[k] = std::min(bounds.local.min[k], local[k]);
-                    bounds.local.max[k] = std::max(bounds.local.max[k], local[k]);
-                    bounds.original[0][k] = std::min(bounds.original[0][k], original[k]);
-                    bounds.original[1][k] = std::max(bounds.original[1][k], original[k]);
-                } }
+                if (!i) {
+                    localReduction = floatBoundsReduction(local, local);
+                    groupOriginalReduction = doubleBoundsReduction(original);
+                } else {
+                    expand(localReduction, local);
+                    expand(groupOriginalReduction, original);
+                }
             }
+            const auto localBox = boundsResult(localReduction);
+            bounds.local.min = localBox[0]; bounds.local.max = localBox[1];
+            bounds.original = boundsResult(groupOriginalReduction);
             finishBox(bounds.local);
         }
         result.groups.push_back(bounds);

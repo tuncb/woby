@@ -1,6 +1,8 @@
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/WobyCpu.cmake")
 
 function(woby_enable_project_warnings target)
+    woby_enable_cpu_baseline("${target}")
     # Windows icon resources use RC, which does not accept C++ compiler flags.
     if(MSVC)
         target_compile_options("${target}" PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:/W4;/permissive-;/EHs>")

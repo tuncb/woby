@@ -1,4 +1,5 @@
 #include "model_mesh.h"
+#include "simd_bounds.h"
 
 #include <algorithm>
 #include <atomic>
@@ -177,15 +178,36 @@ Coordinate meshPosition(const Mesh& mesh, size_t index)
 std::array<Coordinate, 2> originalMeshBounds(const Mesh& mesh, const MeshNode* node)
 {
     if (!node && mesh.originalBounds) { return *mesh.originalBounds; }
+    const auto& geometry = meshGeometry(mesh);
     const auto indices = node ? meshNodeIndices(mesh, *node) : std::span<const uint32_t>{};
-    const auto count = node ? indices.size() : meshGeometry(mesh).vertices.size();
-    std::array<Coordinate, 2> bounds{};
-    for (size_t i = 0; i < count; ++i) {
-        const auto p = originalPosition(meshPosition(mesh, node ? indices[i] : i), mesh.origin);
-        if (i == 0) { bounds = {p, p}; }
-        else { for (size_t k = 0; k < 3; ++k) { bounds[0][k] = std::min(bounds[0][k], p[k]); bounds[1][k] = std::max(bounds[1][k], p[k]); } }
+    const auto count = node ? indices.size() : geometry.vertices.size();
+    if (!count) { return {}; }
+    // Select storage once. The checked accessor can then stay inline, so each
+    // corner does not spill the SIMD accumulators around a meshPosition call.
+    const auto reduce = [&](const auto& position) {
+        const auto original = [&](size_t i) {
+            const size_t index = node ? indices[i] : i;
+            if (index >= geometry.vertices.size()) { throw std::out_of_range("Invalid render vertex index."); }
+            return originalPosition(position(index), mesh.origin);
+        };
+        auto bounds = doubleBoundsReduction(original(0));
+        for (size_t i = 1; i < count; ++i) { expand(bounds, original(i)); }
+        return boundsResult(bounds);
+    };
+    if (geometry.sourcePositions) {
+        const auto& positions = *geometry.sourcePositions;
+        if (geometry.positionIndexing == PositionIndexing::identity) {
+            return reduce([&](size_t i) { return positions.at(i); });
+        }
+        return reduce([&](size_t i) { return positions.at(geometry.positionIndices.at(i)); });
     }
-    return bounds;
+    if (!geometry.precisePositions.empty()) {
+        return reduce([&](size_t i) { return geometry.precisePositions.at(i); });
+    }
+    return reduce([&](size_t i) {
+        const auto& p = geometry.vertices[i].position;
+        return Coordinate{p[0], p[1], p[2]};
+    });
 }
 std::array<float, 3> renderPosition(const Coordinate& point)
 {
@@ -209,11 +231,12 @@ Coordinate originalPosition(const Coordinate& point, const Coordinate& origin)
 Coordinate coordinateOrigin(const std::vector<Coordinate>& points)
 {
     if (points.empty()) { return {}; }
-    auto low = points.front(), high = low;
+    auto bounds = doubleBoundsReduction(points.front());
     for (const auto& p : points) {
         if (!finiteCoordinate(p)) { throw std::invalid_argument("Non-finite source coordinate."); }
-        for (size_t k = 0; k < 3; ++k) { low[k] = std::min(low[k], p[k]); high[k] = std::max(high[k], p[k]); }
+        expand(bounds, p);
     }
+    const auto [low, high] = boundsResult(bounds);
     Coordinate origin{};
     // Small coordinates already have a useful working frame. Keep their existing
     // origin, including models straddling zero. Rebase large absolute offsets.
@@ -371,17 +394,17 @@ Bounds calculateBounds(const std::vector<Vertex>& vertices, const ModelLoadProgr
     Bounds bounds{};
     bounds.min = vertices.front().position;
     bounds.max = vertices.front().position;
+    auto reduction = floatBoundsReduction(bounds.min, bounds.max);
 
     size_t completed = 0;
     const auto total = vertices.size() * 2;
     for (const auto& vertex : vertices) {
         if (completed % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::bounds, completed, total); }
         ++completed;
-        for (size_t axis = 0; axis < 3u; ++axis) {
-            bounds.min[axis] = std::min(bounds.min[axis], vertex.position[axis]);
-            bounds.max[axis] = std::max(bounds.max[axis], vertex.position[axis]);
-        }
+        expand(reduction, vertex.position);
     }
+    const auto box = boundsResult(reduction);
+    bounds.min = box[0]; bounds.max = box[1];
 
     for (size_t axis = 0; axis < 3u; ++axis) {
         bounds.center[axis] = (bounds.min[axis] + bounds.max[axis]) * 0.5f;
