@@ -49,20 +49,20 @@ std::optional<PostLoadData> preparePostLoadData(const Mesh& mesh, const std::fun
     if (stop()) { return {}; }
     PostLoadData result;
     const auto& geometry = meshGeometry(mesh);
-    if (mesh.sourceData && mesh.sourceData->indicesPending) {
-        auto source = std::make_shared<SourceMeshData>();
-        source->provenance = mesh.sourceData->provenance;
-        source->positions = mesh.sourceData->positions;
-        source->originalPointIds = mesh.sourceData->originalPointIds;
-        auto indices = mapSourceTriangleIndices(mesh, stop);
-        if (!indices) { return {}; }
-        source->indices = std::move(*indices);
-        result.source = std::move(source);
-    } else { result.source = mesh.sourceData; }
-    const auto originalBounds = prepareOriginalMeshBounds(mesh, stop);
-    if (!originalBounds) { return {}; }
-    result.originalBounds = *originalBounds;
-    const auto preparePoints = [&] {
+    const auto prepareModel = [&] {
+        if (mesh.sourceData && mesh.sourceData->indicesPending) {
+            auto source = std::make_shared<SourceMeshData>();
+            source->provenance = mesh.sourceData->provenance;
+            source->positions = mesh.sourceData->positions;
+            source->originalPointIds = mesh.sourceData->originalPointIds;
+            auto indices = mapSourceTriangleIndices(mesh, stop);
+            if (!indices) { throw PreparationCanceled{}; }
+            source->indices = std::move(*indices);
+            result.source = std::move(source);
+        } else { result.source = mesh.sourceData; }
+        const auto originalBounds = prepareOriginalMeshBounds(mesh, stop);
+        if (!originalBounds) { throw PreparationCanceled{}; }
+        result.originalBounds = *originalBounds;
         auto points = prepareSceneMesh(mesh, gpuMeshPoints, stop);
         if (!points) { throw PreparationCanceled{}; }
         const auto vertices = points->pointCloud ? std::span<const uint32_t>{points->pointCloud->sourceVertices}
@@ -100,14 +100,15 @@ std::optional<PostLoadData> preparePostLoadData(const Mesh& mesh, const std::fun
         }
         result.points = std::move(*points);
     };
-    // The two outputs own separate storage. Their nested spatial jobs and this
-    // coordinator all draw helper threads from the shared analysis budget.
+    // Annotations read the original geometry, not the prepared source or bounds.
+    // Run both tasks from the start. They write separate result members, and all
+    // nested work shares the helper budget. Join both before publishing or uploading.
     try {
         parallelWorkBatches(geometry.indices.empty() ? 1 : 2, 1, [&] {
             if (stop()) { throw PreparationCanceled{}; }
         }, [&](size_t begin, size_t end) {
             for (size_t task = begin; task < end; ++task) {
-                if (task == 0) { preparePoints(); }
+                if (task == 0) { prepareModel(); }
                 else { result.annotations = buildAnnotationMeshCache(mesh, stop); }
             }
         }, 2);
@@ -190,7 +191,8 @@ void updatePostLoading(PostLoadRuntime& runtime, UiState& state, std::vector<Loa
         }
         return;
     }
-    // One active worker bounds temporary memory and bandwidth use. Retired jobs own their inputs.
+    // One active model job bounds memory use. Its two tasks share the helper budget.
+    // Retired jobs own their inputs and must finish before another model starts.
     if (!runtime.retired.empty()) { return; }
     for (const auto& frame : runtime.frames) {
         if (frame.token > completedFrame) { continue; }

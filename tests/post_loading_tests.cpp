@@ -5,12 +5,14 @@
 #include "control_scene.h"
 #include "background_load.h"
 #include "ui_operations.h"
+#include "parallel_work.h"
 #include <doctest/doctest.h>
 #include <chrono>
 #include <filesystem>
 #include <atomic>
 #include <fstream>
 #include <future>
+#include <limits>
 
 namespace {
 constexpr std::string_view seamModel =
@@ -154,12 +156,20 @@ TEST_CASE("Post loading waits for frame completion and publishes GPU points with
     fixture.update();
     REQUIRE(fixture.runtime.job);
     fixture.runtime.job->worker.join();
+    REQUIRE(fixture.runtime.job->done.load());
+    REQUIRE(fixture.runtime.job->result);
+    REQUIRE(fixture.runtime.job->result->source);
+    CHECK_FALSE(fixture.runtime.job->result->source->indicesPending);
+    REQUIRE(fixture.runtime.job->result->annotations);
+    CHECK_FALSE(fixture.state.files[0].mesh.annotationCache);
     fixture.update();
     REQUIRE(fixture.runtime.upload);
     CHECK(fixture.state.files[0].postLoadPhase == woby::PostLoadPhase::uploading);
     CHECK_FALSE(woby::graphics::isValid(fixture.models[0].gpuMesh.pointIdBuffer));
     fixture.update();
     CHECK_FALSE(woby::scenePostLoadReady(fixture.state));
+    CHECK_FALSE(fixture.state.files[0].mesh.annotationCache);
+    CHECK(fixture.state.files[0].mesh.sourceData->indicesPending);
     REQUIRE(fixture.runtime.upload);
     const auto frameToken = woby::graphics::submittedFrameToken();
     uploads.unblock();
@@ -167,6 +177,8 @@ TEST_CASE("Post loading waits for frame completion and publishes GPU points with
     fixture.update();
     CHECK(woby::graphics::submittedFrameToken() == frameToken);
     CHECK(woby::scenePostLoadReady(fixture.state));
+    CHECK(woby::annotationMeshSnapshotReady(fixture.state.files[0].mesh));
+    CHECK_FALSE(fixture.state.files[0].mesh.sourceData->indicesPending);
     CHECK(fixture.models[0].gpuMesh.vertexBuffer.idx == vertex.idx);
     CHECK(fixture.models[0].gpuMesh.triangleIndexBuffer.idx == triangles.idx);
     CHECK(woby::graphics::isValid(fixture.models[0].gpuMesh.pointIdBuffer));
@@ -174,6 +186,47 @@ TEST_CASE("Post loading waits for frame completion and publishes GPU points with
     woby::updatePostLoadNotice(fixture.runtime, fixture.state, 101);
     CHECK(woby::postLoadNotice(fixture.runtime, fixture.state, 102.99) == "Ready");
     CHECK(woby::postLoadNotice(fixture.runtime, fixture.state, 103).empty());
+}
+
+TEST_CASE("Post load source and bounds failures join both tasks and release the worker budget")
+{
+    auto mesh = deferred(seamModel);
+    std::string error;
+    SUBCASE("source mapping") {
+        auto source = std::make_shared<woby::SourceMeshData>(*mesh.sourceData);
+        source->positions = std::make_shared<const std::vector<woby::Coordinate>>();
+        mesh.sourceData = std::move(source);
+        error = "Invalid source triangle position.";
+    }
+    SUBCASE("original bounds") {
+        mesh.origin[0] = std::numeric_limits<double>::infinity();
+        error = "Non-finite original coordinate.";
+    }
+    CHECK_THROWS_WITH((void)woby::preparePostLoadData(mesh), error.c_str());
+    CHECK(woby::analysisWorkerCount.load() == 0);
+    CHECK_FALSE(mesh.annotationCache);
+    CHECK(mesh.sourceData->indicesPending);
+    CHECK(mesh.sourceData->indices.empty());
+}
+
+TEST_CASE("Post load cancellation during early preparation does not publish partial results")
+{
+    const auto mesh = deferred(seamModel);
+    // Polls are serialized by the coordinator, including calls from nested workers.
+    for (const unsigned cancelAt : {3u, 6u, 9u}) {
+        unsigned polls = 0;
+        CHECK_FALSE(woby::preparePostLoadData(mesh, [&] { return ++polls >= cancelAt; }));
+        CHECK(polls == cancelAt);
+        CHECK(woby::analysisWorkerCount.load() == 0);
+        CHECK_FALSE(mesh.annotationCache);
+        CHECK(mesh.sourceData->indicesPending);
+        CHECK(mesh.sourceData->indices.empty());
+    }
+    const auto data = woby::preparePostLoadData(mesh);
+    REQUIRE(data);
+    REQUIRE(data->annotations);
+    REQUIRE(data->source);
+    CHECK_FALSE(data->source->indicesPending);
 }
 
 TEST_CASE("Point-only models render a placeholder then upload independently of later frames")

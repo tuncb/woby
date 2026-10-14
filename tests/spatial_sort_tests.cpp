@@ -160,12 +160,35 @@ TEST_CASE("Point key preparation retains source IDs positions groups and equal k
 
 TEST_CASE("Overlapping post load preparation agrees with serial results and joins canceled work")
 {
-    const auto mesh = testMesh();
+    auto mesh = testMesh();
+    woby::captureSourceMesh(mesh, woby::SourceProvenance::importerVertices);
+    auto source = std::make_shared<woby::SourceMeshData>(*mesh.sourceData);
+    source->indices.clear();
+    source->indicesPending = true;
+    mesh.sourceData = source;
     std::optional<woby::PostLoadData> serial;
     { ReservedWorkers reserved; serial = woby::preparePostLoadData(mesh); }
-    const auto parallel = woby::preparePostLoadData(mesh);
+    unsigned peakWorkers = 0;
+    const auto parallel = woby::preparePostLoadData(mesh, [&] {
+        peakWorkers = std::max(peakWorkers, woby::analysisWorkerCount.load());
+        return false;
+    });
     REQUIRE(serial); REQUIRE(parallel);
+    REQUIRE(serial->source); REQUIRE(parallel->source);
+    CHECK_FALSE(parallel->source->indicesPending);
+    CHECK(parallel->source->indices == serial->source->indices);
+    CHECK(parallel->source->indices == woby::meshGeometry(mesh).indices);
+    CHECK(parallel->source->positions == source->positions);
+    CHECK(source->indices.empty());
+    CHECK(source->indicesPending);
+    CHECK(peakWorkers <= woby::analysisWorkerLimit());
     CHECK(parallel->originalBounds == serial->originalBounds);
+    REQUIRE(parallel->groups.size() == serial->groups.size());
+    for (size_t i = 0; i < parallel->groups.size(); ++i) {
+        CHECK(parallel->groups[i].local.min == serial->groups[i].local.min);
+        CHECK(parallel->groups[i].local.max == serial->groups[i].local.max);
+        CHECK(parallel->groups[i].original == serial->groups[i].original);
+    }
     CHECK(parallel->points.pointVertexIndices == serial->points.pointVertexIndices);
     CHECK(parallel->annotations->fingerprints == serial->annotations->fingerprints);
     CHECK(parallel->annotations->spatial->triangles == serial->annotations->spatial->triangles);

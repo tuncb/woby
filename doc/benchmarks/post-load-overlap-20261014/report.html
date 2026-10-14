@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BearTrap: earlier annotation preparation — 14 October 2026</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;max-width:1120px;margin:40px auto;padding:0 24px;color:#172635;background:#fbfcfe}
+h1{line-height:1.2;font-size:32px}h2{margin-top:32px}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;background:white}
+td,th{padding:10px 12px;text-align:left;border-bottom:1px solid #dce3ec}th{background:#eaf0f6}small{color:#536478;white-space:nowrap}
+code{background:#eaf0f6;padding:2px 5px}a{color:#0862a3}.scroll{overflow-x:auto}.lead{font-size:20px;max-width:960px}</style>
+<h1>BearTrap: start annotations with the other post-load work</h1>
+<p>14 October 2026 · Release · Baseline <code>f8bd1e4</code> · Three runs per build and capture mode</p>
+<p class="lead">Post-load CPU work during visible camera motion changed from
+<strong>7.568 s to 6.801 s</strong> (10.1% less time).
+Post-frame peak commit stayed near <strong>8.08 GiB</strong>. The P99 CPU frame time rose from
+<strong>20.539 ms to 23.103 ms</strong>, while the frame rate stayed near 57 FPS.</p>
+<p>This experiment reduces preparation time with a measured cost in the tail of the frame-time
+distribution. The per-run ranges overlap. Keep this uncertainty when judging the three-run result.
+Native full-readiness medians were 22.015 s and 19.236 s; earlier, unchanged loading stages
+also varied. The tables below separate these measurements.</p>
+<p>The current baseline already runs point preparation alongside annotations. This change also overlaps
+source-index mapping and original bounds with annotations. Both tasks use the same immutable geometry
+snapshot and shared helper limit. They join before the point upload. Full readiness still requires both
+CPU results and the completed upload. Stale results are rejected before publication.</p>
+<p>The <a href="../e2e-beartrap-20261014/report.html">earlier report</a> used revision <code>7ee6133</code>.
+Its 20.6-second CPU sequence and 10.9-second ideal overlap limit are not the baseline for this comparison.
+Later commits already changed the preparation costs. The ideal limit was not a predicted result.</p>
+<h2>Measurements</h2>
+<p>Cells show the median and the minimum–maximum range of three runs. Native controls establish full-load
+time. Traced motion controls establish phase overlap and frame behavior during preparation. Their absolute
+times differ, so they are not pooled. Frame percentile cells show the median of three per-run percentiles.</p>
+<p>Initial CPU work also varied between the native builds, although this change starts only after the first
+model frame. Do not attribute the whole native end-to-end difference to annotation overlap. The traced
+post-load intervals measure the affected work directly.</p>
+<div class="scroll"><table><thead><tr><th>Metric</th><th>Baseline</th><th>Earlier annotations</th></tr></thead>
+<tbody><tr><td>Native full readiness, s</td><td>22.015 <small>(21.719–25.314)</small></td><td>19.236 <small>(19.230–23.772)</small></td></tr><tr><td>Native initial CPU work (before post-load tasks), s</td><td>12.664 <small>(12.455–13.956)</small></td><td>11.568 <small>(11.335–14.251)</small></td></tr><tr><td>Native full-run peak commit, GiB</td><td>10.779 <small>(10.779–10.781)</small></td><td>10.781 <small>(10.780–10.782)</small></td></tr><tr><td>Native full-run peak working set, GiB</td><td>8.939 <small>(8.939–8.940)</small></td><td>8.939 <small>(8.939–8.940)</small></td></tr><tr><td>Traced first GPU frame during motion control, s</td><td>12.255 <small>(12.216–12.650)</small></td><td>12.449 <small>(12.435–12.760)</small></td></tr><tr><td>Traced post-load CPU work during motion, s</td><td>7.822 <small>(7.586–7.901)</small></td><td>6.995 <small>(6.815–7.030)</small></td></tr><tr><td>Traced first GPU frame to full readiness, s</td><td>8.000 <small>(7.750–8.150)</small></td><td>7.150 <small>(7.000–7.251)</small></td></tr><tr><td>Post-frame sampled peak commit during motion, GiB</td><td>8.084 <small>(8.077–8.086)</small></td><td>8.081 <small>(8.080–8.082)</small></td></tr><tr><td>Post-frame sampled peak working set during motion, GiB</td><td>5.865 <small>(5.861–5.866)</small></td><td>5.863 <small>(5.862–5.864)</small></td></tr><tr><td>Visible motion during preparation: CPU frame P99, ms</td><td>20.539 <small>(19.178–25.185)</small></td><td>23.103 <small>(21.395–23.571)</small></td></tr><tr><td>Visible motion during preparation: GPU frame P95, ms</td><td>17.813 <small>(17.670–18.018)</small></td><td>20.952 <small>(19.252–21.060)</small></td></tr><tr><td>Visible motion during preparation: frames/s</td><td>57.320 <small>(57.212–59.046)</small></td><td>56.881 <small>(56.087–56.974)</small></td></tr><tr><td>Visible motion: post-load CPU work, s</td><td>7.568 <small>(7.499–9.250)</small></td><td>6.801 <small>(6.789–7.556)</small></td></tr><tr><td>Visible motion: post-frame peak commit, GiB</td><td>8.082 <small>(8.079–8.084)</small></td><td>8.081 <small>(8.080–8.083)</small></td></tr><tr><td>Hidden motion during preparation: CPU frame P99, ms</td><td>50.789 <small>(50.726–50.960)</small></td><td>50.949 <small>(50.550–55.269)</small></td></tr><tr><td>Hidden motion during preparation: frames/s</td><td>20.001 <small>(20.000–20.002)</small></td><td>20.000 <small>(20.000–20.001)</small></td></tr><tr><td>Native motion after readiness: CPU frame P99, ms</td><td>50.389 <small>(50.370–50.633)</small></td><td>50.254 <small>(50.243–50.416)</small></td></tr><tr><td>Native motion after readiness: frames/s</td><td>19.999 <small>(19.999–20.000)</small></td><td>19.999 <small>(19.998–20.000)</small></td></tr></tbody></table></div>
+<p>Memory columns separate private commit from working set. The full-run peaks include loading, screenshot
+verification, and motion after readiness. The post-frame peaks use samples between first GPU completion
+and full readiness. The observer requests a 100 ms sample period; actual intervals are in summary.json.</p>
+<h2>Navigation control</h2>
+<p>The generated trace viewer calls the normal UI camera operation at 30 degrees/second while preparation
+is pending. The production viewer has no added motion code. The comparison uses the first three seconds
+after the first moving frame. A separate recording sends 24 camera-orbit commands after readiness.</p>
+<p>These controls measure frame cadence during motion. They do not measure physical input-to-display
+latency. GPU timing can trail CPU submission. Hidden windows were paced at 20 FPS. A separate set of three
+visible-window pairs tests active rendering. All captures use a 1280×720 drawable, fresh processes,
+and a warmed copy of the same 7,108,991,827-byte OBJ. They run in rotating or alternating order without concurrent builds,
+tests, or profilers. Three runs do not establish results for other hardware.</p>
+<h2>Worker limit</h2>
+<p><code>hardware &gt; 3 ? min(8, hardware - 3) : 0</code>, where <code>hardware</code> is the logical CPU
+count reported by <code>std::thread::hardware_concurrency()</code>. This Ryzen 7 5800H has eight cores and
+16 logical CPUs, so the cap is eight helper threads. Calling threads also do work. The cap is shared by
+simultaneous and nested analyses; it is not a limit on all application threads.</p>
+<p>The post-load split can reserve one helper slot for its second task. Nested operations share the
+remaining slots. Small operations and operations without free slots run on their caller. The cap was
+introduced in commit <code>89a4e93</code> to leave capacity for the UI and other threads. No recorded study
+was found that selects eight as the best value. This change leaves the cap unchanged.</p>
+<h2>Individual runs</h2>
+<p>Early overlap is the intersection of the annotation interval with the source-index and bounds interval.
+It is zero in the baseline. All changed motion captures start annotations before source mapping ends,
+on a different thread. Both CPU tasks finish after the first GPU frame and before readiness.</p>
+<div class="scroll"><table><thead><tr><th>Run</th><th>Ready s</th><th>Post CPU s</th><th>Early overlap s</th><th>Peak commit GiB</th></tr></thead>
+<tbody><tr><td>01-r1-native-baseline</td><td>21.719</td><td>—</td><td>—</td><td>10.781</td></tr><tr><td>02-r1-native-overlap</td><td>19.236</td><td>—</td><td>—</td><td>10.780</td></tr><tr><td>03-r1-motion-baseline</td><td>20.281</td><td>7.822</td><td>0.000</td><td>10.782</td></tr><tr><td>04-r1-motion-overlap</td><td>19.731</td><td>6.995</td><td>0.858</td><td>10.782</td></tr><tr><td>05-r2-native-overlap</td><td>19.230</td><td>—</td><td>—</td><td>10.782</td></tr><tr><td>06-r2-motion-baseline</td><td>20.086</td><td>7.586</td><td>0.000</td><td>10.785</td></tr><tr><td>07-r2-motion-overlap</td><td>19.770</td><td>6.815</td><td>0.861</td><td>10.782</td></tr><tr><td>08-r2-native-baseline</td><td>22.015</td><td>—</td><td>—</td><td>10.779</td></tr><tr><td>09-r3-motion-baseline</td><td>20.844</td><td>7.901</td><td>0.000</td><td>10.779</td></tr><tr><td>10-r3-motion-overlap</td><td>19.690</td><td>7.030</td><td>0.862</td><td>10.783</td></tr><tr><td>11-r3-native-baseline</td><td>25.314</td><td>—</td><td>—</td><td>10.779</td></tr><tr><td>12-r3-native-overlap</td><td>23.772</td><td>—</td><td>—</td><td>10.781</td></tr><tr><td>01-r1-visible-motion-baseline</td><td>21.531</td><td>9.250</td><td>0.000</td><td>10.782</td></tr><tr><td>02-r1-visible-motion-overlap</td><td>19.809</td><td>7.556</td><td>0.873</td><td>10.783</td></tr><tr><td>03-r2-visible-motion-overlap</td><td>19.281</td><td>6.789</td><td>0.894</td><td>10.782</td></tr><tr><td>04-r2-visible-motion-baseline</td><td>19.949</td><td>7.499</td><td>0.000</td><td>10.782</td></tr><tr><td>05-r3-visible-motion-baseline</td><td>19.774</td><td>7.568</td><td>0.000</td><td>10.783</td></tr><tr><td>06-r3-visible-motion-overlap</td><td>18.962</td><td>6.801</td><td>0.857</td><td>10.781</td></tr></tbody></table></div>
+<h2>Validation and evidence</h2>
+<p>The Release build completed without compiler warnings. All 112 default, eight slow, and 26 graphics
+CTest checks passed. Tests cover serial/parallel result equality, deferred source indices, shared worker
+limits, cancellation, source/bounds errors, stale results, the first-frame gate, and the upload readiness
+gate. The trace fixture also verifies camera motion during preparation.</p>
+<p><a href="summary.json">Numeric summary</a> · <a href="REPRODUCE.txt">Reproduction steps and worker policy</a>
+· <a href="measurements.zip">Raw results, commands, source snapshots, and validation logs</a></p>
+</html>

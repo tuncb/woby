@@ -1,0 +1,90 @@
+BearTrap annotation overlap, 14 October 2026
+
+Baseline application revision: f8bd1e4385129549017610abf8b4b70befde6a5a
+Input: D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj
+Bytes: 7,108,991,827
+SHA256: 7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329
+
+The earlier e2e-beartrap-20261014 report uses revision 7ee6133. Later changes
+already overlap points with annotations and improve several preparation passes.
+Use the baseline revision above to isolate this change. Do not attribute the
+difference from the earlier report to this change alone.
+
+Use Windows, PowerShell, and separate worktrees under D:/.worktree when needed.
+Build both variants with the vs2026-vcpkg preset in Release mode:
+  cmake --preset vs2026-vcpkg -DWOBY_BUILD_OBJ_PROFILE=ON -DWOBY_BUILD_CORNER_MAPPING=OFF
+  cmake --build --preset vs2026-vcpkg --config Release
+
+The optional corner-mapping research target is disabled because its profile
+generator no longer matches the current source. This does not change woby.
+
+The baseline uses the archived baseline-post_loading.cpp and
+baseline-e2e_generate.py. Both trace viewers include the same optional camera
+motion control. The production viewers have no added measurement code.
+Freeze woby.exe, woby_obj_e2e_viewer.exe, their runtime DLLs, and assets before
+changing a source checkout. Preserve matching PDBs for the trace viewers.
+
+Validation:
+  ctest --preset vs2026-vcpkg -C Release
+  ctest --preset vs2026-vcpkg-slow -C Release
+  ctest --preset vs2026-vcpkg-graphics -C Release
+
+Use a fresh output folder for each measurement. Run captures in sequence,
+with no builds, tests, or profilers running at the same time. The runner reads
+the input before each fresh process. It does not flush the Windows file cache.
+All captures use a 1280x720 drawable and the same helper-thread limit.
+
+Native timing and motion after readiness:
+  uv run experiments/obj-profile/e2e_run.py <variant>/woby.exe <model> --hidden --output <new-output> --settle-seconds 1 --render-seconds 1 --navigation
+
+Traced timing and motion during preparation:
+  uv run experiments/obj-profile/e2e_run.py <variant>/woby_obj_e2e_viewer.exe <model> --hidden --output <new-output> --settle-seconds 1 --render-seconds 1 --navigation --post-load-navigation
+
+The production load RPC owns the command queue until full readiness. The
+generated trace viewer therefore calls navigateUiCamera on the UI thread at
+30 degrees/second while post-load preparation is pending. This control is
+disabled by default. The production viewer does not include it. The runner
+rejects a requested motion capture if the trace has no motion begin/end marks.
+
+The comparison uses three rotating rounds, with one native and one motion
+capture per variant per round. The archive contains run-comparison.py and
+manifest.json with the exact order, paths, commands, and executable hashes.
+These captures use hidden windows, which the application paces at 20 FPS.
+Run three more pairs without --hidden to measure motion in visible windows.
+Use baseline/overlap, overlap/baseline, baseline/overlap order. The archive
+contains run-visible-motion.py and visible-manifest.json for these six runs.
+
+The analysis uses:
+- The recorded native model.add RPC interval for full-load time. This excludes
+  the observer's later discovery that the request is complete.
+- Trace marks for first GPU frame and full readiness.
+- post_load_cpu_total for the joined CPU work. Do not add overlapping phases.
+- Process peak commit and working set for the full run.
+- Sampled private bytes and working set between first GPU frame and readiness.
+- The first three seconds of recorded camera motion, after the first moving
+  frame, for the matched preparation-time navigation comparison.
+- A separate 24-command camera-orbit recording after readiness.
+
+Camera motion measures frame cadence under load. It does not measure physical
+input-to-display latency. GPU timings can trail CPU submission. Memory samples
+have a requested 100 ms period; the summary retains their actual intervals.
+Three runs show repeatability on this machine, not performance on all hardware.
+
+Worker limit:
+  hardware > 3 ? min(8, hardware - 3) : 0
+hardware is std::thread::hardware_concurrency(), the logical CPU count.
+The measured Ryzen 7 5800H has 8 cores and 16 logical CPUs, so the cap is eight
+helper threads. Callers also do work. This cap is shared by analysis helpers,
+including nested preparation; it is not a limit on all application threads.
+The outer post-load split can take one helper slot. The remaining slots serve
+nested work. If no slot is available, the caller drains the task queue.
+
+The cap was introduced in commit 89a4e933d278e56e7b387590eb6c631c18f7aa77.
+The source states that it leaves capacity for the UI and other threads. No
+recorded tuning study was found for the choice of eight. This experiment keeps
+the cap unchanged. To tune it separately, compare caps such as 2, 4, 6, and 8
+with the same load, memory, and camera-motion measurements.
+
+Raw results, commands, validation logs, and source snapshots are in
+measurements.zip. Frozen binaries remain under
+D:/woby/build/post-load-overlap-20261014.

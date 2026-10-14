@@ -52,11 +52,15 @@ def generate(root, output, reference=False):
     text = (root / "src/post_loading.cpp").read_text(encoding="utf-8")
     text = section(text, 'std::optional<PostLoadData> preparePostLoadData(', 'PostLoadIdentity postLoadIdentity(', [
         ('    PostLoadData result;',
-         '    const obj_profile::Range measuredPostLoad("post_load_cpu_total");\n    auto measuredPost = obj_profile::begin("post_source_indices");\n    PostLoadData result;'),
-        ('    const auto originalBounds = prepareOriginalMeshBounds(',
-         '    obj_profile::next(measuredPost, "post_original_bounds", {{"source_index_capacity_bytes", result.source ? result.source->indices.capacity()*sizeof(uint32_t) : 0}});\n    const auto originalBounds = prepareOriginalMeshBounds('),
-        ('    result.originalBounds = *originalBounds;',
-         '    result.originalBounds = *originalBounds;\n    obj_profile::end(measuredPost);\n    const obj_profile::Range measuredPreparation("post_parallel_preparation");'),
+         '    const obj_profile::Range measuredPostLoad("post_load_cpu_total");\n    PostLoadData result;'),
+        ('    const auto prepareModel = [&] {',
+         '    const auto prepareModel = [&] {\n        const obj_profile::Range measuredModel("post_model_preparation");\n        auto measuredPost = obj_profile::begin("post_source_indices");'),
+        ('        const auto originalBounds = prepareOriginalMeshBounds(',
+         '        obj_profile::next(measuredPost, "post_original_bounds", {{"source_index_capacity_bytes", result.source ? result.source->indices.capacity()*sizeof(uint32_t) : 0}});\n        const auto originalBounds = prepareOriginalMeshBounds('),
+        ('        result.originalBounds = *originalBounds;',
+         '        result.originalBounds = *originalBounds;\n        obj_profile::end(measuredPost);'),
+        ('        parallelWorkBatches(geometry.indices.empty() ? 1 : 2,',
+         '        const obj_profile::Range measuredPreparation("post_parallel_preparation");\n        parallelWorkBatches(geometry.indices.empty() ? 1 : 2,'),
         ('        auto points = prepareSceneMesh(',
          '        auto measuredPoints = obj_profile::begin("post_point_preparation");\n        auto points = prepareSceneMesh('),
         ('        result.groups.reserve(points->nodeRanges.size());',
@@ -95,6 +99,21 @@ def generate(root, output, reference=False):
     text = (root / "src/main.cpp").read_text(encoding="utf-8")
     text = replace(text, '        auto completeAppend = [&]() {',
                    '        uint64_t measuredFirstFrame = 0;\n        bool measuredFirstComplete = false;\n        auto completeAppend = [&]() {')
+    # The load RPC owns the command queue until readiness. Use the same camera
+    # operation on the UI thread to measure motion during preparation, without
+    # changing the production viewer or sending queued navigation commands.
+    text = replace(text, '        bool measuredFirstComplete = false;',
+                   '        bool measuredFirstComplete = false;\n'
+                   '        const bool measuredPostNavigation = SDL_getenv("WOBY_E2E_POST_LOAD_NAVIGATION") != nullptr;\n'
+                   '        bool measuredPostNavigating = false;')
+    text = replace(text, '            const float deltaSeconds = std::chrono::duration<float>(now - previousFrame).count();',
+                   '            const float deltaSeconds = std::chrono::duration<float>(now - previousFrame).count();\n'
+                   '            const bool measuredNavigate = measuredPostNavigation && measuredFirstComplete && postLoading.noticePending;\n'
+                   '            if (measuredNavigate != measuredPostNavigating) {\n'
+                   '                obj_profile::mark(measuredNavigate ? "post_navigation_begin" : "post_navigation_end");\n'
+                   '                measuredPostNavigating = measuredNavigate;\n'
+                   '            }\n'
+                   '            if (measuredNavigate) { woby::navigateUiCamera(ui, {30.0f * deltaSeconds}); }')
     text = replace(text, '            if (!historyRestore.active) { woby::updatePostLoading(',
                    '            if (measuredFirstFrame && !measuredFirstComplete && woby::graphics::completedFrameToken() >= measuredFirstFrame) {\n                obj_profile::mark("first_scene_frame_gpu_complete", {{"frame_token", measuredFirstFrame}});\n                measuredFirstComplete = true;\n            }\n            if (!historyRestore.active) { woby::updatePostLoading(')
     text = replace(text, '            woby::notePostLoadFrame(postLoading, ui, woby::graphics::submittedFrameToken());',

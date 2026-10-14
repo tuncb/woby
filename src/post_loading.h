@@ -20,6 +20,7 @@ struct PostLoadData {
     SceneMeshPreparation points;
 };
 // Deterministic CPU preparation over an owned immutable mesh snapshot.
+// Join annotations and model preparation before returning either result.
 [[nodiscard]] std::optional<PostLoadData> preparePostLoadData(
     const Mesh& mesh, const std::function<bool()>& canceled = {});
 

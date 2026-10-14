@@ -138,6 +138,10 @@ def run(args):
     report["system_counter_errors"] = system_counters.get("errors", system_counters.get("error"))
     report["system_samples"] = []
     environment = dict(os.environ, WOBY_E2E_TRACE_PATH=str(trace_path), VK_LOADER_LAYERS_DISABLE="~implicit~")
+    environment.pop("WOBY_E2E_POST_LOAD_NAVIGATION", None)
+    report["post_load_navigation"] = args.post_load_navigation
+    if args.post_load_navigation:
+        environment["WOBY_E2E_POST_LOAD_NAVIGATION"] = "1"
     environment["VK_LOADER_LAYERS_ALLOW"] = "VK_LAYER_NV_nsight*,VK_LAYER_NV_GPU_Trace*,VK_LAYER_NV_nomad*" if args.profiler else ""
     # A native visible measurement needs a normal window. Profiler helpers remain hidden.
     startup = subprocess.STARTUPINFO()
@@ -370,6 +374,10 @@ def run(args):
         if errors:
             report["observer_errors"] = sorted(set(errors))
         report["trace"] = load_trace(trace_path)
+        if args.post_load_navigation and "error" not in report:
+            marks = {event["name"] for event in report["trace"] if event["kind"] == "mark"}
+            if not {"post_navigation_begin", "post_navigation_end"} <= marks:
+                report["error"] = "Post-load navigation was not recorded. Use the generated trace viewer."
         close_counters(system_counters)
         report["duration_ms"] = now()
         (output / "result.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -392,6 +400,8 @@ def main():
     parser.add_argument("--staging-mib", type=int)
     parser.add_argument("--memory-map", action="store_true")
     parser.add_argument("--navigation", action="store_true")
+    parser.add_argument("--post-load-navigation", action="store_true",
+                        help="Orbit at 30 degrees/s during preparation (generated trace viewer only)")
     parser.add_argument("--render-features", action="store_true")
     parser.add_argument("--reload-cycles", type=int, default=1)
     args = parser.parse_args()

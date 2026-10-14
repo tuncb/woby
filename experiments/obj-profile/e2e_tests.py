@@ -114,7 +114,7 @@ class ViewerTraceTests(unittest.TestCase):
             output = root / "measurements"
             result = subprocess.run([sys.executable, str(Path(__file__).with_name("e2e_run.py")),
                                      str(self.executable), str(model), "--hidden", "--output", str(output),
-                                     "--settle-seconds", "0", "--render-seconds", "0"],
+                                     "--settle-seconds", "0", "--render-seconds", "0", "--post-load-navigation"],
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=90)
             self.assertEqual(result.returncode, 0, result.stdout)
             record = json.loads((output / "result.json").read_text(encoding="utf-8"))
@@ -136,6 +136,11 @@ class ViewerTraceTests(unittest.TestCase):
             names = ("model_add_requested", "first_scene_frame_submitted", "first_scene_frame_gpu_complete", "all_tools_ready", "model_add_rpc_complete")
             self.assertTrue(set(names) <= marks.keys(), marks.keys())
             self.assertEqual(sorted(marks[n]["time_ms"] for n in names), [marks[n]["time_ms"] for n in names])
+            self.assertTrue(record["post_load_navigation"])
+            self.assertLessEqual(marks["first_scene_frame_gpu_complete"]["time_ms"], marks["post_navigation_begin"]["time_ms"])
+            self.assertLess(marks["post_navigation_begin"]["time_ms"], marks["all_tools_ready"]["time_ms"])
+            self.assertGreaterEqual(marks["post_navigation_end"]["time_ms"], marks["all_tools_ready"]["time_ms"])
+            self.assertGreater(len({event["camera"][3] for event in record["load_frames"]["events"]}), 1)
             self.assertGreaterEqual(len({p["thread_id"] for p in phases.values()}), 2)
             validation = [p for p in phases.values() if p["name"] == "gpu_index_validation"]
             self.assertEqual([p["data"]["validation_reused"] for p in validation], [0, 1])

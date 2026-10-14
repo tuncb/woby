@@ -13,6 +13,8 @@ namespace woby {
 
 // Shared by simultaneous analyses. Leave capacity for the UI, render thread,
 // and the two coordinating analysis workers; small jobs stay on their caller.
+// This counts helper threads only. Callers also work. The cap is a fixed policy,
+// not an automatic measurement of CPU load or memory bandwidth.
 inline std::atomic<unsigned> analysisWorkerCount{0};
 inline unsigned analysisWorkerLimit()
 {
