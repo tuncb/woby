@@ -20,14 +20,13 @@ inline unsigned analysisWorkerLimit()
     return hardware > 3 ? std::min(8u, hardware - 3) : 0u;
 }
 
-template <typename Function>
-void parallelAnalysisBatches(size_t count, size_t batchSize, std::stop_token stop, const Function& function,
+// The check function can run on any worker. Exceptions stop the queue and are
+// rethrown only after all workers join. Nested jobs use the same worker budget.
+template <typename Check, typename Function>
+void parallelWorkBatches(size_t count, size_t batchSize, const Check& checkCanceled, const Function& function,
     size_t minimumParallelCount = 4096)
 {
     if (batchSize == 0) { throw std::invalid_argument("Analysis batch size must be positive."); }
-    const auto checkCanceled = [&] {
-        if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
-    };
     checkCanceled();
     if (count < minimumParallelCount || analysisWorkerLimit() == 0) {
         for (size_t begin = 0; begin < count;) {
@@ -85,6 +84,15 @@ void parallelAnalysisBatches(size_t count, size_t batchSize, std::stop_token sto
     } // Join before reading results or propagating a worker's exception.
     if (failure) { std::rethrow_exception(failure); }
     checkCanceled();
+}
+
+template <typename Function>
+void parallelAnalysisBatches(size_t count, size_t batchSize, std::stop_token stop, const Function& function,
+    size_t minimumParallelCount = 4096)
+{
+    parallelWorkBatches(count, batchSize, [&] {
+        if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
+    }, function, minimumParallelCount);
 }
 
 } // namespace woby
