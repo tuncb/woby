@@ -3,6 +3,7 @@
 #include "mesh_duplicates.h"
 #include "surface_annotation.h"
 #include "ui_operations.h"
+#include "parallel_work.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -11,6 +12,7 @@
 namespace woby {
 PostLoadRuntime::~PostLoadRuntime() { cancelPostLoading(*this); }
 namespace {
+struct PreparationCanceled {};
 void finishBox(Bounds& box)
 {
     for (size_t k = 0; k < 3; ++k) { box.center[k] = (box.min[k] + box.max[k]) * .5f; }
@@ -37,7 +39,13 @@ void retireJob(PostLoadRuntime& runtime)
 
 std::optional<PostLoadData> preparePostLoadData(const Mesh& mesh, const std::function<bool()>& canceled)
 {
-    const auto stop = [&] { return canceled && canceled(); };
+    std::mutex cancelMutex;
+    bool stopped = false;
+    const auto stop = [&] {
+        std::lock_guard lock(cancelMutex);
+        if (!stopped && canceled) { stopped = canceled(); }
+        return stopped;
+    };
     if (stop()) { return {}; }
     PostLoadData result;
     const auto& geometry = meshGeometry(mesh);
@@ -66,44 +74,60 @@ std::optional<PostLoadData> preparePostLoadData(const Mesh& mesh, const std::fun
         else { expand(originalReduction, point); }
     }
     result.originalBounds = boundsResult(originalReduction);
-    auto points = prepareSceneMesh(mesh, gpuMeshPoints, stop);
-    if (!points) { return {}; }
-    const auto vertices = points->pointCloud ? std::span<const uint32_t>{points->pointCloud->sourceVertices}
-        : std::span<const uint32_t>{points->pointVertexIndices};
-    result.groups.reserve(points->nodeRanges.size());
-    for (const auto& range : points->nodeRanges) {
-        if (stop()) { return {}; }
-        PostLoadGroupBounds bounds;
-        if (!range.pointIndexCount || range.pointIndexCount == geometry.vertices.size()) {
-            bounds.local = mesh.bounds;
-            if (range.pointIndexCount) { finishBox(bounds.local); }
-            bounds.original = range.pointIndexCount ? result.originalBounds : std::array<Coordinate, 2>{};
-        } else {
-            auto localReduction = floatBoundsReduction({}, {});
-            auto groupOriginalReduction = doubleBoundsReduction({});
-            for (size_t i = 0; i < range.pointIndexCount; ++i) {
-                if (i % 65536 == 0 && stop()) { return {}; }
-                const auto vertex = vertices[range.pointIndexOffset + i];
-                const auto& local = geometry.vertices[vertex].position;
-                const auto original = originalPosition(meshPosition(mesh, vertex), mesh.origin);
-                if (!i) {
-                    localReduction = floatBoundsReduction(local, local);
-                    groupOriginalReduction = doubleBoundsReduction(original);
-                } else {
-                    expand(localReduction, local);
-                    expand(groupOriginalReduction, original);
+    const auto preparePoints = [&] {
+        auto points = prepareSceneMesh(mesh, gpuMeshPoints, stop);
+        if (!points) { throw PreparationCanceled{}; }
+        const auto vertices = points->pointCloud ? std::span<const uint32_t>{points->pointCloud->sourceVertices}
+            : std::span<const uint32_t>{points->pointVertexIndices};
+        result.groups.reserve(points->nodeRanges.size());
+        for (const auto& range : points->nodeRanges) {
+            if (stop()) { throw PreparationCanceled{}; }
+            PostLoadGroupBounds bounds;
+            if (!range.pointIndexCount || range.pointIndexCount == geometry.vertices.size()) {
+                bounds.local = mesh.bounds;
+                if (range.pointIndexCount) { finishBox(bounds.local); }
+                bounds.original = range.pointIndexCount ? result.originalBounds : std::array<Coordinate, 2>{};
+            } else {
+                auto localReduction = floatBoundsReduction({}, {});
+                auto groupOriginalReduction = doubleBoundsReduction({});
+                for (size_t i = 0; i < range.pointIndexCount; ++i) {
+                    if (i % 65536 == 0 && stop()) { throw PreparationCanceled{}; }
+                    const auto vertex = vertices[range.pointIndexOffset + i];
+                    const auto& local = geometry.vertices[vertex].position;
+                    const auto original = originalPosition(meshPosition(mesh, vertex), mesh.origin);
+                    if (!i) {
+                        localReduction = floatBoundsReduction(local, local);
+                        groupOriginalReduction = doubleBoundsReduction(original);
+                    } else {
+                        expand(localReduction, local);
+                        expand(groupOriginalReduction, original);
+                    }
                 }
+                const auto localBox = boundsResult(localReduction);
+                bounds.local.min = localBox[0]; bounds.local.max = localBox[1];
+                bounds.original = boundsResult(groupOriginalReduction);
+                finishBox(bounds.local);
             }
-            const auto localBox = boundsResult(localReduction);
-            bounds.local.min = localBox[0]; bounds.local.max = localBox[1];
-            bounds.original = boundsResult(groupOriginalReduction);
-            finishBox(bounds.local);
+            result.groups.push_back(bounds);
         }
-        result.groups.push_back(bounds);
+        result.points = std::move(*points);
+    };
+    // The two outputs own separate storage. Their nested spatial jobs and this
+    // coordinator all draw helper threads from the shared analysis budget.
+    try {
+        parallelWorkBatches(geometry.indices.empty() ? 1 : 2, 1, [&] {
+            if (stop()) { throw PreparationCanceled{}; }
+        }, [&](size_t begin, size_t end) {
+            for (size_t task = begin; task < end; ++task) {
+                if (task == 0) { preparePoints(); }
+                else { result.annotations = buildAnnotationMeshCache(mesh, stop); }
+            }
+        }, 2);
+    } catch (const PreparationCanceled&) { return {}; }
+    catch (...) {
+        if (stop()) { return {}; }
+        throw;
     }
-    result.points = std::move(*points);
-    if (stop()) { return {}; }
-    if (!geometry.indices.empty()) { result.annotations = buildAnnotationMeshCache(mesh, stop); }
     if (stop()) { return {}; }
     return result;
 }

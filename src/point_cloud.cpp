@@ -1,5 +1,6 @@
 #include "point_cloud.h"
 #include "scene_mesh_preparation.h"
+#include "spatial_sort.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -20,15 +21,7 @@ struct Key { uint32_t morton,id; };
 struct Canceled {};
 void checkCancel(const std::function<bool()>& cancel) { if (cancel && cancel()) throw Canceled{}; }
 void radix(std::vector<Key>& keys, const std::function<bool()>& cancel) {
-    std::vector<Key> scratch(keys.size());
-    for (uint32_t shift=0;shift<32;shift+=8) {
-        std::array<size_t,256> offsets{};
-        for (size_t i=0;i<keys.size();++i) { if ((i&65535)==0) checkCancel(cancel); ++offsets[(keys[i].morton>>shift)&255]; }
-        size_t sum=0;
-        for (auto& offset:offsets) { const auto count=offset; offset=sum; sum+=count; }
-        for (size_t i=0;i<keys.size();++i) { if ((i&65535)==0) checkCancel(cancel); const auto key=keys[i]; scratch[offsets[(key.morton>>shift)&255]++]=key; }
-        keys.swap(scratch);
-    }
+    stableSpatialRadixSort(keys, [](const Key& key) { return key.morton; }, [&] { checkCancel(cancel); });
 }
 uint32_t buildNode(Cloud& cloud,uint32_t begin,uint32_t count,uint32_t group,uint32_t leafSize,uint32_t proxySize,const std::function<bool()>& cancel) {
     checkCancel(cancel);
@@ -117,7 +110,15 @@ Cloud buildCloud(const Mesh& mesh,uint32_t leafSize,uint32_t proxySize) {
     return std::move(*buildCloud(mesh,std::move(prepared->pointVertexIndices),prepared->nodeRanges,{},leafSize,proxySize));
 }
 std::optional<Cloud> buildCloud(const Mesh& mesh,std::vector<uint32_t> sourceVertices,
-    std::span<const GpuNodeRange> ranges,const std::function<bool()>& cancel,uint32_t leafSize,uint32_t proxySize) {
+    std::span<const GpuNodeRange> ranges,const std::function<bool()>& shouldCancel,uint32_t leafSize,uint32_t proxySize) {
+    // Keep caller callbacks serialized, including callbacks with mutable state.
+    std::mutex cancelMutex;
+    bool canceled=false;
+    const std::function<bool()> cancel = [&] {
+        std::lock_guard lock(cancelMutex);
+        if (!canceled && shouldCancel) { canceled=shouldCancel(); }
+        return canceled;
+    };
     require(leafSize>=2 && proxySize>0 && proxySize<=leafSize,"Invalid hierarchy sizes");
     Cloud cloud; cloud.sourceVertices=std::move(sourceVertices);
     require(cloud.sourceVertices.size()<std::numeric_limits<uint32_t>::max(),"Point source IDs exceed 32 bits");
@@ -140,17 +141,19 @@ std::optional<Cloud> buildCloud(const Mesh& mesh,std::vector<uint32_t> sourceVer
             const float value=position(id)[axis]; require(std::isfinite(value),"Nonfinite source point");
             low[axis]=std::min(low[axis],value); high[axis]=std::max(high[axis],value);
         }}
-        std::vector<Key> keys; keys.reserve(end-first);
-        for (uint32_t id=first;id<end;++id) {
-            if ((id&65535)==0) checkCancel(cancel);
-            uint32_t key=0;
-            for (uint32_t axis=0;axis<3;++axis) {
-                const double extent=double(high[axis])-low[axis];
-                const double value=extent>0?(double(position(id)[axis])-low[axis])/extent:0;
-                key|=spread(static_cast<uint32_t>(std::clamp(value*1023,0.0,1023.0)))<<axis;
+        std::vector<Key> keys(end-first);
+        parallelWorkBatches(keys.size(),spatialKeyBatchSize,[&] { checkCancel(cancel); },[&](size_t begin,size_t finish) {
+            for (size_t i=begin;i<finish;++i) {
+                const auto id=first+static_cast<uint32_t>(i);
+                uint32_t key=0;
+                for (uint32_t axis=0;axis<3;++axis) {
+                    const double extent=double(high[axis])-low[axis];
+                    const double value=extent>0?(double(position(id)[axis])-low[axis])/extent:0;
+                    key|=spread(static_cast<uint32_t>(std::clamp(value*1023,0.0,1023.0)))<<axis;
+                }
+                keys[i]={key,id};
             }
-            keys.push_back({key,id});
-        }
+        },spatialKeyBatchSize*2);
         radix(keys,cancel);
         const auto begin=static_cast<uint32_t>(cloud.points.size());
         for (size_t i=0;i<keys.size();++i) { if ((i&65535)==0) checkCancel(cancel); const auto key=keys[i]; cloud.points.push_back({position(key.id),key.id}); }

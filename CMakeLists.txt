@@ -621,6 +621,7 @@ if(BUILD_TESTING)
         tests/scene_edge_tests.cpp
         tests/coordinate_origin_tests.cpp
         tests/model_mesh_tests.cpp
+        tests/spatial_sort_tests.cpp
         tests/simd_geometry_tests.cpp
         tests/obj_mesh_tests.cpp
         tests/obj_prototype_tests.cpp

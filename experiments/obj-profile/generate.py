@@ -185,7 +185,7 @@ def generate(root, output, reference=False):
     text = (root / "src/point_cloud.cpp").read_text(encoding="utf-8")
     text = section(text, 'std::optional<Cloud> buildCloud(', 'Selection selectDetail(', [
         ('        auto low=position(first), high=low;', '        auto measuredPoints = obj_profile::begin("point_range_bounds");\n        auto low=position(first), high=low;'),
-        ('        std::vector<Key> keys; keys.reserve(end-first);', '        obj_profile::next(measuredPoints, "point_morton_keys");\n        std::vector<Key> keys; keys.reserve(end-first);'),
+        ('        std::vector<Key> keys(end-first);', '        obj_profile::next(measuredPoints, "point_morton_keys");\n        std::vector<Key> keys(end-first);'),
         ('        radix(keys,cancel);', '        obj_profile::next(measuredPoints, "point_radix_sort");\n        radix(keys,cancel);\n        obj_profile::next(measuredPoints, "point_sorted_gather");'),
         ('        cloud.roots.push_back(buildNode', '        obj_profile::next(measuredPoints, "point_tree_build");\n        cloud.roots.push_back(buildNode'),
         ('leafSize,proxySize,cancel));', 'leafSize,proxySize,cancel));\n        obj_profile::end(measuredPoints);'),
@@ -197,7 +197,7 @@ def generate(root, output, reference=False):
     text = section(text, 'std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(', 'std::string gestureFingerprint(', [
         ('    auto cache =', '    auto measuredAnnotations = obj_profile::begin("annotation_blocks_fingerprints");\n    auto cache ='),
         ('    auto spatial =', '    obj_profile::next(measuredAnnotations, "annotation_morton_keys");\n    auto spatial ='),
-        ('        std::vector<std::pair<uint32_t, uint32_t>> scratch(keys.size());', '        obj_profile::next(measuredAnnotations, "annotation_radix_sort");\n        std::vector<std::pair<uint32_t, uint32_t>> scratch(keys.size());'),
+        ('        stableSpatialRadixSort(keys,', '        obj_profile::next(measuredAnnotations, "annotation_radix_sort");\n        stableSpatialRadixSort(keys,'),
         ('    const auto build =', '    obj_profile::next(measuredAnnotations, "annotation_tree_build");\n    const auto build ='),
         ('    cache->spatial = std::move(spatial);', '    obj_profile::end(measuredAnnotations, {{"triangle_offsets", spatial->triangles.size()},\n        {"tree_nodes", spatial->tree.size()}, {"tree_capacity_bytes", spatial->tree.capacity()*sizeof(MeshAnnotationNode)}});\n    cache->spatial = std::move(spatial);'),
     ])

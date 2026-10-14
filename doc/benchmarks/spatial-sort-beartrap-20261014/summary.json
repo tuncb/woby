@@ -1,0 +1,567 @@
+{
+  "baseline_revision": "0a29069f1f5ab758df1ab57c2f836ff8ecd6165f",
+  "date": "2026-10-14",
+  "cpu": "AMD Ryzen 7 5800H; 8 cores; 16 logical CPUs",
+  "gpu": "NVIDIA RTX 3070 Laptop",
+  "input": {
+    "path": "D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj",
+    "bytes": 7108991827,
+    "sha256": "7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329"
+  },
+  "method": "Three alternating pairs of fresh hidden instrumented viewers; file warmed before each process; no concurrent build, tests, or profiler; one-second settle and render intervals after readiness.",
+  "worker_budget": "At most 8 shared helper threads, including the point/annotation coordinator helper; callers also drain work. Small key jobs remain serial.",
+  "validation": {
+    "default_release_tests": 84,
+    "slow_release_tests": 8,
+    "new_test_cases": 5,
+    "build_warnings": 0,
+    "same_scene_stats": true,
+    "screenshot_sha256_values": [
+      "5d5b0b45e0dcc8efe15368861590bd657343e1a42bc0ff74e368f93aca641d85",
+      "d9cbca46f81d6708ef8b2db4887ce506179769513d46c7230c49505ff9fdd1ce"
+    ],
+    "same_model_pixels": true,
+    "image_comparisons": [
+      {
+        "run": "r1-baseline",
+        "changed_pixels": 0,
+        "difference_bbox": null,
+        "scene_rows_sha256": "9f14feefd5b3e4ea3f2e3b13b80da6c7147b7a7e1a5f795e9a08d01101714b6a",
+        "excluded_rows": "bottom 64 rows contain grid-spacing HUD"
+      },
+      {
+        "run": "r1-parallel",
+        "changed_pixels": 0,
+        "difference_bbox": null,
+        "scene_rows_sha256": "9f14feefd5b3e4ea3f2e3b13b80da6c7147b7a7e1a5f795e9a08d01101714b6a",
+        "excluded_rows": "bottom 64 rows contain grid-spacing HUD"
+      },
+      {
+        "run": "r2-baseline",
+        "changed_pixels": 4,
+        "difference_bbox": [
+          38,
+          1773,
+          39,
+          1777
+        ],
+        "scene_rows_sha256": "9f14feefd5b3e4ea3f2e3b13b80da6c7147b7a7e1a5f795e9a08d01101714b6a",
+        "excluded_rows": "bottom 64 rows contain grid-spacing HUD"
+      },
+      {
+        "run": "r2-parallel",
+        "changed_pixels": 0,
+        "difference_bbox": null,
+        "scene_rows_sha256": "9f14feefd5b3e4ea3f2e3b13b80da6c7147b7a7e1a5f795e9a08d01101714b6a",
+        "excluded_rows": "bottom 64 rows contain grid-spacing HUD"
+      },
+      {
+        "run": "r3-baseline",
+        "changed_pixels": 4,
+        "difference_bbox": [
+          38,
+          1773,
+          39,
+          1777
+        ],
+        "scene_rows_sha256": "9f14feefd5b3e4ea3f2e3b13b80da6c7147b7a7e1a5f795e9a08d01101714b6a",
+        "excluded_rows": "bottom 64 rows contain grid-spacing HUD"
+      },
+      {
+        "run": "r3-parallel",
+        "changed_pixels": 0,
+        "difference_bbox": null,
+        "scene_rows_sha256": "9f14feefd5b3e4ea3f2e3b13b80da6c7147b7a7e1a5f795e9a08d01101714b6a",
+        "excluded_rows": "bottom 64 rows contain grid-spacing HUD"
+      }
+    ],
+    "all_trace_nesting_valid": true
+  },
+  "runs": [
+    {
+      "name": "r1-baseline",
+      "variant": "baseline",
+      "executable_sha256": "fb950e81f0fe8fc455c5bbfced87a5a73f8a78217b28fa4531fe3c3c1726f620",
+      "image_sha256": "5d5b0b45e0dcc8efe15368861590bd657343e1a42bc0ff74e368f93aca641d85",
+      "metrics": {
+        "annotation_morton_keys": 4.9535322,
+        "annotation_radix_sort": 3.7333765,
+        "point_morton_keys": 1.8209549999999999,
+        "point_radix_sort": 1.4696013,
+        "post_load_cpu_total": 28.908209,
+        "post_point_preparation": 9.0863341,
+        "post_annotation_cache": 15.401867,
+        "annotation_blocks_fingerprints": 5.089646,
+        "annotation_tree_build": 1.623844,
+        "point_annotation_span": 24.4886402,
+        "point_annotation_overlap": 0.0,
+        "ready": 47.6744752,
+        "first_gpu_frame": 18.523224000000003,
+        "load_rpc": 47.83811109999078,
+        "peak_working_set_gib": 8.941547393798828
+      },
+      "trace_valid": true,
+      "stats": {
+        "vertexCount": 38414391,
+        "triangleCount": 75771986,
+        "groupCount": 1,
+        "coordinateOrigin": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bounds": {
+          "center": [
+            -0.019498586654663086,
+            1.26836359500885,
+            -4.077510356903076
+          ],
+          "max": [
+            4.296329021453857,
+            5.688043117523193,
+            -3.1008379459381104
+          ],
+          "min": [
+            -4.335326194763184,
+            -3.151315927505493,
+            -5.054183006286621
+          ],
+          "radius": 6.2541046142578125
+        },
+        "renderer": "NoGraphicsAPI Vulkan"
+      }
+    },
+    {
+      "name": "r1-parallel",
+      "variant": "parallel",
+      "executable_sha256": "c1835abfb6fb456d4baedf68e3a0799db677481fb163acf3d5aec8d8fe859d85",
+      "image_sha256": "5d5b0b45e0dcc8efe15368861590bd657343e1a42bc0ff74e368f93aca641d85",
+      "metrics": {
+        "annotation_morton_keys": 1.0201217,
+        "annotation_radix_sort": 1.4422489,
+        "point_morton_keys": 0.3019536,
+        "point_radix_sort": 0.4997528,
+        "post_load_cpu_total": 12.89975,
+        "post_point_preparation": 6.4939079,
+        "post_annotation_cache": 9.334790199999999,
+        "annotation_blocks_fingerprints": 5.1276562000000006,
+        "annotation_tree_build": 1.7433155,
+        "point_annotation_span": 9.3350714,
+        "point_annotation_overlap": 6.493626700000001,
+        "ready": 28.8578454,
+        "first_gpu_frame": 15.707219099999998,
+        "load_rpc": 29.10443390000728,
+        "peak_working_set_gib": 8.941104888916016
+      },
+      "trace_valid": true,
+      "stats": {
+        "vertexCount": 38414391,
+        "triangleCount": 75771986,
+        "groupCount": 1,
+        "coordinateOrigin": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bounds": {
+          "center": [
+            -0.019498586654663086,
+            1.26836359500885,
+            -4.077510356903076
+          ],
+          "max": [
+            4.296329021453857,
+            5.688043117523193,
+            -3.1008379459381104
+          ],
+          "min": [
+            -4.335326194763184,
+            -3.151315927505493,
+            -5.054183006286621
+          ],
+          "radius": 6.2541046142578125
+        },
+        "renderer": "NoGraphicsAPI Vulkan"
+      }
+    },
+    {
+      "name": "r2-baseline",
+      "variant": "baseline",
+      "executable_sha256": "fb950e81f0fe8fc455c5bbfced87a5a73f8a78217b28fa4531fe3c3c1726f620",
+      "image_sha256": "d9cbca46f81d6708ef8b2db4887ce506179769513d46c7230c49505ff9fdd1ce",
+      "metrics": {
+        "annotation_morton_keys": 5.0306315999999995,
+        "annotation_radix_sort": 3.7562372999999996,
+        "point_morton_keys": 1.7918079,
+        "point_radix_sort": 1.4367059,
+        "post_load_cpu_total": 28.9629135,
+        "post_point_preparation": 8.7786806,
+        "post_annotation_cache": 15.397317,
+        "annotation_blocks_fingerprints": 5.0392078,
+        "annotation_tree_build": 1.5700685,
+        "point_annotation_span": 24.176474300000002,
+        "point_annotation_overlap": 0.0,
+        "ready": 46.6881919,
+        "first_gpu_frame": 17.4880179,
+        "load_rpc": 47.033506600011606,
+        "peak_working_set_gib": 8.940330505371094
+      },
+      "trace_valid": true,
+      "stats": {
+        "vertexCount": 38414391,
+        "triangleCount": 75771986,
+        "groupCount": 1,
+        "coordinateOrigin": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bounds": {
+          "center": [
+            -0.019498586654663086,
+            1.26836359500885,
+            -4.077510356903076
+          ],
+          "max": [
+            4.296329021453857,
+            5.688043117523193,
+            -3.1008379459381104
+          ],
+          "min": [
+            -4.335326194763184,
+            -3.151315927505493,
+            -5.054183006286621
+          ],
+          "radius": 6.2541046142578125
+        },
+        "renderer": "NoGraphicsAPI Vulkan"
+      }
+    },
+    {
+      "name": "r2-parallel",
+      "variant": "parallel",
+      "executable_sha256": "c1835abfb6fb456d4baedf68e3a0799db677481fb163acf3d5aec8d8fe859d85",
+      "image_sha256": "5d5b0b45e0dcc8efe15368861590bd657343e1a42bc0ff74e368f93aca641d85",
+      "metrics": {
+        "annotation_morton_keys": 1.0259565,
+        "annotation_radix_sort": 1.459294,
+        "point_morton_keys": 0.31079270000000003,
+        "point_radix_sort": 0.496539,
+        "post_load_cpu_total": 12.8363665,
+        "post_point_preparation": 6.549521899999999,
+        "post_annotation_cache": 9.2008818,
+        "annotation_blocks_fingerprints": 4.9847833,
+        "annotation_tree_build": 1.7296759,
+        "point_annotation_span": 9.201179999999997,
+        "point_annotation_overlap": 6.549223700000002,
+        "ready": 28.1422506,
+        "first_gpu_frame": 15.0915923,
+        "load_rpc": 28.388470600009896,
+        "peak_working_set_gib": 8.941661834716797
+      },
+      "trace_valid": true,
+      "stats": {
+        "vertexCount": 38414391,
+        "triangleCount": 75771986,
+        "groupCount": 1,
+        "coordinateOrigin": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bounds": {
+          "center": [
+            -0.019498586654663086,
+            1.26836359500885,
+            -4.077510356903076
+          ],
+          "max": [
+            4.296329021453857,
+            5.688043117523193,
+            -3.1008379459381104
+          ],
+          "min": [
+            -4.335326194763184,
+            -3.151315927505493,
+            -5.054183006286621
+          ],
+          "radius": 6.2541046142578125
+        },
+        "renderer": "NoGraphicsAPI Vulkan"
+      }
+    },
+    {
+      "name": "r3-baseline",
+      "variant": "baseline",
+      "executable_sha256": "fb950e81f0fe8fc455c5bbfced87a5a73f8a78217b28fa4531fe3c3c1726f620",
+      "image_sha256": "d9cbca46f81d6708ef8b2db4887ce506179769513d46c7230c49505ff9fdd1ce",
+      "metrics": {
+        "annotation_morton_keys": 4.7272836,
+        "annotation_radix_sort": 3.6367838999999997,
+        "point_morton_keys": 1.8740958,
+        "point_radix_sort": 1.4078861999999999,
+        "post_load_cpu_total": 27.931511699999998,
+        "post_point_preparation": 8.733007299999999,
+        "post_annotation_cache": 14.8673702,
+        "annotation_blocks_fingerprints": 4.9105444,
+        "annotation_tree_build": 1.5914930999999999,
+        "point_annotation_span": 23.600935099999997,
+        "point_annotation_overlap": 0.0,
+        "ready": 43.6172567,
+        "first_gpu_frame": 15.5168385,
+        "load_rpc": 44.06376960000489,
+        "peak_working_set_gib": 8.940059661865234
+      },
+      "trace_valid": true,
+      "stats": {
+        "vertexCount": 38414391,
+        "triangleCount": 75771986,
+        "groupCount": 1,
+        "coordinateOrigin": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bounds": {
+          "center": [
+            -0.019498586654663086,
+            1.26836359500885,
+            -4.077510356903076
+          ],
+          "max": [
+            4.296329021453857,
+            5.688043117523193,
+            -3.1008379459381104
+          ],
+          "min": [
+            -4.335326194763184,
+            -3.151315927505493,
+            -5.054183006286621
+          ],
+          "radius": 6.2541046142578125
+        },
+        "renderer": "NoGraphicsAPI Vulkan"
+      }
+    },
+    {
+      "name": "r3-parallel",
+      "variant": "parallel",
+      "executable_sha256": "c1835abfb6fb456d4baedf68e3a0799db677481fb163acf3d5aec8d8fe859d85",
+      "image_sha256": "5d5b0b45e0dcc8efe15368861590bd657343e1a42bc0ff74e368f93aca641d85",
+      "metrics": {
+        "annotation_morton_keys": 0.9268017,
+        "annotation_radix_sort": 1.4084409,
+        "point_morton_keys": 0.3007065,
+        "point_radix_sort": 0.4821209,
+        "post_load_cpu_total": 12.7593627,
+        "post_point_preparation": 6.6650051999999995,
+        "post_annotation_cache": 9.2489794,
+        "annotation_blocks_fingerprints": 5.195975000000001,
+        "annotation_tree_build": 1.7165405,
+        "point_annotation_span": 9.249306,
+        "point_annotation_overlap": 6.664678599999999,
+        "ready": 27.9228773,
+        "first_gpu_frame": 14.922568100000001,
+        "load_rpc": 28.190263500000583,
+        "peak_working_set_gib": 8.941017150878906
+      },
+      "trace_valid": true,
+      "stats": {
+        "vertexCount": 38414391,
+        "triangleCount": 75771986,
+        "groupCount": 1,
+        "coordinateOrigin": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bounds": {
+          "center": [
+            -0.019498586654663086,
+            1.26836359500885,
+            -4.077510356903076
+          ],
+          "max": [
+            4.296329021453857,
+            5.688043117523193,
+            -3.1008379459381104
+          ],
+          "min": [
+            -4.335326194763184,
+            -3.151315927505493,
+            -5.054183006286621
+          ],
+          "radius": 6.2541046142578125
+        },
+        "renderer": "NoGraphicsAPI Vulkan"
+      }
+    }
+  ],
+  "groups": {
+    "baseline": {
+      "annotation_morton_keys": {
+        "median": 4.9535322,
+        "min": 4.7272836,
+        "max": 5.0306315999999995
+      },
+      "annotation_radix_sort": {
+        "median": 3.7333765,
+        "min": 3.6367838999999997,
+        "max": 3.7562372999999996
+      },
+      "point_morton_keys": {
+        "median": 1.8209549999999999,
+        "min": 1.7918079,
+        "max": 1.8740958
+      },
+      "point_radix_sort": {
+        "median": 1.4367059,
+        "min": 1.4078861999999999,
+        "max": 1.4696013
+      },
+      "post_load_cpu_total": {
+        "median": 28.908209,
+        "min": 27.931511699999998,
+        "max": 28.9629135
+      },
+      "post_point_preparation": {
+        "median": 8.7786806,
+        "min": 8.733007299999999,
+        "max": 9.0863341
+      },
+      "post_annotation_cache": {
+        "median": 15.397317,
+        "min": 14.8673702,
+        "max": 15.401867
+      },
+      "annotation_blocks_fingerprints": {
+        "median": 5.0392078,
+        "min": 4.9105444,
+        "max": 5.089646
+      },
+      "annotation_tree_build": {
+        "median": 1.5914930999999999,
+        "min": 1.5700685,
+        "max": 1.623844
+      },
+      "point_annotation_span": {
+        "median": 24.176474300000002,
+        "min": 23.600935099999997,
+        "max": 24.4886402
+      },
+      "point_annotation_overlap": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "ready": {
+        "median": 46.6881919,
+        "min": 43.6172567,
+        "max": 47.6744752
+      },
+      "first_gpu_frame": {
+        "median": 17.4880179,
+        "min": 15.5168385,
+        "max": 18.523224000000003
+      },
+      "load_rpc": {
+        "median": 47.033506600011606,
+        "min": 44.06376960000489,
+        "max": 47.83811109999078
+      },
+      "peak_working_set_gib": {
+        "median": 8.940330505371094,
+        "min": 8.940059661865234,
+        "max": 8.941547393798828
+      }
+    },
+    "parallel": {
+      "annotation_morton_keys": {
+        "median": 1.0201217,
+        "min": 0.9268017,
+        "max": 1.0259565
+      },
+      "annotation_radix_sort": {
+        "median": 1.4422489,
+        "min": 1.4084409,
+        "max": 1.459294
+      },
+      "point_morton_keys": {
+        "median": 0.3019536,
+        "min": 0.3007065,
+        "max": 0.31079270000000003
+      },
+      "point_radix_sort": {
+        "median": 0.496539,
+        "min": 0.4821209,
+        "max": 0.4997528
+      },
+      "post_load_cpu_total": {
+        "median": 12.8363665,
+        "min": 12.7593627,
+        "max": 12.89975
+      },
+      "post_point_preparation": {
+        "median": 6.549521899999999,
+        "min": 6.4939079,
+        "max": 6.6650051999999995
+      },
+      "post_annotation_cache": {
+        "median": 9.2489794,
+        "min": 9.2008818,
+        "max": 9.334790199999999
+      },
+      "annotation_blocks_fingerprints": {
+        "median": 5.1276562000000006,
+        "min": 4.9847833,
+        "max": 5.195975000000001
+      },
+      "annotation_tree_build": {
+        "median": 1.7296759,
+        "min": 1.7165405,
+        "max": 1.7433155
+      },
+      "point_annotation_span": {
+        "median": 9.249306,
+        "min": 9.201179999999997,
+        "max": 9.3350714
+      },
+      "point_annotation_overlap": {
+        "median": 6.549223700000002,
+        "min": 6.493626700000001,
+        "max": 6.664678599999999
+      },
+      "ready": {
+        "median": 28.1422506,
+        "min": 27.9228773,
+        "max": 28.8578454
+      },
+      "first_gpu_frame": {
+        "median": 15.0915923,
+        "min": 14.922568100000001,
+        "max": 15.707219099999998
+      },
+      "load_rpc": {
+        "median": 28.388470600009896,
+        "min": 28.190263500000583,
+        "max": 29.10443390000728
+      },
+      "peak_working_set_gib": {
+        "median": 8.941104888916016,
+        "min": 8.941017150878906,
+        "max": 8.941661834716797
+      }
+    }
+  },
+  "changed_source_sha256": {
+    "CMakeLists.txt": "6123ff44c5685d949326b3f6c0b9102f8f85f8e7f9a2a1c739c064cda0cdd0cb",
+    "src/parallel_work.h": "2257b2833b811ebe2eab0db4f935fe0dbfd345e5e419266b27c6942112d56fff",
+    "src/spatial_sort.h": "08589426e4b6fa49483b7acdc420998910968069cea9a1f111bf0e8c76adbfed",
+    "src/point_cloud.cpp": "ab77b7baddea40b5f0de44f346b13991c04881caf9bd996f072741b136f9f45f",
+    "src/post_loading.cpp": "69139cbbd510e5cc6cbfa9890837c6dc0a3000cbab9759bf9a578093970b4635",
+    "src/surface_annotation.cpp": "5701d062cf99492672baa0472716ef4901e1e403f2e4f98a1cc1be6fd7515b96",
+    "tests/spatial_sort_tests.cpp": "2c6d484fc60907e9056ab9888f74af84db0e12d022facfde39cd1c3a78dfa8e4",
+    "experiments/obj-profile/generate.py": "00a7b512d0156e468e5a8d0f812718645fb9d9e433826b41cadeb0f9fa3acbc0",
+    "experiments/obj-profile/e2e_generate.py": "2586d9f51a7648c3799110228bc61b4df8f6065a686e98ef0d1905ca11b04554"
+  }
+}

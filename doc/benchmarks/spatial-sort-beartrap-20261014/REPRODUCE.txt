@@ -1,0 +1,37 @@
+BearTrap parallel spatial preparation, 14 October 2026
+
+Base application revision: 0a29069f1f5ab758df1ab57c2f836ff8ecd6165f
+Input: D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj
+Bytes: 7,108,991,827
+SHA256: 7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329
+
+Use Windows and separate source worktrees under D:/.worktree for the serial
+baseline and changed source. The archive contains the baseline and changed
+copies of each affected source file. The full repository and input are required.
+Use a fresh build directory for each variant. If source files are copied into
+an existing build checkout, update their timestamps before building.
+
+In each source checkout:
+  cmake --preset vs2026-vcpkg -DWOBY_BUILD_OBJ_PROFILE=ON
+  cmake --build --preset vs2026-vcpkg --config Release
+  ctest --preset vs2026-vcpkg -C Release
+  ctest --preset vs2026-vcpkg-slow -C Release
+
+Freeze the serial bin/Release directory, including assets and runtime DLLs,
+before rebuilding its source checkout. Do not run a build, tests, or profiler
+at the same time as a timed capture.
+
+For each run, use a new output directory:
+  uv run experiments/obj-profile/e2e_run.py <variant>/woby_obj_e2e_viewer.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj --hidden --output <new-output> --settle-seconds 1 --render-seconds 1
+
+Use three alternating pairs: serial/parallel, parallel/serial, serial/parallel.
+The archive contains run-spatial-measurements.py with the exact recorded paths.
+The runner warms the input before each new process. No file cache is flushed.
+All readiness times use all_tools_ready minus model_add_requested trace marks.
+Post-load CPU times use post_load_cpu_total. The point/annotation elapsed span
+uses the earliest branch start and latest branch end. Individual phase times
+must not be added after introducing overlap.
+
+The one-second settled render interval is outside the load measurements and
+is not a frame-rate study. Large native records, frozen binaries, and PDBs
+remain in D:/.worktree/woby-parallel-spatial-20261014/build.

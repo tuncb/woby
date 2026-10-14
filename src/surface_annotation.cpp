@@ -1,4 +1,5 @@
 #include "surface_annotation.h"
+#include "spatial_sort.h"
 #include "cross_section.h"
 #include "hash_utils.h"
 
@@ -689,8 +690,15 @@ bool annotationMeshSnapshotReady(const Mesh& mesh)
         && mesh.annotationCache->indexData == meshGeometry(mesh).indices.data();
 }
 std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
-    Mesh mesh, const std::function<bool()>& canceled)
+    Mesh mesh, const std::function<bool()>& shouldCancel)
 {
+    std::mutex cancelMutex;
+    bool stopped = false;
+    const auto canceled = [&] {
+        std::lock_guard lock(cancelMutex);
+        if (!stopped && shouldCancel) { stopped = shouldCancel(); }
+        return stopped;
+    };
     publishMeshGeometry(mesh);
     const auto& vertices = meshGeometry(mesh).vertices;
     const auto& indices = meshGeometry(mesh).indices;
@@ -704,12 +712,12 @@ std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
     cache->fingerprints.reserve(nodes.size());
     constexpr size_t blockIndices = 256 * 3;
     for (const auto& node : nodes) {
-        if (canceled && canceled()) { return {}; }
+        if (canceled()) { return {}; }
         const size_t end = std::min(indices.size(), size_t{node.indexOffset} + node.indexCount);
         uint64_t hash = 1469598103934665603ull;
         hashCombine(hash, node.indexCount);
         for (size_t begin = node.indexOffset; begin < end; begin += blockIndices) {
-            if (canceled && canceled()) { return {}; }
+            if (canceled()) { return {}; }
             MeshAnnotationBlock block;
             block.begin = begin;
             block.end = std::min(end, begin + blockIndices);
@@ -733,7 +741,7 @@ std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
     }
     auto spatial = std::make_shared<MeshAnnotationIndex>();
     const auto check = [&] {
-        if (canceled && canceled()) { throw std::runtime_error("Annotation preparation canceled."); }
+        if (canceled()) { throw std::runtime_error("Annotation preparation canceled."); }
     };
     {
         // Consecutive OBJ triangles can be scattered across the entire model.
@@ -755,40 +763,48 @@ std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
             bits = (bits | (bits << 4)) & 0x030c30c3u;
             return (bits | (bits << 2)) & 0x09249249u;
         };
-        std::vector<std::pair<uint32_t, uint32_t>> keys;
-        keys.reserve(indices.size() / 3);
-        for (const auto& block : cache->blocks) {
+        // Reserve a separate output range for each block. Invalid triangles are
+        // compacted in block order before sorting, so ties retain source order.
+        std::vector<size_t> starts(cache->blocks.size() + 1), counts(cache->blocks.size());
+        for (size_t b = 0; b < cache->blocks.size(); ++b) {
+            const auto& block = cache->blocks[b];
+            starts[b + 1] = starts[b] + (block.end - block.begin) / 3;
+        }
+        std::vector<std::pair<uint32_t, uint32_t>> keys(starts.back());
+        parallelWorkBatches(cache->blocks.size(), 256, check, [&](size_t begin, size_t end) {
+            for (size_t b = begin; b < end; ++b) {
+                const auto& block = cache->blocks[b];
+                size_t output = starts[b];
+                check();
+                for (size_t i = block.begin; i + 2 < block.end; i += 3) {
+                    std::array<double, 3> center{};
+                    bool valid = true;
+                    for (size_t k = 0; k < 3; ++k) {
+                        if (indices[i + k] >= vertices.size() || !finitePosition(vertices[indices[i + k]].position)) { valid = false; break; }
+                        for (size_t axis = 0; axis < 3; ++axis) { center[axis] += vertices[indices[i + k]].position[axis] / 3.0; }
+                    }
+                    if (!valid) { continue; }
+                    uint32_t key = 0;
+                    for (size_t axis = 0; axis < 3; ++axis) {
+                        key |= coordinate(extent[axis] > 0 ? (center[axis] - low[axis]) / extent[axis] : 0) << axis;
+                    }
+                    keys[output++] = {key, static_cast<uint32_t>(i)};
+                }
+                counts[b] = output - starts[b];
+            }
+        }, 512);
+        size_t output = 0;
+        for (size_t b = 0; b < counts.size(); ++b) {
             check();
-            for (size_t i = block.begin; i + 2 < block.end; i += 3) {
-                std::array<double, 3> center{};
-                bool valid = true;
-                for (size_t k = 0; k < 3; ++k) {
-                    if (indices[i + k] >= vertices.size() || !finitePosition(vertices[indices[i + k]].position)) { valid = false; break; }
-                    for (size_t axis = 0; axis < 3; ++axis) { center[axis] += vertices[indices[i + k]].position[axis] / 3.0; }
-                }
-                if (!valid) { continue; }
-                uint32_t key = 0;
-                for (size_t axis = 0; axis < 3; ++axis) {
-                    key |= coordinate(extent[axis] > 0 ? (center[axis] - low[axis]) / extent[axis] : 0) << axis;
-                }
-                keys.emplace_back(key, static_cast<uint32_t>(i));
+            if (output != starts[b]) {
+                std::move(keys.begin() + static_cast<std::ptrdiff_t>(starts[b]),
+                    keys.begin() + static_cast<std::ptrdiff_t>(starts[b] + counts[b]),
+                    keys.begin() + static_cast<std::ptrdiff_t>(output));
             }
+            output += counts[b];
         }
-        std::vector<std::pair<uint32_t, uint32_t>> scratch(keys.size());
-        for (uint32_t shift = 0; shift < 32; shift += 8) {
-            std::array<size_t, 256> offsets{};
-            for (size_t i = 0; i < keys.size(); ++i) {
-                if (i % 1024 == 0) { check(); }
-                ++offsets[(keys[i].first >> shift) & 255];
-            }
-            size_t begin = 0;
-            for (auto& offset : offsets) { const auto count = offset; offset = begin; begin += count; }
-            for (size_t i = 0; i < keys.size(); ++i) {
-                if (i % 1024 == 0) { check(); }
-                const auto& key = keys[i]; scratch[offsets[(key.first >> shift) & 255]++] = key;
-            }
-            keys.swap(scratch);
-        }
+        keys.resize(output);
+        stableSpatialRadixSort(keys, [](const auto& key) { return key.first; }, check);
         spatial->triangles.reserve(keys.size());
         for (size_t i = 0; i < keys.size(); ++i) {
             if (i % 1024 == 0) { check(); }
