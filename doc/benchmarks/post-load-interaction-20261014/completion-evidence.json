@@ -1,0 +1,598 @@
+{
+  "baseline": [
+    {
+      "kind": "operation",
+      "name": "status_combined",
+      "method": "status",
+      "params": {},
+      "start_seconds": 56.29120500001591,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "response": {
+        "id": 332,
+        "jsonrpc": "2.0",
+        "result": {
+          "activeSequence": "328",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-fb48d0daa1b1ec140afa0d1a13064f7a-328",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": false,
+          "id": "stress-8627089d0f1b4bce",
+          "instance": "stress-8627089d0f1b4bce",
+          "loading": false,
+          "pane": {
+            "visible": false,
+            "width": 570.0
+          },
+          "path": null,
+          "pid": 33728,
+          "postLoadError": "",
+          "postLoadReady": true,
+          "postLoading": false,
+          "propertiesPane": {
+            "visible": false,
+            "width": 630.0
+          },
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "328",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:56477/rpc",
+          "version": "0.29.0"
+        }
+      },
+      "seconds": 0.007092499989084899
+    },
+    {
+      "kind": "operation",
+      "name": "remove_combined",
+      "method": "model.remove",
+      "params": {
+        "target": "obj-aa94dd1f9d066398bdf3b1dbccc5b457-0000000000000001"
+      },
+      "start_seconds": 56.29858279999462,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "response": {
+        "id": 333,
+        "jsonrpc": "2.0",
+        "result": {
+          "commandId": "cmd-fb48d0daa1b1ec140afa0d1a13064f7a-329",
+          "dirty": true,
+          "instance": "stress-8627089d0f1b4bce",
+          "removed": "obj-aa94dd1f9d066398bdf3b1dbccc5b457-0000000000000001",
+          "sequence": "329",
+          "state": "succeeded"
+        }
+      },
+      "seconds": 0.15295440002228133,
+      "peak_private_bytes": 8852013056,
+      "peak_rss_bytes": 5557788672,
+      "minimum_available_bytes": 43012149248,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "empty_after_combined",
+      "method": "scene.info",
+      "params": {},
+      "start_seconds": 56.451860100001795,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "response": {
+        "id": 334,
+        "jsonrpc": "2.0",
+        "result": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "max": [
+              10.0,
+              10.0,
+              10.0
+            ],
+            "min": [
+              -10.0,
+              -10.0,
+              -10.0
+            ],
+            "radius": 17.32050895690918
+          },
+          "commandId": "cmd-fb48d0daa1b1ec140afa0d1a13064f7a-330",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 0,
+          "groupCount": 0,
+          "instance": "stress-8627089d0f1b4bce",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "path": null,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 0,
+              "state": "off",
+              "total": 0
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 0
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 0
+            }
+          },
+          "sequence": "330",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 0,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 0,
+          "visibleGroupCount": 0
+        }
+      },
+      "seconds": 0.046444400009931996
+    },
+    {
+      "kind": "operation",
+      "name": "remove_solid",
+      "method": "model.remove",
+      "params": {
+        "target": "obj-aa94dd1f9d066398bdf3b1dbccc5b457-0000000000000003"
+      },
+      "start_seconds": 68.31692380001186,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "response": {
+        "id": 337,
+        "jsonrpc": "2.0",
+        "result": {
+          "commandId": "cmd-fb48d0daa1b1ec140afa0d1a13064f7a-333",
+          "dirty": true,
+          "instance": "stress-8627089d0f1b4bce",
+          "removed": "obj-aa94dd1f9d066398bdf3b1dbccc5b457-0000000000000003",
+          "sequence": "333",
+          "state": "succeeded"
+        }
+      },
+      "seconds": 0.1932043999840971,
+      "peak_private_bytes": 8567033856,
+      "peak_rss_bytes": 5142159360,
+      "minimum_available_bytes": 43346862080,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "empty_after_solid",
+      "method": "scene.info",
+      "params": {},
+      "start_seconds": 68.5105990000011,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "response": {
+        "id": 338,
+        "jsonrpc": "2.0",
+        "result": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "max": [
+              10.0,
+              10.0,
+              10.0
+            ],
+            "min": [
+              -10.0,
+              -10.0,
+              -10.0
+            ],
+            "radius": 17.32050895690918
+          },
+          "commandId": "cmd-fb48d0daa1b1ec140afa0d1a13064f7a-334",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 0,
+          "groupCount": 0,
+          "instance": "stress-8627089d0f1b4bce",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "path": null,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 0,
+              "state": "off",
+              "total": 0
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 0
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 0
+            }
+          },
+          "sequence": "334",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 0,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 0,
+          "visibleGroupCount": 0
+        }
+      },
+      "seconds": 0.030556100013200194
+    },
+    {
+      "kind": "operation",
+      "name": "quit",
+      "method": "quit",
+      "params": {
+        "onDirty": "discard"
+      },
+      "start_seconds": 68.54157540001324,
+      "timeout_seconds": 20,
+      "status": "ok",
+      "response": {
+        "id": 339,
+        "jsonrpc": "2.0",
+        "result": {
+          "commandId": "cmd-fb48d0daa1b1ec140afa0d1a13064f7a-335",
+          "dirty": true,
+          "instance": "stress-8627089d0f1b4bce",
+          "path": null,
+          "quitAccepted": true,
+          "sequence": "335",
+          "state": "succeeded"
+        }
+      },
+      "seconds": 0.04757159997825511,
+      "peak_private_bytes": 770744320,
+      "peak_rss_bytes": 140943360,
+      "minimum_available_bytes": 48400871424,
+      "cpu_seconds": 0.0
+    }
+  ],
+  "dense": [
+    {
+      "kind": "operation",
+      "name": "status_combined",
+      "method": "status",
+      "params": {},
+      "start_seconds": 62.10994009999558,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "response": {
+        "id": 322,
+        "jsonrpc": "2.0",
+        "result": {
+          "activeSequence": "317",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-f4fa250bb8f8cffeffe60b6308b5a4fd-317",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": false,
+          "id": "stress-e3f9e27dd2a344cc",
+          "instance": "stress-e3f9e27dd2a344cc",
+          "loading": false,
+          "pane": {
+            "visible": false,
+            "width": 475.0
+          },
+          "path": null,
+          "pid": 35832,
+          "postLoadError": "",
+          "postLoadReady": true,
+          "postLoading": false,
+          "propertiesPane": {
+            "visible": false,
+            "width": 525.0
+          },
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "317",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:62690/rpc",
+          "version": "0.29.0"
+        }
+      },
+      "seconds": 0.11768650001613423,
+      "peak_private_bytes": 10229252096,
+      "peak_rss_bytes": 5588905984,
+      "minimum_available_bytes": 42838061056,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "remove_combined",
+      "method": "model.remove",
+      "params": {
+        "target": "obj-2c4dbc2d8e96f53d6d3d2bc30154f4e9-0000000000000001"
+      },
+      "start_seconds": 62.227986500016414,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "response": {
+        "id": 323,
+        "jsonrpc": "2.0",
+        "result": {
+          "commandId": "cmd-f4fa250bb8f8cffeffe60b6308b5a4fd-318",
+          "dirty": true,
+          "instance": "stress-e3f9e27dd2a344cc",
+          "removed": "obj-2c4dbc2d8e96f53d6d3d2bc30154f4e9-0000000000000001",
+          "sequence": "318",
+          "state": "succeeded"
+        }
+      },
+      "seconds": 0.2851004999829456,
+      "peak_private_bytes": 8663834624,
+      "peak_rss_bytes": 3713376256,
+      "minimum_available_bytes": 44701409280,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "empty_after_combined",
+      "method": "scene.info",
+      "params": {},
+      "start_seconds": 62.51369670001441,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "response": {
+        "id": 324,
+        "jsonrpc": "2.0",
+        "result": {
+          "adaptivePoints": false,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "max": [
+              10.0,
+              10.0,
+              10.0
+            ],
+            "min": [
+              -10.0,
+              -10.0,
+              -10.0
+            ],
+            "radius": 17.32050895690918
+          },
+          "commandId": "cmd-f4fa250bb8f8cffeffe60b6308b5a4fd-319",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 0,
+          "groupCount": 0,
+          "instance": "stress-e3f9e27dd2a344cc",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "path": null,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 0,
+              "state": "off",
+              "total": 0
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 0
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 0
+            }
+          },
+          "sequence": "319",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 0,
+          "triangleEdgeXray": true,
+          "upAxis": "z",
+          "vertexCount": 0,
+          "visibleGroupCount": 0
+        }
+      },
+      "seconds": 0.032059599994681776
+    },
+    {
+      "kind": "operation",
+      "name": "remove_solid",
+      "method": "model.remove",
+      "params": {
+        "target": "obj-2c4dbc2d8e96f53d6d3d2bc30154f4e9-0000000000000003"
+      },
+      "start_seconds": 75.17908820000594,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "response": {
+        "id": 327,
+        "jsonrpc": "2.0",
+        "result": {
+          "commandId": "cmd-f4fa250bb8f8cffeffe60b6308b5a4fd-322",
+          "dirty": true,
+          "instance": "stress-e3f9e27dd2a344cc",
+          "removed": "obj-2c4dbc2d8e96f53d6d3d2bc30154f4e9-0000000000000003",
+          "sequence": "322",
+          "state": "succeeded"
+        }
+      },
+      "seconds": 0.20071559998905286,
+      "peak_private_bytes": 9962373120,
+      "peak_rss_bytes": 5114253312,
+      "minimum_available_bytes": 43638202368,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "empty_after_solid",
+      "method": "scene.info",
+      "params": {},
+      "start_seconds": 75.38012600000366,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "response": {
+        "id": 328,
+        "jsonrpc": "2.0",
+        "result": {
+          "adaptivePoints": false,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "max": [
+              10.0,
+              10.0,
+              10.0
+            ],
+            "min": [
+              -10.0,
+              -10.0,
+              -10.0
+            ],
+            "radius": 17.32050895690918
+          },
+          "commandId": "cmd-f4fa250bb8f8cffeffe60b6308b5a4fd-323",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 0,
+          "groupCount": 0,
+          "instance": "stress-e3f9e27dd2a344cc",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "path": null,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 0,
+              "state": "off",
+              "total": 0
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 0
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 0
+            }
+          },
+          "sequence": "323",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 0,
+          "triangleEdgeXray": true,
+          "upAxis": "z",
+          "vertexCount": 0,
+          "visibleGroupCount": 0
+        }
+      },
+      "seconds": 0.02781269999104552
+    },
+    {
+      "kind": "operation",
+      "name": "quit",
+      "method": "quit",
+      "params": {
+        "onDirty": "discard"
+      },
+      "start_seconds": 75.40828920001513,
+      "timeout_seconds": 20,
+      "status": "ok",
+      "response": {
+        "id": 329,
+        "jsonrpc": "2.0",
+        "result": {
+          "commandId": "cmd-f4fa250bb8f8cffeffe60b6308b5a4fd-324",
+          "dirty": true,
+          "instance": "stress-e3f9e27dd2a344cc",
+          "path": null,
+          "quitAccepted": true,
+          "sequence": "324",
+          "state": "succeeded"
+        }
+      },
+      "seconds": 0.01777320000110194
+    }
+  ]
+}

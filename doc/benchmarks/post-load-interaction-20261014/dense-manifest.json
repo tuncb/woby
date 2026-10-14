@@ -1,0 +1,41 @@
+{
+  "arguments": {
+    "executable": "D:\\woby\\build\\vs2026-vcpkg\\bin\\Release\\woby.exe",
+    "models": "D:\\temp\\obj_tests",
+    "output": "D:\\woby\\build\\beartrap-investigation-dense",
+    "suite": "render",
+    "select": [
+      "20190810_BearTrap_Ground_Model"
+    ],
+    "rounds": 1,
+    "seconds": 2.0,
+    "warmup": 1.0,
+    "load_timeout": 0,
+    "operation_timeout": 240,
+    "max_private_gib": 0,
+    "min_available_gib": 0,
+    "headless": false,
+    "visible_window": true,
+    "width": 3840,
+    "height": 2160,
+    "batch_count": 8
+  },
+  "harness_version": 4,
+  "harness_sha256": "d429ebd85a7c4a1e9cf7234f536c06dc7e5fd9082dae0a735a95da0eb1298088",
+  "python": "3.13.14 (main, Jun 23 2026, 15:19:27) [MSC v.1944 64 bit (AMD64)]",
+  "psutil": "7.2.2",
+  "os": "Windows-11-10.0.26300-SP0",
+  "machine": "AMD64",
+  "executable_sha256": "ffb67fb2c7c104c5821550e54139304db8cbfd795ebd6f11188d5a0e99f56bb4",
+  "started_utc": "2026-10-14T17:08:35Z",
+  "models": [
+    {
+      "path": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "bytes": 7108991827,
+      "mtime_ns": 1790456074512742400
+    }
+  ],
+  "physical_memory": 68564348928,
+  "cache_policy": "Fresh viewer per case; warmup before each window. OS file cache and driver caches are uncontrolled, not cold.",
+  "frame_sampling": "Bounded complete frame events (16384 max); overflow/mismatches excluded. Completion-interval tails only; no GPU percentiles."
+}

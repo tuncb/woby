@@ -77,8 +77,12 @@ struct SceneTriangleHit {
     size_t triangle = 0;
     std::array<double,3> barycentric{};
 };
+struct ScenePickStatistics {
+    size_t spatialNodes = 0, triangles = 0;
+};
 [[nodiscard]] SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts,
-    const ScenePickView& view, PickPoint point, SceneTriangleHit* triangle = nullptr);
+    const ScenePickView& view, PickPoint point, SceneTriangleHit* triangle = nullptr,
+    ScenePickStatistics* statistics = nullptr);
 void uvProbeLines(std::span<const ScenePickPart> parts, const UiState& state,
     std::vector<std::array<float,3>>& lines, SceneQueryRuntime* queries = nullptr);
 [[nodiscard]] std::vector<std::array<float, 3>> sceneSelectionLines(std::span<const ScenePickPart> parts);

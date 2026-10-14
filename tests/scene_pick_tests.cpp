@@ -6,12 +6,106 @@
 #include "allocation_probe.h"
 #include "scene_queries.h"
 #include "scene_draw_plan.h"
+#include "surface_annotation.h"
+#include "obj_mesh.h"
 
 #include <doctest/doctest.h>
 
 #include <limits>
 #include <cmath>
 #include <algorithm>
+
+TEST_CASE("spatial picking matches exhaustive primitives across modes clipping and transforms")
+{
+    woby::Mesh mesh;
+    auto& geometry = woby::editMeshGeometry(mesh);
+    for (int row = 0; row < 30; ++row) {
+        for (int column = 0; column < 30; ++column) {
+            const float x = static_cast<float>(column) * .2f - 3;
+            const float y = static_cast<float>(row) * .2f - 3;
+            const float z = static_cast<float>((row * 7 + column) % 13 - 2) * .09f;
+            for (const auto p : {std::array<float, 3>{x, y, z}, {x + .15f, y, z + .04f}, {x, y + .15f, z - .04f}}) {
+                geometry.indices.push_back(static_cast<uint32_t>(geometry.vertices.size()));
+                geometry.vertices.push_back({p, {}, {}});
+            }
+        }
+    }
+    // Reverse the file order within each group so spatial traversal has a
+    // different order from persistent triangle IDs.
+    for (size_t first = 0; first < 2700; first += 1350) {
+        for (size_t i = 0; i < 225; ++i) {
+            for (size_t k = 0; k < 3; ++k) { std::swap(geometry.indices[first + i * 3 + k], geometry.indices[first + (449 - i) * 3 + k]); }
+        }
+    }
+    geometry.nodes = {{"first", 0, 1350}, {"second", 1350, 1350}};
+    mesh.bounds = woby::calculateBounds(geometry.vertices);
+    woby::UiState state;
+    state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    woby::assignSceneObjectIds(state);
+    auto& file = state.files.front();
+    woby::prepareAnnotationMeshCache(file.mesh);
+    REQUIRE(file.mesh.annotationCache->spatial->tree.size() > 1);
+    auto referenceMesh = file.mesh;
+    referenceMesh.annotationCache.reset();
+    for (int camera = 0; camera < 3; ++camera) {
+        woby::ScenePickView pickView;
+        pickView.width = pickView.height = 100;
+        woby::identityMatrix(pickView.view.data());
+        woby::identityMatrix(pickView.projection.data());
+        if (camera == 1) { woby::perspectiveMatrix(pickView.projection.data(), 65, 1, .1f, 5, false); }
+        if (camera == 2) { pickView.homogeneousDepth = true; pickView.projection[3] = .2f; }
+        for (int mode = 1; mode < 8; ++mode) {
+            for (const bool xray : {false, true}) {
+                state.triangleEdgeXray = xray;
+                for (auto& group : file.groupSettings) {
+                    group.showSolidMesh = (mode & 1) != 0;
+                    group.showTriangles = (mode & 2) != 0;
+                    group.showVertices = (mode & 4) != 0;
+                    group.opacity = xray ? .4f : 1;
+                    group.vertexSizeScale = 3.5f;
+                    group.rotationDegrees = {7, -13, 19};
+                }
+                const auto parts = woby::scenePickParts(state);
+                auto reference = parts;
+                for (auto& part : reference) { part.mesh = &referenceMesh; }
+                for (int y = 2; y < 100; y += 11) {
+                    for (int x = 2; x < 100; x += 11) {
+                        INFO(camera, ", ", mode, ", ", xray, ", ", x, ", ", y);
+                        const woby::PickPoint point{static_cast<float>(x), static_cast<float>(y)};
+                        woby::SceneTriangleHit accelerated, exhaustive;
+                        const auto expected = woby::pickSceneObject(reference, pickView, point, &exhaustive);
+                        CHECK(woby::pickSceneObject(parts, pickView, point, &accelerated) == expected);
+                        CHECK(accelerated.partId == exhaustive.partId);
+                        CHECK(accelerated.triangle == exhaustive.triangle);
+                        CHECK(accelerated.barycentric == exhaustive.barycentric);
+                    }
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("spatial picking rejects an empty footprint without visiting triangles")
+{
+    auto mesh = woby::loadObjMeshText("v -.1 -.1 .5\nv .1 -.1 .5\nv 0 .1 .5\nf 1 2 3\n");
+    woby::UiState state;
+    state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    woby::assignSceneObjectIds(state);
+    auto& file = state.files.front();
+    file.groupSettings.front().showTriangles = true;
+    file.groupSettings.front().showVertices = true;
+    woby::prepareAnnotationMeshCache(file.mesh);
+    woby::ScenePickView pickView;
+    pickView.width = pickView.height = 100;
+    woby::identityMatrix(pickView.view.data());
+    woby::identityMatrix(pickView.projection.data());
+    woby::ScenePickStatistics statistics;
+    CHECK(woby::pickSceneObject(woby::scenePickParts(state), pickView, {1, 1}, nullptr, &statistics) == 0);
+    CHECK(statistics.spatialNodes == 1);
+    CHECK(statistics.triangles == 0);
+}
 
 namespace {
 woby::Mesh triangle(float z = .4f)

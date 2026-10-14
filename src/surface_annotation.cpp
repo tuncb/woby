@@ -710,12 +710,16 @@ std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
     cache->vertexData = vertices.data();
     cache->indexData = indices.data();
     cache->fingerprints.reserve(nodes.size());
+    cache->localBounds.reserve(nodes.size());
     constexpr size_t blockIndices = 256 * 3;
     for (const auto& node : nodes) {
         if (canceled()) { return {}; }
         const size_t end = std::min(indices.size(), size_t{node.indexOffset} + node.indexCount);
         uint64_t hash = 1469598103934665603ull;
         hashCombine(hash, node.indexCount);
+        std::array<Coordinate, 2> exact;
+        exact[0].fill(std::numeric_limits<double>::infinity());
+        exact[1].fill(-std::numeric_limits<double>::infinity());
         for (size_t begin = node.indexOffset; begin < end; begin += blockIndices) {
             if (canceled()) { return {}; }
             MeshAnnotationBlock block;
@@ -730,6 +734,13 @@ std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
                 const auto& p = vertices[index].position;
                 hashArray3(hash, p);
                 if (!finitePosition(p)) { continue; }
+                const auto precise = meshPosition(mesh, index);
+                if (finiteCoordinate(precise)) {
+                    for (size_t axis = 0; axis < 3; ++axis) {
+                        exact[0][axis] = std::min(exact[0][axis], precise[axis]);
+                        exact[1][axis] = std::max(exact[1][axis], precise[axis]);
+                    }
+                }
                 for (size_t axis = 0; axis < 3; ++axis) {
                     block.minimum[axis] = std::min(block.minimum[axis], p[axis]);
                     block.maximum[axis] = std::max(block.maximum[axis], p[axis]);
@@ -738,6 +749,8 @@ std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
             if (std::isfinite(block.minimum[0])) { cache->blocks.push_back(block); }
         }
         cache->fingerprints.push_back(std::to_string(hash));
+        cache->localBounds.push_back(std::isfinite(exact[0][0])
+            ? std::optional{exact} : std::nullopt);
     }
     auto spatial = std::make_shared<MeshAnnotationIndex>();
     const auto check = [&] {

@@ -82,6 +82,9 @@ struct MeshAnnotationCache {
     const Vertex* vertexData = nullptr;
     const uint32_t* indexData = nullptr;
     std::vector<MeshAnnotationBlock> blocks;
+    // Exact local-coordinate extents, in mesh-node order. Prepared with the
+    // immutable geometry so selecting one part never scans triangle corners.
+    std::vector<std::optional<std::array<std::array<double, 3>, 2>>> localBounds;
     std::vector<std::string> fingerprints;
     std::shared_ptr<const MeshAnnotationIndex> spatial;
     // The cache owns its input. Geometry never owns a cache.

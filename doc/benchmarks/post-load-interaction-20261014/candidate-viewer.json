@@ -1,0 +1,679 @@
+{
+  "case": "lifecycle-20190810_BearTrap_Ground_Model-r0",
+  "suite": "lifecycle",
+  "round": 0,
+  "model": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+  "bytes": 7108991827,
+  "executable": "D:\\woby\\build\\vs2026-vcpkg\\bin\\Release\\woby.exe",
+  "executable_sha256": "74d4dbe09be13e4fde424f57914b1bcbf65f5bd9f310d97cc50b6c16112254b6",
+  "headless": false,
+  "status": "completed",
+  "startup_seconds": 0.4865898000134621,
+  "status_before": {
+    "activeSequence": "1",
+    "annotationPreparationError": "",
+    "annotationPreparing": false,
+    "annotationReady": true,
+    "apiVersion": 1,
+    "busy": false,
+    "capturing": false,
+    "commandId": "cmd-01606cd8f801b53baa77858f56c09a48-1",
+    "dirty": false,
+    "gpuFinalizing": false,
+    "headless": false,
+    "id": "stress-a3be625c5f99450e",
+    "instance": "stress-a3be625c5f99450e",
+    "loading": false,
+    "pane": {
+      "visible": true,
+      "width": 570.0
+    },
+    "path": null,
+    "pid": 36468,
+    "postLoadError": "",
+    "postLoadReady": true,
+    "postLoading": false,
+    "propertiesPane": {
+      "visible": false,
+      "width": 630.0
+    },
+    "queuedCommands": 0,
+    "ready": true,
+    "renderer": "NoGraphicsAPI Vulkan",
+    "screenshot": {
+      "format": "png",
+      "height": 1800,
+      "width": 1920
+    },
+    "sequence": "1",
+    "state": "succeeded",
+    "url": "http://127.0.0.1:61683/rpc",
+    "version": "0.29.0"
+  },
+  "load_outcome": {
+    "addedCount": 1,
+    "addedIds": [
+      "obj-1f58a734a08a46e9bc9049de1d611609-0000000000000001"
+    ],
+    "canceled": false,
+    "commandId": "cmd-01606cd8f801b53baa77858f56c09a48-3",
+    "dirty": true,
+    "failedCount": 0,
+    "instance": "stress-a3be625c5f99450e",
+    "outcomes": [
+      {
+        "id": "obj-1f58a734a08a46e9bc9049de1d611609-0000000000000001",
+        "path": "D:\\woby\\build\\beartrap-fixes-viewer\\fixture-806sj2ql\\20190810_BearTrap_Ground_Model.obj",
+        "state": "added"
+      }
+    ],
+    "requestedCount": 1,
+    "sequence": "3",
+    "skippedCount": 0,
+    "state": "succeeded"
+  },
+  "stats": {
+    "adaptivePoints": true,
+    "analysisCount": 0,
+    "annotationCount": 0,
+    "bounds": {
+      "center": [
+        -0.019498586654663086,
+        1.26836359500885,
+        -4.077510356903076
+      ],
+      "max": [
+        4.296329021453857,
+        5.688043117523193,
+        -3.1008379459381104
+      ],
+      "min": [
+        -4.335326194763184,
+        -3.151315927505493,
+        -5.054183006286621
+      ],
+      "radius": 6.2541046142578125
+    },
+    "commandId": "cmd-01606cd8f801b53baa77858f56c09a48-4",
+    "coordinateOrigin": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "dirty": true,
+    "fileCount": 1,
+    "fps": 62.92576599121094,
+    "groupCount": 1,
+    "instance": "stress-a3be625c5f99450e",
+    "lineSegmentCount": 0,
+    "masterVertexPointSize": 4.0,
+    "pointCount": 0,
+    "renderModes": {
+      "solid": {
+        "enabled": 1,
+        "state": "on",
+        "total": 1
+      },
+      "triangles": {
+        "enabled": 0,
+        "state": "off",
+        "total": 1
+      },
+      "vertices": {
+        "enabled": 0,
+        "state": "off",
+        "total": 1
+      }
+    },
+    "renderer": "NoGraphicsAPI Vulkan",
+    "sequence": "4",
+    "showDimensions": false,
+    "showGrid": true,
+    "showOrigin": false,
+    "state": "succeeded",
+    "triangleCount": 75771986,
+    "triangleEdgeXray": false,
+    "upAxis": "z",
+    "vertexCount": 38414391,
+    "visibleGroupCount": 1
+  },
+  "status_after": {
+    "activeSequence": "5",
+    "annotationPreparationError": "",
+    "annotationPreparing": false,
+    "annotationReady": true,
+    "apiVersion": 1,
+    "busy": false,
+    "capturing": false,
+    "commandId": "cmd-01606cd8f801b53baa77858f56c09a48-5",
+    "dirty": true,
+    "gpuFinalizing": false,
+    "headless": false,
+    "id": "stress-a3be625c5f99450e",
+    "instance": "stress-a3be625c5f99450e",
+    "loading": false,
+    "pane": {
+      "visible": true,
+      "width": 570.0
+    },
+    "path": null,
+    "pid": 36468,
+    "postLoadError": "",
+    "postLoadReady": true,
+    "postLoading": false,
+    "propertiesPane": {
+      "visible": false,
+      "width": 630.0
+    },
+    "queuedCommands": 0,
+    "ready": true,
+    "renderer": "NoGraphicsAPI Vulkan",
+    "screenshot": {
+      "format": "png",
+      "height": 1800,
+      "width": 1920
+    },
+    "sequence": "5",
+    "state": "succeeded",
+    "url": "http://127.0.0.1:61683/rpc",
+    "version": "0.29.0"
+  },
+  "exit_code_before_cleanup": 0,
+  "exit_code": 0,
+  "total_seconds": 31.62703760000295,
+  "operations": [
+    {
+      "kind": "operation",
+      "name": "status_before",
+      "method": "status",
+      "params": {},
+      "start_seconds": 0.4865936000132933,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.5851548000064213,
+      "peak_private_bytes": 236154880,
+      "peak_rss_bytes": 88330240,
+      "minimum_available_bytes": 48835661824,
+      "cpu_seconds": 0.21875
+    },
+    {
+      "kind": "operation",
+      "name": "initial_panes",
+      "method": "pane.set",
+      "params": {
+        "visible": true,
+        "propertiesVisible": false
+      },
+      "start_seconds": 1.0722316000028513,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.19531690000439994,
+      "peak_private_bytes": 288948224,
+      "peak_rss_bytes": 110039040,
+      "minimum_available_bytes": 48840470528,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "model_add",
+      "method": "model.add",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-fixes-viewer\\fixture-806sj2ql\\20190810_BearTrap_Ground_Model.obj"
+      },
+      "start_seconds": 1.2678886000066996,
+      "timeout_seconds": 0,
+      "status": "ok",
+      "seconds": 13.130103500006953,
+      "peak_private_bytes": 11708555264,
+      "peak_rss_bytes": 9035427840,
+      "minimum_available_bytes": 39882080256,
+      "cpu_seconds": 60.234375
+    },
+    {
+      "kind": "operation",
+      "name": "loaded_stats",
+      "method": "stats",
+      "params": {},
+      "start_seconds": 14.398566799995024,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.03091680002398789
+    },
+    {
+      "kind": "operation",
+      "name": "status_after",
+      "method": "status",
+      "params": {},
+      "start_seconds": 14.429932300001383,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015581500018015504
+    },
+    {
+      "kind": "operation",
+      "name": "annotation_preparation",
+      "status": "ok",
+      "seconds": 0.015172300016274676
+    },
+    {
+      "kind": "operation",
+      "name": "camera_isometric",
+      "method": "camera.view",
+      "params": {
+        "preset": "isometric"
+      },
+      "start_seconds": 14.461390600015875,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015280799998436123,
+      "peak_private_bytes": 8751521792,
+      "peak_rss_bytes": 5538549760,
+      "minimum_available_bytes": 43430871040,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "camera_fit",
+      "method": "camera.frame",
+      "params": {},
+      "start_seconds": 14.47699769999599,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015354600007412955
+    },
+    {
+      "kind": "operation",
+      "name": "hide_grid",
+      "method": "grid.set",
+      "params": {
+        "visible": false
+      },
+      "start_seconds": 14.492653399996925,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.0159480000147596
+    },
+    {
+      "kind": "operation",
+      "name": "hide_origin",
+      "method": "origin.set",
+      "params": {
+        "visible": false
+      },
+      "start_seconds": 14.50896289999946,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015519900014624
+    },
+    {
+      "kind": "operation",
+      "name": "hide_dimensions",
+      "method": "dimensions.set",
+      "params": {
+        "visible": false
+      },
+      "start_seconds": 14.524783400003798,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.031183100014459342
+    },
+    {
+      "kind": "operation",
+      "name": "combined",
+      "method": "render.set",
+      "params": {
+        "target": "obj-1f58a734a08a46e9bc9049de1d611609-0000000000000001",
+        "solid": true,
+        "triangles": true,
+        "vertices": true
+      },
+      "start_seconds": 14.556277099996805,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015350400004535913
+    },
+    {
+      "kind": "operation",
+      "name": "selected_view",
+      "method": "view.create",
+      "params": {
+        "name": "Selected file"
+      },
+      "start_seconds": 14.571951599995373,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.0160842000041157
+    },
+    {
+      "kind": "operation",
+      "name": "cleared_view",
+      "method": "view.create",
+      "params": {
+        "name": "Cleared file"
+      },
+      "start_seconds": 14.58831769999233,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.014585200027795509
+    },
+    {
+      "kind": "operation",
+      "name": "save_fixture",
+      "method": "scene.save-as",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-fixes-viewer\\fixture-806sj2ql\\selection.woby"
+      },
+      "start_seconds": 14.603642500005662,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.019437899987678975
+    },
+    {
+      "kind": "operation",
+      "name": "open_fixture",
+      "method": "scene.open",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-fixes-viewer\\fixture-806sj2ql\\selection.woby",
+        "onDirty": "discard"
+      },
+      "start_seconds": 14.629913700016914,
+      "timeout_seconds": 0,
+      "status": "ok",
+      "seconds": 14.670566399989184,
+      "peak_private_bytes": 20073394176,
+      "peak_rss_bytes": 14461251584,
+      "minimum_available_bytes": 34510069760,
+      "cpu_seconds": 71.90625
+    },
+    {
+      "kind": "operation",
+      "name": "annotation_preparation",
+      "status": "ok",
+      "seconds": 0.01632599998265505
+    },
+    {
+      "kind": "operation",
+      "name": "show_panes",
+      "method": "pane.set",
+      "params": {
+        "visible": true,
+        "width": 320,
+        "propertiesVisible": true
+      },
+      "start_seconds": 29.317616000014823,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.02178969999658875,
+      "peak_private_bytes": 8867872768,
+      "peak_rss_bytes": 5540069376,
+      "minimum_available_bytes": 43436109824,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "fixture_views",
+      "method": "view.list",
+      "params": {},
+      "start_seconds": 29.339743000018643,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.014469899993855506
+    },
+    {
+      "kind": "operation",
+      "name": "begin_0_Selected file",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 29.35451760000433,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.019299700012197718
+    },
+    {
+      "kind": "operation",
+      "name": "apply_0_Selected file",
+      "method": "view.apply",
+      "params": {
+        "viewId": "3"
+      },
+      "start_seconds": 29.37408619999769,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.022452600009273738
+    },
+    {
+      "kind": "operation",
+      "name": "end_0_Selected file",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 29.647035600006348,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.03377189999446273
+    },
+    {
+      "kind": "operation",
+      "name": "begin_0_Cleared file",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 29.681451700016623,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.019487999990815297
+    },
+    {
+      "kind": "operation",
+      "name": "apply_0_Cleared file",
+      "method": "view.apply",
+      "params": {
+        "viewId": "4"
+      },
+      "start_seconds": 29.70121630001813,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.04086269999970682
+    },
+    {
+      "kind": "operation",
+      "name": "end_0_Cleared file",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 29.997253100009402,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.0034391999943181872
+    },
+    {
+      "kind": "operation",
+      "name": "begin_1_Selected file",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 30.001291599997785,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.014716100005898625
+    },
+    {
+      "kind": "operation",
+      "name": "apply_1_Selected file",
+      "method": "view.apply",
+      "params": {
+        "viewId": "3"
+      },
+      "start_seconds": 30.016297599999234,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.01584450001246296
+    },
+    {
+      "kind": "operation",
+      "name": "end_1_Selected file",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 30.28298960000393,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.008931399992434308
+    },
+    {
+      "kind": "operation",
+      "name": "begin_1_Cleared file",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 30.292565000010654,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.014446399989537895
+    },
+    {
+      "kind": "operation",
+      "name": "apply_1_Cleared file",
+      "method": "view.apply",
+      "params": {
+        "viewId": "4"
+      },
+      "start_seconds": 30.307295200007502,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.01577339999494143
+    },
+    {
+      "kind": "operation",
+      "name": "end_1_Cleared file",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 30.57359680000809,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.009190999990096316
+    },
+    {
+      "kind": "operation",
+      "name": "begin_2_Selected file",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 30.583530400006566,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.030393399996683
+    },
+    {
+      "kind": "operation",
+      "name": "apply_2_Selected file",
+      "method": "view.apply",
+      "params": {
+        "viewId": "3"
+      },
+      "start_seconds": 30.614234700013185,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.01586640000459738
+    },
+    {
+      "kind": "operation",
+      "name": "end_2_Selected file",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 30.88091120001627,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.025269799982197583
+    },
+    {
+      "kind": "operation",
+      "name": "begin_2_Cleared file",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 30.90679030001047,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.014611199992941692
+    },
+    {
+      "kind": "operation",
+      "name": "apply_2_Cleared file",
+      "method": "view.apply",
+      "params": {
+        "viewId": "4"
+      },
+      "start_seconds": 30.92170679999981,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015954200003761798
+    },
+    {
+      "kind": "operation",
+      "name": "end_2_Cleared file",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 31.188111800001934,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.008504099998390302
+    },
+    {
+      "kind": "operation",
+      "name": "inventory",
+      "method": "objects.list",
+      "params": {},
+      "start_seconds": 31.19945060001919,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.012092599994502962
+    },
+    {
+      "kind": "operation",
+      "name": "select_before_remove",
+      "method": "view.apply",
+      "params": {
+        "viewId": "3"
+      },
+      "start_seconds": 31.21188099999563,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.03191530000185594
+    },
+    {
+      "kind": "operation",
+      "name": "remove_selected_combined",
+      "method": "model.remove",
+      "params": {
+        "target": "obj-1f58a734a08a46e9bc9049de1d611609-0000000000000003"
+      },
+      "start_seconds": 31.24408870001207,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.1627423999889288,
+      "peak_private_bytes": 7408586752,
+      "peak_rss_bytes": 3789938688,
+      "minimum_available_bytes": 45181911040,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "empty_scene",
+      "method": "scene.info",
+      "params": {},
+      "start_seconds": 31.40717200000654,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.022867899999255314
+    },
+    {
+      "kind": "operation",
+      "name": "quit",
+      "method": "quit",
+      "params": {
+        "onDirty": "discard"
+      },
+      "start_seconds": 31.43050570000196,
+      "timeout_seconds": 20,
+      "status": "ok",
+      "seconds": 0.03893700000480749
+    }
+  ],
+  "frames": [],
+  "peak_private_bytes": 20073394176,
+  "peak_rss_bytes": 15027224576,
+  "minimum_available_bytes": 34510069760
+}

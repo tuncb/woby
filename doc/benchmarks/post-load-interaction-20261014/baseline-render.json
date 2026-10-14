@@ -1,0 +1,1939 @@
+{
+  "case": "render-20190810_BearTrap_Ground_Model-r0",
+  "suite": "render",
+  "round": 0,
+  "model": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+  "bytes": 7108991827,
+  "executable": "D:\\woby\\build\\vs2026-vcpkg\\bin\\Release\\woby.exe",
+  "executable_sha256": "ffb67fb2c7c104c5821550e54139304db8cbfd795ebd6f11188d5a0e99f56bb4",
+  "headless": false,
+  "status": "completed",
+  "startup_seconds": 0.48323579999851063,
+  "status_before": {
+    "activeSequence": "1",
+    "annotationPreparationError": "",
+    "annotationPreparing": false,
+    "annotationReady": true,
+    "apiVersion": 1,
+    "busy": false,
+    "capturing": false,
+    "commandId": "cmd-fb48d0daa1b1ec140afa0d1a13064f7a-1",
+    "dirty": false,
+    "gpuFinalizing": false,
+    "headless": false,
+    "id": "stress-8627089d0f1b4bce",
+    "instance": "stress-8627089d0f1b4bce",
+    "loading": false,
+    "pane": {
+      "visible": true,
+      "width": 570.0
+    },
+    "path": null,
+    "pid": 33728,
+    "postLoadError": "",
+    "postLoadReady": true,
+    "postLoading": false,
+    "propertiesPane": {
+      "visible": false,
+      "width": 630.0
+    },
+    "queuedCommands": 0,
+    "ready": true,
+    "renderer": "NoGraphicsAPI Vulkan",
+    "screenshot": {
+      "format": "png",
+      "height": 1800,
+      "width": 1920
+    },
+    "sequence": "1",
+    "state": "succeeded",
+    "url": "http://127.0.0.1:56477/rpc",
+    "version": "0.29.0"
+  },
+  "load_outcome": {
+    "addedCount": 1,
+    "addedIds": [
+      "obj-aa94dd1f9d066398bdf3b1dbccc5b457-0000000000000001"
+    ],
+    "canceled": false,
+    "commandId": "cmd-fb48d0daa1b1ec140afa0d1a13064f7a-3",
+    "dirty": true,
+    "failedCount": 0,
+    "instance": "stress-8627089d0f1b4bce",
+    "outcomes": [
+      {
+        "id": "obj-aa94dd1f9d066398bdf3b1dbccc5b457-0000000000000001",
+        "path": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "state": "added"
+      }
+    ],
+    "requestedCount": 1,
+    "sequence": "3",
+    "skippedCount": 0,
+    "state": "succeeded"
+  },
+  "stats": {
+    "adaptivePoints": true,
+    "analysisCount": 0,
+    "annotationCount": 0,
+    "bounds": {
+      "center": [
+        -0.019498586654663086,
+        1.26836359500885,
+        -4.077510356903076
+      ],
+      "max": [
+        4.296329021453857,
+        5.688043117523193,
+        -3.1008379459381104
+      ],
+      "min": [
+        -4.335326194763184,
+        -3.151315927505493,
+        -5.054183006286621
+      ],
+      "radius": 6.2541046142578125
+    },
+    "commandId": "cmd-fb48d0daa1b1ec140afa0d1a13064f7a-4",
+    "coordinateOrigin": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "dirty": true,
+    "fileCount": 1,
+    "fps": 62.472145080566406,
+    "groupCount": 1,
+    "instance": "stress-8627089d0f1b4bce",
+    "lineSegmentCount": 0,
+    "masterVertexPointSize": 4.0,
+    "pointCount": 0,
+    "renderModes": {
+      "solid": {
+        "enabled": 1,
+        "state": "on",
+        "total": 1
+      },
+      "triangles": {
+        "enabled": 0,
+        "state": "off",
+        "total": 1
+      },
+      "vertices": {
+        "enabled": 0,
+        "state": "off",
+        "total": 1
+      }
+    },
+    "renderer": "NoGraphicsAPI Vulkan",
+    "sequence": "4",
+    "showDimensions": false,
+    "showGrid": true,
+    "showOrigin": false,
+    "state": "succeeded",
+    "triangleCount": 75771986,
+    "triangleEdgeXray": false,
+    "upAxis": "z",
+    "vertexCount": 38414391,
+    "visibleGroupCount": 1
+  },
+  "status_after": {
+    "activeSequence": "5",
+    "annotationPreparationError": "",
+    "annotationPreparing": false,
+    "annotationReady": true,
+    "apiVersion": 1,
+    "busy": false,
+    "capturing": false,
+    "commandId": "cmd-fb48d0daa1b1ec140afa0d1a13064f7a-5",
+    "dirty": true,
+    "gpuFinalizing": false,
+    "headless": false,
+    "id": "stress-8627089d0f1b4bce",
+    "instance": "stress-8627089d0f1b4bce",
+    "loading": false,
+    "pane": {
+      "visible": true,
+      "width": 570.0
+    },
+    "path": null,
+    "pid": 33728,
+    "postLoadError": "",
+    "postLoadReady": true,
+    "postLoading": false,
+    "propertiesPane": {
+      "visible": false,
+      "width": 630.0
+    },
+    "queuedCommands": 0,
+    "ready": true,
+    "renderer": "NoGraphicsAPI Vulkan",
+    "screenshot": {
+      "format": "png",
+      "height": 1800,
+      "width": 1920
+    },
+    "sequence": "5",
+    "state": "succeeded",
+    "url": "http://127.0.0.1:56477/rpc",
+    "version": "0.29.0"
+  },
+  "exit_code_before_cleanup": 0,
+  "exit_code": 0,
+  "total_seconds": 68.77712370001245,
+  "operations": [
+    {
+      "kind": "operation",
+      "name": "status_before",
+      "method": "status",
+      "params": {},
+      "start_seconds": 0.4832405000051949,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.25356370001100004,
+      "peak_private_bytes": 166952960,
+      "peak_rss_bytes": 88584192,
+      "minimum_available_bytes": 48483053568,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "initial_panes",
+      "method": "pane.set",
+      "params": {
+        "visible": true,
+        "propertiesVisible": false
+      },
+      "start_seconds": 0.7372808000072837,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.011920499993721023
+    },
+    {
+      "kind": "operation",
+      "name": "model_add",
+      "method": "model.add",
+      "params": {
+        "path": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj"
+      },
+      "start_seconds": 0.7495920000073966,
+      "timeout_seconds": 0,
+      "status": "ok",
+      "seconds": 11.071896000008564,
+      "peak_private_bytes": 11569774592,
+      "peak_rss_bytes": 9066496000,
+      "minimum_available_bytes": 39493275648,
+      "cpu_seconds": 54.0625
+    },
+    {
+      "kind": "operation",
+      "name": "loaded_stats",
+      "method": "stats",
+      "params": {},
+      "start_seconds": 11.822059700003592,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.03079210000578314
+    },
+    {
+      "kind": "operation",
+      "name": "status_after",
+      "method": "status",
+      "params": {},
+      "start_seconds": 11.853179700003238,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.01570819999324158
+    },
+    {
+      "kind": "operation",
+      "name": "annotation_preparation",
+      "status": "ok",
+      "seconds": 0.01515540000400506
+    },
+    {
+      "kind": "operation",
+      "name": "camera_isometric",
+      "method": "camera.view",
+      "params": {
+        "preset": "isometric"
+      },
+      "start_seconds": 11.884701900009532,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015373000002000481
+    },
+    {
+      "kind": "operation",
+      "name": "camera_fit",
+      "method": "camera.frame",
+      "params": {},
+      "start_seconds": 11.90041800000472,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015166800003498793
+    },
+    {
+      "kind": "operation",
+      "name": "hide_grid",
+      "method": "grid.set",
+      "params": {
+        "visible": false
+      },
+      "start_seconds": 11.915900299994973,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.031597299996064976
+    },
+    {
+      "kind": "operation",
+      "name": "hide_origin",
+      "method": "origin.set",
+      "params": {
+        "visible": false
+      },
+      "start_seconds": 11.947859700012486,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015432599990162998
+    },
+    {
+      "kind": "operation",
+      "name": "hide_dimensions",
+      "method": "dimensions.set",
+      "params": {
+        "visible": false
+      },
+      "start_seconds": 11.963599500013515,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015708399994764477
+    },
+    {
+      "kind": "operation",
+      "name": "hide_panes",
+      "method": "pane.set",
+      "params": {
+        "visible": false,
+        "propertiesVisible": false
+      },
+      "start_seconds": 11.979643300001044,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015493499988224357
+    },
+    {
+      "kind": "operation",
+      "name": "enable_solid",
+      "method": "render.set",
+      "params": {
+        "target": "obj-aa94dd1f9d066398bdf3b1dbccc5b457-0000000000000001",
+        "solid": true,
+        "triangles": false,
+        "vertices": false
+      },
+      "start_seconds": 11.995465400017565,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.016013899992685765
+    },
+    {
+      "kind": "operation",
+      "name": "capture_solid_0_validation",
+      "method": "screenshot.capture",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-investigation-baseline\\render-20190810_BearTrap_Ground_Model-r0\\solid_0_validation.png"
+      },
+      "start_seconds": 12.011932499997783,
+      "timeout_seconds": 90,
+      "status": "ok",
+      "seconds": 0.49826340001891367,
+      "peak_private_bytes": 8749002752,
+      "peak_rss_bytes": 5557575680,
+      "minimum_available_bytes": 43009650688,
+      "cpu_seconds": 0.375
+    },
+    {
+      "kind": "operation",
+      "name": "solid_0_begin",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 13.605724299995927,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015854099998250604
+    },
+    {
+      "kind": "operation",
+      "name": "solid_0_end",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 15.702657299989369,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.035717700025998056
+    },
+    {
+      "kind": "operation",
+      "name": "capture_solid_1_validation",
+      "method": "screenshot.capture",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-investigation-baseline\\render-20190810_BearTrap_Ground_Model-r0\\solid_1_validation.png"
+      },
+      "start_seconds": 15.742852800001856,
+      "timeout_seconds": 90,
+      "status": "ok",
+      "seconds": 0.4909211999911349,
+      "peak_private_bytes": 8756936704,
+      "peak_rss_bytes": 5559812096,
+      "minimum_available_bytes": 43001778176,
+      "cpu_seconds": 0.375
+    },
+    {
+      "kind": "operation",
+      "name": "solid_1_begin",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 17.303516599989962,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.007492700009606779
+    },
+    {
+      "kind": "operation",
+      "name": "solid_1_end",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 19.33038790000137,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.03594570001587272
+    },
+    {
+      "kind": "operation",
+      "name": "capture_solid_2_validation",
+      "method": "screenshot.capture",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-investigation-baseline\\render-20190810_BearTrap_Ground_Model-r0\\solid_2_validation.png"
+      },
+      "start_seconds": 19.371253399993293,
+      "timeout_seconds": 90,
+      "status": "ok",
+      "seconds": 0.49494470001081936,
+      "peak_private_bytes": 8730419200,
+      "peak_rss_bytes": 5546741760,
+      "minimum_available_bytes": 42966466560,
+      "cpu_seconds": 0.21875
+    },
+    {
+      "kind": "operation",
+      "name": "solid_2_begin",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 20.925317799992627,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.016295200010063127
+    },
+    {
+      "kind": "operation",
+      "name": "solid_2_end",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 22.95523230000981,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.022651200008112937
+    },
+    {
+      "kind": "operation",
+      "name": "enable_edges",
+      "method": "render.set",
+      "params": {
+        "target": "obj-aa94dd1f9d066398bdf3b1dbccc5b457-0000000000000001",
+        "solid": false,
+        "triangles": true,
+        "vertices": false
+      },
+      "start_seconds": 22.98948059999384,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.03280690000974573
+    },
+    {
+      "kind": "operation",
+      "name": "capture_edges_0_validation",
+      "method": "screenshot.capture",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-investigation-baseline\\render-20190810_BearTrap_Ground_Model-r0\\edges_0_validation.png"
+      },
+      "start_seconds": 23.022631400002865,
+      "timeout_seconds": 90,
+      "status": "ok",
+      "seconds": 0.5478013000101782,
+      "peak_private_bytes": 8731860992,
+      "peak_rss_bytes": 5548023808,
+      "minimum_available_bytes": 43015462912,
+      "cpu_seconds": 0.203125
+    },
+    {
+      "kind": "operation",
+      "name": "edges_0_begin",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 24.632715400017332,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.03190599998924881
+    },
+    {
+      "kind": "operation",
+      "name": "edges_0_end",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 26.747469800000545,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.04812439999659546
+    },
+    {
+      "kind": "operation",
+      "name": "capture_edges_1_validation",
+      "method": "screenshot.capture",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-investigation-baseline\\render-20190810_BearTrap_Ground_Model-r0\\edges_1_validation.png"
+      },
+      "start_seconds": 26.798628399992594,
+      "timeout_seconds": 90,
+      "status": "ok",
+      "seconds": 0.5750437000242528,
+      "peak_private_bytes": 8761085952,
+      "peak_rss_bytes": 5563179008,
+      "minimum_available_bytes": 43005120512,
+      "cpu_seconds": 0.515625
+    },
+    {
+      "kind": "operation",
+      "name": "edges_1_begin",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 28.442221700010123,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.03107500000623986,
+      "peak_private_bytes": 8733372416,
+      "peak_rss_bytes": 5549211648,
+      "minimum_available_bytes": 43021328384,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "edges_1_end",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 30.589111800014507,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.045300799974938855
+    },
+    {
+      "kind": "operation",
+      "name": "capture_edges_2_validation",
+      "method": "screenshot.capture",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-investigation-baseline\\render-20190810_BearTrap_Ground_Model-r0\\edges_2_validation.png"
+      },
+      "start_seconds": 30.637547799997265,
+      "timeout_seconds": 90,
+      "status": "ok",
+      "seconds": 0.5658784999977797,
+      "peak_private_bytes": 8733331456,
+      "peak_rss_bytes": 5549359104,
+      "minimum_available_bytes": 43005775872,
+      "cpu_seconds": 0.484375
+    },
+    {
+      "kind": "operation",
+      "name": "edges_2_begin",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 32.271659799996996,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.03149620001204312
+    },
+    {
+      "kind": "operation",
+      "name": "edges_2_end",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 34.335607999993954,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015383699996164069
+    },
+    {
+      "kind": "operation",
+      "name": "enable_vertices",
+      "method": "render.set",
+      "params": {
+        "target": "obj-aa94dd1f9d066398bdf3b1dbccc5b457-0000000000000001",
+        "solid": false,
+        "triangles": false,
+        "vertices": true
+      },
+      "start_seconds": 34.35402279999107,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.025026200019055977,
+      "peak_private_bytes": 8704184320,
+      "peak_rss_bytes": 5549957120,
+      "minimum_available_bytes": 43015925760,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "capture_vertices_0_validation",
+      "method": "screenshot.capture",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-investigation-baseline\\render-20190810_BearTrap_Ground_Model-r0\\vertices_0_validation.png"
+      },
+      "start_seconds": 34.37939020001795,
+      "timeout_seconds": 90,
+      "status": "ok",
+      "seconds": 0.5144876999838743,
+      "peak_private_bytes": 8829923328,
+      "peak_rss_bytes": 5550436352,
+      "minimum_available_bytes": 42985988096,
+      "cpu_seconds": 0.203125
+    },
+    {
+      "kind": "operation",
+      "name": "vertices_0_begin",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 35.94149389999802,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.012491900008171797
+    },
+    {
+      "kind": "operation",
+      "name": "vertices_0_end",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 38.029486000014,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.055517899978440255
+    },
+    {
+      "kind": "operation",
+      "name": "capture_vertices_1_validation",
+      "method": "screenshot.capture",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-investigation-baseline\\render-20190810_BearTrap_Ground_Model-r0\\vertices_1_validation.png"
+      },
+      "start_seconds": 38.10303890000796,
+      "timeout_seconds": 90,
+      "status": "ok",
+      "seconds": 0.4671522999997251,
+      "peak_private_bytes": 8847659008,
+      "peak_rss_bytes": 5552668672,
+      "minimum_available_bytes": 43006984192,
+      "cpu_seconds": 0.21875
+    },
+    {
+      "kind": "operation",
+      "name": "vertices_1_begin",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 39.59840980000445,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.0033149000082630664
+    },
+    {
+      "kind": "operation",
+      "name": "vertices_1_end",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 41.64284760001465,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.030921600002329797
+    },
+    {
+      "kind": "operation",
+      "name": "capture_vertices_2_validation",
+      "method": "screenshot.capture",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-investigation-baseline\\render-20190810_BearTrap_Ground_Model-r0\\vertices_2_validation.png"
+      },
+      "start_seconds": 41.69196809999994,
+      "timeout_seconds": 90,
+      "status": "ok",
+      "seconds": 0.5120203999977093,
+      "peak_private_bytes": 8853635072,
+      "peak_rss_bytes": 5557788672,
+      "minimum_available_bytes": 43004219392,
+      "cpu_seconds": 0.34375
+    },
+    {
+      "kind": "operation",
+      "name": "vertices_2_begin",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 43.25904969999101,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.0022093000006861985
+    },
+    {
+      "kind": "operation",
+      "name": "vertices_2_end",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 45.32137099999818,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.0322992000146769
+    },
+    {
+      "kind": "operation",
+      "name": "enable_combined",
+      "method": "render.set",
+      "params": {
+        "target": "obj-aa94dd1f9d066398bdf3b1dbccc5b457-0000000000000001",
+        "solid": true,
+        "triangles": true,
+        "vertices": true
+      },
+      "start_seconds": 45.376582800003234,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.0032036000047810376
+    },
+    {
+      "kind": "operation",
+      "name": "capture_combined_0_validation",
+      "method": "screenshot.capture",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-investigation-baseline\\render-20190810_BearTrap_Ground_Model-r0\\combined_0_validation.png"
+      },
+      "start_seconds": 45.38013450001017,
+      "timeout_seconds": 90,
+      "status": "ok",
+      "seconds": 0.5230293000058737,
+      "peak_private_bytes": 8855109632,
+      "peak_rss_bytes": 5560389632,
+      "minimum_available_bytes": 43000442880,
+      "cpu_seconds": 0.328125
+    },
+    {
+      "kind": "operation",
+      "name": "combined_0_begin",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 46.954476799990516,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.01632010002504103
+    },
+    {
+      "kind": "operation",
+      "name": "combined_0_end",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 49.009354500012705,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.007958400005009025
+    },
+    {
+      "kind": "operation",
+      "name": "capture_combined_1_validation",
+      "method": "screenshot.capture",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-investigation-baseline\\render-20190810_BearTrap_Ground_Model-r0\\combined_1_validation.png"
+      },
+      "start_seconds": 49.022124300012365,
+      "timeout_seconds": 90,
+      "status": "ok",
+      "seconds": 0.5060137999826111,
+      "peak_private_bytes": 8883740672,
+      "peak_rss_bytes": 5575479296,
+      "minimum_available_bytes": 43001221120,
+      "cpu_seconds": 0.484375
+    },
+    {
+      "kind": "operation",
+      "name": "combined_1_begin",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 50.57391989999451,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.01624720002291724
+    },
+    {
+      "kind": "operation",
+      "name": "combined_1_end",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 52.59709130000556,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.006977000011829659
+    },
+    {
+      "kind": "operation",
+      "name": "capture_combined_2_validation",
+      "method": "screenshot.capture",
+      "params": {
+        "path": "D:\\woby\\build\\beartrap-investigation-baseline\\render-20190810_BearTrap_Ground_Model-r0\\combined_2_validation.png"
+      },
+      "start_seconds": 52.60835719999159,
+      "timeout_seconds": 90,
+      "status": "ok",
+      "seconds": 0.526594800001476,
+      "peak_private_bytes": 8853757952,
+      "peak_rss_bytes": 5559808000,
+      "minimum_available_bytes": 43006459904,
+      "cpu_seconds": 0.21875
+    },
+    {
+      "kind": "operation",
+      "name": "combined_2_begin",
+      "method": "performance.begin",
+      "params": {},
+      "start_seconds": 54.200926199991954,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.015929700020933524
+    },
+    {
+      "kind": "operation",
+      "name": "combined_2_end",
+      "method": "performance.end",
+      "params": {},
+      "start_seconds": 56.27911259999382,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.007783300010487437
+    },
+    {
+      "kind": "operation",
+      "name": "status_combined",
+      "method": "status",
+      "params": {},
+      "start_seconds": 56.29120500001591,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.007092499989084899
+    },
+    {
+      "kind": "operation",
+      "name": "remove_combined",
+      "method": "model.remove",
+      "params": {
+        "target": "obj-aa94dd1f9d066398bdf3b1dbccc5b457-0000000000000001"
+      },
+      "start_seconds": 56.29858279999462,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.15295440002228133,
+      "peak_private_bytes": 8852013056,
+      "peak_rss_bytes": 5557788672,
+      "minimum_available_bytes": 43012149248,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "empty_after_combined",
+      "method": "scene.info",
+      "params": {},
+      "start_seconds": 56.451860100001795,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.046444400009931996
+    },
+    {
+      "kind": "operation",
+      "name": "reload_for_solid",
+      "method": "model.add",
+      "params": {
+        "path": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj"
+      },
+      "start_seconds": 56.498611499991966,
+      "timeout_seconds": 0,
+      "status": "ok",
+      "seconds": 11.801835400023265,
+      "peak_private_bytes": 11787722752,
+      "peak_rss_bytes": 9044856832,
+      "minimum_available_bytes": 39520059392,
+      "cpu_seconds": 63.640625
+    },
+    {
+      "kind": "operation",
+      "name": "annotation_preparation",
+      "status": "ok",
+      "seconds": 0.015619699988747016
+    },
+    {
+      "kind": "operation",
+      "name": "remove_solid",
+      "method": "model.remove",
+      "params": {
+        "target": "obj-aa94dd1f9d066398bdf3b1dbccc5b457-0000000000000003"
+      },
+      "start_seconds": 68.31692380001186,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.1932043999840971,
+      "peak_private_bytes": 8567033856,
+      "peak_rss_bytes": 5142159360,
+      "minimum_available_bytes": 43346862080,
+      "cpu_seconds": 0.0
+    },
+    {
+      "kind": "operation",
+      "name": "empty_after_solid",
+      "method": "scene.info",
+      "params": {},
+      "start_seconds": 68.5105990000011,
+      "timeout_seconds": 240,
+      "status": "ok",
+      "seconds": 0.030556100013200194
+    },
+    {
+      "kind": "operation",
+      "name": "quit",
+      "method": "quit",
+      "params": {
+        "onDirty": "discard"
+      },
+      "start_seconds": 68.54157540001324,
+      "timeout_seconds": 20,
+      "status": "ok",
+      "seconds": 0.04757159997825511,
+      "peak_private_bytes": 770744320,
+      "peak_rss_bytes": 140943360,
+      "minimum_available_bytes": 48400871424,
+      "cpu_seconds": 0.0
+    }
+  ],
+  "frames": [
+    {
+      "kind": "frames",
+      "name": "solid_0",
+      "valid": true,
+      "exclusions": [],
+      "fps": 62.98498740805094,
+      "frames": 132,
+      "environment": {
+        "display": {
+          "id": 2,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 165.0,
+          "scale": 1.5
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 3030303,
+          "resetFlags": 3,
+          "targetFps": 330.00000330000006
+        },
+        "pane": {
+          "visible": false,
+          "width": 570.0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 630.0
+        },
+        "sceneEditRevision": 7,
+        "sceneGeneration": 0,
+        "uiScale": 1.0,
+        "viewport": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 40
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "camera_motion": false,
+      "metric": "completed_frame_intervals",
+      "elapsed_seconds": 2.0798607,
+      "frame_interval_median_ms": 15.827299999999994,
+      "frame_interval_p95_ms": 16.286000000000058,
+      "frame_interval_p99_ms": 16.490599999999972,
+      "frame_interval_max_ms": 16.5933,
+      "capture_verified": true,
+      "capture": "solid_0_validation.png",
+      "comparison_key": "995eacd4e145f8e2a397e0c24cfbcc1ba2f3e79db48bec80ca10ed3d6f2d7668",
+      "sampled_frame_median_ms": 15.8334,
+      "sampled_frame_max_ms": 16.3665,
+      "sampled_gpu_median_ms": 15.307264,
+      "sampled_stage_median_ms": {
+        "events": 0.0052,
+        "graphics_frame": 15.699,
+        "hover_pick": 0.0018,
+        "imgui_build": 0.0462,
+        "imgui_render": 0.0076500000000000005,
+        "pending_io": 0.00545,
+        "scene_state": 0.0016,
+        "state_update": 0.0015,
+        "submit_helpers": 0.007949999999999999,
+        "submit_scene": 0.0043,
+        "view_setup": 0.0492
+      }
+    },
+    {
+      "kind": "frames",
+      "name": "solid_1",
+      "valid": true,
+      "exclusions": [],
+      "fps": 62.432593857247184,
+      "frames": 127,
+      "environment": {
+        "display": {
+          "id": 2,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 165.0,
+          "scale": 1.5
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 3030303,
+          "resetFlags": 3,
+          "targetFps": 330.00000330000006
+        },
+        "pane": {
+          "visible": false,
+          "width": 570.0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 630.0
+        },
+        "sceneEditRevision": 7,
+        "sceneGeneration": 0,
+        "uiScale": 1.0,
+        "viewport": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 40
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "camera_motion": false,
+      "metric": "completed_frame_intervals",
+      "elapsed_seconds": 2.0181766,
+      "frame_interval_median_ms": 15.946900000000028,
+      "frame_interval_p95_ms": 16.55189999999999,
+      "frame_interval_p99_ms": 16.748800000000017,
+      "frame_interval_max_ms": 16.889200000000017,
+      "capture_verified": true,
+      "capture": "solid_1_validation.png",
+      "comparison_key": "995eacd4e145f8e2a397e0c24cfbcc1ba2f3e79db48bec80ca10ed3d6f2d7668",
+      "sampled_frame_median_ms": 16.00905,
+      "sampled_frame_max_ms": 16.8799,
+      "sampled_gpu_median_ms": 15.328256,
+      "sampled_stage_median_ms": {
+        "events": 0.0051,
+        "graphics_frame": 15.89465,
+        "hover_pick": 0.0017499999999999998,
+        "imgui_build": 0.04655,
+        "imgui_render": 0.007549999999999999,
+        "pending_io": 0.0056,
+        "scene_state": 0.0014,
+        "state_update": 0.0015,
+        "submit_helpers": 0.00825,
+        "submit_scene": 0.00465,
+        "view_setup": 0.045
+      }
+    },
+    {
+      "kind": "frames",
+      "name": "solid_2",
+      "valid": true,
+      "exclusions": [],
+      "fps": 61.544268792542475,
+      "frames": 124,
+      "environment": {
+        "display": {
+          "id": 2,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 165.0,
+          "scale": 1.5
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 3030303,
+          "resetFlags": 3,
+          "targetFps": 330.00000330000006
+        },
+        "pane": {
+          "visible": false,
+          "width": 570.0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 630.0
+        },
+        "sceneEditRevision": 7,
+        "sceneGeneration": 0,
+        "uiScale": 1.0,
+        "viewport": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 40
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "camera_motion": false,
+      "metric": "completed_frame_intervals",
+      "elapsed_seconds": 1.9985614,
+      "frame_interval_median_ms": 16.29200000000003,
+      "frame_interval_p95_ms": 16.705700000000007,
+      "frame_interval_p99_ms": 16.851099999999974,
+      "frame_interval_max_ms": 17.053899999999985,
+      "capture_verified": true,
+      "capture": "solid_2_validation.png",
+      "comparison_key": "995eacd4e145f8e2a397e0c24cfbcc1ba2f3e79db48bec80ca10ed3d6f2d7668",
+      "sampled_frame_median_ms": 16.2762,
+      "sampled_frame_max_ms": 17.043,
+      "sampled_gpu_median_ms": 15.363328,
+      "sampled_stage_median_ms": {
+        "events": 0.0057,
+        "graphics_frame": 16.1213,
+        "hover_pick": 0.0018,
+        "imgui_build": 0.0485,
+        "imgui_render": 0.0081,
+        "pending_io": 0.0062,
+        "scene_state": 0.0018,
+        "state_update": 0.0017,
+        "submit_helpers": 0.0086,
+        "submit_scene": 0.0047,
+        "view_setup": 0.0549
+      }
+    },
+    {
+      "kind": "frames",
+      "name": "edges_0",
+      "valid": true,
+      "exclusions": [],
+      "fps": 31.96252365045144,
+      "frames": 67,
+      "environment": {
+        "display": {
+          "id": 2,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 165.0,
+          "scale": 1.5
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 3030303,
+          "resetFlags": 3,
+          "targetFps": 330.00000330000006
+        },
+        "pane": {
+          "visible": false,
+          "width": 570.0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 630.0
+        },
+        "sceneEditRevision": 8,
+        "sceneGeneration": 0,
+        "uiScale": 1.0,
+        "viewport": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 40
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "camera_motion": false,
+      "metric": "completed_frame_intervals",
+      "elapsed_seconds": 2.0649183000000004,
+      "frame_interval_median_ms": 31.378149999999987,
+      "frame_interval_p95_ms": 31.870299999999986,
+      "frame_interval_p99_ms": 32.07080000000002,
+      "frame_interval_max_ms": 32.07080000000002,
+      "capture_verified": true,
+      "capture": "edges_0_validation.png",
+      "comparison_key": "c9ea6db264b71859d449172ed45225ccd71b33e274676b8305845b80d0a77b52",
+      "sampled_frame_median_ms": 31.51095,
+      "sampled_frame_max_ms": 31.8552,
+      "sampled_gpu_median_ms": 30.865408000000002,
+      "sampled_stage_median_ms": {
+        "events": 0.0055,
+        "graphics_frame": 31.2823,
+        "hover_pick": 0.0018,
+        "imgui_build": 0.04865,
+        "imgui_render": 0.0079,
+        "pending_io": 0.0059,
+        "scene_state": 0.0016,
+        "state_update": 0.0017,
+        "submit_helpers": 0.0082,
+        "submit_scene": 0.0053,
+        "view_setup": 0.0552
+      }
+    },
+    {
+      "kind": "frames",
+      "name": "edges_1",
+      "valid": true,
+      "exclusions": [],
+      "fps": 31.94847502537639,
+      "frames": 68,
+      "environment": {
+        "display": {
+          "id": 2,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 165.0,
+          "scale": 1.5
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 3030303,
+          "resetFlags": 3,
+          "targetFps": 330.00000330000006
+        },
+        "pane": {
+          "visible": false,
+          "width": 570.0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 630.0
+        },
+        "sceneEditRevision": 8,
+        "sceneGeneration": 0,
+        "uiScale": 1.0,
+        "viewport": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 40
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "camera_motion": false,
+      "metric": "completed_frame_intervals",
+      "elapsed_seconds": 2.0971267,
+      "frame_interval_median_ms": 31.331500000000005,
+      "frame_interval_p95_ms": 31.93399999999997,
+      "frame_interval_p99_ms": 32.2577,
+      "frame_interval_max_ms": 32.2577,
+      "capture_verified": true,
+      "capture": "edges_1_validation.png",
+      "comparison_key": "c9ea6db264b71859d449172ed45225ccd71b33e274676b8305845b80d0a77b52",
+      "sampled_frame_median_ms": 31.3103,
+      "sampled_frame_max_ms": 31.9237,
+      "sampled_gpu_median_ms": 30.875647999999998,
+      "sampled_stage_median_ms": {
+        "events": 0.0055,
+        "graphics_frame": 31.1172,
+        "hover_pick": 0.0017,
+        "imgui_build": 0.051699999999999996,
+        "imgui_render": 0.00775,
+        "pending_io": 0.0058,
+        "scene_state": 0.0015500000000000002,
+        "state_update": 0.0017499999999999998,
+        "submit_helpers": 0.00845,
+        "submit_scene": 0.005350000000000001,
+        "view_setup": 0.055150000000000005
+      }
+    },
+    {
+      "kind": "frames",
+      "name": "edges_2",
+      "valid": true,
+      "exclusions": [],
+      "fps": 32.29102284337593,
+      "frames": 65,
+      "environment": {
+        "display": {
+          "id": 2,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 165.0,
+          "scale": 1.5
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 3030303,
+          "resetFlags": 3,
+          "targetFps": 330.00000330000006
+        },
+        "pane": {
+          "visible": false,
+          "width": 570.0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 630.0
+        },
+        "sceneEditRevision": 8,
+        "sceneGeneration": 0,
+        "uiScale": 1.0,
+        "viewport": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 40
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "camera_motion": false,
+      "metric": "completed_frame_intervals",
+      "elapsed_seconds": 1.9819749999999998,
+      "frame_interval_median_ms": 30.930549999999926,
+      "frame_interval_p95_ms": 31.481499999999983,
+      "frame_interval_p99_ms": 31.75649999999996,
+      "frame_interval_max_ms": 31.75649999999996,
+      "capture_verified": true,
+      "capture": "edges_2_validation.png",
+      "comparison_key": "c9ea6db264b71859d449172ed45225ccd71b33e274676b8305845b80d0a77b52",
+      "sampled_frame_median_ms": 30.8627,
+      "sampled_frame_max_ms": 31.6176,
+      "sampled_gpu_median_ms": 30.503168,
+      "sampled_stage_median_ms": {
+        "events": 0.0053,
+        "graphics_frame": 30.7223,
+        "hover_pick": 0.0018,
+        "imgui_build": 0.0491,
+        "imgui_render": 0.0079,
+        "pending_io": 0.0059,
+        "scene_state": 0.0016,
+        "state_update": 0.0017,
+        "submit_helpers": 0.0083,
+        "submit_scene": 0.0054,
+        "view_setup": 0.0467
+      }
+    },
+    {
+      "kind": "frames",
+      "name": "vertices_0",
+      "valid": true,
+      "exclusions": [],
+      "fps": 329.8395638403999,
+      "frames": 692,
+      "environment": {
+        "display": {
+          "id": 2,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 165.0,
+          "scale": 1.5
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 3030303,
+          "resetFlags": 3,
+          "targetFps": 330.00000330000006
+        },
+        "pane": {
+          "visible": false,
+          "width": 570.0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 630.0
+        },
+        "sceneEditRevision": 9,
+        "sceneGeneration": 0,
+        "uiScale": 1.0,
+        "viewport": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 40
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "camera_motion": false,
+      "metric": "completed_frame_intervals",
+      "elapsed_seconds": 2.0949579,
+      "frame_interval_median_ms": 3.042500000000018,
+      "frame_interval_p95_ms": 3.5563999999999396,
+      "frame_interval_p99_ms": 3.947100000000006,
+      "frame_interval_max_ms": 5.321199999999976,
+      "capture_verified": true,
+      "capture": "vertices_0_validation.png",
+      "comparison_key": "33729872ad3f1b312ef3d84a016018dd1966d0f44bbde58c7aabc0251381e6e0",
+      "sampled_frame_median_ms": 3.06545,
+      "sampled_frame_max_ms": 3.8842,
+      "sampled_gpu_median_ms": 0.268288,
+      "sampled_stage_median_ms": {
+        "events": 0.00445,
+        "graphics_frame": 3.00705,
+        "hover_pick": 0.00135,
+        "imgui_build": 0.03655,
+        "imgui_render": 0.0078,
+        "pending_io": 0.00385,
+        "scene_state": 0.0011,
+        "state_update": 0.0012,
+        "submit_helpers": 0.007,
+        "submit_scene": 0.007,
+        "view_setup": 0.0063
+      }
+    },
+    {
+      "kind": "frames",
+      "name": "vertices_1",
+      "valid": true,
+      "exclusions": [],
+      "fps": 329.98387442843654,
+      "frames": 674,
+      "environment": {
+        "display": {
+          "id": 2,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 165.0,
+          "scale": 1.5
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 3030303,
+          "resetFlags": 3,
+          "targetFps": 330.00000330000006
+        },
+        "pane": {
+          "visible": false,
+          "width": 570.0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 630.0
+        },
+        "sceneEditRevision": 9,
+        "sceneGeneration": 0,
+        "uiScale": 1.0,
+        "viewport": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 40
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "camera_motion": false,
+      "metric": "completed_frame_intervals",
+      "elapsed_seconds": 2.0394936,
+      "frame_interval_median_ms": 3.0679000000000087,
+      "frame_interval_p95_ms": 3.5557000000000016,
+      "frame_interval_p99_ms": 3.813500000000033,
+      "frame_interval_max_ms": 4.233299999999872,
+      "capture_verified": true,
+      "capture": "vertices_1_validation.png",
+      "comparison_key": "33729872ad3f1b312ef3d84a016018dd1966d0f44bbde58c7aabc0251381e6e0",
+      "sampled_frame_median_ms": 3.1864,
+      "sampled_frame_max_ms": 3.4994,
+      "sampled_gpu_median_ms": 0.309248,
+      "sampled_stage_median_ms": {
+        "events": 0.0036,
+        "graphics_frame": 3.1337,
+        "hover_pick": 0.0012,
+        "imgui_build": 0.0319,
+        "imgui_render": 0.0073,
+        "pending_io": 0.0036,
+        "scene_state": 0.0009,
+        "state_update": 0.0009,
+        "submit_helpers": 0.0062,
+        "submit_scene": 0.0062,
+        "view_setup": 0.0052
+      }
+    },
+    {
+      "kind": "frames",
+      "name": "vertices_2",
+      "valid": true,
+      "exclusions": [],
+      "fps": 329.79284339801427,
+      "frames": 679,
+      "environment": {
+        "display": {
+          "id": 2,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 165.0,
+          "scale": 1.5
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 3030303,
+          "resetFlags": 3,
+          "targetFps": 330.00000330000006
+        },
+        "pane": {
+          "visible": false,
+          "width": 570.0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 630.0
+        },
+        "sceneEditRevision": 9,
+        "sceneGeneration": 0,
+        "uiScale": 1.0,
+        "viewport": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 40
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "camera_motion": false,
+      "metric": "completed_frame_intervals",
+      "elapsed_seconds": 2.0558359999999998,
+      "frame_interval_median_ms": 3.070850000000007,
+      "frame_interval_p95_ms": 3.618600000000015,
+      "frame_interval_p99_ms": 3.9214999999999804,
+      "frame_interval_max_ms": 4.868200000000115,
+      "capture_verified": true,
+      "capture": "vertices_2_validation.png",
+      "comparison_key": "33729872ad3f1b312ef3d84a016018dd1966d0f44bbde58c7aabc0251381e6e0",
+      "sampled_frame_median_ms": 3.1198,
+      "sampled_frame_max_ms": 3.79,
+      "sampled_gpu_median_ms": 0.323584,
+      "sampled_stage_median_ms": {
+        "events": 0.0032,
+        "graphics_frame": 3.0535,
+        "hover_pick": 0.0013,
+        "imgui_build": 0.03,
+        "imgui_render": 0.0075,
+        "pending_io": 0.0029,
+        "scene_state": 0.0008,
+        "state_update": 0.0009,
+        "submit_helpers": 0.0057,
+        "submit_scene": 0.0059,
+        "view_setup": 0.0048
+      }
+    },
+    {
+      "kind": "frames",
+      "name": "combined_0",
+      "valid": true,
+      "exclusions": [],
+      "fps": 60.76039442261415,
+      "frames": 123,
+      "environment": {
+        "display": {
+          "id": 2,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 165.0,
+          "scale": 1.5
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 3030303,
+          "resetFlags": 3,
+          "targetFps": 330.00000330000006
+        },
+        "pane": {
+          "visible": false,
+          "width": 570.0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 630.0
+        },
+        "sceneEditRevision": 10,
+        "sceneGeneration": 0,
+        "uiScale": 1.0,
+        "viewport": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 40
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "camera_motion": false,
+      "metric": "completed_frame_intervals",
+      "elapsed_seconds": 2.0078869,
+      "frame_interval_median_ms": 16.434499999999957,
+      "frame_interval_p95_ms": 16.856500000000096,
+      "frame_interval_p99_ms": 17.358299999999986,
+      "frame_interval_max_ms": 17.455100000000016,
+      "capture_verified": true,
+      "capture": "combined_0_validation.png",
+      "comparison_key": "7c119db566997d63142a439ed837e32cb62e0fe269e91d1ef9eace76aea4e7bc",
+      "sampled_frame_median_ms": 16.402250000000002,
+      "sampled_frame_max_ms": 17.4408,
+      "sampled_gpu_median_ms": 15.565824,
+      "sampled_stage_median_ms": {
+        "events": 0.0052,
+        "graphics_frame": 16.31575,
+        "hover_pick": 0.0015,
+        "imgui_build": 0.04315,
+        "imgui_render": 0.00795,
+        "pending_io": 0.005,
+        "scene_state": 0.0016,
+        "state_update": 0.0014,
+        "submit_helpers": 0.0076,
+        "submit_scene": 0.00895,
+        "view_setup": 0.0071
+      }
+    },
+    {
+      "kind": "frames",
+      "name": "combined_1",
+      "valid": true,
+      "exclusions": [],
+      "fps": 61.228992383315756,
+      "frames": 122,
+      "environment": {
+        "display": {
+          "id": 2,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 165.0,
+          "scale": 1.5
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 3030303,
+          "resetFlags": 3,
+          "targetFps": 330.00000330000006
+        },
+        "pane": {
+          "visible": false,
+          "width": 570.0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 630.0
+        },
+        "sceneEditRevision": 10,
+        "sceneGeneration": 0,
+        "uiScale": 1.0,
+        "viewport": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 40
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "camera_motion": false,
+      "metric": "completed_frame_intervals",
+      "elapsed_seconds": 1.976188,
+      "frame_interval_median_ms": 16.3292,
+      "frame_interval_p95_ms": 16.82120000000009,
+      "frame_interval_p99_ms": 17.116700000000037,
+      "frame_interval_max_ms": 17.454399999999964,
+      "capture_verified": true,
+      "capture": "combined_1_validation.png",
+      "comparison_key": "7c119db566997d63142a439ed837e32cb62e0fe269e91d1ef9eace76aea4e7bc",
+      "sampled_frame_median_ms": 16.5443,
+      "sampled_frame_max_ms": 17.4414,
+      "sampled_gpu_median_ms": 15.88736,
+      "sampled_stage_median_ms": {
+        "events": 0.0053,
+        "graphics_frame": 16.4492,
+        "hover_pick": 0.0016,
+        "imgui_build": 0.0435,
+        "imgui_render": 0.008,
+        "pending_io": 0.0049,
+        "scene_state": 0.0015,
+        "state_update": 0.0013,
+        "submit_helpers": 0.0077,
+        "submit_scene": 0.0089,
+        "view_setup": 0.0072
+      }
+    },
+    {
+      "kind": "frames",
+      "name": "combined_2",
+      "valid": true,
+      "exclusions": [],
+      "fps": 60.5548985048208,
+      "frames": 124,
+      "environment": {
+        "display": {
+          "id": 2,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 165.0,
+          "scale": 1.5
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 3030303,
+          "resetFlags": 3,
+          "targetFps": 330.00000330000006
+        },
+        "pane": {
+          "visible": false,
+          "width": 570.0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 630.0
+        },
+        "sceneEditRevision": 10,
+        "sceneGeneration": 0,
+        "uiScale": 1.0,
+        "viewport": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 40
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "camera_motion": false,
+      "metric": "completed_frame_intervals",
+      "elapsed_seconds": 2.0312146999999996,
+      "frame_interval_median_ms": 16.57400000000007,
+      "frame_interval_p95_ms": 17.120900000000006,
+      "frame_interval_p99_ms": 17.54910000000001,
+      "frame_interval_max_ms": 21.348999999999933,
+      "capture_verified": true,
+      "capture": "combined_2_validation.png",
+      "comparison_key": "7c119db566997d63142a439ed837e32cb62e0fe269e91d1ef9eace76aea4e7bc",
+      "sampled_frame_median_ms": 16.58275,
+      "sampled_frame_max_ms": 17.194,
+      "sampled_gpu_median_ms": 15.687168,
+      "sampled_stage_median_ms": {
+        "events": 0.0051,
+        "graphics_frame": 16.4929,
+        "hover_pick": 0.0015,
+        "imgui_build": 0.04365,
+        "imgui_render": 0.008,
+        "pending_io": 0.005,
+        "scene_state": 0.0015500000000000002,
+        "state_update": 0.0015,
+        "submit_helpers": 0.0076,
+        "submit_scene": 0.009049999999999999,
+        "view_setup": 0.00715
+      }
+    }
+  ],
+  "peak_private_bytes": 11787722752,
+  "peak_rss_bytes": 9628348416,
+  "minimum_available_bytes": 39493275648
+}

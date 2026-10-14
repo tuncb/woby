@@ -3,6 +3,7 @@
 #include "allocation_probe.h"
 #include "scene_history.h"
 #include "ui_operations.h"
+#include "surface_annotation.h"
 
 #include <doctest/doctest.h>
 #include <cmath>
@@ -255,4 +256,52 @@ TEST_CASE("dimension cache reuses keys on unchanged and shrinking selections")
     CHECK_FALSE(update());
     CHECK(cache.keys.empty());
     CHECK(cache.keys.data() == storage);
+}
+
+TEST_CASE("prepared local dimensions preserve precise referenced coordinates and invalidate on edits")
+{
+    auto state = dimensionScene();
+    auto& mesh = state.files.front().mesh;
+    auto& geometry = woby::editMeshGeometry(mesh);
+    geometry.precisePositions = {{0.000125, 0, 0}, {0.000375, 0, 0}, {0.000125, 0.0005, 0}, {900, 800, 700}};
+    for (size_t i = 0; i < geometry.vertices.size(); ++i) {
+        geometry.vertices[i].position = woby::renderPosition(geometry.precisePositions[i]);
+    }
+    mesh.origin = {1e15, -1e15, 1e15};
+    woby::prepareAnnotationMeshCache(mesh);
+    auto parts = woby::scenePickParts(state);
+    woby::identityMatrix(parts.front().model.data());
+    auto prepared = woby::sceneDimensions(parts);
+    REQUIRE(prepared);
+    const auto cache = mesh.annotationCache;
+    mesh.annotationCache.reset();
+    const auto reference = woby::sceneDimensions(parts);
+    REQUIRE(reference);
+    CHECK(prepared->lengths == reference->lengths);
+    CHECK(prepared->corners == reference->corners);
+    CHECK(prepared->lengths[0] == doctest::Approx(0.00025));
+    mesh.annotationCache = cache;
+    woby::editMeshPositions(mesh)[1][0] = 0.001;
+    CHECK_FALSE(mesh.annotationCache);
+    prepared = woby::sceneDimensions(parts);
+    REQUIRE(prepared);
+    CHECK(prepared->lengths[0] == doctest::Approx(0.000875));
+}
+
+TEST_CASE("prepared local dimensions do not apply whole-node extents to a partial range")
+{
+    auto state = dimensionScene();
+    auto& mesh = state.files.front().mesh;
+    auto& geometry = woby::editMeshGeometry(mesh);
+    geometry.indices.insert(geometry.indices.end(), {1, 2, 3});
+    geometry.nodes.front().indexCount = 6;
+    woby::prepareAnnotationMeshCache(mesh);
+    auto parts = woby::scenePickParts(state);
+    parts.front().indexCount = 3;
+    const auto partial = woby::sceneDimensions(parts);
+    REQUIRE(partial);
+    CHECK(partial->lengths[0] == doctest::Approx(4));
+    CHECK(partial->lengths[1] == doctest::Approx(3));
+    parts.front().indexOffset = 1000;
+    CHECK_FALSE(woby::sceneDimensions(parts));
 }

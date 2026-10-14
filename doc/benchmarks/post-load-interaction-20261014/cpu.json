@@ -1,0 +1,177 @@
+{
+  "milliseconds": {
+    "annotation_cache": [
+      3434.4915
+    ],
+    "clear_file": [
+      0.0001,
+      0.0001,
+      0.0
+    ],
+    "clear_group": [
+      0.0,
+      0.0,
+      0.0001
+    ],
+    "cleared_inspector_file": [
+      0.0049,
+      0.0052,
+      0.0048
+    ],
+    "cleared_inspector_group": [
+      0.0048,
+      0.005,
+      0.0049
+    ],
+    "cleared_queries_file": [
+      0.0019,
+      0.0016,
+      0.0049
+    ],
+    "cleared_queries_group": [
+      0.002,
+      0.0016,
+      0.0021
+    ],
+    "combined_pick_center": [
+      12734.453,
+      13200.4998,
+      13074.5492
+    ],
+    "combined_pick_corner": [
+      11077.748,
+      11267.8025,
+      11034.9387
+    ],
+    "create_ui_file": [
+      1643.5629
+    ],
+    "edges_pick_center": [
+      9832.756,
+      9835.7526,
+      9794.8698
+    ],
+    "edges_pick_corner": [
+      8159.9775,
+      8138.6342,
+      8079.5798
+    ],
+    "load_and_prepare": [
+      6970.7212
+    ],
+    "remove_logical_model": [
+      119.1022
+    ],
+    "select_file": [
+      0.0019,
+      0.0175,
+      0.0016
+    ],
+    "select_group": [
+      0.0009,
+      0.0008,
+      0.0007
+    ],
+    "selected_inspector_file": [
+      0.0418,
+      0.0299,
+      0.0292
+    ],
+    "selected_inspector_group": [
+      0.0282,
+      0.0293,
+      0.0347
+    ],
+    "selected_queries_cached_file": [
+      0.0002,
+      0.0001,
+      0.0001
+    ],
+    "selected_queries_cached_group": [
+      0.0001,
+      0.0001,
+      0.0001
+    ],
+    "selected_queries_file": [
+      2180.5077,
+      2143.794,
+      2176.7829
+    ],
+    "selected_queries_group": [
+      2159.4761,
+      2159.4213,
+      2164.7871
+    ],
+    "solid_pick_center": [
+      17.0923,
+      16.5645,
+      16.4825
+    ],
+    "solid_pick_corner": [
+      0.0022,
+      0.002,
+      0.0019
+    ],
+    "vertices_pick_center": [
+      4757.617,
+      4782.6655,
+      4812.141
+    ],
+    "vertices_pick_corner": [
+      4743.6564,
+      4752.3251,
+      4954.5568
+    ]
+  },
+  "model": "D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj",
+  "picked_ids": {
+    "combined_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "combined_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "edges_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "edges_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "solid_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "solid_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "vertices_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "vertices_pick_corner": [
+      0,
+      0,
+      0
+    ]
+  },
+  "remaining_files": 0,
+  "samples": 3,
+  "triangles": 75771986,
+  "vertices": 38414391,
+  "viewport": [
+    1280,
+    720
+  ]
+}

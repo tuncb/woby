@@ -1,0 +1,261 @@
+{
+  "milliseconds": {
+    "annotation_cache": [
+      5724.0014
+    ],
+    "clear_file": [
+      0.0014,
+      0.0001,
+      0.0001
+    ],
+    "clear_group": [
+      0.0001,
+      0.0,
+      0.0
+    ],
+    "cleared_inspector_file": [
+      0.0046,
+      0.0112,
+      0.0101
+    ],
+    "cleared_inspector_group": [
+      0.004,
+      0.0034,
+      0.0035
+    ],
+    "cleared_queries_file": [
+      0.0004,
+      0.0017,
+      0.0007
+    ],
+    "cleared_queries_group": [
+      0.0005,
+      0.0004,
+      0.0005
+    ],
+    "combined_pick_center": [
+      35.8608,
+      35.5049,
+      35.7971
+    ],
+    "combined_pick_corner": [
+      0.0043,
+      0.0039,
+      0.0043
+    ],
+    "create_ui_file": [
+      1612.0989
+    ],
+    "edges_pick_center": [
+      32.6938,
+      29.8739,
+      29.3328
+    ],
+    "edges_pick_corner": [
+      0.004,
+      0.0039,
+      0.0042
+    ],
+    "load_and_prepare": [
+      7344.2499
+    ],
+    "remove_logical_model": [
+      143.4256
+    ],
+    "select_file": [
+      0.0018,
+      0.0008,
+      0.0013
+    ],
+    "select_group": [
+      0.0004,
+      0.0003,
+      0.0002
+    ],
+    "selected_inspector_file": [
+      0.0146,
+      0.0089,
+      0.0179
+    ],
+    "selected_inspector_group": [
+      0.0102,
+      0.0077,
+      0.0092
+    ],
+    "selected_queries_cached_file": [
+      0.0001,
+      0.0003,
+      0.0001
+    ],
+    "selected_queries_cached_group": [
+      0.0001,
+      0.0001,
+      0.0001
+    ],
+    "selected_queries_file": [
+      0.0067,
+      0.0011,
+      0.0031
+    ],
+    "selected_queries_group": [
+      0.0017,
+      0.001,
+      0.0008
+    ],
+    "solid_pick_center": [
+      0.8299,
+      0.3938,
+      0.3315
+    ],
+    "solid_pick_corner": [
+      0.0017,
+      0.0011,
+      0.0009
+    ],
+    "vertices_pick_center": [
+      17.2294,
+      17.6609,
+      18.0785
+    ],
+    "vertices_pick_corner": [
+      0.0056,
+      0.0142,
+      0.0044
+    ]
+  },
+  "model": "D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj",
+  "picked_ids": {
+    "combined_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "combined_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "edges_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "edges_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "solid_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "solid_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "vertices_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "vertices_pick_corner": [
+      0,
+      0,
+      0
+    ]
+  },
+  "remaining_files": 0,
+  "samples": 3,
+  "triangles": 75771986,
+  "vertices": 38414391,
+  "viewport": [
+    1280,
+    720
+  ],
+  "visited_spatial_nodes": {
+    "combined_pick_center": [
+      7769,
+      7769,
+      7769
+    ],
+    "combined_pick_corner": [
+      1,
+      1,
+      1
+    ],
+    "edges_pick_center": [
+      7769,
+      7769,
+      7769
+    ],
+    "edges_pick_corner": [
+      1,
+      1,
+      1
+    ],
+    "solid_pick_center": [
+      1383,
+      1383,
+      1383
+    ],
+    "solid_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "vertices_pick_center": [
+      7769,
+      7769,
+      7769
+    ],
+    "vertices_pick_corner": [
+      1,
+      1,
+      1
+    ]
+  },
+  "visited_triangles": {
+    "combined_pick_center": [
+      162393,
+      162393,
+      162393
+    ],
+    "combined_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "edges_pick_center": [
+      162393,
+      162393,
+      162393
+    ],
+    "edges_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "solid_pick_center": [
+      3398,
+      3398,
+      3398
+    ],
+    "solid_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "vertices_pick_center": [
+      162393,
+      162393,
+      162393
+    ],
+    "vertices_pick_corner": [
+      0,
+      0,
+      0
+    ]
+  }
+}

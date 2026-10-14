@@ -1,0 +1,1483 @@
+{
+  "combined_grid": [
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.001,
+      "picked": 0,
+      "point": [
+        71.11111450195313,
+        40.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0009,
+      "picked": 0,
+      "point": [
+        213.3333282470703,
+        40.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        355.5555419921875,
+        40.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        497.77777099609375,
+        40.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        640.0,
+        40.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0009,
+      "picked": 0,
+      "point": [
+        782.2222290039063,
+        40.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        924.4444580078125,
+        40.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1066.6666259765625,
+        40.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1208.888916015625,
+        40.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        71.11111450195313,
+        120.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        213.3333282470703,
+        120.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        355.5555419921875,
+        120.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        497.77777099609375,
+        120.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        640.0,
+        120.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        782.2222290039063,
+        120.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        924.4444580078125,
+        120.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        1066.6666259765625,
+        120.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0009,
+      "picked": 0,
+      "point": [
+        1208.888916015625,
+        120.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        71.11111450195313,
+        200.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        213.3333282470703,
+        200.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        355.5555419921875,
+        200.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        497.77777099609375,
+        200.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        640.0,
+        200.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        782.2222290039063,
+        200.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        924.4444580078125,
+        200.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1066.6666259765625,
+        200.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1208.888916015625,
+        200.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        71.11111450195313,
+        280.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        213.3333282470703,
+        280.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        355.5555419921875,
+        280.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        497.77777099609375,
+        280.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        640.0,
+        280.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        782.2222290039063,
+        280.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        924.4444580078125,
+        280.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1066.6666259765625,
+        280.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        1208.888916015625,
+        280.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        71.11111450195313,
+        360.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        213.3333282470703,
+        360.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        355.5555419921875,
+        360.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0206,
+      "picked": 0,
+      "point": [
+        497.77777099609375,
+        360.0
+      ],
+      "triangle": 0,
+      "triangles": 72
+    },
+    {
+      "barycentric": [
+        0.017246497421229967,
+        0.06061452477976237,
+        0.9221389777990077
+      ],
+      "milliseconds": 34.0023,
+      "picked": 2,
+      "point": [
+        640.0,
+        360.0
+      ],
+      "triangle": 75299964,
+      "triangles": 162393
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0076,
+      "picked": 0,
+      "point": [
+        782.2222290039063,
+        360.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0009,
+      "picked": 0,
+      "point": [
+        924.4444580078125,
+        360.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        1066.6666259765625,
+        360.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1208.888916015625,
+        360.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        71.11111450195313,
+        440.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        213.3333282470703,
+        440.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0009,
+      "picked": 0,
+      "point": [
+        355.5555419921875,
+        440.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.1106,
+      "picked": 2,
+      "point": [
+        497.77777099609375,
+        440.0
+      ],
+      "triangle": 0,
+      "triangles": 651
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.5542,
+      "picked": 2,
+      "point": [
+        640.0,
+        440.0
+      ],
+      "triangle": 0,
+      "triangles": 2601
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0166,
+      "picked": 0,
+      "point": [
+        782.2222290039063,
+        440.0
+      ],
+      "triangle": 0,
+      "triangles": 72
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        924.4444580078125,
+        440.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        1066.6666259765625,
+        440.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1208.888916015625,
+        440.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        71.11111450195313,
+        520.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        213.3333282470703,
+        520.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        355.5555419921875,
+        520.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        497.77777099609375,
+        520.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        640.0,
+        520.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        782.2222290039063,
+        520.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        924.4444580078125,
+        520.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1066.6666259765625,
+        520.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1208.888916015625,
+        520.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        71.11111450195313,
+        600.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        213.3333282470703,
+        600.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        355.5555419921875,
+        600.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        497.77777099609375,
+        600.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        640.0,
+        600.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        782.2222290039063,
+        600.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        924.4444580078125,
+        600.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1066.6666259765625,
+        600.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1208.888916015625,
+        600.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        71.11111450195313,
+        680.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        213.3333282470703,
+        680.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        355.5555419921875,
+        680.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        497.77777099609375,
+        680.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        640.0,
+        680.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0008,
+      "picked": 0,
+      "point": [
+        782.2222290039063,
+        680.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        924.4444580078125,
+        680.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1066.6666259765625,
+        680.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    },
+    {
+      "barycentric": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "milliseconds": 0.0007,
+      "picked": 0,
+      "point": [
+        1208.888916015625,
+        680.0
+      ],
+      "triangle": 0,
+      "triangles": 0
+    }
+  ],
+  "exhaustive_grid_checks": 2,
+  "milliseconds": {
+    "annotation_cache": [
+      5575.6893
+    ],
+    "clear_file": [
+      0.0001,
+      0.0001,
+      0.0
+    ],
+    "clear_group": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "cleared_inspector_file": [
+      0.0062,
+      0.0058,
+      0.0055
+    ],
+    "cleared_inspector_group": [
+      0.0046,
+      0.0042,
+      0.004
+    ],
+    "cleared_queries_file": [
+      0.0012,
+      0.0006,
+      0.0005
+    ],
+    "cleared_queries_group": [
+      0.0005,
+      0.0004,
+      0.0004
+    ],
+    "combined_pick_center": [
+      33.6533,
+      33.7531,
+      33.8679
+    ],
+    "combined_pick_corner": [
+      0.0039,
+      0.0037,
+      0.0036
+    ],
+    "create_ui_file": [
+      1598.3341
+    ],
+    "edges_pick_center": [
+      28.4525,
+      29.0168,
+      28.9811
+    ],
+    "edges_pick_corner": [
+      0.0034,
+      0.0041,
+      0.0043
+    ],
+    "load_and_prepare": [
+      6966.6909
+    ],
+    "remove_logical_model": [
+      121.815
+    ],
+    "select_file": [
+      0.0018,
+      0.0053,
+      0.0014
+    ],
+    "select_group": [
+      0.0004,
+      0.0002,
+      0.0001
+    ],
+    "selected_inspector_file": [
+      0.0338,
+      0.0173,
+      0.0141
+    ],
+    "selected_inspector_group": [
+      0.009,
+      0.0089,
+      0.0074
+    ],
+    "selected_queries_cached_file": [
+      0.0002,
+      0.0001,
+      0.0001
+    ],
+    "selected_queries_cached_group": [
+      0.0003,
+      0.0001,
+      0.0001
+    ],
+    "selected_queries_file": [
+      0.0102,
+      0.0031,
+      0.0012
+    ],
+    "selected_queries_group": [
+      0.001,
+      0.001,
+      0.0009
+    ],
+    "solid_pick_center": [
+      0.6852,
+      0.2703,
+      0.2456
+    ],
+    "solid_pick_corner": [
+      0.0015,
+      0.001,
+      0.0008
+    ],
+    "verify_exhaustive_pick": [
+      7866.4842,
+      6019.8087
+    ],
+    "vertices_pick_center": [
+      16.9154,
+      17.1584,
+      16.9687
+    ],
+    "vertices_pick_corner": [
+      0.0033,
+      0.004,
+      0.0024
+    ]
+  },
+  "model": "D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj",
+  "picked_ids": {
+    "combined_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "combined_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "edges_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "edges_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "solid_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "solid_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "vertices_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "vertices_pick_corner": [
+      0,
+      0,
+      0
+    ]
+  },
+  "remaining_files": 0,
+  "samples": 3,
+  "triangles": 75771986,
+  "vertices": 38414391,
+  "viewport": [
+    1280,
+    720
+  ],
+  "visited_spatial_nodes": {
+    "combined_pick_center": [
+      7769,
+      7769,
+      7769
+    ],
+    "combined_pick_corner": [
+      1,
+      1,
+      1
+    ],
+    "edges_pick_center": [
+      7769,
+      7769,
+      7769
+    ],
+    "edges_pick_corner": [
+      1,
+      1,
+      1
+    ],
+    "solid_pick_center": [
+      1383,
+      1383,
+      1383
+    ],
+    "solid_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "vertices_pick_center": [
+      7769,
+      7769,
+      7769
+    ],
+    "vertices_pick_corner": [
+      1,
+      1,
+      1
+    ]
+  },
+  "visited_triangles": {
+    "combined_pick_center": [
+      162393,
+      162393,
+      162393
+    ],
+    "combined_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "edges_pick_center": [
+      162393,
+      162393,
+      162393
+    ],
+    "edges_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "solid_pick_center": [
+      3398,
+      3398,
+      3398
+    ],
+    "solid_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "vertices_pick_center": [
+      162393,
+      162393,
+      162393
+    ],
+    "vertices_pick_corner": [
+      0,
+      0,
+      0
+    ]
+  }
+}

@@ -1,0 +1,271 @@
+{
+  "extent_cache_bytes": 56,
+  "milliseconds": {
+    "annotation_cache": [
+      5594.9049
+    ],
+    "clear_file": [
+      0.0001,
+      0.0001,
+      0.0
+    ],
+    "clear_group": [
+      0.0001,
+      0.0,
+      0.0001
+    ],
+    "cleared_inspector_file": [
+      0.0149,
+      0.0081,
+      0.0049
+    ],
+    "cleared_inspector_group": [
+      0.0047,
+      0.0051,
+      0.0046
+    ],
+    "cleared_queries_file": [
+      0.0025,
+      0.0016,
+      0.0006
+    ],
+    "cleared_queries_group": [
+      0.0004,
+      0.0004,
+      0.0003
+    ],
+    "combined_pick_center": [
+      34.4381,
+      34.549,
+      34.8248
+    ],
+    "combined_pick_corner": [
+      0.0044,
+      0.0051,
+      0.0044
+    ],
+    "create_ui_file": [
+      1605.7339
+    ],
+    "detach_geometry": [
+      0.0002
+    ],
+    "edges_pick_center": [
+      29.947,
+      31.6192,
+      29.9751
+    ],
+    "edges_pick_corner": [
+      0.006,
+      0.0042,
+      0.0043
+    ],
+    "load_and_prepare": [
+      7037.0942
+    ],
+    "release_geometry_worker": [
+      117.9308
+    ],
+    "remove_logical_model_retired": [
+      0.0083
+    ],
+    "select_file": [
+      0.0021,
+      0.0028,
+      0.0015
+    ],
+    "select_group": [
+      0.0003,
+      0.0001,
+      0.0002
+    ],
+    "selected_inspector_file": [
+      0.0235,
+      0.0201,
+      0.0109
+    ],
+    "selected_inspector_group": [
+      0.0091,
+      0.0102,
+      0.009
+    ],
+    "selected_queries_cached_file": [
+      0.0002,
+      0.0003,
+      0.0001
+    ],
+    "selected_queries_cached_group": [
+      0.0001,
+      0.0001,
+      0.0001
+    ],
+    "selected_queries_file": [
+      0.0093,
+      0.0028,
+      0.0013
+    ],
+    "selected_queries_group": [
+      0.0009,
+      0.0009,
+      0.001
+    ],
+    "solid_pick_center": [
+      0.6517,
+      0.2784,
+      0.2427
+    ],
+    "solid_pick_corner": [
+      0.0013,
+      0.0009,
+      0.0008
+    ],
+    "start_release_worker": [
+      0.0499
+    ],
+    "vertices_pick_center": [
+      17.499,
+      17.549,
+      17.8125
+    ],
+    "vertices_pick_corner": [
+      0.0039,
+      0.0036,
+      0.0038
+    ]
+  },
+  "model": "D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj",
+  "picked_ids": {
+    "combined_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "combined_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "edges_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "edges_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "solid_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "solid_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "vertices_pick_center": [
+      2,
+      2,
+      2
+    ],
+    "vertices_pick_corner": [
+      0,
+      0,
+      0
+    ]
+  },
+  "remaining_files": 0,
+  "samples": 3,
+  "triangles": 75771986,
+  "vertices": 38414391,
+  "viewport": [
+    1280,
+    720
+  ],
+  "visited_spatial_nodes": {
+    "combined_pick_center": [
+      7769,
+      7769,
+      7769
+    ],
+    "combined_pick_corner": [
+      1,
+      1,
+      1
+    ],
+    "edges_pick_center": [
+      7769,
+      7769,
+      7769
+    ],
+    "edges_pick_corner": [
+      1,
+      1,
+      1
+    ],
+    "solid_pick_center": [
+      1383,
+      1383,
+      1383
+    ],
+    "solid_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "vertices_pick_center": [
+      7769,
+      7769,
+      7769
+    ],
+    "vertices_pick_corner": [
+      1,
+      1,
+      1
+    ]
+  },
+  "visited_triangles": {
+    "combined_pick_center": [
+      162393,
+      162393,
+      162393
+    ],
+    "combined_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "edges_pick_center": [
+      162393,
+      162393,
+      162393
+    ],
+    "edges_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "solid_pick_center": [
+      3398,
+      3398,
+      3398
+    ],
+    "solid_pick_corner": [
+      0,
+      0,
+      0
+    ],
+    "vertices_pick_center": [
+      162393,
+      162393,
+      162393
+    ],
+    "vertices_pick_corner": [
+      0,
+      0,
+      0
+    ]
+  }
+}

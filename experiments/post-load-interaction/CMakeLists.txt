@@ -1,0 +1,7 @@
+add_executable(woby_post_load_interaction_probe main.cpp)
+target_link_libraries(woby_post_load_interaction_probe PRIVATE woby_core nlohmann_json::nlohmann_json)
+woby_enable_project_warnings(woby_post_load_interaction_probe)
+if(BUILD_TESTING)
+    add_test(NAME woby_post_load_interaction_contract COMMAND woby_post_load_interaction_probe --self-test)
+    set_tests_properties(woby_post_load_interaction_contract PROPERTIES LABELS "unit;cpu")
+endif()

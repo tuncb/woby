@@ -161,6 +161,62 @@ bool intersectsPickBlock(const MeshAnnotationBlock& block, const Point& origin, 
     return intersectsBounds(bounds, origin, direction);
 }
 
+// Clip-space planes remain linear before perspective division. Testing their
+// maxima over a local box also handles boxes that cross the eye or near plane.
+// The footprint includes the same edge/marker tolerance as the primitive tests.
+using PickPlanes = std::array<Clip, 7>;
+using CursorRegion = std::array<double, 4>;
+CursorRegion cursorRegion(const ScenePickView& view, PickPoint point, double radius)
+{
+    return {(point[0] - radius) * 2 / view.width - 1,
+        (point[0] + radius) * 2 / view.width - 1,
+        1 - (point[1] + radius) * 2 / view.height,
+        1 - (point[1] - radius) * 2 / view.height};
+}
+bool intersectsCursor(const Clip& a, const Clip& b, const CursorRegion& region)
+{
+    const std::array<double, 4> first{a[0] - region[0] * a[3], region[1] * a[3] - a[0],
+        a[1] - region[2] * a[3], region[3] * a[3] - a[1]};
+    const std::array<double, 4> second{b[0] - region[0] * b[3], region[1] * b[3] - b[0],
+        b[1] - region[2] * b[3], region[3] * b[3] - b[1]};
+    double magnitude = 1;
+    for (const auto value : {a[0], a[1], a[3], b[0], b[1], b[3]}) { magnitude = std::max(magnitude, std::abs(value)); }
+    for (size_t plane = 0; plane < first.size(); ++plane) {
+        if (std::max(first[plane], second[plane]) < -magnitude * 1e-12) { return false; }
+    }
+    return true;
+}
+PickPlanes cursorPlanes(const std::array<double, 16>& mvp, const ScenePickView& view,
+    PickPoint point, double radius)
+{
+    const auto region = cursorRegion(view, point, radius);
+    PickPlanes planes;
+    for (size_t i = 0; i < 4; ++i) {
+        const double x = mvp[i * 4], y = mvp[i * 4 + 1], z = mvp[i * 4 + 2], w = mvp[i * 4 + 3];
+        planes[0][i] = x - region[0] * w;
+        planes[1][i] = region[1] * w - x;
+        planes[2][i] = y - region[2] * w;
+        planes[3][i] = region[3] * w - y;
+        planes[4][i] = view.homogeneousDepth ? z + w : z;
+        planes[5][i] = w - z;
+        planes[6][i] = w;
+    }
+    return planes;
+}
+bool intersectsCursor(const MeshAnnotationNode& node, const PickPlanes& planes)
+{
+    for (const auto& plane : planes) {
+        double maximum = plane[3], magnitude = std::abs(plane[3]);
+        for (size_t axis = 0; axis < 3; ++axis) {
+            const double term = plane[axis] * (plane[axis] < 0 ? node.minimum[axis] : node.maximum[axis]);
+            maximum += term; magnitude += std::abs(term);
+        }
+        // Conservative allowance for composition and plane-evaluation rounding.
+        if (maximum < -std::max(1.0, magnitude) * 1e-12) { return false; }
+    }
+    return true;
+}
+
 std::optional<double> triangleHit(const Point& origin, const Point& direction, const std::array<Point, 3>& p, std::array<double,3>& barycentric)
 {
     const auto a = subtract(p[1], p[0]), b = subtract(p[2], p[0]);
@@ -362,9 +418,11 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
     }
 }
 
-SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const ScenePickView& view, PickPoint point, SceneTriangleHit* detail)
+SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const ScenePickView& view, PickPoint point,
+    SceneTriangleHit* detail, ScenePickStatistics* statistics)
 {
     if (detail) { *detail = {}; }
+    if (statistics) { *statistics = {}; }
     if (view.width == 0 || view.height == 0 || !std::isfinite(point[0]) || !std::isfinite(point[1]) ||
         point[0] < 0 || point[1] < 0 || point[0] >= view.width || point[1] >= view.height) { return invalidSceneObjectId; }
     PickMatrix inverse;
@@ -436,6 +494,11 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
             std::optional<double> surfaceDepth, edgeDepth, pointDepth;
             SceneTriangleHit surfaceHit;
             const auto clip = [&](const Point& p) { return transform(mvp, {p[0], p[1], p[2], 1}); };
+            const auto edgeRegion = cursorRegion(view, point, std::max(3.0 * view.pixelScale, double{part.lineWidth} * .5));
+            const auto pickEdge = [&](const Clip& a, const Clip& b) -> std::optional<double> {
+                if (!intersectsCursor(a, b, edgeRegion)) { return {}; }
+                return edgeHit(a, b, view, point, part.lineWidth);
+            };
             if (part.mesh) {
                 const auto& mesh = *part.mesh;
                 if (part.pointIndexCount && part.vertices) {
@@ -464,7 +527,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                     for (size_t i = 0; i + 1 < indices.size(); i += 2) {
                         if (indices[i] >= meshGeometry(mesh).vertices.size() || indices[i+1] >= meshGeometry(mesh).vertices.size()) { continue; }
                         const auto a = clip(meshPosition(mesh, indices[i])), b = clip(meshPosition(mesh, indices[i+1]));
-                        closest(edgeDepth, edgeHit(a, b, view, point, part.lineWidth));
+                        closest(edgeDepth, pickEdge(a, b));
                         if (part.vertices) {
                             for (const auto& p : {a, b}) {
                                 if (!inside(p, view.homogeneousDepth)) { continue; }
@@ -478,6 +541,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                 const size_t begin = std::min(part.indexOffset, meshGeometry(mesh).indices.size());
                 const size_t finish = begin + std::min(part.indexCount, meshGeometry(mesh).indices.size() - begin);
                 const auto visitTriangle = [&](size_t i) {
+                    if (statistics) { ++statistics->triangles; }
                     std::array<Point, 3> triangle;
                     bool valid = true;
                     for (size_t k = 0; k < 3; ++k) {
@@ -500,7 +564,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                     if (part.edges || part.vertices) {
                         const std::array<Clip, 3> projected = {clip(triangle[0]), clip(triangle[1]), clip(triangle[2])};
                         for (size_t k = 0; k < 3; ++k) {
-                            if (part.edges) { closest(edgeDepth, edgeHit(projected[k], projected[(k + 1) % 3], view, point)); }
+                            if (part.edges) { closest(edgeDepth, pickEdge(projected[k], projected[(k + 1) % 3])); }
                             if (part.vertices && inside(projected[k], view.homogeneousDepth)) {
                                 const auto p = screen(projected[k], view);
                                 const double dx = p[0] - point[0], dy = p[1] - point[1];
@@ -510,17 +574,36 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                         }
                     }
                 };
-                bool useBlocks = testSurface && !part.edges && !part.vertices && mesh.annotationCache
+                const bool cacheCurrent = mesh.annotationCache
                     && mesh.annotationCache->vertexCount == meshGeometry(mesh).vertices.size()
                     && mesh.annotationCache->indexCount == meshGeometry(mesh).indices.size()
                     && mesh.annotationCache->vertexData == meshGeometry(mesh).vertices.data()
                     && mesh.annotationCache->indexData == meshGeometry(mesh).indices.data();
-                if (useBlocks) {
-                    useBlocks = std::any_of(meshGeometry(mesh).nodes.begin(), meshGeometry(mesh).nodes.end(), [&](const auto& node) {
-                        return node.indexOffset == part.indexOffset && node.indexCount == part.indexCount;
-                    });
-                }
-                if (useBlocks) {
+                const auto* spatial = cacheCurrent ? mesh.annotationCache->spatial.get() : nullptr;
+                const bool nodeRange = cacheCurrent && std::any_of(meshGeometry(mesh).nodes.begin(), meshGeometry(mesh).nodes.end(),
+                    [&](const auto& node) { return node.indexOffset == part.indexOffset && node.indexCount == part.indexCount; });
+                if (spatial && !spatial->tree.empty() && nodeRange) {
+                    const double radius = part.vertices ? std::max(part.pointSize * .5, 3.0 * view.pixelScale)
+                        : part.edges ? 3.0 * view.pixelScale : 0;
+                    const auto planes = cursorPlanes(mvp, view, point, radius);
+                    std::vector<uint32_t> offsets;
+                    const auto visit = [&](const auto& self, size_t index) -> void {
+                        if (statistics) { ++statistics->spatialNodes; }
+                        const auto& node = spatial->tree[index];
+                        if (node.indexEnd <= begin || node.indexBegin >= finish || !intersectsCursor(node, planes)) { return; }
+                        if (node.left) { self(self, node.left); self(self, node.right); return; }
+                        for (size_t i = node.begin; i < node.end; ++i) {
+                            const auto offset = spatial->triangles[i];
+                            if (offset >= begin && size_t{offset} + 2 < finish && (offset - begin) % 3 == 0) {
+                                offsets.push_back(offset);
+                            }
+                        }
+                    };
+                    visit(visit, 0);
+                    // Preserve source order for equal-depth surface hits and UV IDs.
+                    std::sort(offsets.begin(), offsets.end());
+                    for (const auto offset : offsets) { visitTriangle(offset); }
+                } else if (testSurface && !part.edges && !part.vertices && nodeRange) {
                     for (const auto& block : mesh.annotationCache->blocks) {
                         if (block.begin < begin || block.end > finish || !intersectsPickBlock(block, origin, direction)) { continue; }
                         for (size_t i = block.begin; i + 2 < block.end; i += 3) { visitTriangle(i); }
@@ -530,8 +613,8 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                 }
             }
             for (const auto& line : part.diagnosticEdges) {
-                closest(edgeDepth, edgeHit(clip({line.a[0], line.a[1], line.a[2]}),
-                    clip({line.b[0], line.b[1], line.b[2]}), view, point));
+                closest(edgeDepth, pickEdge(clip({line.a[0], line.a[1], line.a[2]}),
+                    clip({line.b[0], line.b[1], line.b[2]})));
             }
             candidates.push_back({&part, surfaceDepth, edgeDepth, pointDepth, surfaceHit});
         }

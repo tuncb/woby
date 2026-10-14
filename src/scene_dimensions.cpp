@@ -23,6 +23,24 @@ bool measurable(const ScenePickPart& part)
         && (part.vertices || part.opacity > 0);
 }
 
+bool cachedLocalBounds(const ScenePickPart& part, DimensionPoint& low, DimensionPoint& high)
+{
+    const auto& mesh = *part.mesh;
+    const auto& geometry = meshGeometry(mesh);
+    const auto& cache = mesh.annotationCache;
+    if (part.lineIndexCount || part.pointIndexCount || !cache
+        || cache->vertexData != geometry.vertices.data() || cache->indexData != geometry.indices.data()
+        || cache->vertexCount != geometry.vertices.size() || cache->indexCount != geometry.indices.size()
+        || cache->localBounds.size() != geometry.nodes.size()) { return false; }
+    for (size_t i = 0; i < geometry.nodes.size(); ++i) {
+        const auto& node = geometry.nodes[i];
+        if (node.indexOffset != part.indexOffset || node.indexCount != part.indexCount) { continue; }
+        if (cache->localBounds[i]) { low = (*cache->localBounds[i])[0]; high = (*cache->localBounds[i])[1]; }
+        return true;
+    }
+    return false;
+}
+
 } // namespace
 
 std::optional<SceneDimensions> sceneDimensions(std::span<const ScenePickPart> parts)
@@ -37,6 +55,7 @@ std::optional<SceneDimensions> sceneDimensions(std::span<const ScenePickPart> pa
         if (!measurable(part)) { continue; }
         single = &part;
         const auto& mesh = *part.mesh;
+        if (local && cachedLocalBounds(part, low, high)) { continue; }
         for (const auto index : scenePartIndices(part)) {
             if (index >= meshGeometry(mesh).vertices.size() || !finitePosition(meshGeometry(mesh).vertices[index].position)) { continue; }
             DimensionPoint point = meshPosition(mesh, index);
