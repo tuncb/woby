@@ -160,6 +160,52 @@ def generate(root, output):
     ])
     (output / "obj_mesh.cpp").write_text('#include "profile.h"\n' + text, encoding="utf-8")
 
+    # The staged production path bypasses VertexIndexTable. Count its actual
+    # primary/seam operations in the diagnostic target, outside timing runs.
+    text = (root / "src/obj_corner_mapping.h").read_text(encoding="utf-8")
+    text = replace(text, '    uint32_t next = 0;', '''    uint32_t next = 0;
+#ifdef OBJ_PROFILE_DIAGNOSTIC
+    uint64_t firstPositions = 0, primaryHits = 0, secondaryLookups = 0, secondaryHits = 0, probes = 0, growths = 0;
+#endif''')
+    text = replace(text, 'inline void growBuckets(Table& table) {', '''inline void growBuckets(Table& table) {
+#ifdef OBJ_PROFILE_DIAGNOSTIC
+    ++table.growths;
+#endif''')
+    text = replace(text, '    while (table.buckets[bucket] != empty) {\n        const auto& seam', '''    while (table.buckets[bucket] != empty) {
+#ifdef OBJ_PROFILE_DIAGNOSTIC
+        ++table.probes;
+#endif
+        const auto& seam''')
+    text = replace(text, '        if (seam.key == key) { return seam.id; }', '''        if (seam.key == key) {
+#ifdef OBJ_PROFILE_DIAGNOSTIC
+            ++table.secondaryHits;
+#endif
+            return seam.id;
+        }''')
+    text = replace(text, '            if (entry.id == empty) {', '''            if (entry.id == empty) {
+#ifdef OBJ_PROFILE_DIAGNOSTIC
+                ++table.firstPositions;
+#endif''')
+    text = replace(text, '            } else if (entry.normal == key.normal && entry.uv == key.uv) { id = entry.id; }\n            else { id = seamId<Precise>(table,key,preciseUvs,floatUvs); }', '''            } else if (entry.normal == key.normal && entry.uv == key.uv) {
+#ifdef OBJ_PROFILE_DIAGNOSTIC
+                ++table.primaryHits;
+#endif
+                id = entry.id;
+            } else {
+#ifdef OBJ_PROFILE_DIAGNOSTIC
+                ++table.secondaryLookups;
+#endif
+                id = seamId<Precise>(table,key,preciseUvs,floatUvs);
+            }''')
+    text = replace(text, '    metrics.gatherWorkers = std::max(metrics.gatherWorkers,seamWorkers); metrics.seamGatherMs = elapsed(start);', '''    metrics.gatherWorkers = std::max(metrics.gatherWorkers,seamWorkers); metrics.seamGatherMs = elapsed(start);
+#ifdef OBJ_PROFILE_DIAGNOSTIC
+    const auto diagnostic = obj_profile::begin("mapping_staged_diagnostic");
+    obj_profile::end(diagnostic, {{"first_positions", table.firstPositions}, {"primary_hits", table.primaryHits},
+        {"secondary_lookups", table.secondaryLookups}, {"secondary_hits", table.secondaryHits},
+        {"occupied_bucket_probes", table.probes}, {"hash_table_growths", table.growths}});
+#endif''')
+    (output / "obj_corner_mapping.h").write_text('#include "profile.h"\n' + text, encoding="utf-8")
+
     text = (root / "src/model_mesh.cpp").read_text(encoding="utf-8")
     text = section(text, 'void generateSmoothNormals(', 'Bounds calculateBounds(', [
         ('    const auto total', '    auto measuredNormals = obj_profile::begin("normal_clear");\n    const auto total'),

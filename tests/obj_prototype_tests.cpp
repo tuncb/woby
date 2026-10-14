@@ -1,4 +1,5 @@
 #include "obj_mesh.h"
+#include "obj_corner_mapping.h"
 #include "freeform.h"
 #include "utf8_path.h"
 #include <rapidobj/prototype.hpp>
@@ -7,6 +8,8 @@
 #include <atomic>
 #include <cstring>
 #include <fstream>
+#include <map>
+#include <limits>
 #include <sstream>
 #include <thread>
 
@@ -206,6 +209,132 @@ TEST_CASE("Parallel OBJ gathering is byte exact and reports progress only on the
 TEST_CASE("OBJ gathering validates worker limits before parsing") {
     woby::ObjPrototypeOptions options; options.gatherWorkers = 9;
     CHECK_THROWS_AS((void)woby::loadObjMeshTextPrototype("malformed",{},options),std::invalid_argument);
+}
+
+namespace {
+template<bool Precise> void checkResolvedCorners(bool deferred, bool finiteUvs) {
+    std::vector<woby::Coordinate> positions(37), normals;
+    std::vector<std::array<double,2>> uvs{{.125,.25},
+        {std::numeric_limits<double>::quiet_NaN(),.5}, {std::numeric_limits<double>::infinity(),.5},
+        {-std::numeric_limits<double>::infinity(),0}, {1e40,.5},
+        {std::numeric_limits<float>::max(),.5}, {-0.0,-0.0}};
+    if (finiteUvs) { for (auto& uv : uvs) { uv = {.125,.25}; } }
+    rapidobj::GeometryBuffers buffers{positions,uvs,normals};
+    rapidobj::Result input;
+    input.attributes.texcoords = rapidobj::Array<float>(uvs.size()*2);
+    for (size_t i = 0; i < uvs.size(); ++i) {
+        for (size_t axis = 0; axis < 2; ++axis) { input.attributes.texcoords[i*2+axis] = static_cast<float>(uvs[i][axis]); }
+    }
+    woby::SourceMeshData source; source.draftPositions.resize(positions.size());
+    std::map<std::array<int,3>,uint32_t> firstUse;
+    std::vector<uint32_t> expected, sourceIndices;
+    std::vector<woby::MeshNode> nodes;
+    // Empty shapes and both sides of the prefetch and progress boundaries.
+    for (const size_t count : {size_t{0},size_t{1},size_t{31},size_t{32},size_t{33},
+        size_t{63},size_t{64},size_t{65},size_t{16385},size_t{2},size_t{0}}) {
+        const auto shapeIndex = input.shapes.size();
+        auto& shape = input.shapes.emplace_back();
+        shape.mesh.indices = rapidobj::Array<rapidobj::Index>(count);
+        if (shapeIndex%2) { shape.name = "group "+std::to_string(shapeIndex); }
+        woby::MeshNode node; node.name = shape.name.empty() ? "shape "+std::to_string(shapeIndex+1) : shape.name;
+        node.indexOffset = static_cast<uint32_t>(expected.size());
+        node.indexCount = static_cast<uint32_t>(count); node.hasTexcoords = true;
+        for (size_t i = 0; i < count; ++i) {
+            const auto corner = expected.size();
+            const int position = static_cast<int>((corner*17+corner/7)%positions.size());
+            const int normal = corner%5 ? static_cast<int>(corner%3) : -1;
+            const int uv = shapeIndex%3 == 2 ? 0
+                : corner%13 ? static_cast<int>((corner*5+corner/19)%uvs.size()) : -1;
+            shape.mesh.indices[i] = {position,uv,normal};
+            const std::array<int,3> key{position,normal,uv};
+            const auto [entry,inserted] = firstUse.try_emplace(key,static_cast<uint32_t>(firstUse.size()));
+            (void)inserted;
+            expected.push_back(entry->second); sourceIndices.push_back(static_cast<uint32_t>(position));
+            const bool finite = uv >= 0 && std::isfinite(static_cast<float>(uvs[static_cast<size_t>(uv)][0]))
+                && std::isfinite(static_cast<float>(uvs[static_cast<size_t>(uv)][1]));
+            node.hasTexcoords = node.hasTexcoords && finite;
+        }
+        if (count) { nodes.push_back(std::move(node)); }
+    }
+    woby::obj_mapping::Table table; woby::MeshGeometry geometry;
+    const auto caller = std::this_thread::get_id();
+    size_t callbacks = 0;
+    const auto progress = [&](const woby::ModelLoadProgress& p) {
+        CHECK(std::this_thread::get_id() == caller); CHECK(p.completed <= p.total); ++callbacks;
+    };
+    woby::obj_mapping::resolveFaces<Precise>(input,table,geometry,source,&buffers,progress,expected.size(),deferred);
+    CHECK(callbacks > 0);
+    CHECK(geometry.indices == expected); CHECK(table.next == firstUse.size());
+    CHECK(source.indices == (deferred ? std::vector<uint32_t>{} : sourceIndices));
+    REQUIRE(geometry.nodes.size() == nodes.size());
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        CHECK(geometry.nodes[i].name == nodes[i].name);
+        CHECK(geometry.nodes[i].indexOffset == nodes[i].indexOffset);
+        CHECK(geometry.nodes[i].indexCount == nodes[i].indexCount);
+        CHECK(geometry.nodes[i].hasTexcoords == nodes[i].hasTexcoords);
+    }
+}
+} // namespace
+
+TEST_CASE("OBJ ID resolution preserves first use and UV flags across lookahead boundaries") {
+    bool finiteUvs = false;
+    SUBCASE("non-finite UV values") {}
+    SUBCASE("finite UV values and missing corners") { finiteUvs = true; }
+    for (const bool deferred : {false,true}) {
+        CAPTURE(deferred);
+        checkResolvedCorners<true>(deferred,finiteUvs);
+        checkResolvedCorners<false>(deferred,finiteUvs);
+    }
+}
+
+TEST_CASE("OBJ ID resolution rejects invalid positions and cancels on the caller") {
+    woby::SourceMeshData source; source.draftPositions.resize(3);
+    rapidobj::Result input; auto& shape = input.shapes.emplace_back();
+    constexpr size_t count = 32770;
+    shape.mesh.indices = rapidobj::Array<rapidobj::Index>(count);
+    input.attributes.texcoords = rapidobj::Array<float>(2);
+    input.attributes.texcoords[0] = std::numeric_limits<float>::infinity(); input.attributes.texcoords[1] = 0;
+    for (auto& index : shape.mesh.indices) { index = {0,0,-1}; }
+    bool cancel = false;
+    SUBCASE("negative future position") { shape.mesh.indices[64].position_index = -1; }
+    SUBCASE("out of range future position") { shape.mesh.indices[64].position_index = std::numeric_limits<int>::max(); }
+    SUBCASE("caller cancellation") { cancel = true; }
+    woby::obj_mapping::Table table; woby::MeshGeometry geometry;
+    const auto caller = std::this_thread::get_id();
+    size_t completed = 0;
+    const auto progress = [&](const woby::ModelLoadProgress& p) {
+        CHECK(std::this_thread::get_id() == caller); completed = p.completed;
+        if (cancel && p.completed == 16384) { throw std::runtime_error("cancel ID resolution"); }
+    };
+    CHECK_THROWS_WITH(woby::obj_mapping::resolveFaces<false>(input,table,geometry,source,nullptr,progress,count,true),
+        cancel ? "cancel ID resolution" : "OBJ contains an invalid source position index.");
+    if (cancel) { CHECK(completed == 16384); }
+}
+
+TEST_CASE("OBJ UV validation checks the float conversion and bounds unused-record work") {
+    std::vector<std::array<double,2>> precise(65537,{.125,-.25});
+    std::vector<float> floats(precise.size()*2,.5f);
+    bool finite = true;
+    SUBCASE("finite values") {}
+    SUBCASE("double values that overflow float") { precise.back()[1] = 1e40; finite = false; }
+    SUBCASE("NaN values") { precise.back()[0] = std::numeric_limits<double>::quiet_NaN(); finite = false; }
+    SUBCASE("infinite values") { precise.back()[1] = -std::numeric_limits<double>::infinity(); finite = false; }
+    for (size_t i = 0; i < precise.size(); ++i) {
+        for (size_t axis = 0; axis < 2; ++axis) { floats[i*2+axis] = static_cast<float>(precise[i][axis]); }
+    }
+    const auto caller = std::this_thread::get_id(); size_t callbacks = 0;
+    const auto progress = [&](const woby::ModelLoadProgress& p) {
+        CHECK(std::this_thread::get_id() == caller);
+        CHECK(p.completed == 0); CHECK(p.total == precise.size()); ++callbacks;
+    };
+    CHECK(woby::obj_mapping::allUvsFinite<true>(precise.data(),nullptr,precise.size(),progress,precise.size()) == finite);
+    CHECK(woby::obj_mapping::allUvsFinite<false>(nullptr,floats.data(),precise.size(),progress,precise.size()) == finite);
+    CHECK(callbacks == 4);
+    // Skip a scan that would visit more UV records than triangle corners.
+    CHECK_FALSE(woby::obj_mapping::allUvsFinite<true>(nullptr,nullptr,precise.size(),{},precise.size()-1));
+    CHECK_THROWS_WITH(woby::obj_mapping::allUvsFinite<true>(precise.data(),nullptr,precise.size(),
+        [&](const woby::ModelLoadProgress&) { throw std::runtime_error("cancel UV validation"); },precise.size()),
+        "cancel UV validation");
 }
 
 TEST_CASE("RapidOBJ prototype merges into caller storage and triangulates borrowed positions") {

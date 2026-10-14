@@ -13,6 +13,9 @@
 #include <stdexcept>
 #include <thread>
 #include <utility>
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+#include <xmmintrin.h>
+#endif
 
 namespace woby::obj_mapping {
 inline constexpr uint32_t empty = std::numeric_limits<uint32_t>::max();
@@ -56,8 +59,9 @@ inline void growBuckets(Table& table) {
 }
 template<bool Precise>
 inline uint32_t tagId(const Key& key, uint32_t id,
-    const std::array<double,2>* preciseUvs, const float* floatUvs) {
+    const std::array<double,2>* preciseUvs, const float* floatUvs, bool allFiniteUvs = false) {
     if (key.uv < 0) { return id | invalidUv; }
+    if (allFiniteUvs) { return id; }
     const auto uv = static_cast<size_t>(key.uv);
     const float u = Precise ? static_cast<float>(preciseUvs[uv][0]) : floatUvs[uv*2];
     const float v = Precise ? static_cast<float>(preciseUvs[uv][1]) : floatUvs[uv*2+1];
@@ -83,6 +87,91 @@ inline uint32_t seamId(Table& table, const Key& key,
     table.seams.push_back({key,id}); table.buckets[bucket] = slot; ++table.next;
     return id;
 }
+
+inline void prefetchRead(const void* address) {
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+    _mm_prefetch(static_cast<const char*>(address),_MM_HINT_T0);
+#elif defined(__GNUC__) || defined(__clang__)
+    __builtin_prefetch(address,0,3);
+#else
+    (void)address;
+#endif
+}
+
+template<bool Precise>
+inline bool allUvsFinite(const std::array<double,2>* preciseUvs, const float* floatUvs,
+    size_t uvCount, const ModelLoadProgressCallback& progress, size_t corners) {
+    // A scan of unused UV records must not cost more than the corner pass.
+    if (uvCount > corners) { return false; }
+    constexpr size_t chunkSize = 65536;
+    for (size_t begin = 0; begin < uvCount; begin += chunkSize) {
+        reportModelLoadProgress(progress,ModelLoadStage::buildingMesh,0,corners);
+        const auto end = std::min(uvCount,begin+chunkSize);
+        for (size_t uv = begin; uv < end; ++uv) {
+            const float u = Precise ? static_cast<float>(preciseUvs[uv][0]) : floatUvs[uv*2];
+            const float v = Precise ? static_cast<float>(preciseUvs[uv][1]) : floatUvs[uv*2+1];
+            if (!std::isfinite(u) || !std::isfinite(v)) { return false; }
+        }
+    }
+    return true;
+}
+template<bool Precise, bool Deferred, bool AllFiniteUvs>
+inline void resolveFaceIndices(const rapidobj::Result& result, Table& table,
+    MeshGeometry& geometry, SourceMeshData& source, const rapidobj::GeometryBuffers* buffers,
+    const ModelLoadProgressCallback& progress, size_t corners) {
+    auto* indices = geometry.indices.data(); auto* sourceIndices = source.indices.data();
+    auto* primary = table.primary.data();
+    const auto positionCount = table.primary.size();
+    const auto* preciseUvs = Precise ? buffers->texcoords.data() : nullptr;
+    const auto* floatUvs = result.attributes.texcoords.data();
+    const auto uvCount = Precise ? buffers->texcoords.size() : result.attributes.texcoords.size()/2;
+    size_t completed = 0;
+    for (size_t shapeIndex = 0; shapeIndex < result.shapes.size(); ++shapeIndex) {
+        const auto& shape = result.shapes[shapeIndex];
+        const auto offset = static_cast<uint32_t>(completed);
+        uint32_t uvFlags = 0;
+        constexpr size_t prefetchDistance = 32;
+        const auto count = shape.mesh.indices.size();
+        // Primary entries are usually local. The first-use UV reads can miss
+        // the cache; fetch them ahead only when the finite scan did not pass.
+        const auto* prefetchEnd = shape.mesh.indices.data()
+            + (count > prefetchDistance ? count-prefetchDistance : 0);
+        for (const auto& index : shape.mesh.indices) {
+            if ((completed & 16383) == 0) { reportModelLoadProgress(progress,ModelLoadStage::buildingMesh,completed,corners); }
+            if constexpr (!AllFiniteUvs) {
+                if (&index < prefetchEnd) {
+                    const auto uv = static_cast<size_t>((&index)[prefetchDistance].texcoord_index);
+                    if (uv < uvCount) {
+                        if constexpr (Precise) { prefetchRead(preciseUvs+uv); }
+                        else { prefetchRead(floatUvs+uv*2); }
+                    }
+                }
+            }
+            if (static_cast<size_t>(index.position_index) >= positionCount) {
+                throw std::runtime_error("OBJ contains an invalid source position index.");
+            }
+            const Key key{index.position_index,index.normal_index,index.texcoord_index};
+            auto& entry = primary[static_cast<size_t>(key.position)];
+            uint32_t id;
+            if (entry.id == empty) {
+                (void)sceneBufferBytes(size_t(table.next)+1,sizeof(Vertex));
+                id = tagId<Precise>(key,table.next,preciseUvs,floatUvs,AllFiniteUvs);
+                entry = {id,key.normal,key.uv}; ++table.next;
+            } else if (entry.normal == key.normal && entry.uv == key.uv) { id = entry.id; }
+            else { id = seamId<Precise>(table,key,preciseUvs,floatUvs); }
+            uvFlags |= id;
+            indices[completed] = id & idMask;
+            if constexpr (!Deferred) { sourceIndices[completed] = static_cast<uint32_t>(key.position); }
+            ++completed;
+        }
+        const auto written = static_cast<uint32_t>(completed)-offset;
+        if (written) {
+            MeshNode node; node.name = shape.name.empty() ? "shape "+std::to_string(shapeIndex+1) : shape.name;
+            node.indexOffset = offset; node.indexCount = written; node.hasTexcoords = !(uvFlags & invalidUv);
+            geometry.nodes.push_back(std::move(node));
+        }
+    }
+}
 template<bool Precise>
 inline void resolveFaces(const rapidobj::Result& result, Table& table,
     MeshGeometry& geometry, SourceMeshData& source, const rapidobj::GeometryBuffers* buffers,
@@ -91,40 +180,16 @@ inline void resolveFaces(const rapidobj::Result& result, Table& table,
     table.seams.reserve(std::min({sourcePositions(source).size(),corners,size_t{1024}}));
     geometry.indices.resize(corners);
     if (!deferred) { source.indices.resize(corners); }
-    auto* indices = geometry.indices.data(); auto* sourceIndices = source.indices.data();
-    auto* primary = table.primary.data();
     const auto* preciseUvs = Precise ? buffers->texcoords.data() : nullptr;
     const auto* floatUvs = result.attributes.texcoords.data();
-    size_t completed = 0;
-    for (size_t shapeIndex = 0; shapeIndex < result.shapes.size(); ++shapeIndex) {
-        const auto& shape = result.shapes[shapeIndex];
-        const auto offset = static_cast<uint32_t>(completed);
-        bool hasTexcoords = true;
-        for (const auto& index : shape.mesh.indices) {
-            if ((completed & 16383) == 0) { reportModelLoadProgress(progress,ModelLoadStage::buildingMesh,completed,corners); }
-            if (index.position_index < 0 || static_cast<size_t>(index.position_index) >= table.primary.size()) {
-                throw std::runtime_error("OBJ contains an invalid source position index.");
-            }
-            const Key key{index.position_index,index.normal_index,index.texcoord_index};
-            auto& entry = primary[static_cast<size_t>(key.position)];
-            uint32_t id;
-            if (entry.id == empty) {
-                (void)sceneBufferBytes(size_t(table.next)+1,sizeof(Vertex));
-                id = tagId<Precise>(key,table.next,preciseUvs,floatUvs);
-                entry = {id,key.normal,key.uv}; ++table.next;
-            } else if (entry.normal == key.normal && entry.uv == key.uv) { id = entry.id; }
-            else { id = seamId<Precise>(table,key,preciseUvs,floatUvs); }
-            hasTexcoords = hasTexcoords && !(id & invalidUv);
-            indices[completed] = id & idMask;
-            if (!deferred) { sourceIndices[completed] = static_cast<uint32_t>(key.position); }
-            ++completed;
-        }
-        const auto count = static_cast<uint32_t>(completed)-offset;
-        if (count) {
-            MeshNode node; node.name = shape.name.empty() ? "shape "+std::to_string(shapeIndex+1) : shape.name;
-            node.indexOffset = offset; node.indexCount = count; node.hasTexcoords = hasTexcoords;
-            geometry.nodes.push_back(std::move(node));
-        }
+    const auto uvCount = Precise ? buffers->texcoords.size() : result.attributes.texcoords.size()/2;
+    const bool allFiniteUvs = allUvsFinite<Precise>(preciseUvs,floatUvs,uvCount,progress,corners);
+    if (deferred) {
+        if (allFiniteUvs) { resolveFaceIndices<Precise,true,true>(result,table,geometry,source,buffers,progress,corners); }
+        else { resolveFaceIndices<Precise,true,false>(result,table,geometry,source,buffers,progress,corners); }
+    } else {
+        if (allFiniteUvs) { resolveFaceIndices<Precise,false,true>(result,table,geometry,source,buffers,progress,corners); }
+        else { resolveFaceIndices<Precise,false,false>(result,table,geometry,source,buffers,progress,corners); }
     }
 }
 template<bool Precise>

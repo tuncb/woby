@@ -1,0 +1,75 @@
+Bennu: current fallback versus staged face mapping
+14 October 2026, Windows, Release, Ryzen 7 5800H
+
+Input: D:\temp\obj_tests\bennu_OLA_v21_PTM_very-high.obj
+Input bytes: 815,866,103
+Input SHA256: 3890221318a2b059d8236c618903b0ea16710172651ba22f1013f9b6ad585882
+Positions: 8,933,524. Triangle corners: 53,600,508.
+Normals: 0. UV records: 0.
+
+Configure and build with the local Visual Studio preset:
+  cmake --preset vs2026-vcpkg -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON -DWOBY_BUILD_OBJ_PROFILE=ON -DWOBY_BUILD_POSITION_MAPPING=ON
+  cmake --build --preset vs2026-vcpkg --config Release
+
+The normal application selects the original fused position mapper for Bennu.
+The comparison source adds this eligibility condition only:
+  attributes || position_mapping::forcePositionFaces
+All other guards, the parser, triangulation, normals, bounds, and upload remain
+the same. Production source selection is unchanged.
+
+CPU controls, in the same comparison executable:
+  woby_position_mapping.exe prototype ABSOLUTE_BENNU.obj 0 deferred
+  woby_position_mapping.exe forced ABSOLUTE_BENNU.obj 0 deferred
+Omit deferred for eager preparation. Zero requests the default parser workers;
+the staged mapper uses its normal default of up to eight gather workers.
+Each run measures complete import, then records Windows process high-water
+working-set and private-commit counters. Full-mesh fingerprint work follows
+the time and memory snapshot.
+
+Direct full-buffer verification, outside all timed runs:
+  woby_position_mapping.exe verify ABSOLUTE_BENNU.obj
+This loads both paths and compares all mesh buffers and group fields, with
+both deferred and eager preparation. Its combined memory is not a load peak.
+
+Run repeated controls from the repository root with new output directories:
+  python experiments/position-mapping/run.py cpu build/vs2026-vcpkg/bin/Release ABSOLUTE_BENNU.obj NEW_CPU_OUTPUT --rounds 5
+  python experiments/position-mapping/run.py native build/vs2026-vcpkg/bin/Release ABSOLUTE_BENNU.obj NEW_NATIVE_OUTPUT --rounds 3 --matched
+  python experiments/position-mapping/run.py traced build/vs2026-vcpkg/bin/Release ABSOLUTE_BENNU.obj NEW_TRACED_OUTPUT --rounds 3 --matched
+
+The CPU driver also runs three eager pairs. Every timed trial starts a fresh
+process and reads the input first. Each round alternates path order. Do not
+run a build, test suite, or profiler at the same time.
+The final CPU group is cpu-final. The earlier cpu group is a preliminary
+control before addition of the separate full-buffer verification command.
+Do not pool these groups. Only cpu-final supplies the report's CPU medians.
+Matching measured executables and their runtime files remain locally in:
+  D:\.worktree\woby-id-resolution-20261014\build\bennu-paths-20261014\measured-bin
+
+Native matching application pair:
+  fallback: woby_position_mapping_native_reference.exe
+  staged:   woby_position_mapping_native.exe
+Instrumented matching application pair:
+  fallback: woby_position_mapping_traced_reference.exe
+  staged:   woby_position_mapping_traced.exe
+The viewer comparisons use the existing e2e_run.py observer and the same
+hidden 1280x720 drawable, input, auto-fit camera, and settling settings.
+Instrumented GPU-completion markers and native RPC readiness are separate
+capture groups. Compare configurations within each group.
+Headline viewer groups: native-matched and traced-matched. The earlier native
+and traced groups use the stock viewer as fallback reference. They remain
+separate controls; do not pool their times with the matching-build groups.
+Matching builds use the same sources and compiler/linker options, with only
+POSITION_MAPPING_FORCE=0 versus 1. This controls for the native mapper
+override's larger linked-code footprint compared with the stock application.
+
+Run checks:
+  ctest --preset vs2026-vcpkg -C Release
+  ctest --preset vs2026-vcpkg-slow -C Release
+  ctest --preset vs2026-vcpkg-graphics -C Release
+
+Regenerate the report after validation.json is present:
+  python experiments/position-mapping/report.py MEASUREMENT_ROOT doc/benchmarks/bennu-mapping-paths-20261014
+
+The existing fallback still handles lines, points, clouds, mixed primitives,
+freeforms, and sparse source data. Bennu results do not establish that those
+paths can be removed, or predict all other position-only files.

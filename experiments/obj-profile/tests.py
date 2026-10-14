@@ -59,7 +59,10 @@ def test_triangle_and_seam_geometry():
             record = json.loads(diagnostic.stdout)
             checks.assertEqual(loaded["geometry"], record["geometry"])
             mapping = next(row for row in record["events"] if row["name"] == "corner_mapping")
-            counts = mapping["data"]["diagnostic_counts"]
+            if mapping["data"].get("production_staged"):
+                counts = next(row["data"] for row in record["events"] if row["name"] == "mapping_staged_diagnostic")
+            else:
+                counts = mapping["data"]["diagnostic_counts"]
             checks.assertEqual(counts["first_positions"], 4)
             checks.assertEqual(counts["primary_hits"], 1)
             checks.assertEqual(counts["secondary_lookups"], 1)

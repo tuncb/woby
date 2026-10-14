@@ -1,0 +1,73 @@
+BearTrap end-to-end measurement, 14 October 2026
+
+Use Windows, PowerShell, and the vs2026-vcpkg preset in Release mode.
+Use application source revision 7ee6133eb133b2102551ebd47a3ecca263e86cce.
+The archive contains the measurement tools and generated source snapshots.
+The tools do not change production application source.
+
+Recorded input:
+  D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj
+  7,108,991,827 bytes
+  SHA256 7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329
+
+Run each capture group in sequence. Do not run a build, test suite, or profiler
+at the same time as a native timing group. Use a new output directory for a new
+measurement. The batch runner can reuse completed results in an existing directory.
+It warms the input before each native process. No system cache is flushed.
+
+Configure and build:
+  cmake --preset vs2026-vcpkg -DWOBY_BUILD_OBJ_PROFILE=ON -DWOBY_BUILD_GPU_UPLOAD_BENCHMARK=ON -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON
+  cmake --build --preset vs2026-vcpkg --config Release --target woby woby_obj_e2e_viewer woby_obj_upload_viewer woby_obj_fast_pacing_viewer woby_obj_profile_avx2 woby_obj_profile_sse2 woby_obj_profile_diagnostic woby_gpu_upload_benchmark
+
+Set paths in PowerShell:
+  $measureRoot = 'D:\woby\build\e2e-beartrap-new'
+  $measureBin = 'D:\woby\build\vs2026-vcpkg\bin\Release'
+  $measureModel = 'D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj'
+
+Freeze the executables, matching PDBs, runtime DLLs, assets, and linker maps
+before a capture if a later build is possible. The recorded run uses matching-bin.
+Copy the production linker map as production-woby.map for native CPU analysis.
+
+Native controls, three rotating rounds:
+  uv run experiments/obj-profile/e2e_batch.py $measureBin $measureModel --output "$measureRoot/native"
+
+Log-free pacing controls, a separate three-round group:
+  uv run experiments/obj-profile/e2e_batch.py $measureBin $measureModel --output "$measureRoot/pacing" --configurations production-hidden,cleanfast-hidden
+
+Diagnostic captures:
+  uv run experiments/obj-profile/e2e_deep.py $measureBin $measureModel --output "$measureRoot/deep" --cases branch,cache,fp,production-branch,vtune,timechart,memory,features,production-features
+  uv run experiments/obj-profile/e2e_deep.py $measureBin $measureModel --output "$measureRoot/deep" --cases nsys-retry,nsys-wddm-retry,nsys-wddm-full-retry
+
+Nsight Graphics and Vulkan tracing were attempted in this investigation.
+The system rejected GPU hardware counters and Vulkan extension registration.
+WPR and xperf kernel CPU traces were also rejected. These failed attempts are
+preserved in the archive. The tools do not change profiling permission settings.
+
+CPU, read, copy, upload and FP controls:
+  uv run experiments/obj-profile/e2e_controls.py $measureBin $measureModel --output "$measureRoot/controls"
+
+Analysis and HTML generation:
+  uv run experiments/obj-profile/e2e_hardware.py $measureRoot
+  python experiments/obj-profile/e2e_nsys.py $measureRoot
+
+The current report uses controls/instructions.json and controls/diagnostic.json.
+Each is a JSON object with a records array. The array contains the JSON object
+written by the corresponding .log file. Decode the instruction samples with:
+  uv run experiments/obj-profile/instructions.py --samples "$measureRoot/controls/instructions.json" --output "$measureRoot/controls/instruction-analysis.json"
+
+The report also uses provenance.json and binary-manifest.json. These record
+the application revision, input hash, source hashes, and frozen binary hashes.
+After these records exist:
+  uv run experiments/obj-profile/e2e_report.py $measureRoot --output doc/benchmarks/e2e-beartrap-new
+
+Validation:
+  ctest --preset vs2026-vcpkg -C Release
+  ctest --preset vs2026-vcpkg-slow -C Release
+  ctest --preset vs2026-vcpkg-graphics -C Release
+  uv run experiments/obj-profile/e2e_tests.py --viewer "$measureBin/woby_obj_e2e_viewer.exe"
+
+The report archive contains numeric records, logs, commands, source snapshots,
+and the calibration assembly. Large .nsys-rep, SQLite, uProf, VTune sessions,
+matching executables, and PDB files remain under build/e2e-beartrap-20261014.
+The input model is not in the archive. Absolute paths in raw records describe
+the recorded computer and are retained as provenance.
