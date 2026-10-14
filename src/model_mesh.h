@@ -4,6 +4,7 @@
 #include "load_progress.h"
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -118,9 +119,18 @@ struct MeshGeometry {
     std::vector<TetrahedralCell> tetrahedra; // Source cells; drawing uses the boundary triangles.
 };
 
+// Shared only for the same published geometry. Drafts never reuse validation.
+// The pointer is an identity token; Mesh owns the geometry's lifetime.
+struct MeshPreparationCache {
+    const MeshGeometry* geometry = nullptr;
+    std::optional<Bounds> bounds;
+    mutable std::atomic<bool> indicesValidated{false};
+};
+
 struct Mesh {
     std::shared_ptr<const MeshGeometry> storage;
     std::unique_ptr<MeshGeometry> draft;
+    std::shared_ptr<const MeshPreparationCache> preparationCache;
     Mesh() = default;
     Mesh(const Mesh& other);
     Mesh& operator=(const Mesh& other);
@@ -167,6 +177,12 @@ void renewMeshContentRevision(Mesh& mesh);
 [[nodiscard]] bool finiteCoordinate(const Coordinate& point) noexcept;
 [[nodiscard]] Coordinate meshPosition(const Mesh& mesh, size_t index);
 [[nodiscard]] std::array<Coordinate, 2> originalMeshBounds(const Mesh& mesh, const MeshNode* node = nullptr);
+// Checked bulk passes. Nullopt means cancellation; no partial output is published.
+[[nodiscard]] std::optional<std::array<Coordinate, 2>> prepareOriginalMeshBounds(
+    const Mesh& mesh, const std::function<bool()>& canceled = {});
+[[nodiscard]] std::optional<std::vector<uint32_t>> mapSourceTriangleIndices(
+    const Mesh& mesh, const std::function<bool()>& canceled = {}, bool parallel = true);
+[[nodiscard]] const Bounds* validatedMeshBounds(const Mesh& mesh) noexcept;
 [[nodiscard]] std::array<float, 3> renderPosition(const Coordinate& point);
 [[nodiscard]] Coordinate coordinateOrigin(const std::vector<Coordinate>& points);
 [[nodiscard]] Coordinate relativePosition(const Coordinate& point, const Coordinate& origin);

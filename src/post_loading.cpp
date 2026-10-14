@@ -54,26 +54,14 @@ std::optional<PostLoadData> preparePostLoadData(const Mesh& mesh, const std::fun
         source->provenance = mesh.sourceData->provenance;
         source->positions = mesh.sourceData->positions;
         source->originalPointIds = mesh.sourceData->originalPointIds;
-        source->indices.reserve(geometry.indices.size());
-        for (size_t i = 0; i < geometry.indices.size(); ++i) {
-            if (i % 65536 == 0 && stop()) { return {}; }
-            const auto vertex = geometry.indices[i];
-            if (vertex >= geometry.vertices.size()) { throw std::runtime_error("Invalid source triangle vertex."); }
-            const auto position = geometry.positionIndexing == PositionIndexing::identity ? vertex : geometry.positionIndices.at(vertex);
-            if (position >= sourcePositions(*source).size()) { throw std::runtime_error("Invalid source triangle position."); }
-            source->indices.push_back(position);
-        }
+        auto indices = mapSourceTriangleIndices(mesh, stop);
+        if (!indices) { return {}; }
+        source->indices = std::move(*indices);
         result.source = std::move(source);
     } else { result.source = mesh.sourceData; }
-    auto originalReduction = doubleBoundsReduction({});
-    for (size_t i = 0; i < geometry.vertices.size(); ++i) {
-        if (i % 65536 == 0 && stop()) { return {}; }
-        const auto point = originalPosition(meshPosition(mesh, i), mesh.origin);
-        if (!finiteCoordinate(point)) { throw std::runtime_error("Non-finite original coordinate."); }
-        if (!i) { originalReduction = doubleBoundsReduction(point); }
-        else { expand(originalReduction, point); }
-    }
-    result.originalBounds = boundsResult(originalReduction);
+    const auto originalBounds = prepareOriginalMeshBounds(mesh, stop);
+    if (!originalBounds) { return {}; }
+    result.originalBounds = *originalBounds;
     const auto preparePoints = [&] {
         auto points = prepareSceneMesh(mesh, gpuMeshPoints, stop);
         if (!points) { throw PreparationCanceled{}; }

@@ -127,28 +127,43 @@ std::optional<Cloud> buildCloud(const Mesh& mesh,std::vector<uint32_t> sourceVer
     cloud.points.reserve(cloud.sourceVertices.size());
     for (size_t groupIndex=0;groupIndex<ranges.size();++groupIndex) {
         const auto& range=ranges[groupIndex];
+        require(range.pointIndexOffset<=cloud.sourceVertices.size()
+            && range.pointIndexCount<=cloud.sourceVertices.size()-range.pointIndexOffset,"Invalid point source range");
         const auto first=range.pointIndexOffset+1, end=first+range.pointIndexCount;
         Group group; group.firstId=first; group.endId=end;
         group.color={std::min(1.0f,(.22f+float((groupIndex*37)%53)/100)*1.5f),
             std::min(1.0f,(.28f+float((groupIndex*19)%47)/100)*1.5f),std::min(1.0f,(.3f+float((groupIndex*31)%43)/100)*1.5f),1};
         cloud.groups.push_back(group);
         if (first==end) continue;
-        const auto position=[&](uint32_t id)->const std::array<float,3>& { return meshGeometry(mesh).vertices[cloud.sourceVertices[id-1]].position; };
+        const auto& geometry=meshGeometry(mesh);
+        const auto position=[&](uint32_t id)->const std::array<float,3>& {
+            const auto vertex=cloud.sourceVertices[id-1];
+            require(vertex<geometry.vertices.size(),"Invalid source point vertex");
+            return geometry.vertices[vertex].position;
+        };
         auto low=position(first), high=low;
-        for (uint32_t id=first;id<end;++id) {
-            if ((id&65535)==0) checkCancel(cancel);
-            for (size_t axis=0;axis<3;++axis) {
-            const float value=position(id)[axis]; require(std::isfinite(value),"Nonfinite source point");
-            low[axis]=std::min(low[axis],value); high[axis]=std::max(high[axis],value);
-        }}
+        const auto* bounds=range.completeVertexSet && range.pointIndexCount==geometry.vertices.size()
+            ? validatedMeshBounds(mesh) : nullptr;
+        if (bounds) { low=bounds->min; high=bounds->max; }
+        else {
+            for (uint32_t id=first;id<end;++id) {
+                if ((id&65535)==0) checkCancel(cancel);
+                const auto& point=position(id);
+                require(finitePosition(point),"Nonfinite source point");
+                for (size_t axis=0;axis<3;++axis) {
+                    low[axis]=std::min(low[axis],point[axis]); high[axis]=std::max(high[axis],point[axis]);
+                }
+            }
+        }
         std::vector<Key> keys(end-first);
         parallelWorkBatches(keys.size(),spatialKeyBatchSize,[&] { checkCancel(cancel); },[&](size_t begin,size_t finish) {
             for (size_t i=begin;i<finish;++i) {
                 const auto id=first+static_cast<uint32_t>(i);
+                const auto& point=position(id);
                 uint32_t key=0;
                 for (uint32_t axis=0;axis<3;++axis) {
                     const double extent=double(high[axis])-low[axis];
-                    const double value=extent>0?(double(position(id)[axis])-low[axis])/extent:0;
+                    const double value=extent>0?(double(point[axis])-low[axis])/extent:0;
                     key|=spread(static_cast<uint32_t>(std::clamp(value*1023,0.0,1023.0)))<<axis;
                 }
                 keys[i]={key,id};

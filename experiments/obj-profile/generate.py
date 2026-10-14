@@ -175,7 +175,10 @@ def generate(root, output, reference=False):
     text = (root / "src/scene_mesh_preparation.cpp").read_text(encoding="utf-8")
     text = section(text, 'std::optional<SceneMeshPreparation> prepareSceneMesh(', '} // namespace woby', [
         ('    const auto canceled', '    auto measuredPrepare = obj_profile::begin("gpu_index_validation");\n    const auto canceled'),
-        ('    SceneMeshPreparation result;', '    obj_profile::next(measuredPrepare, "point_membership_allocate");\n    SceneMeshPreparation result;'),
+        ('    if (!cacheCurrent || !cache->indicesValidated.load(std::memory_order_acquire)) {',
+         '    const bool measuredValidationReused = cacheCurrent && cache->indicesValidated.load(std::memory_order_acquire);\n    if (!cacheCurrent || !cache->indicesValidated.load(std::memory_order_acquire)) {'),
+        ('    SceneMeshPreparation result;',
+         '    obj_profile::next(measuredPrepare, "point_membership_allocate", {{"validation_reused", size_t(measuredValidationReused)}});\n    SceneMeshPreparation result;'),
         ('    for (size_t nodeIndex = 0;', '    obj_profile::next(measuredPrepare, "point_membership_build");\n    for (size_t nodeIndex = 0;'),
         ('    if (buildPointHierarchy &&', '    obj_profile::next(measuredPrepare, "point_hierarchy");\n    if (buildPointHierarchy &&'),
         ('    return result;', '    obj_profile::end(measuredPrepare);\n    return result;'),
@@ -185,7 +188,7 @@ def generate(root, output, reference=False):
     text = (root / "src/point_cloud.cpp").read_text(encoding="utf-8")
     text = section(text, 'std::optional<Cloud> buildCloud(', 'Selection selectDetail(', [
         ('        auto low=position(first), high=low;', '        auto measuredPoints = obj_profile::begin("point_range_bounds");\n        auto low=position(first), high=low;'),
-        ('        std::vector<Key> keys(end-first);', '        obj_profile::next(measuredPoints, "point_morton_keys");\n        std::vector<Key> keys(end-first);'),
+        ('        std::vector<Key> keys(end-first);', '        obj_profile::next(measuredPoints, "point_morton_keys", {{"bounds_reused", size_t(bounds != nullptr)}, {"scanned_vertices", bounds ? 0 : size_t(range.pointIndexCount)}});\n        std::vector<Key> keys(end-first);'),
         ('        radix(keys,cancel);', '        obj_profile::next(measuredPoints, "point_radix_sort");\n        radix(keys,cancel);\n        obj_profile::next(measuredPoints, "point_sorted_gather");'),
         ('        cloud.roots.push_back(buildNode', '        obj_profile::next(measuredPoints, "point_tree_build");\n        cloud.roots.push_back(buildNode'),
         ('leafSize,proxySize,cancel));', 'leafSize,proxySize,cancel));\n        obj_profile::end(measuredPoints);'),

@@ -607,6 +607,7 @@ if(BUILD_TESTING)
         tests/background_load_tests.cpp
         tests/loading_preparation_tests.cpp
         tests/post_loading_tests.cpp
+        tests/preparation_passes_tests.cpp
         tests/dummy_tests.cpp
         tests/command_line_tests.cpp
         tests/file_discovery_tests.cpp

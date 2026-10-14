@@ -1,0 +1,231 @@
+{
+  "date": "2026-10-14",
+  "model": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+  "model_bytes": 7108991827,
+  "render_vertices": 38414391,
+  "triangle_corners": 227315958,
+  "base_commit": "0a29069f1f5ab758df1ab57c2f836ff8ecd6165f",
+  "uncommitted_implementation": true,
+  "source_sha256": {
+    "src/model_mesh.h": "6c562c3b0175a7a00f67cbcf38e3e6ce414d18f394a98730d9d7541b3c66aaa9",
+    "src/model_mesh.cpp": "1ffcb9eac822f2c803b4d4cc81c4ecfa5de66797aebb3d9dccc392466432da01",
+    "src/scene_mesh_preparation.h": "9ecf1c50e9863520060e2073a64872e10a9013c7031da58e49f8ff18a8e5c1f7",
+    "src/scene_mesh_preparation.cpp": "2936f555baf8bb01f8854cc8960b1162040989380fefa540307c7aafd5473012",
+    "src/point_cloud.cpp": "0a3c0f2df1904adccc6b278650b50703bd543fd99bdb9b6700a8e6a56ea6e2b7",
+    "src/post_loading.cpp": "cbbb45a58620aa702651b17f1f50851bb77bf000e6d73f26f8d223ca51244c11",
+    "tests/preparation_passes_tests.cpp": "8a30b12a1754685dc016e91c076dcaffe6f6f7caa79df977340ab22befbf7f60",
+    "experiments/obj-profile/generate.py": "98d658552bc58410e3e6711279f6a98c5a463f660590eabda65efdf3aa14b878",
+    "experiments/obj-profile/e2e_generate.py": "daed06900b9901c3ceeb280b21e8047df1babb7fdcf2b64109bc8538535b520f",
+    "experiments/obj-profile/e2e_tests.py": "5aa021fe433ce8f82d9e539cbaeffa7f8e8754a188f1f42d27502f201d318d85",
+    "experiments/obj-profile/e2e_run.py": "8de16b34bc25277dbf2209c15aea22afd55fc57b662beb8dbd90d01a3e4e1c14"
+  },
+  "method": "One Release process. Round 0 is warmup. Medians use rounds 1-3. Source modes rotate. Allocation and validation are timed; output comparisons are outside the timed interval. No concurrent builds or tests.",
+  "median_milliseconds": {
+    "original_accessor": 1627.97,
+    "original_bulk": 683.496,
+    "prepare_cached": 0.0009,
+    "prepare_initial": 151.864,
+    "source_bulk_parallel": 321.318,
+    "source_bulk_serial": 1196.9,
+    "source_push_back": 1912.46
+  },
+  "samples": [
+    {
+      "round": 0,
+      "name": "prepare_initial",
+      "milliseconds": 171.792
+    },
+    {
+      "round": 0,
+      "name": "prepare_cached",
+      "milliseconds": 0.0022
+    },
+    {
+      "round": 0,
+      "name": "source_push_back",
+      "milliseconds": 1914.65
+    },
+    {
+      "round": 0,
+      "name": "source_bulk_serial",
+      "milliseconds": 1189.38
+    },
+    {
+      "round": 0,
+      "name": "source_bulk_parallel",
+      "milliseconds": 330.171
+    },
+    {
+      "round": 0,
+      "name": "original_accessor",
+      "milliseconds": 1676.67
+    },
+    {
+      "round": 0,
+      "name": "original_bulk",
+      "milliseconds": 640.206
+    },
+    {
+      "round": 1,
+      "name": "prepare_initial",
+      "milliseconds": 211.919
+    },
+    {
+      "round": 1,
+      "name": "prepare_cached",
+      "milliseconds": 0.0013
+    },
+    {
+      "round": 1,
+      "name": "source_bulk_serial",
+      "milliseconds": 1210.43
+    },
+    {
+      "round": 1,
+      "name": "source_bulk_parallel",
+      "milliseconds": 316.004
+    },
+    {
+      "round": 1,
+      "name": "source_push_back",
+      "milliseconds": 1912.46
+    },
+    {
+      "round": 1,
+      "name": "original_accessor",
+      "milliseconds": 1631.81
+    },
+    {
+      "round": 1,
+      "name": "original_bulk",
+      "milliseconds": 683.496
+    },
+    {
+      "round": 2,
+      "name": "prepare_initial",
+      "milliseconds": 146.225
+    },
+    {
+      "round": 2,
+      "name": "prepare_cached",
+      "milliseconds": 0.0009
+    },
+    {
+      "round": 2,
+      "name": "source_bulk_parallel",
+      "milliseconds": 321.318
+    },
+    {
+      "round": 2,
+      "name": "source_push_back",
+      "milliseconds": 1937.55
+    },
+    {
+      "round": 2,
+      "name": "source_bulk_serial",
+      "milliseconds": 1196.9
+    },
+    {
+      "round": 2,
+      "name": "original_accessor",
+      "milliseconds": 1610.21
+    },
+    {
+      "round": 2,
+      "name": "original_bulk",
+      "milliseconds": 688.679
+    },
+    {
+      "round": 3,
+      "name": "prepare_initial",
+      "milliseconds": 151.864
+    },
+    {
+      "round": 3,
+      "name": "prepare_cached",
+      "milliseconds": 0.0009
+    },
+    {
+      "round": 3,
+      "name": "source_push_back",
+      "milliseconds": 1853.58
+    },
+    {
+      "round": 3,
+      "name": "source_bulk_serial",
+      "milliseconds": 1193.89
+    },
+    {
+      "round": 3,
+      "name": "source_bulk_parallel",
+      "milliseconds": 342.134
+    },
+    {
+      "round": 3,
+      "name": "original_accessor",
+      "milliseconds": 1627.97
+    },
+    {
+      "round": 3,
+      "name": "original_bulk",
+      "milliseconds": 644.573
+    }
+  ],
+  "benchmark_assertions_passed": 25,
+  "viewer": {
+    "executable_sha256": "9c7cbb82b7807c247556b139e09ec75fb366ea978c553149b90592099df536da",
+    "load_rpc_milliseconds": 36739.69719998422,
+    "phases": [
+      {
+        "name": "gpu_index_validation",
+        "milliseconds": 417.4426,
+        "data": {
+          "validation_reused": 0
+        }
+      },
+      {
+        "name": "post_source_indices",
+        "milliseconds": 332.4437,
+        "data": {
+          "source_index_capacity_bytes": 909263832
+        }
+      },
+      {
+        "name": "post_original_bounds",
+        "milliseconds": 713.3093,
+        "data": {}
+      },
+      {
+        "name": "gpu_index_validation",
+        "milliseconds": 0.0045,
+        "data": {
+          "validation_reused": 1
+        }
+      },
+      {
+        "name": "point_range_bounds",
+        "milliseconds": 0.0057,
+        "data": {
+          "bounds_reused": 1,
+          "scanned_vertices": 0
+        }
+      },
+      {
+        "name": "post_group_bounds",
+        "milliseconds": 0.0054,
+        "data": {
+          "partial_group_vertices": 0,
+          "reused_groups": 1
+        }
+      }
+    ],
+    "screenshot": {
+      "width": 1920,
+      "height": 1800,
+      "unique_colors": 439,
+      "sha256": "d9cbca46f81d6708ef8b2db4887ce506179769513d46c7230c49505ff9fdd1ce",
+      "non_background_fraction": 0.060743344907407404
+    }
+  },
+  "limits": "These are isolated pass comparisons and one instrumented viewer capture. Total-load speedup is not established by a paired native control."
+}

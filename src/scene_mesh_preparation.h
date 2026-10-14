@@ -15,6 +15,7 @@ struct GpuNodeRange {
     uint32_t lineIndexCount = 0;
     uint32_t pointIndexOffset = 0;
     uint32_t pointIndexCount = 0;
+    bool completeVertexSet = false; // Proven by validated per-group deduplication.
 };
 
 enum GpuMeshFeature : uint8_t { gpuMeshEdges = 1, gpuMeshPoints = 2 };

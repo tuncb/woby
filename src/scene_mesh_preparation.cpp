@@ -2,6 +2,7 @@
 #include "scene_buffer_size.h"
 #include "point_cloud.h"
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace woby {
@@ -31,15 +32,26 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
     if (empty(mesh) || meshGeometry(mesh).indices.size() % 3 != 0 || meshGeometry(mesh).lineIndices.size() % 2 != 0) {
         throw std::runtime_error("Scene needs valid triangles, line segments or points.");
     }
-    for (const auto* indices : {&meshGeometry(mesh).indices, &meshGeometry(mesh).lineIndices, &meshGeometry(mesh).pointIndices}) {
-        for (size_t i = 0; i < indices->size(); ++i) {
-            if (i % 65536 == 0 && canceled()) { return {}; }
-            if ((*indices)[i] >= meshGeometry(mesh).vertices.size()) {
-                throw std::runtime_error(indices == &meshGeometry(mesh).lineIndices ? "Scene contains an invalid line vertex index."
-                    : indices == &meshGeometry(mesh).pointIndices ? "Scene contains an invalid point vertex index."
-                    : "Scene contains an invalid vertex index.");
+    const auto& cache = mesh.preparationCache;
+    const bool cacheCurrent = !mesh.draft && cache && cache->geometry == mesh.storage.get();
+    if (!cacheCurrent || !cache->indicesValidated.load(std::memory_order_acquire)) {
+        const auto& geometry = meshGeometry(mesh);
+        const auto vertexCount = geometry.vertices.size();
+        for (const auto* indices : {&geometry.indices, &geometry.lineIndices, &geometry.pointIndices}) {
+            const auto* error = indices == &geometry.lineIndices ? "Scene contains an invalid line vertex index."
+                : indices == &geometry.pointIndices ? "Scene contains an invalid point vertex index."
+                : "Scene contains an invalid vertex index.";
+            for (size_t begin = 0; begin < indices->size();) {
+                if (canceled()) { return {}; }
+                const auto end = begin + std::min(size_t{65536}, indices->size() - begin);
+                for (size_t i = begin; i < end; ++i) {
+                    if ((*indices)[i] >= vertexCount) { throw std::runtime_error(error); }
+                }
+                begin = end;
             }
         }
+        if (canceled()) { return {}; }
+        if (cacheCurrent) { cache->indicesValidated.store(true, std::memory_order_release); }
     }
     SceneMeshPreparation result;
     result.features = features;
@@ -75,6 +87,7 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
         }
         (void)sceneBufferBytes(result.pointVertexIndices.size(), sizeof(uint32_t));
         range.pointIndexCount = static_cast<uint32_t>(result.pointVertexIndices.size()) - range.pointIndexOffset;
+        range.completeVertexSet = preparePoints && range.pointIndexCount == meshGeometry(mesh).vertices.size();
         result.nodeRanges.push_back(range);
     }
     if (features & gpuMeshEdges) {

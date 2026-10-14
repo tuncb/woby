@@ -1,5 +1,6 @@
 #include "model_mesh.h"
 #include "simd_bounds.h"
+#include "parallel_work.h"
 
 #include <algorithm>
 #include <atomic>
@@ -11,6 +12,7 @@
 namespace woby {
 Mesh::Mesh(const Mesh& other)
     : storage(other.storage), draft(other.draft ? std::make_unique<MeshGeometry>(*other.draft) : nullptr),
+      preparationCache(other.draft ? nullptr : other.preparationCache),
       bounds(other.bounds), originalBounds(other.originalBounds), origin(other.origin),
       sourceData(other.sourceData), duplicateInput(other.duplicateInput),
       annotationCache(other.draft ? nullptr : other.annotationCache), uvQuality(other.uvQuality),
@@ -24,6 +26,7 @@ Mesh& Mesh::operator=(const Mesh& other)
 }
 MeshGeometry& editMeshGeometry(Mesh& mesh)
 {
+    mesh.preparationCache.reset();
     if (!mesh.draft) {
         auto next = std::make_unique<MeshGeometry>(meshGeometry(mesh));
         mesh.draft = std::move(next);
@@ -54,7 +57,19 @@ void publishMeshGeometry(Mesh& mesh)
         || (!g.precisePositions.empty() && g.precisePositions.size() != g.vertices.size())) {
         throw std::invalid_argument("Invalid direct position storage.");
     }
+    if (!mesh.preparationCache || mesh.preparationCache->geometry != mesh.draft.get()) {
+        auto cache = std::make_shared<MeshPreparationCache>();
+        cache->geometry = mesh.draft.get();
+        mesh.preparationCache = std::move(cache);
+    }
     mesh.storage = std::shared_ptr<const MeshGeometry>(std::move(mesh.draft));
+}
+
+const Bounds* validatedMeshBounds(const Mesh& mesh) noexcept
+{
+    const auto& cache = mesh.preparationCache;
+    return !mesh.draft && cache && cache->geometry == mesh.storage.get() && cache->bounds
+        ? &*cache->bounds : nullptr;
 }
 
 void appendMeshPositionIndex(MeshGeometry& geometry, uint32_t sourceIndex)
@@ -175,23 +190,33 @@ Coordinate meshPosition(const Mesh& mesh, size_t index)
     const auto& p = g.vertices[index].position;
     return {p[0], p[1], p[2]};
 }
-std::array<Coordinate, 2> originalMeshBounds(const Mesh& mesh, const MeshNode* node)
+namespace {
+std::optional<std::array<Coordinate, 2>> reduceOriginalMeshBounds(
+    const Mesh& mesh, const MeshNode* node, const std::function<bool()>& canceled)
 {
-    if (!node && mesh.originalBounds) { return *mesh.originalBounds; }
+    if (canceled && canceled()) { return {}; }
     const auto& geometry = meshGeometry(mesh);
     const auto indices = node ? meshNodeIndices(mesh, *node) : std::span<const uint32_t>{};
     const auto count = node ? indices.size() : geometry.vertices.size();
-    if (!count) { return {}; }
+    if (!count) { return std::array<Coordinate, 2>{}; }
     // Select storage once. The checked accessor can then stay inline, so each
     // corner does not spill the SIMD accumulators around a meshPosition call.
-    const auto reduce = [&](const auto& position) {
+    const auto reduce = [&](const auto& position) -> std::optional<std::array<Coordinate, 2>> {
         const auto original = [&](size_t i) {
             const size_t index = node ? indices[i] : i;
             if (index >= geometry.vertices.size()) { throw std::out_of_range("Invalid render vertex index."); }
-            return originalPosition(position(index), mesh.origin);
+            const auto point = originalPosition(position(index), mesh.origin);
+            if (!finiteCoordinate(point)) { throw std::runtime_error("Non-finite original coordinate."); }
+            return point;
         };
         auto bounds = doubleBoundsReduction(original(0));
-        for (size_t i = 1; i < count; ++i) { expand(bounds, original(i)); }
+        for (size_t begin = 1; begin < count;) {
+            if (canceled && canceled()) { return {}; }
+            const auto end = begin + std::min(size_t{65536}, count - begin);
+            for (size_t i = begin; i < end; ++i) { expand(bounds, original(i)); }
+            begin = end;
+        }
+        if (canceled && canceled()) { return {}; }
         return boundsResult(bounds);
     };
     if (geometry.sourcePositions) {
@@ -208,6 +233,69 @@ std::array<Coordinate, 2> originalMeshBounds(const Mesh& mesh, const MeshNode* n
         const auto& p = geometry.vertices[i].position;
         return Coordinate{p[0], p[1], p[2]};
     });
+}
+void recordMeshBounds(Mesh& mesh)
+{
+    auto cache = std::make_shared<MeshPreparationCache>();
+    cache->geometry = &meshGeometry(mesh);
+    cache->bounds = mesh.bounds;
+    mesh.preparationCache = std::move(cache);
+}
+struct MappingCanceled {};
+} // namespace
+
+std::array<Coordinate, 2> originalMeshBounds(const Mesh& mesh, const MeshNode* node)
+{
+    if (!node && mesh.originalBounds) { return *mesh.originalBounds; }
+    return *reduceOriginalMeshBounds(mesh, node, {});
+}
+
+std::optional<std::array<Coordinate, 2>> prepareOriginalMeshBounds(
+    const Mesh& mesh, const std::function<bool()>& canceled)
+{
+    return reduceOriginalMeshBounds(mesh, nullptr, canceled);
+}
+
+std::optional<std::vector<uint32_t>> mapSourceTriangleIndices(
+    const Mesh& mesh, const std::function<bool()>& canceled, bool parallel)
+{
+    if (canceled && canceled()) { return {}; }
+    const auto& geometry = meshGeometry(mesh);
+    if (!mesh.sourceData) { throw std::invalid_argument("Missing source triangle positions."); }
+    const auto positionCount = sourcePositions(*mesh.sourceData).size();
+    std::vector<uint32_t> indices(geometry.indices.size());
+    // Existing callbacks need not be thread-safe. Poll them under one lock,
+    // outside the tight mapping loop, and join all writers before returning.
+    std::mutex cancelMutex;
+    std::atomic<bool> stopped{false};
+    const auto checkCanceled = [&] {
+        if (stopped.load(std::memory_order_relaxed)) { throw MappingCanceled{}; }
+        if (canceled) {
+            std::lock_guard lock(cancelMutex);
+            if (stopped.load(std::memory_order_relaxed) || canceled()) {
+                stopped.store(true, std::memory_order_relaxed);
+                throw MappingCanceled{};
+            }
+        }
+    };
+    const auto map = [&](const auto& sourceIndex) {
+        parallelAnalysisBatches(indices.size(), 65536, {}, [&](size_t begin, size_t end) {
+            checkCanceled();
+            for (size_t i = begin; i < end; ++i) {
+                const auto vertex = geometry.indices[i];
+                if (vertex >= geometry.vertices.size()) { throw std::runtime_error("Invalid source triangle vertex."); }
+                const auto position = sourceIndex(vertex);
+                if (position >= positionCount) { throw std::runtime_error("Invalid source triangle position."); }
+                indices[i] = position;
+            }
+        }, parallel ? size_t{262144} : std::numeric_limits<size_t>::max());
+    };
+    try {
+        if (geometry.positionIndexing == PositionIndexing::identity) { map([](uint32_t vertex) { return vertex; }); }
+        else { map([&](uint32_t vertex) { return geometry.positionIndices.at(vertex); }); }
+        checkCanceled();
+    } catch (const MappingCanceled&) { return {}; }
+    return indices;
 }
 std::array<float, 3> renderPosition(const Coordinate& point)
 {
@@ -306,7 +394,10 @@ void rebaseMesh(Mesh& mesh, const Coordinate& origin)
     }
     mesh.origin = origin;
     mesh.annotationCache.reset();
-    if (!meshGeometry(mesh).vertices.empty()) { mesh.bounds = calculateBounds(meshGeometry(mesh).vertices); }
+    if (!meshGeometry(mesh).vertices.empty()) {
+        mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
+        recordMeshBounds(mesh);
+    }
 }
 
 bool empty(const Mesh& mesh) noexcept
@@ -401,6 +492,7 @@ Bounds calculateBounds(const std::vector<Vertex>& vertices, const ModelLoadProgr
     for (const auto& vertex : vertices) {
         if (completed % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::bounds, completed, total); }
         ++completed;
+        if (!finitePosition(vertex.position)) { throw std::runtime_error("Non-finite render coordinate."); }
         expand(reduction, vertex.position);
     }
     const auto box = boundsResult(reduction);
@@ -461,6 +553,7 @@ void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals, const ModelLoad
     mesh.bounds = calculateBounds(meshGeometry(mesh).vertices, progress);
     mesh.originalBounds.reset();
     if (!mesh.preparationDeferred) { mesh.originalBounds = originalMeshBounds(mesh); }
+    recordMeshBounds(mesh);
 }
 
 } // namespace woby

@@ -5,7 +5,6 @@
 """Observe a fresh viewer from model.add through display, readiness, and rendering."""
 import argparse
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import nullcontext
 import ctypes
 from datetime import datetime, timezone
 import hashlib
@@ -13,7 +12,6 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import tempfile
 import threading
 import time
 import urllib.request
@@ -231,9 +229,11 @@ def run(args):
 
     watcher = threading.Thread(target=observe, daemon=True)
     try:
-        working_directory = nullcontext(str(output)) if args.profiler else tempfile.TemporaryDirectory(prefix="woby_e2e_")
-        with working_directory as temporary, (output / "console.log").open("w", encoding="utf-8") as console:
-            process = subprocess.Popen(command, cwd=temporary, env=environment, startupinfo=startup, stdout=console, stderr=console)
+        # Each capture owns a fresh output folder. Keep the working directory
+        # there so test fixtures also own it, and Windows can release process
+        # handles before a test removes the folder after this runner exits.
+        with (output / "console.log").open("w", encoding="utf-8") as console:
+            process = subprocess.Popen(command, cwd=output, env=environment, startupinfo=startup, stdout=console, stderr=console)
             report["launcher_pid"] = process.pid
             registry_path = Path(os.environ["LOCALAPPDATA"]) / "woby/instances" / ("instance-" + instance + ".json")
             deadline = time.perf_counter() + 90

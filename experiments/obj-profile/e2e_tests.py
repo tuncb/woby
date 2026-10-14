@@ -81,6 +81,27 @@ class TraceReadTests(unittest.TestCase):
 class ViewerTraceTests(unittest.TestCase):
     executable = None
 
+    def test_complete_point_group_reuses_validated_bounds(self):
+        if self.executable is None:
+            self.skipTest("No viewer supplied")
+        with tempfile.TemporaryDirectory(prefix="woby point bounds fixture ") as temporary:
+            root = Path(temporary).resolve()
+            model = root / "points.obj"
+            count = 65536
+            model.write_text(''.join(f"v {i % 256} {i // 256} 0\n" for i in range(count))
+                             + ''.join(f"p {i + 1}\n" for i in range(count)), encoding="utf-8")
+            output = root / "measurements"
+            result = subprocess.run([sys.executable, str(Path(__file__).with_name("e2e_run.py")),
+                                     str(self.executable), str(model), "--hidden", "--output", str(output),
+                                     "--settle-seconds", "0", "--render-seconds", "0"],
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=90)
+            self.assertEqual(result.returncode, 0, result.stdout)
+            record = json.loads((output / "result.json").read_text(encoding="utf-8"))
+            self.assertNotIn("error", record)
+            bounds = [p for p in record["trace"] if p.get("name") == "point_range_bounds"]
+            self.assertEqual(len(bounds), 1)
+            self.assertEqual(bounds[0]["data"], {"bounds_reused": 1, "scanned_vertices": 0})
+
     def test_complete_pipeline_has_valid_nesting_and_distinct_endpoints(self):
         if self.executable is None:
             self.skipTest("No viewer supplied")
@@ -116,6 +137,8 @@ class ViewerTraceTests(unittest.TestCase):
             self.assertTrue(set(names) <= marks.keys(), marks.keys())
             self.assertEqual(sorted(marks[n]["time_ms"] for n in names), [marks[n]["time_ms"] for n in names])
             self.assertGreaterEqual(len({p["thread_id"] for p in phases.values()}), 2)
+            validation = [p for p in phases.values() if p["name"] == "gpu_index_validation"]
+            self.assertEqual([p["data"]["validation_reused"] for p in validation], [0, 1])
             self.assertEqual(len(record["executable_sha256"]), 64)
             # Every fixture, output and working directory is owned by this test.
             self.assertTrue(all(p.is_relative_to(root) for p in (model, output)))

@@ -1,0 +1,50 @@
+Preparation passes: BearTrap, 14 October 2026
+
+Use PowerShell and the vs2026-vcpkg preset. Use Release for each build.
+Run each timing command with no concurrent builds, tests, or profilers.
+
+Build the application and unit tests:
+  cmake --preset vs2026-vcpkg -DWOBY_BUILD_OBJ_PROFILE=OFF
+  cmake --build --preset vs2026-vcpkg --config Release
+
+Run the pass benchmark:
+  $env:WOBY_PREPARATION_BENCHMARK_MODEL = 'D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj'
+  ./build/vs2026-vcpkg/bin/Release/woby_tests.exe '--test-case=Preparation pass benchmark' --no-skip=true --case-sensitive=true
+
+Round 0 is warmup. The medians use rounds 1-3. Source mapping modes rotate.
+Each mapping timer includes allocation and validation. Bulk mapping also includes
+vector initialization. Compare outputs after the timer stops. The benchmark
+checks each output against the other modes and checks both original bounds passes.
+It checks 38,414,391 render vertices and 227,315,958 triangle corners.
+
+The old source loop uses reserve and push_back. The serial bulk pass selects
+the mapping once and writes into the final array. The parallel bulk pass uses
+the shared worker limit, with up to eight additional workers. It polls
+cancellation between batches of 65,536 indices. Small jobs stay on the caller.
+
+The old original bounds pass calls meshPosition for each render vertex.
+The bulk pass selects storage once. Both passes check finite coordinates and
+reduce in double precision. Unused source positions do not enter the reduction.
+
+Run the instrumented viewer and its tests:
+  cmake --preset vs2026-vcpkg --no-warn-unused-cli -DWOBY_BUILD_OBJ_PROFILE=ON
+  cmake --build --preset vs2026-vcpkg --config Release --target woby_obj_e2e_viewer
+  uv run experiments/obj-profile/e2e_tests.py --viewer build/vs2026-vcpkg/bin/Release/woby_obj_e2e_viewer.exe
+  uv run experiments/obj-profile/e2e_run.py build/vs2026-vcpkg/bin/Release/woby_obj_e2e_viewer.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj --hidden --output build/preparation-beartrap-new --settle-seconds 0 --render-seconds 0
+
+Use a fresh output folder for each viewer capture. The capture folder also
+contains the viewer's working files. This keeps test files under one fixture
+root and avoids deleting the working folder before Windows releases its handles.
+
+The trace records validation_reused on gpu_index_validation, and bounds_reused
+and scanned_vertices on point_range_bounds. The recorded BearTrap run reused
+validation in deferred preparation and scanned zero vertices for point bounds.
+
+The pass benchmark passed 25 assertions. The viewer tests passed all nine tests.
+Release validation passed 80 default tests, eight slow tests, and the available
+graphics test. The final build passed all 80 default tests again. The application,
+unit tests, and instrumented viewer built without compiler warnings.
+
+The results describe isolated passes and one instrumented viewer run. A paired
+native comparison is required to measure a change in total load time. The
+original October 14 report is historical evidence, not a paired control.
