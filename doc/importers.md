@@ -1,11 +1,42 @@
 # File format importers
 
 woby can load native importer libraries supplied by the user. An importer reads
-a model file and returns triangles, lines, points, and spline curves/surfaces
+a model file and returns triangles, lines, points, tetrahedra, and spline curves/surfaces
 (including trimming), with named groups and optional hierarchy,
 color and visibility defaults. woby owns the copied geometry, scene settings, GPU resources,
 and rendering. The DLL must implement the woby API;
 an arbitrary third-party format library needs a small adapter.
+
+## Tetrahedral cell extension
+
+ABI 4 importers can return `WobyImporterApiWithTetrahedra`. Set
+`base.base.base.base.base.struct_size` to the size of this API struct and
+return `&base.base.base.base.base` from `woby_get_importer_api`.
+Set unused optional callbacks to `NULL`. Existing API layouts and the ABI
+version do not change.
+
+`get_tetrahedra` returns a `WobyImportTetrahedra` table or `NULL`. Prepare the
+table during `import_file`. The plugin owns it until `release_result`.
+Woby copies the cell connectivity and creates the outer surface before it
+releases the result. A cell-only result can leave the triangle buffers empty.
+It must supply the shared vertex table in `WobyImportResult`.
+
+Each `WobyImportTetrahedron` has `node_count` equal to 4 or 10. Its `nodes`
+array indexes the result vertex table. Four-node and ten-node cells can share
+one table. Ten-node cells use the VTK order in [vtk-meshes.md](vtk-meshes.md).
+
+Cell groups use `WobyImportGroup`. Here, `index_offset` and `index_count`
+count **cells**, rather than triangle indexes. Groups must partition the cell
+table in order. Names, color, and initial visibility follow the standard
+group rules. Zero groups creates a group named `Tetrahedra`.
+
+Hierarchy group order is triangles, lines, points, tetrahedra, then freeform
+patches. Include generated default groups. Interior cell groups keep their
+identity even when they have no exposed faces. Faces shared across cell
+groups are removed. Hiding a group does not expose internal faces.
+
+The built-in `.vtk` reader uses this same cell conversion. It does not require
+a plugin or a VTK dependency. See [VTK file support](vtk-meshes.md) for limits.
 
 ## Portable importer packages
 
@@ -82,7 +113,7 @@ These explicit scans retain their existing loose-library behavior; use portable
 packages above to select an entry library without scanning its dependencies.
 Loading the same physical file more than once has no effect. Duplicate importer
 IDs and extension conflicts are reported, with the earlier registration retained.
-OBJ and the `.woby` scene extension are reserved.
+OBJ, VTK, and the `.woby` scene extension are reserved.
 
 Startup options apply only to that launch. Use `wobyctl importers add PATH --remember`
 to load a library and save its absolute path for future launches. Registrations are

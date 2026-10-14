@@ -29,7 +29,12 @@ bool isObjPath(const std::filesystem::path& path)
 
 bool isModelPath(const std::filesystem::path& path)
 {
-    return isObjPath(path) || hasImporterForPath(path);
+    return isObjPath(path) || isVtkPath(path) || hasImporterForPath(path);
+}
+
+bool isVtkPath(const std::filesystem::path& path)
+{
+    return lowercase(pathToUtf8(path.extension())) == ".vtk";
 }
 
 bool isWobyPath(const std::filesystem::path& path)

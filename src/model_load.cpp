@@ -2,6 +2,7 @@
 
 #include "file_discovery.h"
 #include "obj_mesh.h"
+#include "vtk_mesh.h"
 #include <new>
 #include <cstdio>
 #include <stdexcept>
@@ -11,7 +12,7 @@ namespace woby {
 ImportedModel loadModel(const std::filesystem::path& path, const std::string& requiredImporterId,
     const ImportCallbacks& callbacks)
 try {
-    if (!requiredImporterId.empty() || !isObjPath(path)) {
+    if (!requiredImporterId.empty() || (!isObjPath(path) && !isVtkPath(path))) {
         return importModel(path, requiredImporterId, callbacks);
     }
     ImportedModel result;
@@ -21,7 +22,8 @@ try {
         if (callbacks.stageProgress) { callbacks.stageProgress(update); }
     };
     try {
-        result.mesh = loadObjMesh(path, progress, callbacks.deferPreparation);
+        result.mesh = isVtkPath(path) ? loadVtkMesh(path, progress, callbacks.deferPreparation)
+            : loadObjMesh(path, progress, callbacks.deferPreparation);
     } catch (const Canceled&) { result.canceled = true; }
     return result;
 } catch (const std::bad_alloc&) {

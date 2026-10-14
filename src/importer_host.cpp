@@ -1,6 +1,7 @@
 #include "importer_host.h"
 #include "analysis_index.h"
 #include "freeform.h"
+#include "tetrahedral_mesh.h"
 #include "utf8_path.h"
 #include <nlohmann/json.hpp>
 
@@ -37,6 +38,7 @@ struct Importer {
     decltype(WobyImporterApiWithPointIds::get_point_ids) getPointIds = nullptr;
     decltype(WobyImporterApiWithGeometry::get_points) getPoints = nullptr;
     decltype(WobyImporterApiWithGeometry::get_freeform) getFreeform = nullptr;
+    decltype(WobyImporterApiWithTetrahedra::get_tetrahedra) getTetrahedra = nullptr;
     std::shared_ptr<void> library;
     std::shared_ptr<std::mutex> callMutex;
 };
@@ -395,6 +397,9 @@ void loadImporter(const std::filesystem::path& path)
         entry.getPoints = geometry->get_points;
         entry.getFreeform = geometry->get_freeform;
     }
+    if (api->struct_size >= sizeof(WobyImporterApiWithTetrahedra)) {
+        entry.getTetrahedra = reinterpret_cast<const WobyImporterApiWithTetrahedra*>(api)->get_tetrahedra;
+    }
     entry.info.id = boundedString(api->id, 256u);
     entry.info.name = boundedString(api->name);
     entry.info.version = boundedString(api->version, 256u);
@@ -408,7 +413,7 @@ void loadImporter(const std::filesystem::path& path)
         if (extension.empty() || extension.size() > 32u
             || !std::all_of(extension.begin(), extension.end(), [](char c) {
                 return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
-            }) || extension == "obj" || extension == "woby") {
+            }) || extension == "obj" || extension == "vtk" || extension == "woby") {
             throw std::runtime_error("Invalid or reserved importer extension: " + extension);
         }
         if (std::find(entry.info.extensions.begin(), entry.info.extensions.end(), extension) != entry.info.extensions.end()) {
@@ -505,8 +510,14 @@ bool hasImporterForPath(const std::filesystem::path& path)
 
 Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy* hierarchy,
     const WobyImportLines* lines, const WobyImportPointIds* pointIds,
-    const WobyImportPoints* points, const WobyImportFreeform* freeform, const ModelLoadProgressCallback& progress, bool deferPreparation)
+    const WobyImportPoints* points, const WobyImportFreeform* freeform, const ModelLoadProgressCallback& progress, bool deferPreparation,
+    const WobyImportTetrahedra* tetrahedra)
 {
+    if (tetrahedra && (tetrahedra->struct_size < sizeof(WobyImportTetrahedra)
+        || (tetrahedra->cell_count && !tetrahedra->cells) || tetrahedra->group_count > 100000u
+        || (tetrahedra->group_count && !tetrahedra->groups))) {
+        throw std::runtime_error("Invalid importer tetrahedral buffers or size limits.");
+    }
     if (lines && lines->struct_size < sizeof(WobyImportLines)) {
         throw std::runtime_error("Invalid importer line buffers or size limits.");
     }
@@ -529,10 +540,11 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
         + uint64_t(result.index_count) * sizeof(uint32_t)
         + (lines ? uint64_t(lines->index_count) * sizeof(uint32_t) : 0)
         + (points ? uint64_t(points->index_count) * sizeof(uint32_t) : 0)
-        + (pointIds ? uint64_t(pointIds->vertex_count) * sizeof(uint64_t) : 0);
+        + (pointIds ? uint64_t(pointIds->vertex_count) * sizeof(uint64_t) : 0)
+        + (tetrahedra ? uint64_t(tetrahedra->cell_count) * sizeof(WobyImportTetrahedron) : 0);
     if (result.struct_size < sizeof(WobyImportResult) || (result.flags & ~3u) != 0u
         || (result.index_count == 0u && (!lines || !lines->index_count) && (!points || !points->index_count)
-            && (!freeform || !freeform->patch_count)) || result.index_count % 3u != 0u
+            && (!freeform || !freeform->patch_count) && (!tetrahedra || !tetrahedra->cell_count)) || result.index_count % 3u != 0u
         || (result.vertex_count && result.vertices == nullptr) || (result.index_count != 0u && result.indices == nullptr) || bytes > maxBytes
         || result.group_count > 100000u || (result.group_count != 0u && result.groups == nullptr)) {
         throw std::runtime_error("Invalid importer mesh buffers, flags or size limits.");
@@ -548,7 +560,8 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
     if (uint64_t(effectiveGroupCount(result.group_count, result.index_count))
         + (lines ? effectiveGroupCount(lines->group_count, lines->index_count) : 0u)
         + (points ? effectiveGroupCount(points->group_count, points->index_count) : 0u)
-        + (freeform ? freeform->patch_count : 0u) > 100000u) {
+        + (freeform ? freeform->patch_count : 0u)
+        + (tetrahedra ? effectiveGroupCount(tetrahedra->group_count, tetrahedra->cell_count) : 0u) > 100000u) {
         throw std::runtime_error("Importer exceeds combined group size limits.");
     }
     Mesh mesh;
@@ -645,6 +658,35 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
             if (index >= result.vertex_count) { throw std::runtime_error("Importer point index is outside the vertex buffer."); }
         }
         appendGroups(points->groups, points->group_count, points->index_count, 1);
+    }
+    if (tetrahedra) {
+        const auto firstGroup = static_cast<uint32_t>(buffers.nodes.size());
+        uint32_t nextCell = 0;
+        const auto appendCells = [&](const WobyImportGroup& group) {
+            if (group.index_offset != nextCell || !group.index_count || group.index_count > tetrahedra->cell_count - nextCell) {
+                throw std::runtime_error("Importer tetrahedral groups must partition the cell buffer in order.");
+            }
+            const auto groupIndex = static_cast<uint32_t>(buffers.nodes.size());
+            buffers.nodes.push_back(importGroup(group, groupNames, nameBytes));
+            for (uint32_t c = 0; c < group.index_count; ++c) {
+                if (c % 4096 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, nextCell+c, tetrahedra->cell_count); }
+                const auto& source = tetrahedra->cells[nextCell+c];
+                TetrahedralCell cell; cell.nodeCount = source.node_count; cell.groupIndex = groupIndex;
+                std::copy(std::begin(source.nodes), std::end(source.nodes), cell.nodes.begin());
+                buffers.tetrahedra.push_back(cell);
+            }
+            nextCell += group.index_count;
+        };
+        for (uint32_t g = 0; g < tetrahedra->group_count; ++g) { appendCells(tetrahedra->groups[g]); }
+        if (!tetrahedra->group_count && tetrahedra->cell_count) {
+            appendCells({"Tetrahedra",0,tetrahedra->cell_count,0,{}});
+        }
+        if (nextCell != tetrahedra->cell_count) { throw std::runtime_error("Importer tetrahedral groups do not cover all cells."); }
+        appendTetrahedralBoundary(buffers, progress);
+        // Empty interior groups still keep their stable identity and hierarchy.
+        for (size_t g = firstGroup; g < buffers.nodes.size(); ++g) {
+            if (!buffers.nodes[g].indexCount) { buffers.nodes[g].indexOffset = static_cast<uint32_t>(buffers.indices.size()); }
+        }
     }
     std::vector<MeshNode> patchGroups;
     auto patches = freeform ? copyFreeform(*freeform, patchGroups, groupNames, nameBytes, progress) : std::vector<FreeformPatch>{};
@@ -779,7 +821,8 @@ ImportedModel importModel(const std::filesystem::path& path, const std::string& 
             importer.getLines ? importer.getLines(&result) : nullptr,
             importer.getPointIds ? importer.getPointIds(&result) : nullptr,
             importer.getPoints ? importer.getPoints(&result) : nullptr,
-            importer.getFreeform ? importer.getFreeform(&result) : nullptr, progress, callbacks.deferPreparation);
+            importer.getFreeform ? importer.getFreeform(&result) : nullptr, progress, callbacks.deferPreparation,
+            importer.getTetrahedra ? importer.getTetrahedra(&result) : nullptr);
     } catch (const Canceled&) { model.mesh = {}; model.canceled = true; }
     if (isCanceled(&context) != 0u) {
         if (context.error) { std::rethrow_exception(context.error); }

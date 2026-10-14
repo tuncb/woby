@@ -38,6 +38,8 @@ TEST_CASE("path extension checks are case insensitive")
     CHECK(woby::isObjPath("mesh.OBJ"));
     CHECK(woby::isObjPath("mesh.obj"));
     CHECK(woby::isModelPath("mesh.OBJ"));
+    CHECK(woby::isVtkPath("mesh.VTK"));
+    CHECK(woby::isModelPath("mesh.vtk"));
     CHECK_FALSE(woby::isModelPath("mesh.stl"));
     CHECK_FALSE(woby::isModelPath("mesh.STL"));
     CHECK_FALSE(woby::isObjPath("mesh.woby"));

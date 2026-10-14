@@ -199,8 +199,8 @@ void showModelFileDialog(SDL_Window* window, ModelFileDialogState& state)
             return;
         }
         prepareFallback(state.fallback, ManualPathKind::models);
-        state.filterNames = {"3D Models", "Wavefront OBJ"};
-        state.filterPatterns = {"obj", "obj"};
+        state.filterNames = {"3D Models", "Wavefront OBJ", "VTK unstructured grid (ASCII)"};
+        state.filterPatterns = {"obj;vtk", "obj", "vtk"};
         for (const auto& importer : loadedImporters()) {
             std::string pattern;
             for (const auto& extension : importer.extensions) {

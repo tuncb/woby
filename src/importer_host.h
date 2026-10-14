@@ -59,7 +59,8 @@ void unloadImporters();
 [[nodiscard]] Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy* hierarchy = nullptr,
     const WobyImportLines* lines = nullptr, const WobyImportPointIds* pointIds = nullptr,
     const WobyImportPoints* points = nullptr, const WobyImportFreeform* freeform = nullptr,
-    const ModelLoadProgressCallback& progress = {}, bool deferPreparation = false);
+    const ModelLoadProgressCallback& progress = {}, bool deferPreparation = false,
+    const WobyImportTetrahedra* tetrahedra = nullptr);
 [[nodiscard]] std::vector<std::filesystem::path> readImporterSettings(const std::filesystem::path& path);
 void writeImporterSettings(const std::filesystem::path& path, const std::vector<std::filesystem::path>& plugins);
 

@@ -247,6 +247,34 @@ typedef struct WobyImporterApiWithGeometry {
     const WobyImportFreeform* (WOBY_IMPORT_CALL *get_freeform)(const WobyImportResult*);
 } WobyImporterApiWithGeometry;
 
+/* VTK ordering: corners 0..3, then edge nodes 01,12,20,03,13,23.
+ * node_count is 4 (linear) or 10 (quadratic). Unused nodes are ignored.
+ * Nodes reference the shared result vertex table. */
+typedef struct WobyImportTetrahedron {
+    uint32_t node_count;
+    uint32_t nodes[10];
+} WobyImportTetrahedron;
+
+/* Groups partition cells, so index_offset/index_count are CELL counts here.
+ * Zero groups generates "Tetrahedra". Matching internal faces are removed
+ * across all groups. Each quadratic boundary face becomes four triangles.
+ * Point IDs do not weld cells. Borrowed data lives until release_result. */
+typedef struct WobyImportTetrahedra {
+    uint32_t struct_size;
+    const WobyImportTetrahedron* cells;
+    uint32_t cell_count;
+    const WobyImportGroup* groups;
+    uint32_t group_count;
+} WobyImportTetrahedra;
+
+typedef struct WobyImporterApiWithTetrahedra {
+    /* Set base.base.base.base.base.struct_size to sizeof this struct and return
+     * &base.base.base.base.base. Hierarchy order: triangles, lines, points,
+     * tetrahedra, then patches. Includes default groups. Older APIs remain valid. */
+    WobyImporterApiWithGeometry base;
+    const WobyImportTetrahedra* (WOBY_IMPORT_CALL *get_tetrahedra)(const WobyImportResult*);
+} WobyImporterApiWithTetrahedra;
+
 typedef const WobyImporterApi* (WOBY_IMPORT_CALL *WobyGetImporterApi)(uint32_t host_abi_version);
 
 /* Each plugin exports this exact symbol; return NULL for an unsupported ABI. */

@@ -1108,6 +1108,8 @@ void printCommandLineHelp()
         "Then use --file PATH or model add PATH. Hierarchy and line groups supplied by the plugin\n"
         "are imported automatically; no extra hierarchy or line-import switch is needed.\n"
         "OBJ imports faces, polylines (l), points (p), and vertex-only point clouds.\n"
+        "VTK imports legacy ASCII unstructured grids, including 4-node and 10-node tetrahedra.\n"
+        "Tetrahedra display their outer faces; quadratic faces use four triangles. Binary VTK and XML VTU are unsupported.\n"
         "Mixed geometry is split into triangle, line and point groups. Points use the vertex display controls.\n"
         "scene tree reports nested folders, parentId and each group's primitive (triangles|lines|points).\n"
         "object GROUP_ID reports geometry and settings; object FILE_ID and stats include lineSegmentCount and pointCount.\n"

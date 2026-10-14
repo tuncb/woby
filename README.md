@@ -6,6 +6,7 @@ woby is a desktop application for viewing and analyzing 3D geometry.
 
 - **Supports obj file format:** Triangular meshes, polygon meshes, point clouds and OBJ freeform geometry including Bézier and B-spline/NURBS curves and surfaces, with trim boundaries and holes.
 - **Importers:** Write your [importers](doc/importers.md) to support any file format.
+- **VTK tetrahedral meshes:** Load [ASCII unstructured grids](doc/vtk-meshes.md) with 4-node and 10-node tetrahedra. Importers can also return these cells. No VTK library is required.
 - **AI support:** Tell your AI where to find woby executable, it will figure out the rest. CLI based http server that can do anything and everything in one or more woby instances.
 - **Surface comparison:** Create named analyses with A/B inputs, overlays, and distance heatmaps. Set tolerances and color ranges. Results include maximum, mean, P95, and area statistics. Distances are approximate and unsigned. Measurements use the model coordinate units.
 - **Mesh diagnostics:** Find boundary edges, winding edges, non-manifold edges and vertices, duplicates, degenerate triangles, holes, fin candidates, and self-intersections. Select findings to show them in the viewport.

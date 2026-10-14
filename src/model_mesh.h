@@ -98,6 +98,11 @@ void coordinateMultiply(double* result, const double* a, const double* b);
 // Mutable construction buffers. Published meshes share a const owner of these
 // arrays. Caches and per-use analysis settings stay outside the owner.
 enum class PositionIndexing { identity, mapped };
+struct TetrahedralCell {
+    uint32_t nodeCount = 4;
+    std::array<uint32_t, 10> nodes{}; // VTK order, indexes into the shared vertex table.
+    uint32_t groupIndex = 0;
+};
 struct MeshGeometry {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
@@ -110,6 +115,7 @@ struct MeshGeometry {
     std::vector<uint32_t> lineIndices; // Independent pairs; never fed to triangle analysis.
     std::vector<uint32_t> pointIndices; // Explicit point geometry, separate from mesh vertex overlays.
     std::vector<uint32_t> analysisVertexBatches;
+    std::vector<TetrahedralCell> tetrahedra; // Source cells; drawing uses the boundary triangles.
 };
 
 struct Mesh {

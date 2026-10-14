@@ -6,6 +6,7 @@
 namespace woby {
 
 [[nodiscard]] bool isObjPath(const std::filesystem::path& path);
+[[nodiscard]] bool isVtkPath(const std::filesystem::path& path);
 [[nodiscard]] bool isModelPath(const std::filesystem::path& path);
 [[nodiscard]] bool isWobyPath(const std::filesystem::path& path);
 [[nodiscard]] std::vector<std::filesystem::path> collectModelPathsRecursive(
