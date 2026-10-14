@@ -17,99 +17,10 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
-#include <unordered_set>
 #include <utility>
 
 namespace woby {
 namespace {
-
-struct IndexKey {
-    int vertex = -1;
-    int normal = -1;
-    int texcoord = -1;
-
-    bool operator==(const IndexKey& other) const noexcept
-    {
-        return vertex == other.vertex && normal == other.normal && texcoord == other.texcoord;
-    }
-};
-
-// First-use IDs are global across shapes. Most corners hit the primary entry
-// for their source position; only alternate normal/UV tuples need hashing.
-struct VertexIndexTable {
-    std::vector<IndexKey> keys;
-    std::vector<uint32_t> primary, buckets;
-    size_t secondaryCount = 0;
-    bool direct = false;
-    uint32_t next = 0;
-};
-constexpr uint32_t emptyBucket = std::numeric_limits<uint32_t>::max();
-
-size_t indexHash(const IndexKey& key)
-{
-    uint64_t hash = uint64_t(static_cast<uint32_t>(key.vertex)) * 0x9e3779b185ebca87ull;
-    hash ^= uint64_t(static_cast<uint32_t>(key.normal)) * 0xc2b2ae3d27d4eb4full;
-    hash ^= uint64_t(static_cast<uint32_t>(key.texcoord)) * 0x165667b19e3779f9ull;
-    hash ^= hash >> 33;
-    hash *= 0xff51afd7ed558ccdull;
-    return static_cast<size_t>(hash ^ (hash >> 33));
-}
-
-void growSecondary(VertexIndexTable& table)
-{
-    std::vector<uint32_t> buckets(std::max(size_t{16}, table.buckets.size() * 2), emptyBucket);
-    for (const auto id : table.buckets) {
-        if (id == emptyBucket) { continue; }
-        size_t bucket = indexHash(table.keys[id]) & (buckets.size() - 1);
-        while (buckets[bucket] != emptyBucket) { bucket = (bucket + 1) & (buckets.size() - 1); }
-        buckets[bucket] = id;
-    }
-    table.buckets = std::move(buckets);
-}
-
-uint32_t vertexIndex(VertexIndexTable& table, const IndexKey& key)
-{
-    auto& primary = table.primary[static_cast<size_t>(key.vertex)];
-    if (table.direct) {
-        if (primary == emptyBucket) {
-            (void)sceneBufferBytes(size_t(table.next) + 1, sizeof(Vertex));
-            primary = table.next++;
-        }
-        return primary;
-    }
-    if (primary == emptyBucket) {
-        (void)sceneBufferBytes(table.keys.size() + 1, sizeof(Vertex));
-        primary = static_cast<uint32_t>(table.keys.size());
-        table.keys.push_back(key);
-        return primary;
-    }
-    if (table.keys[primary] == key) { return primary; }
-    if (table.buckets.empty()) { growSecondary(table); }
-    size_t bucket = indexHash(key) & (table.buckets.size() - 1);
-    while (table.buckets[bucket] != emptyBucket) {
-        const auto id = table.buckets[bucket];
-        if (table.keys[id] == key) { return id; }
-        bucket = (bucket + 1) & (table.buckets.size() - 1);
-    }
-    (void)sceneBufferBytes(table.keys.size() + 1, sizeof(Vertex));
-    if (table.secondaryCount >= table.buckets.size() * 3 / 4) {
-        growSecondary(table);
-        bucket = indexHash(key) & (table.buckets.size() - 1);
-        while (table.buckets[bucket] != emptyBucket) { bucket = (bucket + 1) & (table.buckets.size() - 1); }
-    }
-    const auto id = static_cast<uint32_t>(table.keys.size());
-    table.keys.push_back(key);
-    table.buckets[bucket] = id;
-    ++table.secondaryCount;
-    return id;
-}
-
-void reserveIndexTable(VertexIndexTable& table, size_t positions, size_t corners, bool positionOnly)
-{
-    table.primary.assign(positions, emptyBucket);
-    table.direct = positionOnly;
-    if (!table.direct) { table.keys.reserve(std::min(positions, corners)); }
-}
 
 rapidobj::Result parseObj(const std::filesystem::path& path)
 {
@@ -151,7 +62,7 @@ template <bool Prototype = false>
 Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPatches,
     const std::filesystem::path& path, const ModelLoadProgressCallback& progress,
     rapidobj::GeometryBuffers* buffers = nullptr, bool deferPreparation = false,
-    size_t gatherWorkers = 0, bool stagedCornerMapping = true, ObjCornerMappingMetrics* mappingMetrics = nullptr)
+    size_t gatherWorkers = 0, ObjCornerMappingMetrics* mappingMetrics = nullptr)
 {
     const auto throwLoadError = [&](const char* operation) {
         std::string message = std::string(operation) + ": " + pathToUtf8(path);
@@ -214,14 +125,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
         throwLoadError("Failed to triangulate OBJ");
     }
 
-    const auto& attrib = result.attributes;
     const auto& shapes = result.shapes;
-    const auto uvValue = [&](size_t index) {
-        return Prototype ? static_cast<float>(buffers->texcoords[index / 2][index % 2]) : attrib.texcoords[index];
-    };
-    const auto normalValue = [&](size_t index) {
-        return Prototype ? static_cast<float>(buffers->normals[index / 3][index % 3]) : attrib.normals[index];
-    };
 
     Mesh mesh;
     mesh.preparationDeferred = deferPreparation;
@@ -234,187 +138,20 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     publishSourcePositions(*source);
     meshData.sourcePositions = source->positions;
     reportModelLoadProgress(progress, ModelLoadStage::sourcePositions, sourcePositions(*source).size(), sourcePositions(*source).size());
-    VertexIndexTable vertexMap;
     counts.triangleIndices = 0;
     for (const auto& shape : shapes) {
         counts.triangleIndices += shape.mesh.indices.size();
         validateObjMeshCounts(counts);
     }
-    // Vertex-only OBJ files are commonly used as point clouds. In files with
-    // primitives, only explicit p records become standalone point geometry.
-    const auto indexCount = counts.triangleIndices;
-    const auto lineIndexCount = counts.lineIndices;
-    const auto pointIndexCount = counts.pointIndices;
-    const size_t totalIndices = indexCount + lineIndexCount + pointIndexCount;
-    // Position count is only an estimate: normal/UV seams can split vertices.
-    const size_t vertexCapacity = std::min({sourcePositions(*source).size(), totalIndices,
-        size_t(std::numeric_limits<SceneBufferSize>::max() / sizeof(Vertex))});
+    const size_t totalIndices = counts.triangleIndices+counts.lineIndices+counts.pointIndices;
     ObjCornerMappingMetrics cornerMetrics;
     const auto mappingStart = obj_mapping::Clock::now();
-    const bool attributes = Prototype ? !buffers->normals.empty() || !buffers->texcoords.empty()
-        : !attrib.normals.empty() || !attrib.texcoords.empty();
-    // A 12-byte dense primary slot is useful for attribute-bearing triangles.
-    // Retain the 4-byte lookup for plain positions, mixed primitives, and sparse
-    // files. More than two source positions per corner guarantees that the old
-    // primary + full-key upper bound is smaller than the dense primary array.
-    const bool sparsePositions = sourcePositions(*source).size() > totalIndices
-        && sourcePositions(*source).size()-totalIndices > totalIndices;
-    const bool staged = stagedCornerMapping && attributes && indexCount != 0
-        && lineIndexCount == 0 && pointIndexCount == 0 && freeformPatches.empty() && !sparsePositions;
-    meshData.indices.reserve(indexCount);
-    meshData.lineIndices.reserve(lineIndexCount);
-    meshData.pointIndices.reserve(pointIndexCount);
-    if (!staged) {
-        meshData.vertices.reserve(vertexCapacity);
-    }
-    meshData.nodes.reserve(shapes.size());
-    if (!deferPreparation) { source->indices.reserve(indexCount); }
-    if (!staged) {
-        reserveIndexTable(vertexMap, sourcePositions(*source).size(), vertexCapacity,
-            Prototype ? buffers->normals.empty() && buffers->texcoords.empty() : attrib.normals.empty() && attrib.texcoords.empty());
-    }
-    reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, totalIndices);
-
-    if (staged) {
-        obj_mapping::buildFaces<Prototype>(result,meshData,*source,buffers,progress,indexCount,
-            deferPreparation,gatherWorkers,cornerMetrics);
-    } else {
-        for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
-            const auto& shape = shapes[shapeIndex];
-            const uint32_t nodeIndexOffset = static_cast<uint32_t>(meshData.indices.size());
-            bool hasTexcoords = true;
-
-            for (const auto& index : shape.mesh.indices) {
-                hasTexcoords = hasTexcoords && index.texcoord_index >= 0;
-                if (index.texcoord_index >= 0) {
-                    const auto uv = static_cast<size_t>(index.texcoord_index) * 2u;
-                    hasTexcoords = hasTexcoords && std::isfinite(uvValue(uv)) && std::isfinite(uvValue(uv + 1u));
-                }
-                if (meshData.indices.size() % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, meshData.indices.size(), totalIndices); }
-                if (index.position_index < 0 || static_cast<size_t>(index.position_index) >= sourcePositions(*source).size()) {
-                    throw std::runtime_error("OBJ contains an invalid source position index.");
-                }
-                if (!deferPreparation) { source->indices.push_back(static_cast<uint32_t>(index.position_index)); }
-                const IndexKey key{index.position_index, index.normal_index, index.texcoord_index};
-                const auto mappedIndex = vertexIndex(vertexMap, key);
-                if (mappedIndex < meshData.vertices.size()) {
-                    meshData.indices.push_back(mappedIndex);
-                    continue;
-                }
-
-                if (index.position_index < 0) {
-                    throw std::runtime_error("OBJ contains a face vertex without a position index.");
-                }
-
-                Vertex vertex{};
-                const auto& point = sourcePositions(*source)[static_cast<size_t>(index.position_index)];
-                appendMeshPositionIndex(meshData, static_cast<uint32_t>(index.position_index));
-                vertex.position = renderPosition(point);
-
-                if (index.normal_index >= 0) {
-                    const auto normalIndex = static_cast<size_t>(index.normal_index) * 3u;
-                    vertex.normal = {
-                        normalValue(normalIndex + 0u),
-                        normalValue(normalIndex + 1u),
-                        normalValue(normalIndex + 2u),
-                    };
-                }
-
-                if (index.texcoord_index >= 0) {
-                    const auto texcoordIndex = static_cast<size_t>(index.texcoord_index) * 2u;
-                    vertex.texcoord = {
-                        uvValue(texcoordIndex + 0u),
-                        1.0f - uvValue(texcoordIndex + 1u),
-                    };
-                }
-
-                const uint32_t newIndex = static_cast<uint32_t>(meshData.vertices.size());
-                meshData.vertices.push_back(vertex);
-                meshData.indices.push_back(newIndex);
-            }
-
-            const uint32_t nodeIndexCount = static_cast<uint32_t>(meshData.indices.size()) - nodeIndexOffset;
-            if (nodeIndexCount > 0) {
-                MeshNode node;
-                node.hasTexcoords = hasTexcoords;
-                node.name = shape.name.empty() ? "shape " + std::to_string(shapeIndex + 1u) : shape.name;
-                node.indexOffset = nodeIndexOffset;
-                node.indexCount = nodeIndexCount;
-                meshData.nodes.push_back(std::move(node));
-            }
-        }
-        cornerMetrics.primaryCapacityBytes = vertexMap.primary.capacity()*sizeof(uint32_t);
-        cornerMetrics.keyCapacityBytes = vertexMap.keys.capacity()*sizeof(decltype(vertexMap.keys)::value_type);
-        cornerMetrics.bucketCapacityBytes = vertexMap.buckets.capacity()*sizeof(uint32_t);
-    }
+    obj_mapping::buildGeometry<Prototype>(result,meshData,*source,buffers,progress,counts,
+        deferPreparation,gatherWorkers,cornerMetrics);
     cornerMetrics.vertexCapacityBytes = meshData.vertices.capacity()*sizeof(Vertex);
     cornerMetrics.positionMapCapacityBytes = meshData.positionIndices.capacity()*sizeof(uint32_t);
     cornerMetrics.totalMs = obj_mapping::elapsed(mappingStart);
     if (mappingMetrics) { *mappingMetrics = cornerMetrics; }
-
-    // Append new primitive groups after all face groups, preserving existing
-    // face group indexes and saved appearance in older mixed-geometry scenes.
-    std::unordered_set<std::string> names;
-    for (const auto& node : meshData.nodes) { names.insert(node.name); }
-    const auto groupName = [&](const std::string& base) {
-        std::string name = base;
-        for (size_t suffix = 2; !names.insert(name).second; ++suffix) { name = base + " (" + std::to_string(suffix) + ")"; }
-        return name;
-    };
-    primitiveVisits = 0;
-    const auto primitiveVertex = [&](int positionIndex) {
-        if (positionIndex < 0 || static_cast<size_t>(positionIndex) >= sourcePositions(*source).size()) {
-            throw std::runtime_error("OBJ contains an invalid source position index.");
-        }
-        const auto mapped = vertexIndex(vertexMap, {positionIndex, -1, -1});
-        if (mapped == meshData.vertices.size()) {
-            const auto& point = sourcePositions(*source)[static_cast<size_t>(positionIndex)];
-            appendMeshPositionIndex(meshData, static_cast<uint32_t>(positionIndex));
-            // Unlit primitives do not need normals. A valid placeholder avoids
-            // triggering regeneration of authored face normals in mixed files.
-            meshData.vertices.push_back({renderPosition(point), {0, 0, 1}, {}});
-        }
-        const size_t completed = meshData.indices.size() + meshData.lineIndices.size() + meshData.pointIndices.size();
-        if (primitiveVisits++ % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, completed, totalIndices); }
-        return mapped;
-    };
-    for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
-        const auto& shape = shapes[shapeIndex];
-        const auto base = shape.name.empty() ? "shape " + std::to_string(shapeIndex + 1) : shape.name;
-        if (!shape.lines.indices.empty()) {
-            MeshNode node;
-            node.name = groupName(base + (shape.mesh.indices.empty() ? "" : " (lines)"));
-            node.lineIndexOffset = static_cast<uint32_t>(meshData.lineIndices.size());
-            size_t begin = 0;
-            for (const auto count : shape.lines.num_line_vertices) {
-                auto previous = primitiveVertex(shape.lines.indices[begin].position_index);
-                for (size_t i = 1; i < static_cast<size_t>(count); ++i) {
-                    const auto next = primitiveVertex(shape.lines.indices[begin + i].position_index);
-                    meshData.lineIndices.push_back(previous);
-                    meshData.lineIndices.push_back(next);
-                    previous = next;
-                }
-                begin += static_cast<size_t>(count);
-            }
-            node.lineIndexCount = static_cast<uint32_t>(meshData.lineIndices.size()) - node.lineIndexOffset;
-            meshData.nodes.push_back(std::move(node));
-        }
-        if (!shape.points.indices.empty()) {
-            MeshNode node;
-            node.name = groupName(base + (shape.mesh.indices.empty() && shape.lines.indices.empty() ? "" : " (points)"));
-            node.pointIndexOffset = static_cast<uint32_t>(meshData.pointIndices.size());
-            for (const auto& index : shape.points.indices) { meshData.pointIndices.push_back(primitiveVertex(index.position_index)); }
-            node.pointIndexCount = static_cast<uint32_t>(meshData.pointIndices.size()) - node.pointIndexOffset;
-            meshData.nodes.push_back(std::move(node));
-        }
-    }
-    if (counts.vertexCloud && !sourcePositions(*source).empty()) {
-        MeshNode node;
-        node.name = "Points";
-        for (size_t i = 0; i < sourcePositions(*source).size(); ++i) { meshData.pointIndices.push_back(primitiveVertex(static_cast<int>(i))); }
-        node.pointIndexCount = static_cast<uint32_t>(meshData.pointIndices.size());
-        meshData.nodes.push_back(std::move(node));
-    }
     if (empty(mesh) && freeformPatches.empty()) { throw std::runtime_error("OBJ did not contain renderable geometry: " + pathToUtf8(path)); }
 
     mesh.sourceData = std::move(source);
@@ -632,7 +369,7 @@ Mesh buildObjPrototype(Parse parse, const std::filesystem::path& path,
     // expansion; analytic patches now own their original-frame control data.
     parsed.statements = decltype(parsed.statements){}; parsed.weights = decltype(parsed.weights){};
     auto mesh = buildObjMesh<true>(std::move(parsed.polygons), std::move(patches), path, progress, &buffers, options.deferPreparation,
-        options.gatherWorkers,options.stagedCornerMapping,metrics ? &metrics->mapping : nullptr);
+        options.gatherWorkers,metrics ? &metrics->mapping : nullptr);
     if (metrics) { metrics->prepareMs = std::chrono::duration<double, std::milli>(Clock::now() - resolvedAt).count(); }
     publishMeshGeometry(mesh);
     return mesh;

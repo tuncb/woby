@@ -115,9 +115,8 @@ TEST_CASE("Staged OBJ corners preserve global first-use IDs attributes and group
         "g second\nf 3/3/2 2/1/1 4/4/1\n"
         "g reuse\nf 4/2/1 2/1/1 3/3/1\n";
     for (const bool deferred : {false,true}) {
-        woby::ObjPrototypeOptions options; options.deferPreparation = deferred; options.stagedCornerMapping = false;
+        woby::ObjPrototypeOptions options; options.deferPreparation = deferred;
         const auto reference = woby::loadObjMeshTextPrototype(text,{},options);
-        options.stagedCornerMapping = true;
         for (const size_t workers : {size_t{1},size_t{8}}) {
             options.gatherWorkers = workers; woby::ObjPrototypeMetrics metrics;
             const auto mesh = woby::loadObjMeshTextPrototype(text,{},options,&metrics);
@@ -147,7 +146,7 @@ TEST_CASE("Staged OBJ mapping retains identity positions with unused trailing so
     CHECK(meshGeometry(mesh).indices == std::vector<uint32_t>{0,1,2,2,1,0});
 }
 
-TEST_CASE("OBJ mapping uses the smaller source lookup for sparse positions and mixed primitives") {
+TEST_CASE("OBJ mapping uses the common resolver for sparse positions mixed primitives and freeforms") {
     std::string text = "v 0 0 0\nv 1 0 0\nv 0 1 0\n";
     bool sparse = false, attributes = true, freeform = false;
     SUBCASE("many unused source positions") { sparse = true; }
@@ -163,13 +162,140 @@ TEST_CASE("OBJ mapping uses the smaller source lookup for sparse positions and m
         const auto primitives = text.find("l 1 3\np 2\n");
         REQUIRE(primitives != std::string::npos); text.erase(primitives,std::string_view("l 1 3\np 2\n").size());
     }
-    woby::ObjPrototypeOptions options; options.stagedCornerMapping = false;
-    const auto reference = woby::loadObjMeshTextPrototype(text,{},options);
-    options.stagedCornerMapping = true; woby::ObjPrototypeMetrics metrics;
+    woby::ObjPrototypeOptions options;
+    const PrototypeFixture fixture;
+    const auto reference = woby::loadObjMeshLegacy(fixture.write(text));
+    woby::ObjPrototypeMetrics metrics;
     const auto mesh = woby::loadObjMeshTextPrototype(text,{},options,&metrics);
-    sameMesh(reference,mesh); CHECK_FALSE(metrics.mapping.staged);
-    CHECK(metrics.mapping.releasedTriangleBytes == 0);
-    if (!freeform) { CHECK(metrics.mapping.primaryCapacityBytes == woby::sourcePositions(*mesh.sourceData).size()*sizeof(uint32_t)); }
+    sameMesh(reference,mesh); CHECK(metrics.mapping.staged);
+    CHECK(metrics.mapping.releasedTriangleBytes > 0);
+    if (!freeform) { CHECK(metrics.mapping.primaryCapacityBytes == woby::sourcePositions(*mesh.sourceData).size()*sizeof(woby::obj_mapping::Primary)); }
+}
+
+TEST_CASE("OBJ primitives preserve face IDs authored normals and unlit vertex normals") {
+    const std::string text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 1\n"
+        "vt .25 .5\nvn 0 1 0\ng part\nf 3/1/1 1/1/1 2/1/1\nl 3 4 1\np 4 3 4\n";
+    for (const bool deferred : {false,true}) {
+        woby::ObjPrototypeOptions options; options.deferPreparation = deferred;
+        woby::ObjPrototypeMetrics metrics;
+        const auto mesh = woby::loadObjMeshTextPrototype(text,{},options,&metrics);
+        const auto& geometry = meshGeometry(mesh);
+        CHECK(metrics.mapping.staged);
+        CHECK(geometry.indices == std::vector<uint32_t>{0,1,2});
+        CHECK(metrics.mapping.seamVertices == 2);
+        CHECK(geometry.lineIndices == std::vector<uint32_t>{3,4,4,5});
+        CHECK(geometry.pointIndices == std::vector<uint32_t>{4,3,4});
+        CHECK(geometry.positionIndices == std::vector<uint32_t>{2,0,1,2,3,0});
+        REQUIRE(geometry.vertices.size() == 6);
+        for (size_t i = 0; i < geometry.vertices.size(); ++i) {
+            CHECK(geometry.vertices[i].normal == (i < 3 ? std::array<float,3>{0,1,0} : std::array<float,3>{0,0,1}));
+            CHECK(geometry.vertices[i].texcoord == (i < 3 ? std::array<float,2>{.25f,.5f} : std::array<float,2>{}));
+        }
+        REQUIRE(geometry.nodes.size() == 3);
+        CHECK(geometry.nodes[0].name == "part"); CHECK(geometry.nodes[0].hasTexcoords);
+        CHECK(geometry.nodes[1].name == "part (lines)"); CHECK(geometry.nodes[1].lineIndexCount == 4);
+        CHECK(geometry.nodes[2].name == "part (points)"); CHECK(geometry.nodes[2].pointIndexCount == 3);
+        CHECK_FALSE(geometry.nodes[1].hasTexcoords); CHECK_FALSE(geometry.nodes[2].hasTexcoords);
+        CHECK(mesh.sourceData->indices == (deferred ? std::vector<uint32_t>{} : std::vector<uint32_t>{2,0,1}));
+    }
+}
+
+TEST_CASE("OBJ untextured faces share primitive vertices after all face groups") {
+    const std::string text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 1\n"
+        "g a\nl 4 1\np 2\ng a (lines)\nf 3 1 2\ng a\nf 4 2 1\n";
+    const auto mesh = woby::loadObjMeshTextPrototype(text);
+    const auto& geometry = meshGeometry(mesh);
+    CHECK(geometry.indices == std::vector<uint32_t>{0,1,2,3,2,1});
+    CHECK(geometry.lineIndices == std::vector<uint32_t>{3,1});
+    CHECK(geometry.pointIndices == std::vector<uint32_t>{2});
+    CHECK(geometry.positionIndices == std::vector<uint32_t>{2,0,1,3});
+    REQUIRE(geometry.vertices.size() == 4); REQUIRE(geometry.nodes.size() == 4);
+    CHECK(geometry.nodes[0].name == "a (lines)"); CHECK(geometry.nodes[0].indexOffset == 0);
+    CHECK(geometry.nodes[1].name == "a"); CHECK(geometry.nodes[1].indexOffset == 3);
+    CHECK(geometry.nodes[2].name == "a (2)"); CHECK(geometry.nodes[2].lineIndexCount == 2);
+    CHECK(geometry.nodes[3].name == "a (points)"); CHECK(geometry.nodes[3].pointIndexCount == 1);
+    for (const auto& vertex : geometry.vertices) { CHECK(woby::validNormal(vertex.normal)); }
+}
+
+TEST_CASE("OBJ line and point files retain repeated references and ignore unused attributes") {
+    const std::string text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 1\n"
+        "vt .25 .5\nvn 0 1 0\ng duplicates\nl 4 2 4\np 2 1 4 1\n";
+    const auto mesh = woby::loadObjMeshTextPrototype(text);
+    const auto& geometry = meshGeometry(mesh);
+    CHECK(geometry.indices.empty());
+    CHECK(geometry.lineIndices == std::vector<uint32_t>{0,1,1,0});
+    CHECK(geometry.pointIndices == std::vector<uint32_t>{1,2,0,2});
+    CHECK(geometry.positionIndices == std::vector<uint32_t>{3,1,0});
+    REQUIRE(geometry.vertices.size() == 3);
+    for (const auto& vertex : geometry.vertices) {
+        CHECK(vertex.normal == std::array<float,3>{0,0,1});
+        CHECK(vertex.texcoord == std::array<float,2>{});
+    }
+    CHECK(mesh.sourceData->indices.empty());
+}
+
+TEST_CASE("OBJ clouds fill source-order IDs in parallel without a lookup table") {
+    constexpr size_t count = 65536+17;
+    std::string text = "vn 0 0 0\nvt .25 .5\n";
+    for (size_t i = 0; i < count; ++i) { text += "v "+std::to_string(i%37)+" "+std::to_string(i%23)+" 0\n"; }
+    const auto caller = std::this_thread::get_id(); std::atomic<bool> wrongThread = false;
+    const auto progress = [&](const woby::ModelLoadProgress& value) {
+        if (value.stage == woby::ModelLoadStage::buildingMesh) {
+            if (std::this_thread::get_id() != caller) { wrongThread.store(true); }
+            CHECK(value.completed <= value.total);
+        }
+    };
+    for (const bool deferred : {false,true}) {
+        woby::ObjPrototypeOptions options; options.gatherWorkers = 8; options.deferPreparation = deferred;
+        woby::ObjPrototypeMetrics metrics;
+        const auto mesh = woby::loadObjMeshTextPrototype(text,progress,options,&metrics);
+        const auto& geometry = meshGeometry(mesh);
+        REQUIRE(geometry.vertices.size() == count); REQUIRE(geometry.pointIndices.size() == count);
+        CHECK(geometry.indices.empty()); CHECK(geometry.lineIndices.empty());
+        CHECK(geometry.positionIndexing == woby::PositionIndexing::identity); CHECK(geometry.positionIndices.empty());
+        CHECK(metrics.mapping.primaryCapacityBytes == 0); CHECK(metrics.mapping.keyCapacityBytes == 0);
+        CHECK(metrics.mapping.bucketCapacityBytes == 0); CHECK(metrics.mapping.gatherWorkers == 2);
+        for (size_t i = 0; i < count; ++i) {
+            CHECK(geometry.pointIndices[i] == i);
+            CHECK(geometry.vertices[i].position == woby::renderPosition(woby::sourcePositions(*mesh.sourceData)[i]));
+            CHECK(geometry.vertices[i].normal == std::array<float,3>{0,0,1});
+        }
+        REQUIRE(geometry.nodes.size() == 1); CHECK(geometry.nodes[0].name == "Points");
+        CHECK(mesh.sourceData->indicesPending == deferred); CHECK(mesh.sourceData->indices.empty());
+    }
+    CHECK_FALSE(wrongThread.load());
+    CHECK_THROWS_WITH((void)woby::loadObjMeshTextPrototype(text,[](const woby::ModelLoadProgress& value) {
+        if (value.stage == woby::ModelLoadStage::buildingMesh && value.total && value.completed == value.total) {
+            throw std::runtime_error("cancel cloud gather");
+        }
+    }),"cancel cloud gather");
+}
+
+TEST_CASE("OBJ point resolution polls cancellation before attribute gathering") {
+    std::string text = "v 0 0 0\nv 1 0 0\nv 0 1 0\n";
+    for (size_t i = 0; i < 40000; ++i) { text += "p 1\n"; }
+    CHECK_THROWS_WITH((void)woby::loadObjMeshTextPrototype(text,[](const woby::ModelLoadProgress& value) {
+        if (value.stage == woby::ModelLoadStage::buildingMesh && value.completed && value.completed < value.total) {
+            throw std::runtime_error("cancel point IDs");
+        }
+    }),"cancel point IDs");
+}
+
+TEST_CASE("OBJ freeform-only input does not allocate an unused position lookup") {
+    auto text = rationalTrimmed;
+    const std::string primitives = "f 1/1/1 2/2/1 4/4/1\nl 1 3\np 2\n";
+    const auto begin = text.find(primitives); REQUIRE(begin != std::string::npos);
+    text.erase(begin,primitives.size());
+    for (const bool deferred : {false,true}) {
+        woby::ObjPrototypeOptions options; options.deferPreparation = deferred;
+        woby::ObjPrototypeMetrics metrics;
+        const auto mesh = woby::loadObjMeshTextPrototype(text,{},options,&metrics);
+        REQUIRE(mesh.freeform); CHECK(mesh.freeform->patches.size() == 1);
+        CHECK(metrics.mapping.staged); CHECK(metrics.mapping.primaryCapacityBytes == 0);
+        CHECK(metrics.mapping.keyCapacityBytes == 0); CHECK(metrics.mapping.bucketCapacityBytes == 0);
+        REQUIRE(mesh.sourceData); CHECK(mesh.sourceData->indicesPending == deferred);
+        CHECK(mesh.sourceData->indices.size() == (deferred ? 0 : meshGeometry(mesh).indices.size()));
+    }
 }
 
 TEST_CASE("Parallel OBJ gathering is byte exact and reports progress only on the caller") {

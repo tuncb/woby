@@ -1,5 +1,6 @@
 """Allow position-only triangles through the staged path in comparison builds."""
 import argparse
+import sys
 from pathlib import Path
 
 
@@ -22,8 +23,11 @@ def mapper(text):
 
 
 def generate(root, output, traced=None):
-    write(output / "obj_mesh.cpp", mapper((root / "src/obj_mesh.cpp").read_text(encoding="utf-8")))
-    text = '#include "control.h"\n#include "verify.h"\n' + (root / "experiments/rapidobj_prototype.cpp").read_text(encoding="utf-8")
+    reference = root / "experiments/obj-mapping-reference"
+    write(output / "obj_mesh.cpp", mapper((reference / "obj_mesh.cpp").read_text(encoding="utf-8")))
+    for name in ("obj_corner_mapping.h", "mapping_reference.h"):
+        write(output / name, (reference / name).read_text(encoding="utf-8"))
+    text = '#include "control.h"\n#include "verify.h"\n' + (reference / "benchmark.cpp").read_text(encoding="utf-8")
     text = replace(text, 'int wmain(int argc, wchar_t** argv) {',
         'int wmain(int argc, wchar_t** argv) {\n    if (argc == 3 && std::wstring_view(argv[1]) == L"verify") { return position_mapping::verifyFile(std::filesystem::path(argv[2])); }')
     for prefix in ("std::wstring_view", "std::string_view"):
@@ -38,7 +42,12 @@ def generate(root, output, traced=None):
     text = text.replace("legacy|prototype|fused absolute.obj", "legacy|prototype|fused|forced absolute.obj")
     write(output / "main.cpp", text)
     if traced:
-        write(output / "traced_obj_mesh.cpp", mapper((traced / "obj_mesh.cpp").read_text(encoding="utf-8")))
+        # Historical default/forced comparisons retain their original loader.
+        sys.path.insert(0, str(root / "experiments/obj-profile"))
+        from e2e_generate import generate as generate_trace
+        target = output / "traced"
+        generate_trace(root, target, reference=True)
+        write(target / "obj_mesh.cpp", mapper((target / "obj_mesh.cpp").read_text(encoding="utf-8")))
 
 
 if __name__ == "__main__":

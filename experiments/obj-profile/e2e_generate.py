@@ -5,11 +5,13 @@ import sys
 from generate import generate as generate_cpu, replace, section
 
 
-def generate(root, output):
-    generate_cpu(root, output)
+def generate(root, output, reference=False):
+    generate_cpu(root, output, reference=reference)
     (output / "profile.h").write_text('#include "e2e_trace.h"\n', encoding="utf-8")
-    text = (root / "src/obj_corner_mapping.h").read_text(encoding="utf-8")
-    text = section(text, 'inline void resolveFaces(', 'inline Vertex gatherVertex(', [
+    mapping = "experiments/obj-mapping-reference/obj_corner_mapping.h" if reference else "src/obj_corner_mapping.h"
+    build = 'inline void buildFaces(' if reference else 'inline void buildGeometry('
+    text = (root / mapping).read_text(encoding="utf-8")
+    text = section(text, 'inline void resolveFaces(', 'inline Vertex gatherVertex(' if reference else 'inline void resolvePrimitives(', [
         ('    table.primary.resize(sourcePositions(source).size());',
          '    auto measuredResolve = obj_profile::begin("mapping_table_allocate");\n    table.primary.resize(sourcePositions(source).size());'),
         ('    geometry.indices.resize(corners);',
@@ -19,13 +21,16 @@ def generate(root, output):
         ('    }\n}\ntemplate<bool Precise>',
          '    }\n    obj_profile::end(measuredResolve, {{"corners", corners}, {"vertices", table.next}, {"seams", table.seams.size()}});\n}\ntemplate<bool Precise>'),
     ])
-    text = section(text, 'inline size_t gatherPass(', 'inline void buildFaces(', [
+    worker_range = 'PrimaryPass ? "mapping_primary_worker" : "mapping_seam_worker"'
+    if not reference:
+        worker_range = 'Cloud ? "mapping_cloud_worker" : ' + worker_range
+    text = section(text, 'inline size_t gatherPass(', build, [
         ('    const auto work = [&](size_t worker) {',
-         '    const auto work = [&](size_t worker) {\n        const obj_profile::Range measuredWorker(PrimaryPass ? "mapping_primary_worker" : "mapping_seam_worker");'),
+         '    const auto work = [&](size_t worker) {\n        const obj_profile::Range measuredWorker(' + worker_range + ');'),
     ])
-    text = section(text, 'inline void buildFaces(', '} // namespace woby::obj_mapping', [
-        ('    Table table; metrics.staged = true;',
-         '    auto measuredMapping = obj_profile::begin("mapping_resolve_total");\n    Table table; metrics.staged = true;'),
+    table = '    Table table; metrics.staged = true;' if reference else '    Table table;'
+    text = section(text, build, '} // namespace woby::obj_mapping', [
+        (table, '    auto measuredMapping = obj_profile::begin("mapping_resolve_total");\n' + table),
         ('    metrics.resolveMs = elapsed(start);',
          '    metrics.resolveMs = elapsed(start);\n    obj_profile::next(measuredMapping, "mapping_parser_records_release");'),
         ('    metrics.releaseMs = elapsed(start);',
@@ -39,6 +44,9 @@ def generate(root, output):
         ('    metrics.gatherWorkers = std::max(metrics.gatherWorkers,seamWorkers); metrics.seamGatherMs = elapsed(start);',
          '    metrics.gatherWorkers = std::max(metrics.gatherWorkers,seamWorkers); metrics.seamGatherMs = elapsed(start);\n    obj_profile::next(measuredMapping, "mapping_lookup_release");\n    table = {};\n    obj_profile::end(measuredMapping);'),
     ])
+    if not reference:
+        text = replace(text, '        resolvePrimitives<Precise>(result,table,geometry,progress,corners,totalIndices);',
+                       '        const obj_profile::Range measuredPrimitives("mapping_primitive_resolution");\n        resolvePrimitives<Precise>(result,table,geometry,progress,corners,totalIndices);')
     (output / "obj_corner_mapping.h").write_text('#include "profile.h"\n' + text, encoding="utf-8")
 
     text = (root / "src/post_loading.cpp").read_text(encoding="utf-8")

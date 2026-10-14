@@ -20,7 +20,13 @@ def section(text, first, last, changes):
     return text[:start] + part + text[end:]
 
 
-def generate(root, output):
+def generate(root, output, reference=False):
+    if reference:
+        spec = importlib.util.spec_from_file_location("reference_profile_generator", root / "experiments/obj-mapping-reference/profile_generate.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(root, output)
+        return
     output.mkdir(parents=True, exist_ok=True)
     spec = importlib.util.spec_from_file_location("parser_generator", root / "experiments/parser-throughput/generate.py")
     parser = importlib.util.module_from_spec(spec)
@@ -54,100 +60,22 @@ def generate(root, output):
     (headers / "prototype.hpp").write_text(text, encoding="utf-8")
 
     text = (root / "src/obj_mesh.cpp").read_text(encoding="utf-8")
-    text = replace(text, 'struct VertexIndexTable {', '''struct VertexIndexTable {
-#ifdef OBJ_PROFILE_DIAGNOSTIC
-    uint64_t firstPositions = 0, primaryHits = 0, secondaryLookups = 0, secondaryHits = 0, probes = 0, growths = 0;
-#endif''')
-    text = replace(text, 'void growSecondary(VertexIndexTable& table)\n{', '''void growSecondary(VertexIndexTable& table)
-{
-#ifdef OBJ_PROFILE_DIAGNOSTIC
-    ++table.growths;
-#endif''')
-    text = replace(text, 'table.keys.reserve(std::min(positions, corners));',
-                   'table.keys.reserve(obj_profile::reserveEstimate(std::min(positions, corners), corners));')
-    text = section(text, 'uint32_t vertexIndex(', 'void reserveIndexTable(', [
-        ('    if (primary == emptyBucket) {\n        (void)sceneBufferBytes(table.keys.size() + 1,', '''    if (primary == emptyBucket) {
-#ifdef OBJ_PROFILE_DIAGNOSTIC
-        ++table.firstPositions;
-#endif
-        (void)sceneBufferBytes(table.keys.size() + 1,'''),
-        ('    if (table.keys[primary] == key) { return primary; }', '''    if (table.keys[primary] == key) {
-#ifdef OBJ_PROFILE_DIAGNOSTIC
-        ++table.primaryHits;
-#endif
-        return primary;
-    }
-#ifdef OBJ_PROFILE_DIAGNOSTIC
-    ++table.secondaryLookups;
-#endif'''),
-        ('    while (table.buckets[bucket] != emptyBucket) {\n        const auto id', '''    while (table.buckets[bucket] != emptyBucket) {
-#ifdef OBJ_PROFILE_DIAGNOSTIC
-        ++table.probes;
-#endif
-        const auto id'''),
-        ('        if (table.keys[id] == key) { return id; }', '''        if (table.keys[id] == key) {
-#ifdef OBJ_PROFILE_DIAGNOSTIC
-            ++table.secondaryHits;
-#endif
-            return id;
-        }'''),
-    ])
     text = section(text, "Mesh buildObjMesh(", "} // namespace", [
         ('    const auto throwLoadError', '    auto measuredMesh = obj_profile::begin("primitive_validation");\n    const auto throwLoadError'),
         ('    std::vector<Coordinate> sourcePoints;', '    obj_profile::next(measuredMesh, "source_position_adoption");\n    std::vector<Coordinate> sourcePoints;'),
-        ('    const size_t vertexCapacity = std::min({sourcePositions(*source).size(), totalIndices,',
-         '    const size_t vertexCapacity = std::min({obj_profile::reserveEstimate(sourcePositions(*source).size(), totalIndices), totalIndices,'),
-        ('    meshData.vertices.reserve(vertexCapacity);',
-         '    meshData.vertices.reserve(vertexCapacity);\n    if (vertexCapacity > sourcePositions(*source).size()) { meshData.positionIndices.reserve(vertexCapacity); }'),
         ('    const auto origin = coordinateOrigin(sourcePoints);', '    obj_profile::next(measuredMesh, "coordinate_origin");\n    const auto origin = coordinateOrigin(sourcePoints);\n    obj_profile::next(measuredMesh, "coordinate_rebase");'),
         ('    reportModelLoadProgress(progress, ModelLoadStage::triangulating);', '    obj_profile::next(measuredMesh, "triangulation");\n    reportModelLoadProgress(progress, ModelLoadStage::triangulating);'),
-        ('    const auto& attrib = result.attributes;', '    obj_profile::next(measuredMesh, "mesh_allocation");\n    const auto& attrib = result.attributes;'),
-        ('    const auto uvValue = [&](size_t index) {\n        return Prototype ? static_cast<float>(buffers->texcoords[index / 2][index % 2]) : attrib.texcoords[index];\n    };',
-         '''#ifdef OBJ_PROFILE_UV_PTR
-    const auto uvValue = [&, uvData = Prototype ? buffers->texcoords.data() : nullptr](size_t index) {
-        if constexpr (Prototype) { return static_cast<float>(uvData[index / 2][index % 2]); }
-        else { return attrib.texcoords[index]; }
-    };
-#else
-    const auto uvValue = [&](size_t index) {
-        return Prototype ? static_cast<float>(buffers->texcoords[index / 2][index % 2]) : attrib.texcoords[index];
-    };
-#endif'''),
-        ('    Mesh mesh;', '''#ifdef OBJ_PROFILE_UV_CHECK
-    const auto measuredUvCache = obj_profile::begin("uv_validation_cache");
-    const auto uvCount = Prototype ? buffers->texcoords.size() : attrib.texcoords.size() / 2;
-    std::vector<unsigned char> validUvs(uvCount);
-    for (size_t i = 0; i < uvCount; ++i) {
-        validUvs[i] = static_cast<unsigned char>(std::isfinite(uvValue(i * 2)) && std::isfinite(uvValue(i * 2 + 1)));
-    }
-    obj_profile::end(measuredUvCache, {{"bytes", validUvs.size()}});
-#endif
-    Mesh mesh;'''),
-        ('                    const auto uv = static_cast<size_t>(index.texcoord_index) * 2u;\n                    hasTexcoords = hasTexcoords && std::isfinite(uvValue(uv)) && std::isfinite(uvValue(uv + 1u));',
-         '''#ifdef OBJ_PROFILE_UV_CHECK
-                hasTexcoords = hasTexcoords && validUvs[static_cast<size_t>(index.texcoord_index)];
-#else
-                const auto uv = static_cast<size_t>(index.texcoord_index) * 2u;
-                hasTexcoords = hasTexcoords && std::isfinite(uvValue(uv)) && std::isfinite(uvValue(uv + 1u));
-#endif'''),
-        ('    reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, totalIndices);', '    reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, totalIndices);\n    obj_profile::next(measuredMesh, "corner_mapping");'),
-        ('    mesh.sourceData = std::move(source);', '''    obj_profile::Json mappingData{{"primary_bytes", vertexMap.primary.size()*sizeof(uint32_t)},
-        {"key_capacity_bytes", vertexMap.keys.capacity()*sizeof(IndexKey)},
-        {"bucket_bytes", vertexMap.buckets.size()*sizeof(uint32_t)},
-        {"secondary_vertices", vertexMap.secondaryCount}, {"vertex_capacity", meshData.vertices.capacity()},
-        {"position_map_capacity", meshData.positionIndices.capacity()},
-        {"production_staged", cornerMetrics.staged},
+        ('    const auto& shapes = result.shapes;', '    obj_profile::next(measuredMesh, "mesh_allocation");\n    const auto& shapes = result.shapes;'),
+        ('    ObjCornerMappingMetrics cornerMetrics;', '    obj_profile::next(measuredMesh, "corner_mapping");\n    ObjCornerMappingMetrics cornerMetrics;'),
+        ('    mesh.sourceData = std::move(source);', '''    obj_profile::end(measuredMesh, {{"primary_bytes", cornerMetrics.primaryCapacityBytes},
+        {"key_capacity_bytes", cornerMetrics.keyCapacityBytes}, {"bucket_bytes", cornerMetrics.bucketCapacityBytes},
+        {"secondary_vertices", cornerMetrics.seamVertices}, {"vertex_capacity", meshData.vertices.capacity()},
+        {"position_map_capacity", meshData.positionIndices.capacity()}, {"production_staged", cornerMetrics.staged},
         {"production_primary_capacity_bytes", cornerMetrics.primaryCapacityBytes},
         {"production_key_capacity_bytes", cornerMetrics.keyCapacityBytes},
-        {"production_released_triangle_bytes", cornerMetrics.releasedTriangleBytes}, {"direct", vertexMap.direct}};
-#ifdef OBJ_PROFILE_DIAGNOSTIC
-    mappingData["diagnostic_counts"] = {{"first_positions", vertexMap.firstPositions}, {"primary_hits", vertexMap.primaryHits},
-        {"secondary_lookups", vertexMap.secondaryLookups}, {"secondary_hits", vertexMap.secondaryHits},
-        {"occupied_bucket_probes", vertexMap.probes}, {"hash_table_growths", vertexMap.growths}};
-#endif
-    obj_profile::end(measuredMesh, std::move(mappingData));
+        {"production_released_triangle_bytes", cornerMetrics.releasedTriangleBytes}, {"direct", true}});
     mesh.sourceData = std::move(source);'''),
-        ('    publishMeshGeometry(mesh);', '    measuredMesh = obj_profile::begin("mesh_publish");\n    publishMeshGeometry(mesh);\n    obj_profile::next(measuredMesh, "parser_lookup_release");\n    vertexMap = {}; result = {};\n    obj_profile::end(measuredMesh);'),
+        ('    publishMeshGeometry(mesh);', '    measuredMesh = obj_profile::begin("mesh_publish");\n    publishMeshGeometry(mesh);\n    obj_profile::next(measuredMesh, "parser_lookup_release");\n    result = {};\n    obj_profile::end(measuredMesh);'),
     ])
     text = section(text, 'Mesh buildObjPrototype(', '} // namespace', [
         ('    const auto start = Clock::now();', '    auto measuredLoad = obj_profile::begin("parser_total");\n    const auto start = Clock::now();'),
@@ -160,8 +88,7 @@ def generate(root, output):
     ])
     (output / "obj_mesh.cpp").write_text('#include "profile.h"\n' + text, encoding="utf-8")
 
-    # The staged production path bypasses VertexIndexTable. Count its actual
-    # primary/seam operations in the diagnostic target, outside timing runs.
+    # Diagnostics count the common resolver, including explicit primitives.
     text = (root / "src/obj_corner_mapping.h").read_text(encoding="utf-8")
     text = replace(text, '    uint32_t next = 0;', '''    uint32_t next = 0;
 #ifdef OBJ_PROFILE_DIAGNOSTIC
@@ -182,6 +109,20 @@ def generate(root, output):
 #endif
             return seam.id;
         }''')
+    text = replace(text, '\n    if (entry.id == empty) {', '''
+    if (entry.id == empty) {
+#ifdef OBJ_PROFILE_DIAGNOSTIC
+        ++table.firstPositions;
+#endif''')
+    text = replace(text, '    if (entry.normal == key.normal && entry.uv == key.uv) { return entry.id; }', '''    if (entry.normal == key.normal && entry.uv == key.uv) {
+#ifdef OBJ_PROFILE_DIAGNOSTIC
+        ++table.primaryHits;
+#endif
+        return entry.id;
+    }
+#ifdef OBJ_PROFILE_DIAGNOSTIC
+    ++table.secondaryLookups;
+#endif''')
     text = replace(text, '            if (entry.id == empty) {', '''            if (entry.id == empty) {
 #ifdef OBJ_PROFILE_DIAGNOSTIC
                 ++table.firstPositions;
@@ -197,6 +138,15 @@ def generate(root, output):
 #endif
                 id = seamId<Precise>(table,key,preciseUvs,floatUvs);
             }''')
+    text = replace(text, '    table.seams.reserve(std::min({sourcePositions(source).size(),corners,size_t{1024}}));',
+                   '    table.seams.reserve(obj_profile::reserveEstimate(std::min({sourcePositions(source).size(),corners,size_t{1024}}),corners));')
+    text = replace(text, '    const bool allFiniteUvs = allUvsFinite<Precise>(preciseUvs,floatUvs,uvCount,progress,corners,totalIndices);', '''#ifdef OBJ_PROFILE_UV_CHECK
+    const auto measuredUvCache = obj_profile::begin("uv_validation_cache");
+#endif
+    const bool allFiniteUvs = allUvsFinite<Precise>(preciseUvs,floatUvs,uvCount,progress,corners,totalIndices);
+#ifdef OBJ_PROFILE_UV_CHECK
+    obj_profile::end(measuredUvCache, {{"uvs", uvCount}, {"all_finite", allFiniteUvs}});
+#endif''')
     text = replace(text, '    metrics.gatherWorkers = std::max(metrics.gatherWorkers,seamWorkers); metrics.seamGatherMs = elapsed(start);', '''    metrics.gatherWorkers = std::max(metrics.gatherWorkers,seamWorkers); metrics.seamGatherMs = elapsed(start);
 #ifdef OBJ_PROFILE_DIAGNOSTIC
     const auto diagnostic = obj_profile::begin("mapping_staged_diagnostic");

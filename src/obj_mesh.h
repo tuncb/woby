@@ -52,12 +52,11 @@ struct ObjPrototypeOptions {
     size_t chunkBytes = 4 * 1024 * 1024, readBytes = 256 * 1024, workers = 0;
     bool deferPreparation = false;
     size_t gatherWorkers = 0; // Zero selects up to eight hardware workers.
-    bool stagedCornerMapping = true; // Disable only for reference tests and benchmarks.
 };
 struct ObjCornerMappingMetrics {
     bool staged = false;
     size_t gatherWorkers = 0, primaryCapacityBytes = 0, keyCapacityBytes = 0, bucketCapacityBytes = 0;
-    size_t releasedTriangleBytes = 0, vertexCapacityBytes = 0, positionMapCapacityBytes = 0;
+    size_t seamVertices = 0, releasedTriangleBytes = 0, vertexCapacityBytes = 0, positionMapCapacityBytes = 0;
     double resolveMs = 0, releaseMs = 0, vertexAllocationMs = 0, positionMapMs = 0;
     double primaryGatherMs = 0, seamGatherMs = 0, totalMs = 0;
 };

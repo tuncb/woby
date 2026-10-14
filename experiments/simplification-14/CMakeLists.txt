@@ -1,6 +1,7 @@
-# Use the current production tuple-index helper, with checked source anchors.
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/src/obj_mesh.cpp")
-file(READ "${PROJECT_SOURCE_DIR}/src/obj_mesh.cpp" obj_source)
+# Keep this historical probe on its frozen tuple-index helper.
+set(mapping_reference "${PROJECT_SOURCE_DIR}/experiments/obj-mapping-reference/obj_mesh.cpp")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${mapping_reference}")
+file(READ "${mapping_reference}" obj_source)
 string(FIND "${obj_source}" "struct IndexKey {" mapping_start)
 string(FIND "${obj_source}" "rapidobj::Result parseObj(" mapping_end)
 if(mapping_start LESS 0 OR mapping_end LESS mapping_start)

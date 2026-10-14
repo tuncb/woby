@@ -10,7 +10,14 @@ if(TARGET woby_obj_e2e_viewer)
 endif()
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/generate.py" "${PROJECT_SOURCE_DIR}/src/obj_mesh.cpp"
-    "${PROJECT_SOURCE_DIR}/experiments/rapidobj_prototype.cpp")
+    "${PROJECT_SOURCE_DIR}/experiments/rapidobj_prototype.cpp"
+    "${PROJECT_SOURCE_DIR}/experiments/obj-mapping-reference/obj_mesh.cpp"
+    "${PROJECT_SOURCE_DIR}/experiments/obj-mapping-reference/obj_corner_mapping.h"
+    "${PROJECT_SOURCE_DIR}/experiments/obj-mapping-reference/benchmark.cpp"
+    "${PROJECT_SOURCE_DIR}/experiments/obj-mapping-reference/mapping_reference.h"
+    "${PROJECT_SOURCE_DIR}/experiments/obj-mapping-reference/profile_generate.py"
+    "${PROJECT_SOURCE_DIR}/experiments/obj-profile/generate.py"
+    "${PROJECT_SOURCE_DIR}/experiments/obj-profile/e2e_generate.py")
 execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/generate.py"
     "${PROJECT_SOURCE_DIR}" "${position_generated}" ${position_generate_args} COMMAND_ERROR_IS_FATAL ANY)
 
@@ -42,7 +49,7 @@ foreach(kind IN ITEMS native traced)
         set(position_obj "${position_generated}/obj_mesh.cpp")
     elseif(TARGET woby_obj_e2e_viewer)
         set(reference woby_obj_e2e_viewer)
-        set(position_obj "${position_generated}/traced_obj_mesh.cpp")
+        set(position_obj "${position_generated}/traced/obj_mesh.cpp")
     else()
         continue()
     endif()

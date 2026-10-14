@@ -22,7 +22,7 @@ def generate(root, output):
     spec.loader.exec_module(profile)
     previous = {path: (path.read_bytes(), path.stat().st_atime_ns, path.stat().st_mtime_ns)
                 for path in (output / "base").rglob("*") if path.is_file()}
-    profile.generate(root, output / "base")
+    profile.generate(root, output / "base", reference=True)
     for path, (content, atime, mtime) in previous.items():
         if path.read_bytes() == content:
             os.utime(path, ns=(atime, mtime))
