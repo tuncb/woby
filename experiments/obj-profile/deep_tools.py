@@ -112,10 +112,11 @@ def find_counted_loop(image, hot_rva):
     return None
 
 
-def summarize(session, output):
+def summarize(session, output, probe=None):
     metadata = json.loads((session / "session.uprof").read_text(encoding="utf-8-sig"))
     log = output / (session.name + "-console.log")
-    probe = record_from_log(log)
+    if probe is None:
+        probe = record_from_log(log)
     database = duckdb.connect(str(session / "cpu.db"), read_only=True)
     events = metadata["collection"]["events"]["pmcEvents"]["pmcEventList"]
     columns = [f'event#0x{event["encodedEventId"]:x}' for event in events]

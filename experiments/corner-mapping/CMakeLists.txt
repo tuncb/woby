@@ -12,6 +12,10 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/release_mapping.inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/fast_resolve.inc"
     "${PROJECT_SOURCE_DIR}/experiments/obj-profile/generate.py"
+    "${PROJECT_SOURCE_DIR}/experiments/obj-mapping-reference/obj_mesh.cpp"
+    "${PROJECT_SOURCE_DIR}/experiments/obj-mapping-reference/obj_corner_mapping.h"
+    "${PROJECT_SOURCE_DIR}/experiments/obj-mapping-reference/mapping_reference.h"
+    "${PROJECT_SOURCE_DIR}/experiments/obj-mapping-reference/profile_generate.py"
     "${PROJECT_SOURCE_DIR}/experiments/parser-throughput/generate.py"
     "${PROJECT_SOURCE_DIR}/third_party/rapidobj/include/rapidobj/rapidobj.hpp"
     "${PROJECT_SOURCE_DIR}/third_party/rapidobj/include/rapidobj/prototype.hpp")

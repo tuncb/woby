@@ -1,0 +1,65 @@
+Serial OBJ ID resolution, 14 October 2026
+
+Use Windows and the vs2026-vcpkg preset. Use Release configuration.
+Application baseline: 7ee6133eb133b2102551ebd47a3ecca263e86cce.
+Input: D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj
+Bytes: 7,108,991,827
+SHA256: 7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329
+
+The original report and its matching binaries are in:
+  D:\woby\doc\benchmarks\e2e-beartrap-20261014
+  D:\woby\build\e2e-beartrap-20261014\matching-bin
+
+Build the optimized code:
+  cmake --preset vs2026-vcpkg -DWOBY_BUILD_ID_RESOLUTION=ON -DWOBY_BUILD_OBJ_PROFILE=ON -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON
+  cmake --build --preset vs2026-vcpkg --config Release
+
+Run the tests:
+  ctest --preset vs2026-vcpkg -C Release
+  ctest --preset vs2026-vcpkg-slow -C Release
+  ctest --preset vs2026-vcpkg-graphics -C Release
+
+Replay the full ordered triangle input:
+  .\build\vs2026-vcpkg\bin\Release\woby_id_resolution.exe D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj D:\temp\id-replay-new.jsonl 3 original production
+
+The output must not already exist. Use absolute fixture and output paths.
+The probe parses and triangulates once. The frozen original loop produces the
+reference output. Each trial checks every ID, primary key, seam key and ID,
+and group flag. These checks are outside the timed resolve interval.
+The replay interval includes table and render-index allocation.
+Call the probe without variant names for the default exploratory sweep.
+See main.cpp for all variant names. Compact variants require absent normals.
+
+Use fresh processes for application endpoints. Warm the file before each
+process. Do not run a build, tests, or a profiler at the same time.
+Use baseline, optimized; optimized, baseline; baseline, optimized order.
+Keep the same input, hidden window, viewport, and camera.
+
+For each native run:
+  uv run experiments/obj-profile/e2e_run.py PATH_TO_BIN/woby.exe D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj --output D:\temp\native-run-new --hidden --settle-seconds 1 --render-seconds 2
+
+For each instrumented run, replace woby.exe with woby_obj_e2e_viewer.exe.
+Use the matching old generator for baseline source. The archive includes its
+obj_corner_mapping.h and e2e_generate.py snapshots under source-baseline.
+The final generator uses the allFiniteUvs decision as the ID interval anchor.
+The original generator uses the completed-corner initialization anchor.
+Both intervals exclude table and index initialization and include the full
+ordered corner pass. The optimized interval also includes the UV scan.
+
+The measurement archive contains the exact driver commands, raw result JSON,
+phase records, logs, screenshots, source snapshots, and provenance records.
+The final captures use native-final and traced-final. Earlier native and
+traced groups measure the intermediate implementation. In sweep4, production
+means the intermediate implementation with prefetch and no finite-UV scan.
+
+For the complete mesh fingerprint check:
+  .\build\vs2026-vcpkg\bin\Release\woby_obj_prototype_benchmark.exe prototype D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj 16 deferred
+Compare its fingerprint with the matching original benchmark executable.
+Fingerprint work is outside the timed import. Retain the same triangle order.
+
+Generate the report after all records and validation.json exist:
+  python experiments/id-resolution/report.py MEASUREMENT_ROOT doc/benchmarks/id-resolution-beartrap-20261014
+
+The original report's 4.50 s ID time is historical context. Use the new matched
+baseline and optimized capture group for the speedup. System timing differs
+between groups. Do not combine parent and child phase times.

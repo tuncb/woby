@@ -1,0 +1,657 @@
+{
+  "date": "2026-10-14",
+  "baseline_commit": "6d712bbcad608f06177429bccd751303ef5562c2",
+  "method": "Fresh processes; warm inputs; alternating order; default parser workers; up to eight gather workers; Release vs2026-vcpkg",
+  "cpu": {
+    "Bennu, deferred": {
+      "checkpoint": {
+        "cpu_load_ms": 2688.4378,
+        "parse_ms": 648.0091,
+        "peak_commit_bytes": 2318557184,
+        "peak_working_set_bytes": 1954988032,
+        "retained_mesh_buffer_capacity_bytes": 750413472,
+        "rounds": 5,
+        "cpu_range_ms": [
+          2655.1811,
+          3034.1154
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 0,
+          "gather_workers": 0,
+          "key_capacity_bytes": 0,
+          "position_map_capacity_bytes": 35734096,
+          "position_map_ms": 0.0,
+          "primary_capacity_bytes": 35734096,
+          "primary_gather_ms": 0.0,
+          "release_ms": 0.0,
+          "released_triangle_bytes": 0,
+          "resolve_ms": 0.0,
+          "seam_gather_ms": 0.0,
+          "total_ms": 1305.4928,
+          "vertex_allocation_ms": 0.0,
+          "vertex_capacity_bytes": 285872768
+        }
+      },
+      "common": {
+        "cpu_load_ms": 2074.6057,
+        "parse_ms": 656.3913,
+        "peak_commit_bytes": 2318626816,
+        "peak_working_set_bytes": 1955151872,
+        "retained_mesh_buffer_capacity_bytes": 750413472,
+        "rounds": 5,
+        "cpu_range_ms": [
+          2042.7583,
+          2405.1277
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 0,
+          "gather_workers": 8,
+          "key_capacity_bytes": 16384,
+          "position_map_capacity_bytes": 35734096,
+          "position_map_ms": 26.0357,
+          "primary_capacity_bytes": 107202288,
+          "primary_gather_ms": 31.9544,
+          "release_ms": 40.0193,
+          "released_triangle_bytes": 804007620,
+          "resolve_ms": 533.6992,
+          "seam_gather_ms": 0.0002,
+          "seam_vertices": 0,
+          "total_ms": 707.3564,
+          "vertex_allocation_ms": 63.5847,
+          "vertex_capacity_bytes": 285872768
+        }
+      },
+      "cpu_change_percent": -22.832296882598513,
+      "fingerprint": "7552012171341359807"
+    },
+    "Bennu, eager": {
+      "checkpoint": {
+        "cpu_load_ms": 2915.4694,
+        "parse_ms": 641.8925,
+        "peak_commit_bytes": 2318434304,
+        "peak_working_set_bytes": 1955110912,
+        "retained_mesh_buffer_capacity_bytes": 964815504,
+        "rounds": 5,
+        "cpu_range_ms": [
+          2897.5884,
+          2939.9597
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 0,
+          "gather_workers": 0,
+          "key_capacity_bytes": 0,
+          "position_map_capacity_bytes": 35734096,
+          "position_map_ms": 0.0,
+          "primary_capacity_bytes": 35734096,
+          "primary_gather_ms": 0.0,
+          "release_ms": 0.0,
+          "released_triangle_bytes": 0,
+          "resolve_ms": 0.0,
+          "seam_gather_ms": 0.0,
+          "total_ms": 1500.9926,
+          "vertex_allocation_ms": 0.0,
+          "vertex_capacity_bytes": 285872768
+        }
+      },
+      "common": {
+        "cpu_load_ms": 2154.0904,
+        "parse_ms": 634.752,
+        "peak_commit_bytes": 2318467072,
+        "peak_working_set_bytes": 1955135488,
+        "retained_mesh_buffer_capacity_bytes": 964815504,
+        "rounds": 5,
+        "cpu_range_ms": [
+          2148.125,
+          2168.3419
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 0,
+          "gather_workers": 8,
+          "key_capacity_bytes": 16384,
+          "position_map_capacity_bytes": 35734096,
+          "position_map_ms": 25.9942,
+          "primary_capacity_bytes": 107202288,
+          "primary_gather_ms": 31.3063,
+          "release_ms": 39.9691,
+          "released_triangle_bytes": 804007620,
+          "resolve_ms": 619.7441,
+          "seam_gather_ms": 0.0003,
+          "seam_vertices": 0,
+          "total_ms": 788.1072,
+          "vertex_allocation_ms": 62.0745,
+          "vertex_capacity_bytes": 285872768
+        }
+      },
+      "cpu_change_percent": -26.115142899459,
+      "fingerprint": "12406678593263838104"
+    },
+    "BearTrap": {
+      "checkpoint": {
+        "cpu_load_ms": 11935.7363,
+        "parse_ms": 5434.9102,
+        "peak_commit_bytes": 11279372288,
+        "peak_working_set_bytes": 9496444928,
+        "retained_mesh_buffer_capacity_bytes": 3201557388,
+        "rounds": 3,
+        "cpu_range_ms": [
+          11907.3271,
+          12145.2223
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 4194304,
+          "gather_workers": 8,
+          "key_capacity_bytes": 10761552,
+          "position_map_capacity_bytes": 153657564,
+          "position_map_ms": 148.2456,
+          "primary_capacity_bytes": 454687740,
+          "primary_gather_ms": 404.2509,
+          "release_ms": 231.3819,
+          "released_triangle_bytes": 3409739370,
+          "resolve_ms": 2447.1484,
+          "seam_gather_ms": 9.7138,
+          "total_ms": 3603.5943,
+          "vertex_allocation_ms": 300.91,
+          "vertex_capacity_bytes": 1229260512
+        }
+      },
+      "common": {
+        "cpu_load_ms": 11979.2807,
+        "parse_ms": 5422.5267,
+        "peak_commit_bytes": 11279331328,
+        "peak_working_set_bytes": 9496510464,
+        "retained_mesh_buffer_capacity_bytes": 3201557388,
+        "rounds": 3,
+        "cpu_range_ms": [
+          11932.0213,
+          12010.3895
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 4194304,
+          "gather_workers": 8,
+          "key_capacity_bytes": 10761552,
+          "position_map_capacity_bytes": 153657564,
+          "position_map_ms": 125.7583,
+          "primary_capacity_bytes": 454687740,
+          "primary_gather_ms": 398.8701,
+          "release_ms": 212.29,
+          "released_triangle_bytes": 3409739370,
+          "resolve_ms": 2438.9525,
+          "seam_gather_ms": 9.9184,
+          "seam_vertices": 523746,
+          "total_ms": 3546.6693,
+          "vertex_allocation_ms": 289.6405,
+          "vertex_capacity_bytes": 1229260512
+        }
+      },
+      "cpu_change_percent": 0.3648237436344681,
+      "fingerprint": "16056583657800749285"
+    },
+    "Powerplant": {
+      "checkpoint": {
+        "cpu_load_ms": 2517.4388,
+        "parse_ms": 631.1856,
+        "peak_commit_bytes": 1766424576,
+        "peak_working_set_bytes": 1418776576,
+        "retained_mesh_buffer_capacity_bytes": 691059516,
+        "rounds": 5,
+        "cpu_range_ms": [
+          2478.3858,
+          2530.3428
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 33554432,
+          "gather_workers": 8,
+          "key_capacity_bytes": 81720448,
+          "position_map_capacity_bytes": 43814508,
+          "position_map_ms": 33.4766,
+          "primary_capacity_bytes": 71808996,
+          "primary_gather_ms": 27.2723,
+          "release_ms": 29.9121,
+          "released_triangle_bytes": 574166070,
+          "resolve_ms": 1506.3608,
+          "seam_gather_ms": 26.5149,
+          "total_ms": 1715.723,
+          "vertex_allocation_ms": 77.3171,
+          "vertex_capacity_bytes": 350516064
+        }
+      },
+      "common": {
+        "cpu_load_ms": 2487.3471,
+        "parse_ms": 627.7692,
+        "peak_commit_bytes": 1766440960,
+        "peak_working_set_bytes": 1418817536,
+        "retained_mesh_buffer_capacity_bytes": 691059516,
+        "rounds": 5,
+        "cpu_range_ms": [
+          2475.0769,
+          2494.0676
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 33554432,
+          "gather_workers": 8,
+          "key_capacity_bytes": 81720448,
+          "position_map_capacity_bytes": 43814508,
+          "position_map_ms": 37.5137,
+          "primary_capacity_bytes": 71808996,
+          "primary_gather_ms": 27.8608,
+          "release_ms": 30.1976,
+          "released_triangle_bytes": 574166070,
+          "resolve_ms": 1488.6926,
+          "seam_gather_ms": 26.5315,
+          "seam_vertices": 4969544,
+          "total_ms": 1697.618,
+          "vertex_allocation_ms": 78.4851,
+          "vertex_capacity_bytes": 350516064
+        }
+      },
+      "cpu_change_percent": -1.1953299520131355,
+      "fingerprint": "5994608044289553022"
+    },
+    "San Miguel": {
+      "checkpoint": {
+        "cpu_load_ms": 2144.626,
+        "parse_ms": 835.2234,
+        "peak_commit_bytes": 1700671488,
+        "peak_working_set_bytes": 1540710400,
+        "retained_mesh_buffer_capacity_bytes": 586936056,
+        "rounds": 5,
+        "cpu_range_ms": [
+          2134.9579,
+          2299.9104
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 16777216,
+          "gather_workers": 8,
+          "key_capacity_bytes": 54480304,
+          "position_map_capacity_bytes": 36085564,
+          "position_map_ms": 27.2064,
+          "primary_capacity_bytes": 71198796,
+          "primary_gather_ms": 29.4885,
+          "release_ms": 46.4078,
+          "released_triangle_bytes": 449131455,
+          "resolve_ms": 957.5456,
+          "seam_gather_ms": 19.9834,
+          "total_ms": 1154.4851,
+          "vertex_allocation_ms": 63.6541,
+          "vertex_capacity_bytes": 288684512
+        }
+      },
+      "common": {
+        "cpu_load_ms": 2201.2926,
+        "parse_ms": 867.5905,
+        "peak_commit_bytes": 1700605952,
+        "peak_working_set_bytes": 1540698112,
+        "retained_mesh_buffer_capacity_bytes": 586936056,
+        "rounds": 5,
+        "cpu_range_ms": [
+          2177.6942,
+          2225.1625
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 16777216,
+          "gather_workers": 8,
+          "key_capacity_bytes": 54480304,
+          "position_map_capacity_bytes": 36085564,
+          "position_map_ms": 30.1898,
+          "primary_capacity_bytes": 71198796,
+          "primary_gather_ms": 29.618,
+          "release_ms": 47.6294,
+          "released_triangle_bytes": 449131455,
+          "resolve_ms": 977.5649,
+          "seam_gather_ms": 20.0649,
+          "seam_vertices": 3088160,
+          "total_ms": 1175.9615,
+          "vertex_allocation_ms": 64.0507,
+          "vertex_capacity_bytes": 288684512
+        }
+      },
+      "cpu_change_percent": 2.642260235584204,
+      "fingerprint": "7018344850434531479"
+    },
+    "Bus map": {
+      "checkpoint": {
+        "cpu_load_ms": 110.1547,
+        "parse_ms": 64.6862,
+        "peak_commit_bytes": 128270336,
+        "peak_working_set_bytes": 113205248,
+        "retained_mesh_buffer_capacity_bytes": 45224820,
+        "rounds": 3,
+        "cpu_range_ms": [
+          109.7475,
+          114.0733
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 65536,
+          "gather_workers": 8,
+          "key_capacity_bytes": 186624,
+          "position_map_capacity_bytes": 2189876,
+          "position_map_ms": 1.7125,
+          "primary_capacity_bytes": 6430716,
+          "primary_gather_ms": 2.9221,
+          "release_ms": 3.1445,
+          "released_triangle_bytes": 47454390,
+          "resolve_ms": 18.6217,
+          "seam_gather_ms": 0.3183,
+          "total_ms": 30.8454,
+          "vertex_allocation_ms": 3.7574,
+          "vertex_capacity_bytes": 17519008
+        }
+      },
+      "common": {
+        "cpu_load_ms": 104.5618,
+        "parse_ms": 60.0034,
+        "peak_commit_bytes": 128450560,
+        "peak_working_set_bytes": 113483776,
+        "retained_mesh_buffer_capacity_bytes": 45224820,
+        "rounds": 3,
+        "cpu_range_ms": [
+          104.2331,
+          112.5379
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 65536,
+          "gather_workers": 8,
+          "key_capacity_bytes": 186624,
+          "position_map_capacity_bytes": 2189876,
+          "position_map_ms": 1.6975,
+          "primary_capacity_bytes": 6430716,
+          "primary_gather_ms": 3.0339,
+          "release_ms": 3.1027,
+          "released_triangle_bytes": 47454390,
+          "resolve_ms": 17.8817,
+          "seam_gather_ms": 0.3133,
+          "seam_vertices": 11604,
+          "total_ms": 30.1183,
+          "vertex_allocation_ms": 3.6118,
+          "vertex_capacity_bytes": 17519008
+        }
+      },
+      "cpu_change_percent": -5.077313995680621,
+      "fingerprint": "8281898353459567046"
+    },
+    "Cloud, 2M positions": {
+      "checkpoint": {
+        "cpu_load_ms": 169.7209,
+        "parse_ms": 48.9101,
+        "peak_commit_bytes": 130420736,
+        "peak_working_set_bytes": 134123520,
+        "retained_mesh_buffer_capacity_bytes": 120000000,
+        "rounds": 3,
+        "cpu_range_ms": [
+          169.7169,
+          171.5408
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 0,
+          "gather_workers": 0,
+          "key_capacity_bytes": 0,
+          "position_map_capacity_bytes": 0,
+          "position_map_ms": 0.0,
+          "primary_capacity_bytes": 8000000,
+          "primary_gather_ms": 0.0,
+          "release_ms": 0.0,
+          "released_triangle_bytes": 0,
+          "resolve_ms": 0.0,
+          "seam_gather_ms": 0.0,
+          "total_ms": 2.3246,
+          "vertex_allocation_ms": 0.0,
+          "vertex_capacity_bytes": 64000000
+        }
+      },
+      "common": {
+        "cpu_load_ms": 106.4693,
+        "parse_ms": 54.4252,
+        "peak_commit_bytes": 122802176,
+        "peak_working_set_bytes": 126361600,
+        "retained_mesh_buffer_capacity_bytes": 120000000,
+        "rounds": 3,
+        "cpu_range_ms": [
+          101.8829,
+          112.2601
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 0,
+          "gather_workers": 8,
+          "key_capacity_bytes": 0,
+          "position_map_capacity_bytes": 0,
+          "position_map_ms": 0.0,
+          "primary_capacity_bytes": 0,
+          "primary_gather_ms": 8.9179,
+          "release_ms": 0.0,
+          "released_triangle_bytes": 0,
+          "resolve_ms": 0.0,
+          "seam_gather_ms": 0.0,
+          "seam_vertices": 0,
+          "total_ms": 24.6627,
+          "vertex_allocation_ms": 15.6439,
+          "vertex_capacity_bytes": 64000000
+        }
+      },
+      "cpu_change_percent": -37.26800883096896,
+      "fingerprint": "2573112087367187274"
+    },
+    "Lines, 2M positions": {
+      "checkpoint": {
+        "cpu_load_ms": 193.9009,
+        "parse_ms": 66.5906,
+        "peak_commit_bytes": 201822208,
+        "peak_working_set_bytes": 166580224,
+        "retained_mesh_buffer_capacity_bytes": 127999992,
+        "rounds": 3,
+        "cpu_range_ms": [
+          193.7699,
+          196.7094
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 0,
+          "gather_workers": 0,
+          "key_capacity_bytes": 0,
+          "position_map_capacity_bytes": 0,
+          "position_map_ms": 0.0,
+          "primary_capacity_bytes": 8000000,
+          "primary_gather_ms": 0.0,
+          "release_ms": 0.0,
+          "released_triangle_bytes": 0,
+          "resolve_ms": 0.0,
+          "seam_gather_ms": 0.0,
+          "total_ms": 2.6403,
+          "vertex_allocation_ms": 0.0,
+          "vertex_capacity_bytes": 64000000
+        }
+      },
+      "common": {
+        "cpu_load_ms": 144.3448,
+        "parse_ms": 66.3741,
+        "peak_commit_bytes": 202371072,
+        "peak_working_set_bytes": 158588928,
+        "retained_mesh_buffer_capacity_bytes": 127999992,
+        "rounds": 3,
+        "cpu_range_ms": [
+          144.0981,
+          163.7706
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 0,
+          "gather_workers": 8,
+          "key_capacity_bytes": 0,
+          "position_map_capacity_bytes": 0,
+          "position_map_ms": 4.3539,
+          "primary_capacity_bytes": 24000000,
+          "primary_gather_ms": 9.129,
+          "release_ms": 1.3822,
+          "released_triangle_bytes": 0,
+          "resolve_ms": 21.296,
+          "seam_gather_ms": 0.0003,
+          "seam_vertices": 0,
+          "total_ms": 51.8281,
+          "vertex_allocation_ms": 14.0835,
+          "vertex_capacity_bytes": 64000000
+        }
+      },
+      "cpu_change_percent": -25.557436814372714,
+      "fingerprint": "17157285686874250639"
+    },
+    "Points, 2M positions": {
+      "checkpoint": {
+        "cpu_load_ms": 219.2811,
+        "parse_ms": 82.2258,
+        "peak_commit_bytes": 226189312,
+        "peak_working_set_bytes": 203255808,
+        "retained_mesh_buffer_capacity_bytes": 128000000,
+        "rounds": 3,
+        "cpu_range_ms": [
+          215.2378,
+          221.5903
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 0,
+          "gather_workers": 0,
+          "key_capacity_bytes": 0,
+          "position_map_capacity_bytes": 0,
+          "position_map_ms": 0.0,
+          "primary_capacity_bytes": 8000000,
+          "primary_gather_ms": 0.0,
+          "release_ms": 0.0,
+          "released_triangle_bytes": 0,
+          "resolve_ms": 0.0,
+          "seam_gather_ms": 0.0,
+          "total_ms": 2.4281,
+          "vertex_allocation_ms": 0.0,
+          "vertex_capacity_bytes": 64000000
+        }
+      },
+      "common": {
+        "cpu_load_ms": 170.716,
+        "parse_ms": 86.5782,
+        "peak_commit_bytes": 226856960,
+        "peak_working_set_bytes": 203276288,
+        "retained_mesh_buffer_capacity_bytes": 128000000,
+        "rounds": 3,
+        "cpu_range_ms": [
+          168.4651,
+          176.0157
+        ],
+        "mapping": {
+          "bucket_capacity_bytes": 0,
+          "gather_workers": 8,
+          "key_capacity_bytes": 0,
+          "position_map_capacity_bytes": 0,
+          "position_map_ms": 4.3046,
+          "primary_capacity_bytes": 24000000,
+          "primary_gather_ms": 9.0289,
+          "release_ms": 2.5483,
+          "released_triangle_bytes": 0,
+          "resolve_ms": 25.5978,
+          "seam_gather_ms": 0.0002,
+          "seam_vertices": 0,
+          "total_ms": 57.0994,
+          "vertex_allocation_ms": 14.1434,
+          "vertex_capacity_bytes": 64000000
+        }
+      },
+      "cpu_change_percent": -22.14741717366431,
+      "fingerprint": "9772199941999976243"
+    }
+  },
+  "viewer": {
+    "native": {
+      "checkpoint": {
+        "cpu_import_ms": 2950.5923,
+        "load_rpc_ms": 10431.343500007642,
+        "peak_commit_bytes": 2612822016
+      },
+      "common": {
+        "cpu_import_ms": 2313.709,
+        "load_rpc_ms": 9746.043899998767,
+        "peak_commit_bytes": 2613010432
+      }
+    },
+    "traced": {
+      "checkpoint": {
+        "cpu_import_ms": 3050.9835,
+        "load_rpc_ms": 10867.010099987965,
+        "peak_commit_bytes": 2614882304,
+        "milestones_ms": {
+          "first_scene_frame_gpu_complete": 3549.6032999999998,
+          "all_tools_ready": 10399.9329
+        }
+      },
+      "common": {
+        "cpu_import_ms": 2274.3752,
+        "load_rpc_ms": 9969.941799994558,
+        "peak_commit_bytes": 2613051392,
+        "milestones_ms": {
+          "first_scene_frame_gpu_complete": 2849.8535,
+          "all_tools_ready": 9649.674500000001
+        }
+      }
+    }
+  },
+  "image_comparisons": [
+    {
+      "kind": "native",
+      "round": 1,
+      "identical_pixels": true
+    },
+    {
+      "kind": "native",
+      "round": 2,
+      "identical_pixels": true
+    },
+    {
+      "kind": "native",
+      "round": 3,
+      "identical_pixels": true
+    },
+    {
+      "kind": "traced",
+      "round": 1,
+      "identical_pixels": true
+    },
+    {
+      "kind": "traced",
+      "round": 2,
+      "identical_pixels": true
+    },
+    {
+      "kind": "traced",
+      "round": 3,
+      "identical_pixels": true
+    }
+  ],
+  "validation": {
+    "default": {
+      "passed": true,
+      "checks": 111
+    },
+    "slow": {
+      "passed": true,
+      "checks": 8
+    },
+    "graphics": {
+      "passed": true,
+      "checks": 26
+    }
+  },
+  "compiler_warnings": [],
+  "implementation_sha256": {
+    "experiments/corner-mapping/CMakeLists.txt": "69bb3dfcfadee9b9c81974b0d63de10ec440fe65b0b899aed82e4d4d3a372bce",
+    "experiments/corner-mapping/generate.py": "d4b1eb64b1c82cf7f6ac8f4147443f546b88f071712678140687305a22aee032",
+    "experiments/obj-mapping-reference/README.txt": "0f733f667f76d7f7c4137bb441c21ab731861376b2601deba0825f95e8b3f933",
+    "experiments/obj-mapping-reference/benchmark.cpp": "2cfb50220b0374a9866738da984bd19624a92db90546cd8faf3058ac64f95caa",
+    "experiments/obj-mapping-reference/mapping_reference.h": "6a0d35d945a85648d96a8000d932499f70cb4129d869a24580ad190e43451e0c",
+    "experiments/obj-mapping-reference/obj_corner_mapping.h": "643f921c2ac7796276d51e429711881e64e1a0e3079f705b96a60cdaa41b1109",
+    "experiments/obj-mapping-reference/obj_mesh.cpp": "3d6071a9a214ac11110ce33c50c33fdd382be6e7e0accc605e2493fa8a3d0dc9",
+    "experiments/obj-mapping-reference/profile_generate.py": "3c84afc67939dba5edff81cd116fe3915ecdce8e954b66734253d88bdf784e4e",
+    "experiments/obj-profile/e2e_generate.py": "726636a34a47a0f53c59586dd516a0a230ddab910352ce9398099e283057b047",
+    "experiments/obj-profile/generate.py": "d92d9d64f9a5d8fb1f611f44bf04706010bc01b504565f00dd83e00ef1e2f75f",
+    "experiments/position-mapping/CMakeLists.txt": "378649093f78cf94edb8c369b90a3576006fff2cca1b71f30f6beee7fcaf6571",
+    "experiments/position-mapping/generate.py": "ba21953be2e4070e5f67f5b953313280b98f349e7928b09b756818c208a3419a",
+    "experiments/rapidobj_prototype.cpp": "539a1880b0f85aef4db91ae1711cdae214d7efe436334cb9cd18b1725d263790",
+    "experiments/simplification-14/CMakeLists.txt": "79ea5c50320fb6f23cbb920e24192861d47b63dd5e67bdc8acf6bfc04bcf2543",
+    "src/obj_corner_mapping.h": "1dd34c82e683c5ceeaebc24b3cb2ce98f31d01f6e3d47a39714cab5f7b9ebb5a",
+    "src/obj_mesh.cpp": "13f936141ed35f6df45db30d85f49c1d831e583a73662ea9b1e9da6c7ce2b621",
+    "src/obj_mesh.h": "7c0fef34b48c7d4ddb3dc382515d831e844187b30ad40701bdda6800248f8893",
+    "tests/obj_prototype_tests.cpp": "2119a8c34061357028e97e02ead9f89e1cbec96a6e0b544a2efb5ece84970af1"
+  }
+}

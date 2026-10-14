@@ -69,6 +69,55 @@ target_link_libraries(woby_obj_upload_viewer PRIVATE woby_core spdlog::spdlog)
 woby_enable_project_warnings(woby_obj_upload_viewer)
 woby_enable_enum_switch_warnings(woby_obj_upload_viewer)
 list(APPEND woby_runtime_targets woby_obj_upload_viewer)
+add_executable(woby_obj_fast_pacing_viewer WIN32 "${PROJECT_SOURCE_DIR}/src/main.cpp" "${upload_generated}/frame_pacing.cpp"
+    "${PROJECT_SOURCE_DIR}/src/console.cpp" "${PROJECT_SOURCE_DIR}/src/renderer_startup.cpp"
+    "${PROJECT_SOURCE_DIR}/src/imgui_graphics.cpp" "${PROJECT_SOURCE_DIR}/src/scene_screenshot.cpp"
+    "${PROJECT_SOURCE_DIR}/packaging/windows/long_paths.manifest")
+target_include_directories(woby_obj_fast_pacing_viewer PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_compile_definitions(woby_obj_fast_pacing_viewer PRIVATE WOBY_VERSION="${PROJECT_VERSION}" WOBY_BUILD_CONFIG="$<CONFIG>")
+target_link_libraries(woby_obj_fast_pacing_viewer PRIVATE woby_core spdlog::spdlog)
+woby_enable_project_warnings(woby_obj_fast_pacing_viewer)
+woby_enable_enum_switch_warnings(woby_obj_fast_pacing_viewer)
+list(APPEND woby_runtime_targets woby_obj_fast_pacing_viewer)
+set(woby_runtime_targets "${woby_runtime_targets}" PARENT_SCOPE)
+
+set(e2e_generated "${CMAKE_CURRENT_BINARY_DIR}/e2e-viewer")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/e2e_generate.py"
+    "${PROJECT_SOURCE_DIR}/src/obj_corner_mapping.h"
+    "${PROJECT_SOURCE_DIR}/src/post_loading.cpp"
+    "${PROJECT_SOURCE_DIR}/src/graphics_upload.cpp"
+    "${PROJECT_SOURCE_DIR}/src/model_load.cpp")
+execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/e2e_generate.py"
+    "${PROJECT_SOURCE_DIR}" "${e2e_generated}" COMMAND_ERROR_IS_FATAL ANY)
+set(e2e_sources)
+foreach(name IN LISTS profile_sources)
+    list(APPEND e2e_sources "${e2e_generated}/${name}.cpp")
+endforeach()
+add_executable(woby_obj_e2e_viewer WIN32 e2e_trace.cpp ${e2e_sources}
+    "${e2e_generated}/main.cpp" "${e2e_generated}/post_loading.cpp"
+    "${e2e_generated}/graphics_upload.cpp" "${e2e_generated}/model_load.cpp"
+    "${PROJECT_SOURCE_DIR}/src/console.cpp" "${PROJECT_SOURCE_DIR}/src/renderer_startup.cpp"
+    "${PROJECT_SOURCE_DIR}/src/imgui_graphics.cpp" "${PROJECT_SOURCE_DIR}/src/scene_screenshot.cpp"
+    "${PROJECT_SOURCE_DIR}/packaging/windows/long_paths.manifest")
+target_include_directories(woby_obj_e2e_viewer PRIVATE "${e2e_generated}" "${CMAKE_CURRENT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/src")
+target_compile_definitions(woby_obj_e2e_viewer PRIVATE WOBY_VERSION="${PROJECT_VERSION}" WOBY_BUILD_CONFIG="$<CONFIG>")
+target_compile_options(woby_obj_e2e_viewer PRIVATE $<$<CONFIG:Release>:/Zi> $<$<CONFIG:Release>:/FAs>)
+target_link_options(woby_obj_e2e_viewer PRIVATE $<$<CONFIG:Release>:/DEBUG>
+    "$<$<CONFIG:Release>:/MAP:${CMAKE_CURRENT_BINARY_DIR}/e2e-woby.map>")
+target_link_libraries(woby_obj_e2e_viewer PRIVATE woby_core spdlog::spdlog psapi NoGraphicsAPIUtility_uploads Vulkan::Vulkan)
+if(OBJ_PROFILE_NVTX_INCLUDE)
+    target_include_directories(woby_obj_e2e_viewer SYSTEM PRIVATE "${OBJ_PROFILE_NVTX_INCLUDE}")
+    target_compile_definitions(woby_obj_e2e_viewer PRIVATE OBJ_PROFILE_NVTX)
+endif()
+if(OBJ_PROFILE_ITT_INCLUDE AND OBJ_PROFILE_ITT_LIBRARY)
+    target_include_directories(woby_obj_e2e_viewer SYSTEM PRIVATE "${OBJ_PROFILE_ITT_INCLUDE}")
+    target_link_libraries(woby_obj_e2e_viewer PRIVATE "${OBJ_PROFILE_ITT_LIBRARY}")
+    target_compile_definitions(woby_obj_e2e_viewer PRIVATE OBJ_PROFILE_ITT)
+endif()
+woby_enable_project_warnings(woby_obj_e2e_viewer)
+woby_enable_enum_switch_warnings(woby_obj_e2e_viewer)
+list(APPEND woby_runtime_targets woby_obj_e2e_viewer)
 set(woby_runtime_targets "${woby_runtime_targets}" PARENT_SCOPE)
 if(BUILD_TESTING)
     add_executable(woby_obj_profile_pacing_test pacing_test.cpp "${upload_generated}/frame_pacing.cpp")
@@ -78,6 +127,9 @@ if(BUILD_TESTING)
     set_tests_properties(woby_obj_profile_pacing PROPERTIES LABELS "unit;cpu")
     add_test(NAME woby_obj_profile_tooling COMMAND "${WOBY_UV_EXECUTABLE}" run "${CMAKE_CURRENT_SOURCE_DIR}/tooling_tests.py")
     set_tests_properties(woby_obj_profile_tooling PROPERTIES LABELS "unit;cpu" TIMEOUT 60)
+    add_test(NAME woby_obj_e2e_tooling COMMAND "${WOBY_UV_EXECUTABLE}" run "${CMAKE_CURRENT_SOURCE_DIR}/e2e_tests.py"
+        --viewer "$<TARGET_FILE:woby_obj_e2e_viewer>")
+    set_tests_properties(woby_obj_e2e_tooling PROPERTIES LABELS "unit;cpu" TIMEOUT 120)
     add_test(NAME woby_obj_profile_contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests.py"
         "$<TARGET_FILE:woby_obj_profile_sse2>" "$<TARGET_FILE:woby_obj_profile_diagnostic>" "$<TARGET_FILE:woby_obj_profile_uvcheck>" "$<TARGET_FILE:woby_obj_profile_uvptr>")
     set_tests_properties(woby_obj_profile_contract PROPERTIES LABELS "unit;cpu" TIMEOUT 60)

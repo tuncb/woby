@@ -1,0 +1,38 @@
+OBJ mapping fallback removal — 14 October 2026
+
+Baseline: 6d712bbcad608f06177429bccd751303ef5562c2.
+Final source is in the current D:/woby checkout and in measurements.zip under implementation/.
+The archive records exact executable SHA256 values and input paths/hashes.
+No OBJ inputs, executable binaries, or runtime DLLs are stored in the report.
+
+Configure both versions with the local Visual Studio preset:
+  cmake --preset vs2026-vcpkg -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON -DWOBY_BUILD_OBJ_PROFILE=ON
+  cmake --build --preset vs2026-vcpkg --config Release
+Use D:/.worktree for a separate baseline checkout. Apply implementation/ files
+from the archive to a second checkout of the baseline for the final version.
+
+CPU example, fresh process for each trial:
+  woby_obj_prototype_benchmark.exe prototype ABSOLUTE_INPUT.obj 0 deferred
+Omit deferred for eager preparation. Zero uses the normal parser worker count.
+The load time and process memory counters are recorded before fingerprinting.
+
+Viewer example:
+  uv run experiments/obj-profile/e2e_run.py ABSOLUTE_VIEWER.exe ABSOLUTE_BENNU.obj --output NEW_OUTPUT --hidden --settle-seconds 1 --render-seconds 2
+Use woby.exe for native trials and woby_obj_e2e_viewer.exe for traced trials.
+The stored traced baseline is the matching reference viewer from the earlier
+Bennu experiment, with POSITION_MAPPING_FORCE=0 and the baseline mapper.
+
+Protocol: sequentially read each input first, alternate version order each
+round, use fresh processes, and stop builds, tests, and profilers during timing.
+Final directories are named *-final. Other directories retain the rejected
+shared-helper and branch experiments; do not pool them with final measurements.
+The comparison drivers and synthetic fixture generator are in reproduction/.
+Their original local root is D:/.worktree/woby-id-resolution-20261014/build/unified-obj-mapping-20261014.
+Measurement binaries remain there in baseline-bin/, early-return-bin/,
+final-common-bin/, and the recorded build output paths. Current viewer binaries
+were built in D:/woby with the same Release preset and compiler toolchain.
+
+Tests:
+  ctest --preset vs2026-vcpkg -C Release --output-on-failure
+  ctest --test-dir build/vs2026-vcpkg -C Release -L slow --output-on-failure -j 2
+  ctest --test-dir build/vs2026-vcpkg -C Release -L graphics --output-on-failure -j 1

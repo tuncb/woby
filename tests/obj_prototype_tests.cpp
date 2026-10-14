@@ -1,4 +1,5 @@
 #include "obj_mesh.h"
+#include "obj_corner_mapping.h"
 #include "freeform.h"
 #include "utf8_path.h"
 #include <rapidobj/prototype.hpp>
@@ -7,6 +8,8 @@
 #include <atomic>
 #include <cstring>
 #include <fstream>
+#include <map>
+#include <limits>
 #include <sstream>
 #include <thread>
 
@@ -112,9 +115,8 @@ TEST_CASE("Staged OBJ corners preserve global first-use IDs attributes and group
         "g second\nf 3/3/2 2/1/1 4/4/1\n"
         "g reuse\nf 4/2/1 2/1/1 3/3/1\n";
     for (const bool deferred : {false,true}) {
-        woby::ObjPrototypeOptions options; options.deferPreparation = deferred; options.stagedCornerMapping = false;
+        woby::ObjPrototypeOptions options; options.deferPreparation = deferred;
         const auto reference = woby::loadObjMeshTextPrototype(text,{},options);
-        options.stagedCornerMapping = true;
         for (const size_t workers : {size_t{1},size_t{8}}) {
             options.gatherWorkers = workers; woby::ObjPrototypeMetrics metrics;
             const auto mesh = woby::loadObjMeshTextPrototype(text,{},options,&metrics);
@@ -144,7 +146,7 @@ TEST_CASE("Staged OBJ mapping retains identity positions with unused trailing so
     CHECK(meshGeometry(mesh).indices == std::vector<uint32_t>{0,1,2,2,1,0});
 }
 
-TEST_CASE("OBJ mapping uses the smaller source lookup for sparse positions and mixed primitives") {
+TEST_CASE("OBJ mapping uses the common resolver for sparse positions mixed primitives and freeforms") {
     std::string text = "v 0 0 0\nv 1 0 0\nv 0 1 0\n";
     bool sparse = false, attributes = true, freeform = false;
     SUBCASE("many unused source positions") { sparse = true; }
@@ -160,13 +162,140 @@ TEST_CASE("OBJ mapping uses the smaller source lookup for sparse positions and m
         const auto primitives = text.find("l 1 3\np 2\n");
         REQUIRE(primitives != std::string::npos); text.erase(primitives,std::string_view("l 1 3\np 2\n").size());
     }
-    woby::ObjPrototypeOptions options; options.stagedCornerMapping = false;
-    const auto reference = woby::loadObjMeshTextPrototype(text,{},options);
-    options.stagedCornerMapping = true; woby::ObjPrototypeMetrics metrics;
+    woby::ObjPrototypeOptions options;
+    const PrototypeFixture fixture;
+    const auto reference = woby::loadObjMeshLegacy(fixture.write(text));
+    woby::ObjPrototypeMetrics metrics;
     const auto mesh = woby::loadObjMeshTextPrototype(text,{},options,&metrics);
-    sameMesh(reference,mesh); CHECK_FALSE(metrics.mapping.staged);
-    CHECK(metrics.mapping.releasedTriangleBytes == 0);
-    if (!freeform) { CHECK(metrics.mapping.primaryCapacityBytes == woby::sourcePositions(*mesh.sourceData).size()*sizeof(uint32_t)); }
+    sameMesh(reference,mesh); CHECK(metrics.mapping.staged);
+    CHECK(metrics.mapping.releasedTriangleBytes > 0);
+    if (!freeform) { CHECK(metrics.mapping.primaryCapacityBytes == woby::sourcePositions(*mesh.sourceData).size()*sizeof(woby::obj_mapping::Primary)); }
+}
+
+TEST_CASE("OBJ primitives preserve face IDs authored normals and unlit vertex normals") {
+    const std::string text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 1\n"
+        "vt .25 .5\nvn 0 1 0\ng part\nf 3/1/1 1/1/1 2/1/1\nl 3 4 1\np 4 3 4\n";
+    for (const bool deferred : {false,true}) {
+        woby::ObjPrototypeOptions options; options.deferPreparation = deferred;
+        woby::ObjPrototypeMetrics metrics;
+        const auto mesh = woby::loadObjMeshTextPrototype(text,{},options,&metrics);
+        const auto& geometry = meshGeometry(mesh);
+        CHECK(metrics.mapping.staged);
+        CHECK(geometry.indices == std::vector<uint32_t>{0,1,2});
+        CHECK(metrics.mapping.seamVertices == 2);
+        CHECK(geometry.lineIndices == std::vector<uint32_t>{3,4,4,5});
+        CHECK(geometry.pointIndices == std::vector<uint32_t>{4,3,4});
+        CHECK(geometry.positionIndices == std::vector<uint32_t>{2,0,1,2,3,0});
+        REQUIRE(geometry.vertices.size() == 6);
+        for (size_t i = 0; i < geometry.vertices.size(); ++i) {
+            CHECK(geometry.vertices[i].normal == (i < 3 ? std::array<float,3>{0,1,0} : std::array<float,3>{0,0,1}));
+            CHECK(geometry.vertices[i].texcoord == (i < 3 ? std::array<float,2>{.25f,.5f} : std::array<float,2>{}));
+        }
+        REQUIRE(geometry.nodes.size() == 3);
+        CHECK(geometry.nodes[0].name == "part"); CHECK(geometry.nodes[0].hasTexcoords);
+        CHECK(geometry.nodes[1].name == "part (lines)"); CHECK(geometry.nodes[1].lineIndexCount == 4);
+        CHECK(geometry.nodes[2].name == "part (points)"); CHECK(geometry.nodes[2].pointIndexCount == 3);
+        CHECK_FALSE(geometry.nodes[1].hasTexcoords); CHECK_FALSE(geometry.nodes[2].hasTexcoords);
+        CHECK(mesh.sourceData->indices == (deferred ? std::vector<uint32_t>{} : std::vector<uint32_t>{2,0,1}));
+    }
+}
+
+TEST_CASE("OBJ untextured faces share primitive vertices after all face groups") {
+    const std::string text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 1\n"
+        "g a\nl 4 1\np 2\ng a (lines)\nf 3 1 2\ng a\nf 4 2 1\n";
+    const auto mesh = woby::loadObjMeshTextPrototype(text);
+    const auto& geometry = meshGeometry(mesh);
+    CHECK(geometry.indices == std::vector<uint32_t>{0,1,2,3,2,1});
+    CHECK(geometry.lineIndices == std::vector<uint32_t>{3,1});
+    CHECK(geometry.pointIndices == std::vector<uint32_t>{2});
+    CHECK(geometry.positionIndices == std::vector<uint32_t>{2,0,1,3});
+    REQUIRE(geometry.vertices.size() == 4); REQUIRE(geometry.nodes.size() == 4);
+    CHECK(geometry.nodes[0].name == "a (lines)"); CHECK(geometry.nodes[0].indexOffset == 0);
+    CHECK(geometry.nodes[1].name == "a"); CHECK(geometry.nodes[1].indexOffset == 3);
+    CHECK(geometry.nodes[2].name == "a (2)"); CHECK(geometry.nodes[2].lineIndexCount == 2);
+    CHECK(geometry.nodes[3].name == "a (points)"); CHECK(geometry.nodes[3].pointIndexCount == 1);
+    for (const auto& vertex : geometry.vertices) { CHECK(woby::validNormal(vertex.normal)); }
+}
+
+TEST_CASE("OBJ line and point files retain repeated references and ignore unused attributes") {
+    const std::string text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 1\n"
+        "vt .25 .5\nvn 0 1 0\ng duplicates\nl 4 2 4\np 2 1 4 1\n";
+    const auto mesh = woby::loadObjMeshTextPrototype(text);
+    const auto& geometry = meshGeometry(mesh);
+    CHECK(geometry.indices.empty());
+    CHECK(geometry.lineIndices == std::vector<uint32_t>{0,1,1,0});
+    CHECK(geometry.pointIndices == std::vector<uint32_t>{1,2,0,2});
+    CHECK(geometry.positionIndices == std::vector<uint32_t>{3,1,0});
+    REQUIRE(geometry.vertices.size() == 3);
+    for (const auto& vertex : geometry.vertices) {
+        CHECK(vertex.normal == std::array<float,3>{0,0,1});
+        CHECK(vertex.texcoord == std::array<float,2>{});
+    }
+    CHECK(mesh.sourceData->indices.empty());
+}
+
+TEST_CASE("OBJ clouds fill source-order IDs in parallel without a lookup table") {
+    constexpr size_t count = 65536+17;
+    std::string text = "vn 0 0 0\nvt .25 .5\n";
+    for (size_t i = 0; i < count; ++i) { text += "v "+std::to_string(i%37)+" "+std::to_string(i%23)+" 0\n"; }
+    const auto caller = std::this_thread::get_id(); std::atomic<bool> wrongThread = false;
+    const auto progress = [&](const woby::ModelLoadProgress& value) {
+        if (value.stage == woby::ModelLoadStage::buildingMesh) {
+            if (std::this_thread::get_id() != caller) { wrongThread.store(true); }
+            CHECK(value.completed <= value.total);
+        }
+    };
+    for (const bool deferred : {false,true}) {
+        woby::ObjPrototypeOptions options; options.gatherWorkers = 8; options.deferPreparation = deferred;
+        woby::ObjPrototypeMetrics metrics;
+        const auto mesh = woby::loadObjMeshTextPrototype(text,progress,options,&metrics);
+        const auto& geometry = meshGeometry(mesh);
+        REQUIRE(geometry.vertices.size() == count); REQUIRE(geometry.pointIndices.size() == count);
+        CHECK(geometry.indices.empty()); CHECK(geometry.lineIndices.empty());
+        CHECK(geometry.positionIndexing == woby::PositionIndexing::identity); CHECK(geometry.positionIndices.empty());
+        CHECK(metrics.mapping.primaryCapacityBytes == 0); CHECK(metrics.mapping.keyCapacityBytes == 0);
+        CHECK(metrics.mapping.bucketCapacityBytes == 0); CHECK(metrics.mapping.gatherWorkers == 2);
+        for (size_t i = 0; i < count; ++i) {
+            CHECK(geometry.pointIndices[i] == i);
+            CHECK(geometry.vertices[i].position == woby::renderPosition(woby::sourcePositions(*mesh.sourceData)[i]));
+            CHECK(geometry.vertices[i].normal == std::array<float,3>{0,0,1});
+        }
+        REQUIRE(geometry.nodes.size() == 1); CHECK(geometry.nodes[0].name == "Points");
+        CHECK(mesh.sourceData->indicesPending == deferred); CHECK(mesh.sourceData->indices.empty());
+    }
+    CHECK_FALSE(wrongThread.load());
+    CHECK_THROWS_WITH((void)woby::loadObjMeshTextPrototype(text,[](const woby::ModelLoadProgress& value) {
+        if (value.stage == woby::ModelLoadStage::buildingMesh && value.total && value.completed == value.total) {
+            throw std::runtime_error("cancel cloud gather");
+        }
+    }),"cancel cloud gather");
+}
+
+TEST_CASE("OBJ point resolution polls cancellation before attribute gathering") {
+    std::string text = "v 0 0 0\nv 1 0 0\nv 0 1 0\n";
+    for (size_t i = 0; i < 40000; ++i) { text += "p 1\n"; }
+    CHECK_THROWS_WITH((void)woby::loadObjMeshTextPrototype(text,[](const woby::ModelLoadProgress& value) {
+        if (value.stage == woby::ModelLoadStage::buildingMesh && value.completed && value.completed < value.total) {
+            throw std::runtime_error("cancel point IDs");
+        }
+    }),"cancel point IDs");
+}
+
+TEST_CASE("OBJ freeform-only input does not allocate an unused position lookup") {
+    auto text = rationalTrimmed;
+    const std::string primitives = "f 1/1/1 2/2/1 4/4/1\nl 1 3\np 2\n";
+    const auto begin = text.find(primitives); REQUIRE(begin != std::string::npos);
+    text.erase(begin,primitives.size());
+    for (const bool deferred : {false,true}) {
+        woby::ObjPrototypeOptions options; options.deferPreparation = deferred;
+        woby::ObjPrototypeMetrics metrics;
+        const auto mesh = woby::loadObjMeshTextPrototype(text,{},options,&metrics);
+        REQUIRE(mesh.freeform); CHECK(mesh.freeform->patches.size() == 1);
+        CHECK(metrics.mapping.staged); CHECK(metrics.mapping.primaryCapacityBytes == 0);
+        CHECK(metrics.mapping.keyCapacityBytes == 0); CHECK(metrics.mapping.bucketCapacityBytes == 0);
+        REQUIRE(mesh.sourceData); CHECK(mesh.sourceData->indicesPending == deferred);
+        CHECK(mesh.sourceData->indices.size() == (deferred ? 0 : meshGeometry(mesh).indices.size()));
+    }
 }
 
 TEST_CASE("Parallel OBJ gathering is byte exact and reports progress only on the caller") {
@@ -206,6 +335,132 @@ TEST_CASE("Parallel OBJ gathering is byte exact and reports progress only on the
 TEST_CASE("OBJ gathering validates worker limits before parsing") {
     woby::ObjPrototypeOptions options; options.gatherWorkers = 9;
     CHECK_THROWS_AS((void)woby::loadObjMeshTextPrototype("malformed",{},options),std::invalid_argument);
+}
+
+namespace {
+template<bool Precise> void checkResolvedCorners(bool deferred, bool finiteUvs) {
+    std::vector<woby::Coordinate> positions(37), normals;
+    std::vector<std::array<double,2>> uvs{{.125,.25},
+        {std::numeric_limits<double>::quiet_NaN(),.5}, {std::numeric_limits<double>::infinity(),.5},
+        {-std::numeric_limits<double>::infinity(),0}, {1e40,.5},
+        {std::numeric_limits<float>::max(),.5}, {-0.0,-0.0}};
+    if (finiteUvs) { for (auto& uv : uvs) { uv = {.125,.25}; } }
+    rapidobj::GeometryBuffers buffers{positions,uvs,normals};
+    rapidobj::Result input;
+    input.attributes.texcoords = rapidobj::Array<float>(uvs.size()*2);
+    for (size_t i = 0; i < uvs.size(); ++i) {
+        for (size_t axis = 0; axis < 2; ++axis) { input.attributes.texcoords[i*2+axis] = static_cast<float>(uvs[i][axis]); }
+    }
+    woby::SourceMeshData source; source.draftPositions.resize(positions.size());
+    std::map<std::array<int,3>,uint32_t> firstUse;
+    std::vector<uint32_t> expected, sourceIndices;
+    std::vector<woby::MeshNode> nodes;
+    // Empty shapes and both sides of the prefetch and progress boundaries.
+    for (const size_t count : {size_t{0},size_t{1},size_t{31},size_t{32},size_t{33},
+        size_t{63},size_t{64},size_t{65},size_t{16385},size_t{2},size_t{0}}) {
+        const auto shapeIndex = input.shapes.size();
+        auto& shape = input.shapes.emplace_back();
+        shape.mesh.indices = rapidobj::Array<rapidobj::Index>(count);
+        if (shapeIndex%2) { shape.name = "group "+std::to_string(shapeIndex); }
+        woby::MeshNode node; node.name = shape.name.empty() ? "shape "+std::to_string(shapeIndex+1) : shape.name;
+        node.indexOffset = static_cast<uint32_t>(expected.size());
+        node.indexCount = static_cast<uint32_t>(count); node.hasTexcoords = true;
+        for (size_t i = 0; i < count; ++i) {
+            const auto corner = expected.size();
+            const int position = static_cast<int>((corner*17+corner/7)%positions.size());
+            const int normal = corner%5 ? static_cast<int>(corner%3) : -1;
+            const int uv = shapeIndex%3 == 2 ? 0
+                : corner%13 ? static_cast<int>((corner*5+corner/19)%uvs.size()) : -1;
+            shape.mesh.indices[i] = {position,uv,normal};
+            const std::array<int,3> key{position,normal,uv};
+            const auto [entry,inserted] = firstUse.try_emplace(key,static_cast<uint32_t>(firstUse.size()));
+            (void)inserted;
+            expected.push_back(entry->second); sourceIndices.push_back(static_cast<uint32_t>(position));
+            const bool finite = uv >= 0 && std::isfinite(static_cast<float>(uvs[static_cast<size_t>(uv)][0]))
+                && std::isfinite(static_cast<float>(uvs[static_cast<size_t>(uv)][1]));
+            node.hasTexcoords = node.hasTexcoords && finite;
+        }
+        if (count) { nodes.push_back(std::move(node)); }
+    }
+    woby::obj_mapping::Table table; woby::MeshGeometry geometry;
+    const auto caller = std::this_thread::get_id();
+    size_t callbacks = 0;
+    const auto progress = [&](const woby::ModelLoadProgress& p) {
+        CHECK(std::this_thread::get_id() == caller); CHECK(p.completed <= p.total); ++callbacks;
+    };
+    woby::obj_mapping::resolveFaces<Precise>(input,table,geometry,source,&buffers,progress,expected.size(),deferred);
+    CHECK(callbacks > 0);
+    CHECK(geometry.indices == expected); CHECK(table.next == firstUse.size());
+    CHECK(source.indices == (deferred ? std::vector<uint32_t>{} : sourceIndices));
+    REQUIRE(geometry.nodes.size() == nodes.size());
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        CHECK(geometry.nodes[i].name == nodes[i].name);
+        CHECK(geometry.nodes[i].indexOffset == nodes[i].indexOffset);
+        CHECK(geometry.nodes[i].indexCount == nodes[i].indexCount);
+        CHECK(geometry.nodes[i].hasTexcoords == nodes[i].hasTexcoords);
+    }
+}
+} // namespace
+
+TEST_CASE("OBJ ID resolution preserves first use and UV flags across lookahead boundaries") {
+    bool finiteUvs = false;
+    SUBCASE("non-finite UV values") {}
+    SUBCASE("finite UV values and missing corners") { finiteUvs = true; }
+    for (const bool deferred : {false,true}) {
+        CAPTURE(deferred);
+        checkResolvedCorners<true>(deferred,finiteUvs);
+        checkResolvedCorners<false>(deferred,finiteUvs);
+    }
+}
+
+TEST_CASE("OBJ ID resolution rejects invalid positions and cancels on the caller") {
+    woby::SourceMeshData source; source.draftPositions.resize(3);
+    rapidobj::Result input; auto& shape = input.shapes.emplace_back();
+    constexpr size_t count = 32770;
+    shape.mesh.indices = rapidobj::Array<rapidobj::Index>(count);
+    input.attributes.texcoords = rapidobj::Array<float>(2);
+    input.attributes.texcoords[0] = std::numeric_limits<float>::infinity(); input.attributes.texcoords[1] = 0;
+    for (auto& index : shape.mesh.indices) { index = {0,0,-1}; }
+    bool cancel = false;
+    SUBCASE("negative future position") { shape.mesh.indices[64].position_index = -1; }
+    SUBCASE("out of range future position") { shape.mesh.indices[64].position_index = std::numeric_limits<int>::max(); }
+    SUBCASE("caller cancellation") { cancel = true; }
+    woby::obj_mapping::Table table; woby::MeshGeometry geometry;
+    const auto caller = std::this_thread::get_id();
+    size_t completed = 0;
+    const auto progress = [&](const woby::ModelLoadProgress& p) {
+        CHECK(std::this_thread::get_id() == caller); completed = p.completed;
+        if (cancel && p.completed == 16384) { throw std::runtime_error("cancel ID resolution"); }
+    };
+    CHECK_THROWS_WITH(woby::obj_mapping::resolveFaces<false>(input,table,geometry,source,nullptr,progress,count,true),
+        cancel ? "cancel ID resolution" : "OBJ contains an invalid source position index.");
+    if (cancel) { CHECK(completed == 16384); }
+}
+
+TEST_CASE("OBJ UV validation checks the float conversion and bounds unused-record work") {
+    std::vector<std::array<double,2>> precise(65537,{.125,-.25});
+    std::vector<float> floats(precise.size()*2,.5f);
+    bool finite = true;
+    SUBCASE("finite values") {}
+    SUBCASE("double values that overflow float") { precise.back()[1] = 1e40; finite = false; }
+    SUBCASE("NaN values") { precise.back()[0] = std::numeric_limits<double>::quiet_NaN(); finite = false; }
+    SUBCASE("infinite values") { precise.back()[1] = -std::numeric_limits<double>::infinity(); finite = false; }
+    for (size_t i = 0; i < precise.size(); ++i) {
+        for (size_t axis = 0; axis < 2; ++axis) { floats[i*2+axis] = static_cast<float>(precise[i][axis]); }
+    }
+    const auto caller = std::this_thread::get_id(); size_t callbacks = 0;
+    const auto progress = [&](const woby::ModelLoadProgress& p) {
+        CHECK(std::this_thread::get_id() == caller);
+        CHECK(p.completed == 0); CHECK(p.total == precise.size()); ++callbacks;
+    };
+    CHECK(woby::obj_mapping::allUvsFinite<true>(precise.data(),nullptr,precise.size(),progress,precise.size()) == finite);
+    CHECK(woby::obj_mapping::allUvsFinite<false>(nullptr,floats.data(),precise.size(),progress,precise.size()) == finite);
+    CHECK(callbacks == 4);
+    // Skip a scan that would visit more UV records than triangle corners.
+    CHECK_FALSE(woby::obj_mapping::allUvsFinite<true>(nullptr,nullptr,precise.size(),{},precise.size()-1));
+    CHECK_THROWS_WITH(woby::obj_mapping::allUvsFinite<true>(precise.data(),nullptr,precise.size(),
+        [&](const woby::ModelLoadProgress&) { throw std::runtime_error("cancel UV validation"); },precise.size()),
+        "cancel UV validation");
 }
 
 TEST_CASE("RapidOBJ prototype merges into caller storage and triangulates borrowed positions") {
