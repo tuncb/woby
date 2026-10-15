@@ -297,6 +297,19 @@ inline size_t gatherPass(MeshGeometry& geometry, const Table& table, const Coord
     std::atomic<size_t> next = 0; std::atomic<bool> canceled = false;
     std::vector<std::exception_ptr> errors(workers);
     auto* vertices = geometry.vertices.data();
+    auto* colors = geometry.vertexColors.empty() ? nullptr : geometry.vertexColors.data();
+    const auto sourceColor = [&](size_t position) {
+        if constexpr (Precise) { return (*buffers->vertex_colors)[position]; }
+        else {
+            uint32_t color = UINT32_C(0xff000000);
+            for (size_t axis = 0; axis < 3; ++axis) {
+                const double value = attributes.colors[position * 3 + axis];
+                if (!std::isfinite(value)) { throw std::runtime_error("OBJ contains a nonfinite vertex color."); }
+                color |= rapidobj::detail::PrototypeColorByte(value) << (axis * 8);
+            }
+            return color;
+        }
+    };
     const auto work = [&](size_t worker) {
         try {
             while (!canceled.load(std::memory_order_relaxed)) {
@@ -308,6 +321,7 @@ inline size_t gatherPass(MeshGeometry& geometry, const Table& table, const Coord
                 for (size_t i = chunk*chunkSize; i < end; ++i) {
                     if constexpr (Cloud) {
                         vertices[i] = {renderPosition(positions[i]),{0,0,1},{}};
+                        if (colors) { colors[i] = sourceColor(i); }
                         geometry.pointIndices[i] = static_cast<uint32_t>(i);
                         continue;
                     }
@@ -318,6 +332,7 @@ inline size_t gatherPass(MeshGeometry& geometry, const Table& table, const Coord
                         key = {static_cast<int>(i),entry.normal,entry.uv};
                     } else { const auto& seam = table.seams[i]; key = seam.key; id = seam.id; }
                     vertices[id & idMask] = gatherVertex<Precise>(key,positions,buffers,attributes);
+                    if (colors) { colors[id & idMask] = sourceColor(static_cast<size_t>(key.position)); }
                     if (id & unlit) { vertices[id & idMask].normal = {0,0,1}; }
                 }
             }
@@ -339,6 +354,7 @@ inline void buildGeometry(rapidobj::Result& result, MeshGeometry& geometry, Sour
     metrics.staged = true;
     const auto corners = counts.triangleIndices;
     const auto totalIndices = corners+counts.lineIndices+counts.pointIndices;
+    const bool colored = Precise ? buffers->vertex_colors && !buffers->vertex_colors->empty() : !result.attributes.colors.empty();
     auto start = Clock::now();
     reportModelLoadProgress(progress,ModelLoadStage::buildingMesh,0,totalIndices);
     geometry.nodes.reserve(result.shapes.size());
@@ -347,6 +363,7 @@ inline void buildGeometry(rapidobj::Result& result, MeshGeometry& geometry, Sour
         const auto positions = sourcePositions(source).size();
         if (!positions) { return; }
         geometry.vertices.resize(positions); metrics.vertexAllocationMs = elapsed(start);
+        if (colored) { geometry.vertexColors.resize(positions); }
         MeshNode node; node.name = "Points"; node.pointIndexCount = static_cast<uint32_t>(positions);
         geometry.nodes.push_back(std::move(node));
         start = Clock::now();
@@ -377,6 +394,7 @@ inline void buildGeometry(rapidobj::Result& result, MeshGeometry& geometry, Sour
     metrics.releaseMs = elapsed(start);
     start = Clock::now(); reportModelLoadProgress(progress,ModelLoadStage::buildingMesh,totalIndices,totalIndices);
     geometry.vertices.resize(table.next); metrics.vertexAllocationMs = elapsed(start);
+    if (colored) { geometry.vertexColors.resize(table.next); }
     start = Clock::now();
     bool identity = table.seams.empty();
     if (identity) {

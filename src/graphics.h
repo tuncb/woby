@@ -258,6 +258,8 @@ void setIndexBuffer(IndexBufferHandle, uint32_t start = 0, uint32_t count = UINT
 void setIndexBuffer(const TransientIndexBuffer *, uint32_t start = 0, uint32_t count = UINT32_MAX);
 void setBuffer(uint8_t binding, VertexBufferHandle, Access::Enum);
 void setBuffer(uint8_t binding, IndexBufferHandle, Access::Enum);
+// Optional packed vertex RGB. An invalid handle restores the part-color fallback.
+void setVertexColors(VertexBufferHandle);
 enum class FaceDisplayKind : uint32_t { surfaceQuality = 1, uvQuality = 2, distance = 3 };
 // Retain all three buffers through submission. Draw generated corners, with
 // source indices used as storage rather than as the draw index buffer.
@@ -323,6 +325,7 @@ struct OpaquePointGroup {
     std::array<float,4> color{};
     uint32_t firstId=0, endId=0, sourceFirstId=0;
     float pointSize=1;
+    VertexBufferHandle vertexColors = WOBY_GPU_INVALID_HANDLE;
 };
 struct OpaquePointTask {
     VertexBufferHandle buffer;

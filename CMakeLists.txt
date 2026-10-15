@@ -478,6 +478,8 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_transparency_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_obj_primitives_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_obj_primitives_smoke.py" "$<TARGET_FILE:woby>")
+        add_test(NAME woby_obj_colors_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_obj_colors_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_freeform_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_freeform_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_uv_grid_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
@@ -499,7 +501,7 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_post_loading_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_coordinate_origin COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_coordinate_origin_smoke.py" "$<TARGET_FILE:woby>")
-        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_transparency_render woby_obj_primitives_render woby_freeform_render ${woby_uv_grid_tests} woby_uv_quality_render woby_loading_preparation woby_post_loading woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics RESOURCE_LOCK woby_gpu)
+        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_transparency_render woby_obj_primitives_render woby_obj_colors_render woby_freeform_render ${woby_uv_grid_tests} woby_uv_quality_render woby_loading_preparation woby_post_loading woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics RESOURCE_LOCK woby_gpu)
     endif()
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"

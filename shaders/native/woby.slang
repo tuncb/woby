@@ -21,12 +21,22 @@ float3 positionAt(uint index) {
     uint p = index * root.stride;
     return float3(root.vertices[p],root.vertices[p+1],root.vertices[p+2]);
 }
+float4 colorAt(uint index) {
+    if (index < root.vertexColorCount) {
+        uint packed = root.vertexColors[index];
+        if ((packed >> 24) != 0) {
+            return float4(float3(packed & 255, (packed >> 8) & 255, (packed >> 16) & 255) / 255.0, root.color.a);
+        }
+    }
+    return root.color;
+}
 VertexOutput vs_mesh(uint index : SV_VertexID) {
     VertexOutput v = {};
     uint p = index * root.stride;
     v.position = clipPosition(mul(root.modelViewProj,float4(positionAt(index),1)));
     v.normal = mul(root.model,float4(root.vertices[p+3],root.vertices[p+4],root.vertices[p+5],0)).xyz;
     v.uv = float2(root.vertices[p+6],root.vertices[p+7]);
+    v.color = colorAt(index);
     return v;
 }
 VertexOutput vs_color(uint index : SV_VertexID) {
@@ -36,11 +46,13 @@ VertexOutput vs_color(uint index : SV_VertexID) {
         index = root.pointIds[(index/6)*3+corner];
     }
     v.position = clipPosition(mul(root.modelViewProj,float4(positionAt(index),1)));
+    v.color = colorAt(index);
     return v;
 }
 VertexOutput vs_annotation(uint index : SV_VertexID) {
     VertexOutput v = {};
     v.position = clipPosition(float4(positionAt(index),1));
+    v.color = root.color;
     return v;
 }
 VertexOutput vs_comparison(uint index : SV_VertexID) {
@@ -100,6 +112,7 @@ VertexOutput pointVertex(uint vertex, uint instance) {
     uint first = root.markerBase;
     uint sourceFirst = root.pointSourceFirst;
     v.id = first == 0 ? 0 : compact ? first+asuint(root.vertices[index*root.stride+3])-sourceFirst : first+instance;
+    v.color = colorAt(compact ? asuint(root.vertices[index*root.stride+3])-1 : index);
     return v;
 }
 VertexOutput vs_point_sprite(uint vertex : SV_VertexID,uint instance : SV_InstanceID) { return pointVertex(vertex,instance); }
@@ -109,6 +122,7 @@ VertexOutput vs_line_sprite(uint vertex : SV_VertexID,uint instance : SV_Instanc
     uint base = root.pointOffset + instance*2;
     float4 a = mul(root.modelViewProj,float4(positionAt(root.pointIds[base]),1));
     float4 b = mul(root.modelViewProj,float4(positionAt(root.pointIds[base+1]),1));
+    float4 colorA = colorAt(root.pointIds[base]), colorB = colorAt(root.pointIds[base+1]);
     // Clip in homogeneous space before dividing by w. Native depth is [0,1],
     // including reversed-Z; both near and far planes are covered.
     float4 planes[6] = {float4(1,0,0,1),float4(-1,0,0,1),float4(0,1,0,1),
@@ -117,8 +131,9 @@ VertexOutput vs_line_sprite(uint vertex : SV_VertexID,uint instance : SV_Instanc
         float da=dot(a,planes[i]), db=dot(b,planes[i]);
         if (da<0 && db<0) return v;
         if ((da<0)!=(db<0)) {
-            float4 cut=lerp(a,b,da/(da-db));
-            if (da<0) a=cut; else b=cut;
+            float t = da/(da-db);
+            float4 cut=lerp(a,b,t), color=lerp(colorA,colorB,t);
+            if (da<0) { a=cut; colorA=color; } else { b=cut; colorB=color; }
         }
     }
     if (a.w<=0 || b.w<=0) return v;
@@ -131,6 +146,7 @@ VertexOutput vs_line_sprite(uint vertex : SV_VertexID,uint instance : SV_Instanc
     float4 endpoint=(vertex&2)!=0 ? b : a;
     endpoint.xy+=normal*side*root.pointParams.x/viewport*endpoint.w;
     v.position=clipPosition(endpoint);
+    v.color=(vertex&2)!=0 ? colorB : colorA;
     return v;
 }
 VertexOutput vs_marker_point(uint vertex : SV_VertexID,uint instance : SV_InstanceID) { return pointVertex(vertex,instance); }
@@ -151,12 +167,12 @@ float3 uvGradient(float value, float2 range) {
 }
 float4 fs_mesh(VertexOutput v) : SV_Target0 {
     float diffuse = max(dot(normalize(v.normal),normalize(float3(.35,.6,.7))),0);
-    float3 color = root.color.rgb*(.32+diffuse*.68);
+    float3 color = v.color.rgb*(.32+diffuse*.68);
     if (root.uvGrid.z > 3.5) { color = uvGradient(root.uvGrid.z > 4.5 ? v.uv.y : v.uv.x, root.uvGrid.xy); }
     else if (root.uvGrid.z > .5) { color = uvGridColor(color, v.uv, root.uvGrid.xy); }
     return float4(color,root.color.a);
 }
-float4 fs_color(VertexOutput v) : SV_Target0 { return root.color; }
+float4 fs_color(VertexOutput v) : SV_Target0 { return v.color; }
 struct TransparencyOutput { float4 accumulation : SV_Target0; float4 revealage : SV_Target1; };
 TransparencyOutput transparentMaterial(VertexOutput v, float4 color) {
     if (color.a <= .000001) discard;
@@ -200,7 +216,7 @@ float4 triangleEdgeColor(VertexOutput v, float3 bary) {
     float3 distances = bary / max(sqrt(dx*dx+dy*dy),float3(1e-8));
     float distance = min(distances.x,min(distances.y,distances.z));
     float coverage = 1-smoothstep(max(0.0,root.triangleEdges.x-.5),root.triangleEdges.x+.5,distance);
-    float3 edge = saturate(root.color.rgb*1.25);
+    float3 edge = saturate(v.color.rgb*1.25);
     if (root.triangleEdges.y < .5) {
         if (coverage <= 0) discard;
         return float4(edge,root.color.a*coverage);
@@ -220,7 +236,7 @@ TransparencyOutput fs_transparent_edges_pulled(EdgeVertexOutput v) {
 }
 float4 fs_point_sprite(VertexOutput v) : SV_Target0 {
     if (length(v.uv) > .5 || root.color.a <= .000001) discard;
-    return root.color;
+    return v.color;
 }
 float4 fs_comparison(VertexOutput v) : SV_Target0 {
     float3 color = root.color.rgb;
@@ -276,7 +292,7 @@ MarkerOutput fs_marker_mesh(VertexOutput v) {
 }
 MarkerOutput fs_marker_line(VertexOutput v) {
     if (root.color.a <= .000001) discard;
-    return MarkerOutput(root.color,float4(0));
+    return MarkerOutput(v.color,float4(0));
 }
 MarkerOutput fs_marker_comparison(VertexOutput v) { return MarkerOutput(fs_comparison(v),float4(0)); }
 

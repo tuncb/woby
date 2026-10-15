@@ -76,7 +76,39 @@ TEST_CASE("Mesh uploads preserve every primitive buffer and complete without ren
     CHECK(woby::graphics::isValid(fixture.mesh.importedLineBuffer));
     CHECK(woby::graphics::isValid(fixture.mesh.lineIndexBuffer));
     CHECK(woby::graphics::isValid(fixture.mesh.pointIdBuffer));
+    CHECK_FALSE(woby::graphics::isValid(fixture.mesh.vertexColors));
+    CHECK_FALSE(woby::graphics::isValid(fixture.mesh.pointColors));
     CHECK(fixture.mesh.pointVertexIndices == std::vector<uint32_t>{6, 1, 3, 7, 0, 2, 5, 4});
+}
+
+TEST_CASE("Optional vertex colors validate their count and survive point reordering and upload") {
+    RendererFixture fixture;
+    woby::graphics::Init init; init.type = woby::graphics::RendererType::Noop;
+    fixture.initialized = woby::graphics::init(init); REQUIRE(fixture.initialized);
+    woby::Mesh source;
+    auto& geometry = editMeshGeometry(source);
+    geometry.vertices = {{{0,0,0}}, {{1,0,0}}, {{0,1,0}}};
+    geometry.pointIndices = {2,0,1}; geometry.nodes = {{"points"}}; geometry.nodes[0].pointIndexCount = 3;
+    geometry.vertexColors = {0xff0000ff};
+    CHECK_THROWS_AS((void)woby::prepareSceneMesh(source), std::runtime_error);
+    geometry.vertexColors = {0xff0000ff, 0, 0xffff0000};
+    auto prepared = woby::prepareSceneMesh(source, woby::gpuMeshPoints, {}, false); REQUIRE(prepared);
+    const auto expectedBytes = prepared->uploadBytes;
+    auto upload = woby::beginGpuMeshUpload(*prepared, source, woby::meshVertexLayout());
+    woby::waitGpuMeshUpload(upload); CHECK(upload.totalBytes == expectedBytes);
+    fixture.mesh = std::move(upload.mesh); CHECK(woby::graphics::isValid(fixture.mesh.vertexColors));
+    auto cloud = woby::points::buildCloud(source, prepared->pointVertexIndices, prepared->nodeRanges, {}, 2, 1); REQUIRE(cloud);
+    CHECK(cloud->colors == std::vector<uint32_t>{0xffff0000, 0xff0000ff, 0});
+    for (const auto& point : cloud->points) { CHECK(cloud->colors[point.id - 1] == geometry.vertexColors[cloud->sourceVertices[point.id - 1]]); }
+    for (const auto& point : cloud->proxies) { CHECK(cloud->colors[point.id - 1] == geometry.vertexColors[cloud->sourceVertices[point.id - 1]]); }
+    prepared->pointCloud = std::make_shared<const woby::points::Cloud>(std::move(*cloud));
+    prepared->compactOnly = true;
+    auto points = woby::beginGpuPointUpload(std::move(*prepared), source, woby::meshVertexLayout(), false);
+    woby::waitGpuMeshUpload(points); woby::commitGpuPointUpload(fixture.mesh, points);
+    CHECK_FALSE(woby::graphics::isValid(fixture.mesh.vertexColors));
+    CHECK(woby::graphics::isValid(fixture.mesh.pointColors));
+    woby::destroyGpuMesh(fixture.mesh);
+    CHECK_FALSE(woby::graphics::isValid(fixture.mesh.pointColors));
 }
 
 TEST_CASE("Optional mesh features prepare asynchronously and reject a changed geometry snapshot") {

@@ -343,7 +343,8 @@ Mesh buildObjPrototype(Parse parse, const std::filesystem::path& path,
     reportModelLoadProgress(progress, ModelLoadStage::reading);
     std::vector<Coordinate> positions, normals;
     std::vector<std::array<double, 2>> texcoords;
-    rapidobj::GeometryBuffers buffers{positions, texcoords, normals};
+    std::vector<uint32_t> vertexColors;
+    rapidobj::GeometryBuffers buffers{positions, texcoords, normals, &vertexColors};
     rapidobj::PrototypeOptions settings;
     settings.chunk_bytes = options.chunkBytes; settings.read_bytes = options.readBytes; settings.workers = options.workers;
     struct Checkpoint { const ModelLoadProgressCallback* callback; } checkpoint{&progress};

@@ -25,7 +25,7 @@ double cpuMilliseconds() {
     return static_cast<double>(ticks(kernel) + ticks(user)) / 10000.0;
 }
 #endif
-int run(bool prototype, const std::filesystem::path& path, size_t chunkBytes, size_t workers) {
+int run(bool prototype, bool readColors, const std::filesystem::path& path, size_t chunkBytes, size_t workers) {
     try {
         rapidobj::PrototypeOptions options;
         if (chunkBytes) { options.chunk_bytes = chunkBytes; }
@@ -33,12 +33,13 @@ int run(bool prototype, const std::filesystem::path& path, size_t chunkBytes, si
         parser_profile::worker_limit = static_cast<unsigned>(workers);
         std::vector<std::array<double, 3>> positions, normals;
         std::vector<std::array<double, 2>> texcoords;
+        std::vector<uint32_t> colors;
         rapidobj::PrototypeResult result;
 #ifdef _WIN32
         const auto cpuStart = cpuMilliseconds();
 #endif
         const auto start = parser_profile::Clock::now();
-        if (prototype) { result = rapidobj::ParseFilePrototype(path, {positions, texcoords, normals}, options); }
+        if (prototype) { result = rapidobj::ParseFilePrototype(path, {positions, texcoords, normals, readColors ? &colors : nullptr}, options); }
         else { result.polygons = rapidobj::ParseFile(path, rapidobj::MaterialLibrary::Default(rapidobj::Load::Optional)); }
         const auto total = parser_profile::elapsed(start);
 #ifdef _WIN32
@@ -90,6 +91,10 @@ int run(bool prototype, const std::filesystem::path& path, size_t chunkBytes, si
             {"positions", count}, {"faces", faces}, {"line_indices", lineIndices}, {"point_indices", pointIndices},
             {"fingerprint", fingerprint.value}};
         output["precise_fingerprint"] = precise.value;
+        Fingerprint colorFingerprint; hashValues(colorFingerprint, colors);
+        output["vertex_color_count"] = colors.size();
+        output["vertex_color_bytes"] = colors.size() * sizeof(uint32_t);
+        output["color_fingerprint"] = colorFingerprint.value;
 #ifdef _WIN32
         output["cpu_ms"] = cpuMs;
         output["peak_working_set_bytes"] = memory.PeakWorkingSetSize;
@@ -103,18 +108,20 @@ int run(bool prototype, const std::filesystem::path& path, size_t chunkBytes, si
 
 #ifdef _WIN32
 int wmain(int argc, wchar_t** argv) {
-    const bool prototype = argc > 1 && std::wstring_view(argv[1]) == L"prototype";
+    const bool readColors = argc > 1 && std::wstring_view(argv[1]) == L"prototype-colors";
+    const bool prototype = readColors || (argc > 1 && std::wstring_view(argv[1]) == L"prototype");
     const bool legacy = argc > 1 && std::wstring_view(argv[1]) == L"legacy";
 #else
 int main(int argc, char** argv) {
-    const bool prototype = argc > 1 && std::string_view(argv[1]) == "prototype";
+    const bool readColors = argc > 1 && std::string_view(argv[1]) == "prototype-colors";
+    const bool prototype = readColors || (argc > 1 && std::string_view(argv[1]) == "prototype");
     const bool legacy = argc > 1 && std::string_view(argv[1]) == "legacy";
 #endif
     if (argc < 3 || argc > 5 || (!prototype && !legacy)) {
-        std::cerr << "Usage: woby_parser_benchmark legacy|prototype path [chunk bytes] [workers]\n";
+        std::cerr << "Usage: woby_parser_benchmark legacy|prototype|prototype-colors path [chunk bytes] [workers]\n";
         return 2;
     }
     try {
-        return run(prototype, std::filesystem::path(argv[2]), argc > 3 ? std::stoull(argv[3]) : 0, argc > 4 ? std::stoull(argv[4]) : 0);
+        return run(prototype, readColors, std::filesystem::path(argv[2]), argc > 3 ? std::stoull(argv[3]) : 0, argc > 4 ? std::stoull(argv[4]) : 0);
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 2; }
 }

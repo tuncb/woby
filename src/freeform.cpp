@@ -267,6 +267,9 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
     reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, total);
     // Allocate once, without transient vector growth copies of a large model.
     editMeshGeometry(mesh).vertices.reserve(vertexCount);
+    // Tessellated samples have no authored vertex RGB. Retain colors on the
+    // polygon/line/point prefix and use the part color for generated samples.
+    if (!meshGeometry(mesh).vertexColors.empty()) { editMeshGeometry(mesh).vertexColors.resize(vertexCount, 0); }
     auto& positions = editSourcePositions(*source);
     positions.reserve(sourceCount);
     if (!source->indicesPending) { source->indices.reserve(sourceIndexCount); }

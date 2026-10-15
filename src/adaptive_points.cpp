@@ -11,7 +11,8 @@ namespace {
 bool same(const AdaptivePointKey& a,const AdaptivePointKey& b) {
     return a.cloud==b.cloud && a.sourceGroup==b.sourceGroup && a.group.model==b.group.model
         && a.group.color==b.group.color && a.group.pointSize==b.group.pointSize
-        && a.group.firstId==b.group.firstId && a.group.endId==b.group.endId;
+        && a.group.firstId==b.group.firstId && a.group.endId==b.group.endId
+        && a.group.vertexColors.idx==b.group.vertexColors.idx;
 }
 void appendTasks(std::vector<graphics::OpaquePointTask>& tasks,const AdaptivePointDraw& draw,
     const points::Selection& selection,uint32_t group,bool query=false) {
@@ -90,6 +91,7 @@ bool queueAdaptivePoints(AdaptivePointRuntime& runtime,const GpuMesh& mesh,const
     for (size_t i=0;i<3;++i) group.color[i]=std::min(1.0f,group.color[i]*1.5f);
     group.firstId=firstId; group.endId=firstId+source.endId-source.firstId;
     group.sourceFirstId=source.firstId; group.pointSize=item.pointSize;
+    group.vertexColors=mesh.pointColors;
     runtime.draws.push_back(std::move(draw)); return true;
 }
 void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bool markerIds) {

@@ -1,0 +1,20 @@
+{
+  "commandId": "cmd-8b9bc5018bcb0e75f00bac14d9df0942-4",
+  "instance": "headless-a7d6ead0c844",
+  "objects": [
+    {
+      "id": "obj-2e840a29623b3447da8cf91ff29aeb69-0000000000000001",
+      "kind": "file",
+      "name": "20190810_BearTrap_Ground_Model.obj",
+      "path": "D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj"
+    },
+    {
+      "fileId": "obj-2e840a29623b3447da8cf91ff29aeb69-0000000000000001",
+      "id": "obj-2e840a29623b3447da8cf91ff29aeb69-0000000000000002",
+      "kind": "group",
+      "name": "shape 1"
+    }
+  ],
+  "sequence": "4",
+  "state": "succeeded"
+}

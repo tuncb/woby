@@ -25,6 +25,8 @@ struct WobyRoot {
     float* analysisFaces;
     uint32 faceKind; // 1 quality, 2 UV, 3 distance, 4 procedural wireframe.
     uint32 firstFace;
+    uint32* vertexColors;
+    uint32 vertexColorCount;
 };
 
 #ifndef __SLANG__
@@ -53,5 +55,7 @@ static_assert(offsetof(WobyRoot, analysisFaces) == 304);
 static_assert(offsetof(WobyRoot, faceKind) == 312);
 static_assert(offsetof(WobyRoot, firstFace) == 316);
 static_assert(alignof(WobyRoot) == 8);
-static_assert(sizeof(WobyRoot) == 320);
+static_assert(offsetof(WobyRoot, vertexColors) == 320);
+static_assert(offsetof(WobyRoot, vertexColorCount) == 328);
+static_assert(sizeof(WobyRoot) == 336);
 #endif

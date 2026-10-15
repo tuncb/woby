@@ -108,7 +108,13 @@ ResolveOutput fs_opaque_resolve(ResolveVertex input,uint sample:SV_SampleIndex) 
     while (lo<hi) { uint mid=lo+(hi-lo)/2; if (cloud.groups[mid].endId<=id) lo=mid+1; else hi=mid; }
     if (lo>=cloud.groupCount) { discard; return (ResolveOutput)0; }
     ResolveOutput o;
-    o.color=cloud.groups[min(lo,cloud.groupCount-1)].color;
+    OpaquePointGroupData group=cloud.groups[min(lo,cloud.groupCount-1)];
+    o.color=group.color;
+    uint source=id-group.firstId+group.sourceFirstId-1;
+    if (source<group.colorCount) {
+        uint packed=group.colors[source];
+        if ((packed>>24)!=0) o.color=float4(float3(packed&255,(packed>>8)&255,(packed>>16)&255)/255.0,group.color.a);
+    }
     o.id=float4(float(id&255),float((id>>8)&255),float((id>>16)&255),float(id>>24))/255;
     o.depth=asfloat(uint(key>>32)); return o;
 }

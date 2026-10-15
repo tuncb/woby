@@ -151,6 +151,40 @@ inline bool PrototypeSkipNumber(std::string_view& text) {
     double ignored = 0;
     return PrototypeNextNumber(text, ignored, true);
 }
+
+inline uint32_t PrototypeColorByte(double value) {
+    return static_cast<uint32_t>(std::clamp(value, 0.0, 1.0) * 255.0 + 0.5);
+}
+
+// Common exported colors are d.dddddd. Decode eight bytes together and round
+// directly to UNORM8 with integer arithmetic; no floating-point conversion.
+inline bool PrototypeColorNumber(std::string_view& text, uint32_t& value) {
+    if (text.size() >= 8 && text[1] == '.' && (text.size() == 8 || PrototypeNumberEnd(text[8]))) {
+        const auto bytes = fast_float::read_u64(text.data()) ^ UINT64_C(0x1e00);
+        if (fast_float::is_made_of_eight_digits_fast(bytes)) {
+            const auto digits = fast_float::parse_eight_digits_unrolled(bytes);
+            value = digits >= 1000000 ? 255 : (digits * 255 + 500000) / 1000000;
+            text.remove_prefix(8);
+            return true;
+        }
+    }
+    double decoded = 0;
+    if (!PrototypeNextNumber(text, decoded, true)) { return false; }
+    value = PrototypeColorByte(decoded);
+    return true;
+}
+
+inline void PrototypeAppendColor(Chunk& chunk, uint32_t value) {
+    auto& colors = chunk.vertex_colors;
+    if (!colors.buffer.size()) {
+        colors.offset = chunk.positions.count;
+        if (colors.estimate > colors.offset) { colors.buffer.reserve(colors.estimate - colors.offset); }
+    }
+    const auto gap = chunk.positions.count - colors.offset - colors.buffer.size();
+    colors.buffer.ensure_enough_room_for(gap + 1);
+    colors.buffer.fill_n(gap, 0);
+    colors.buffer.push_back(value);
+}
 inline bool PrototypeInteger(std::string_view text, int64_t& value) {
     if (!text.empty() && text.front() == '+') { text.remove_prefix(1); }
     if (text.empty()) { return false; }
@@ -190,7 +224,8 @@ struct PrototypeChunk {
     std::vector<PositionWeight> weights;
 };
 
-inline rapidobj_errc PrototypePosition(std::string_view text, size_t line_number, PrototypeChunk& out) {
+inline rapidobj_errc PrototypePosition(std::string_view text, size_t line_number, PrototypeChunk& out,
+    bool read_colors = false) {
     PrototypeOrdinary(out.statements, line_number);
     auto& chunk = out.parsed;
     chunk.precise_positions.ensure_enough_room_for(1);
@@ -200,22 +235,31 @@ inline rapidobj_errc PrototypePosition(std::string_view text, size_t line_number
         if (!PrototypeNextNumber(text, value, true)) { return rapidobj_errc::ParseError; }
     }
     // The common three-coordinate record needs neither a comment prescan nor
-    // storage/dispatch for seven potential values. Validate every optional
-    // value, but convert only an actual weight that the caller will use.
+    // storage/dispatch for seven potential values. Color output is optional;
+    // callers without it retain the validation-only path.
     std::string_view weight_text;
+    std::array<uint32_t, 4> colors{};
     size_t extras = 0;
     for (;;) {
         TrimLeft(text);
         if (text.empty() || text.front() == '#') { break; }
         const auto before = text;
-        if (extras == 4 || !PrototypeSkipNumber(text)) { return rapidobj_errc::ParseError; }
+        if (extras == 4 || !(read_colors ? PrototypeColorNumber(text, colors[extras]) : PrototypeSkipNumber(text))) {
+            return rapidobj_errc::ParseError;
+        }
         if (extras++ == 0) { weight_text = before.substr(0, before.size() - text.size()); }
     }
     if (extras == 2) { return rapidobj_errc::ParseError; }
-    if (extras == 1) {
+    if (extras == 1 || extras == 4) {
         double weight = 1;
         if (!PrototypeNumber(weight_text, weight)) { return rapidobj_errc::ParseError; }
         if (weight != 1) { out.weights.emplace_back(chunk.positions.count, weight); }
+    }
+    if (read_colors && extras >= 3) {
+        // Six fields: xyz rgb. Seven fields: xyz w rgb. A weight remains a
+        // double; the packed color's high byte denotes presence, not opacity.
+        const size_t first = extras == 4 ? 1 : 0;
+        PrototypeAppendColor(chunk, UINT32_C(0xff000000) | colors[first] | (colors[first + 1] << 8) | (colors[first + 2] << 16));
     }
     ++chunk.positions.count;
     return rapidobj_errc::Success;
@@ -257,7 +301,7 @@ inline rapidobj_errc PrototypeGeneralLine(std::string_view line, size_t line_num
     auto& chunk = out.parsed;
     auto& records = out.statements;
 
-    if (key == "v") { return PrototypePosition(text, line_number, out); }
+    if (key == "v") { return PrototypePosition(text, line_number, out, context.output && context.output->vertex_colors); }
     if (key == "vt" || key == "vn") {
         return key == "vn" ? PrototypeAttribute<true>(text, line_number, out)
             : PrototypeAttribute<false>(text, line_number, out);
@@ -417,7 +461,7 @@ inline rapidobj_errc PrototypeLine(std::string_view line, size_t line_number,
     TrimLeft(line);
     if (line.size() >= 2 && (line[1] == ' ' || line[1] == '\t')) {
         const auto kind = line.front();
-        if (kind == 'v') { return PrototypePosition(line.substr(2), line_number, out); }
+        if (kind == 'v') { return PrototypePosition(line.substr(2), line_number, out, context.output && context.output->vertex_colors); }
         if (kind == 'p') {
             auto text = line.substr(2);
             TrimLeft(text);
@@ -669,6 +713,7 @@ inline void PrototypeReserve(std::string_view text, Chunk& chunk, const std::ato
         }
     }
     chunk.precise_positions.reserve(positions);
+    chunk.vertex_colors.estimate = positions;
     chunk.precise_texcoords.reserve(texcoords * 2);
     chunk.precise_normals.reserve(normals * 3);
     chunk.mesh.faces.buffer.reserve(faces);
@@ -782,7 +827,8 @@ inline size_t PrototypeBlockBytes(size_t input_size, size_t workers, size_t maxi
 
 inline PrototypeResult PrototypeParse(PrototypeInput input, GeometryBuffers output,
     const MaterialLibrary& material_library, const PrototypeOptions& options) {
-    if (!output.positions.empty() || !output.texcoords.empty() || !output.normals.empty()) {
+    if (!output.positions.empty() || !output.texcoords.empty() || !output.normals.empty()
+        || (output.vertex_colors && !output.vertex_colors->empty())) {
         throw std::invalid_argument("Prototype output buffers must be empty.");
     }
     if (!options.chunk_bytes || !options.read_bytes || !options.max_statement_bytes
@@ -1028,11 +1074,13 @@ inline PrototypeResult PrototypeParse(PrototypeInput input, GeometryBuffers outp
         PrototypeCheckpoint(options);
         if (result.polygons.error) {
             output.positions.clear(); output.texcoords.clear(); output.normals.clear();
+            if (output.vertex_colors) { output.vertex_colors->clear(); }
         } else { result.stats.position_copy_bytes_avoided = positions * sizeof(std::array<double, 3>); }
         return result;
     } catch (...) {
         stopped.store(true, std::memory_order_relaxed);
         output.positions.clear(); output.texcoords.clear(); output.normals.clear();
+        if (output.vertex_colors) { output.vertex_colors->clear(); }
         throw;
     }
 }

@@ -222,6 +222,9 @@ struct GeometryBuffers {
     std::vector<std::array<double, 3>>& positions;
     std::vector<std::array<double, 2>>& texcoords;
     std::vector<std::array<double, 3>>& normals;
+    // Optional packed RGB output. Zero means absent; supplied RGB has alpha 255.
+    // Empty when the whole input has no colors, otherwise one entry per position.
+    std::vector<uint32_t>* vertex_colors = nullptr;
 };
 
 struct PositionView {
@@ -4559,6 +4562,10 @@ struct Chunk final {
     Buffer<std::array<double, 3>, 4096 / 3> precise_positions;
     Buffer<double> precise_texcoords;
     Buffer<double> precise_normals;
+    struct VertexColors {
+        Buffer<uint32_t> buffer;
+        size_t offset = 0, estimate = 0;
+    } vertex_colors;
 };
 
 inline size_t SizeInBytes(const Chunk& chunk) noexcept
@@ -4571,6 +4578,7 @@ inline size_t SizeInBytes(const Chunk& chunk) noexcept
     size += chunk.precise_positions.size() * sizeof(std::array<double, 3>);
     size += chunk.precise_texcoords.size() * sizeof(double);
     size += chunk.precise_normals.size() * sizeof(double);
+    size += chunk.vertex_colors.buffer.size() * sizeof(uint32_t);
     size += chunk.colors.buffer.size() * sizeof(float);
     size += chunk.mesh.indices.buffer.size() * sizeof(Index);
     size += chunk.mesh.indices.flags.size() * sizeof(OffsetFlags);
@@ -4897,12 +4905,35 @@ struct ConstructPositions {
     inline auto Subdivide(size_t) const;
 };
 
+struct ConstructVertexColors {
+    std::vector<uint32_t>* destination;
+    const std::vector<Chunk>* chunks;
+    size_t count;
+    size_t Cost() const noexcept { return count * kMergeCopyIntCost; }
+    auto Execute() const {
+        destination->reserve(count);
+        size_t offset = 0;
+        for (const auto& chunk : *chunks) {
+            const auto& colors = chunk.vertex_colors;
+            if (colors.buffer.size()) {
+                destination->resize(offset + colors.offset, 0);
+                destination->insert(destination->end(), colors.buffer.data(), colors.buffer.data() + colors.buffer.size());
+            }
+            offset += chunk.positions.count;
+        }
+        destination->resize(count, 0);
+        return rapidobj_errc::Success;
+    }
+    auto Subdivide(size_t) const;
+};
+
 using MergeTask =
     std::variant<CopyBytes, CopyInts, CopyFloats, CopyDoubles, CopyIndices, FillFloats, FillMaterialIds, FillSmoothingGroupIds,
-                 CopyTuples<2>, CopyTuples<3>, ConstructPositions>;
+                 CopyTuples<2>, CopyTuples<3>, ConstructPositions, ConstructVertexColors>;
 using MergeTasks = std::vector<MergeTask>;
 
 inline auto ConstructPositions::Subdivide(size_t) const { return MergeTasks{*this}; }
+inline auto ConstructVertexColors::Subdivide(size_t) const { return MergeTasks{*this}; }
 
 template <size_t N>
 auto CopyTuples<N>::Subdivide(size_t num) const {
@@ -6562,6 +6593,10 @@ inline Result Merge(const std::vector<Chunk>& chunks, std::shared_ptr<SharedCont
     if (context->output) {
         // Queue first so output construction overlaps the other merge tasks.
         tasks.push_back(ConstructPositions{&context->output->positions, &chunks, count.position});
+        if (context->output->vertex_colors && std::any_of(chunks.begin(), chunks.end(),
+            [](const Chunk& chunk) { return chunk.vertex_colors.buffer.size() != 0; })) {
+            tasks.push_back(ConstructVertexColors{context->output->vertex_colors, &chunks, count.position});
+        }
     }
 
     shapes.reserve(shape_records.size());

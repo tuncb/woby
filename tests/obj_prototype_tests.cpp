@@ -38,6 +38,7 @@ void sameMesh(const woby::Mesh& a, const woby::Mesh& b) {
     REQUIRE(meshGeometry(a).vertices.size() == meshGeometry(b).vertices.size());
     for (size_t i = 0; i < meshGeometry(a).vertices.size(); ++i) { CHECK(woby::meshPosition(a, i) == woby::meshPosition(b, i)); }
     CHECK(meshGeometry(a).indices == meshGeometry(b).indices); CHECK(meshGeometry(a).lineIndices == meshGeometry(b).lineIndices); CHECK(meshGeometry(a).pointIndices == meshGeometry(b).pointIndices);
+    CHECK(meshGeometry(a).vertexColors == meshGeometry(b).vertexColors);
     REQUIRE(meshGeometry(a).vertices.size() == meshGeometry(b).vertices.size());
     for (size_t i = 0; i < meshGeometry(a).vertices.size(); ++i) {
         CHECK(meshGeometry(a).vertices[i].position == meshGeometry(b).vertices[i].position);
@@ -1035,4 +1036,42 @@ TEST_CASE("RapidOBJ prototype bounds reconstructed statements across tiny blocks
     CHECK(positions.empty());
     // Only the CR belonging to CRLF is removed before detecting continuation.
     CHECK_THROWS((void)woby::loadObjMeshTextPrototype("v 0 0 \\\r\r\n0\n", {}, {4, 2, 2}));
+}
+
+TEST_CASE("OBJ source colors follow seams relative references lines and point clouds") {
+    const std::string vertices = "v 0 0 0 1 0 0\nv 1 1 0 0 1 0\nv 2 0 0\nv 3 1 0 0 0 1\n";
+    const std::string primitives = "vn 0 0 1\nvn 0 0 -1\nvt 0 0\nvt 1 1\n"
+        "g faces\nf -4/1/1 -3/1/1 -2/1/1\nf 1/2/2 3/2/2 4/2/2\n"
+        "g lines\nl -4 -3 -2 -1\ng points\np 4 2 3\n";
+    const std::array<uint32_t, 4> expected{0xff0000ff, 0xff00ff00, 0, 0xffff0000};
+    const PrototypeFixture fixture;
+    for (const bool cloud : {false, true}) {
+        const auto text = vertices + (cloud ? "" : primitives);
+        for (const bool deferred : {false, true}) {
+            woby::ObjPrototypeOptions options; options.chunkBytes = 31; options.workers = 4; options.deferPreparation = deferred;
+            const auto mesh = woby::loadObjMeshTextPrototype(text, {}, options);
+            const auto fromFile = woby::loadObjMeshPrototype(fixture.write(text), {}, options);
+            sameMesh(mesh, fromFile);
+            const auto& geometry = meshGeometry(mesh);
+            REQUIRE(geometry.vertexColors.size() == geometry.vertices.size());
+            for (size_t i = 0; i < geometry.vertices.size(); ++i) {
+                const auto position = woby::originalPosition(woby::meshPosition(mesh, i), mesh.origin);
+                REQUIRE(position[0] >= 0); REQUIRE(position[0] <= 3);
+                CHECK(geometry.vertexColors[i] == expected[static_cast<size_t>(position[0])]);
+            }
+            if (!cloud) { CHECK(geometry.vertices.size() > 4); }
+        }
+    }
+    CHECK(meshGeometry(woby::loadObjMeshTextPrototype("v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n")).vertexColors.empty());
+}
+
+TEST_CASE("OBJ RGB clamps finite channels and generated freeform samples use part colors") {
+    const auto colored = woby::loadObjMeshTextPrototype("v 0 0 0 -1 2 5e-1\nv 1 0 0 0 0 0\np 1 2\n"
+        "cstype bezier\ndeg 1\ncurv 0 1 1 2\nparm u 0 1\nend\n");
+    const auto& geometry = meshGeometry(colored);
+    REQUIRE(geometry.vertexColors.size() == geometry.vertices.size());
+    REQUIRE(geometry.vertexColors.size() > 2);
+    CHECK(geometry.vertexColors[0] == 0xff80ff00);
+    CHECK(geometry.vertexColors[1] == 0xff000000);
+    CHECK(std::all_of(geometry.vertexColors.begin() + 2, geometry.vertexColors.end(), [](uint32_t value) { return value == 0; }));
 }

@@ -34,6 +34,7 @@ GpuMeshUpload begin(SceneMeshPreparation prepared, const Mesh& source, const gra
     };
     if (includeVertices && !upload.mesh.compactOnly) {
         add(MeshUploadBuffer::vertices, geometry, geometry->vertices.data(), geometry->vertices.size(), layout.stride, false);
+        add(MeshUploadBuffer::vertexColors, geometry, geometry->vertexColors.data(), geometry->vertexColors.size(), sizeof(uint32_t), false);
     }
     if (!pointsOnly) {
         add(MeshUploadBuffer::triangles, geometry, geometry->indices.data(), geometry->indices.size(), sizeof(uint32_t), true);
@@ -45,6 +46,7 @@ GpuMeshUpload begin(SceneMeshPreparation prepared, const Mesh& source, const gra
         add(MeshUploadBuffer::pointIds, upload.pointIds, upload.pointIds->data(), upload.pointIds->size(), sizeof(uint32_t), true);
     }
     if (const auto cloud = upload.mesh.pointCloud) {
+        add(MeshUploadBuffer::pointColors, cloud, cloud->colors.data(), cloud->colors.size(), sizeof(uint32_t), false);
         const auto chunks = [&](const auto& values, MeshUploadBuffer target) {
             for (size_t offset = 0; offset < values.size(); offset += pointChunkSize) {
                 add(target, cloud, values.data() + offset, std::min<size_t>(pointChunkSize, values.size() - offset), sizeof(points::Point), false);
@@ -105,6 +107,8 @@ bool pollGpuMeshUpload(GpuMeshUpload& upload) {
     for (const auto target : upload.targets) {
         switch (target) {
         case MeshUploadBuffer::vertices: upload.mesh.vertexBuffer = buffers.vertices[vertex++]; break;
+        case MeshUploadBuffer::vertexColors: upload.mesh.vertexColors = buffers.vertices[vertex++]; break;
+        case MeshUploadBuffer::pointColors: upload.mesh.pointColors = buffers.vertices[vertex++]; break;
         case MeshUploadBuffer::triangles: upload.mesh.triangleIndexBuffer = buffers.indices[index++]; break;
         case MeshUploadBuffer::importedLines: upload.mesh.importedLineBuffer = buffers.indices[index++]; break;
         case MeshUploadBuffer::edges: upload.mesh.lineIndexBuffer = buffers.indices[index++]; break;
@@ -131,11 +135,15 @@ void commitGpuPointUpload(GpuMesh& destination, GpuMeshUpload& upload) {
     if (graphics::isValid(upload.mesh.vertexBuffer)) {
         graphics::destroy(destination.vertexBuffer);
         destination.vertexBuffer = std::exchange(upload.mesh.vertexBuffer, WOBY_GPU_INVALID_HANDLE);
+        graphics::destroy(destination.vertexColors);
+        destination.vertexColors = std::exchange(upload.mesh.vertexColors, WOBY_GPU_INVALID_HANDLE);
     }
     graphics::destroy(destination.pointIdBuffer);
     for (auto value : destination.pointChunks) { graphics::destroy(value); }
     for (auto value : destination.proxyChunks) { graphics::destroy(value); }
     destination.pointIdBuffer = std::exchange(upload.mesh.pointIdBuffer, WOBY_GPU_INVALID_HANDLE);
+    graphics::destroy(destination.pointColors);
+    destination.pointColors = std::exchange(upload.mesh.pointColors, WOBY_GPU_INVALID_HANDLE);
     destination.nodeRanges = std::move(upload.mesh.nodeRanges);
     destination.pointVertexIndices = std::move(upload.mesh.pointVertexIndices);
     destination.pointCloud = std::move(upload.mesh.pointCloud);
@@ -144,6 +152,7 @@ void commitGpuPointUpload(GpuMesh& destination, GpuMeshUpload& upload) {
     destination.compactOnly = upload.mesh.compactOnly;
     destination.resourceRevision = nextMeshContentRevision();
     if (destination.compactOnly && graphics::isValid(destination.vertexBuffer)) { graphics::destroy(destination.vertexBuffer); destination.vertexBuffer = WOBY_GPU_INVALID_HANDLE; }
+    if (destination.compactOnly && graphics::isValid(destination.vertexColors)) { graphics::destroy(destination.vertexColors); destination.vertexColors = WOBY_GPU_INVALID_HANDLE; }
     upload = {};
 }
 void prepareGpuMeshFeatures(GpuMesh& mesh, const Mesh& source, uint8_t features) {

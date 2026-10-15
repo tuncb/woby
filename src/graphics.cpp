@@ -105,7 +105,7 @@ struct Encoder
 {
     WobyRoot root{};
     std::array<float, 16> model{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
-    Geometry vertices, indices, points, analysisFaces;
+    Geometry vertices, indices, points, analysisFaces, vertexColors;
     uint32_t vertexCount = 0, instances = 1;
     bool explicitVertexCount = false;
     uint64_t state = WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A;
@@ -140,6 +140,7 @@ struct PointPacket
     std::vector<OpaquePointGroup> groups;
     std::vector<OpaquePointTaskData> tasks;
     std::vector<std::shared_ptr<Buffer>> buffers;
+    std::vector<std::shared_ptr<Buffer>> colors;
     std::array<uint32_t,4> query{};
     bool reset = false, budgeted = false;
     uint64_t pointCount = 0;
@@ -747,6 +748,8 @@ WobyRoot rootData(const Encoder &encoder, const View &view)
     root.stride = encoder.vertices.stride / 4;
     root.pointIds = static_cast<uint32_t *>(encoder.points.gpu);
     root.analysisFaces = static_cast<float *>(encoder.analysisFaces.gpu);
+    root.vertexColors = static_cast<uint32_t *>(encoder.vertexColors.gpu);
+    root.vertexColorCount = encoder.vertexColors.count;
     for (size_t i = 0; i < encoder.textures.size(); ++i)
         if (encoder.textures[i])
         {
@@ -819,6 +822,9 @@ void pointQuadOperation(gpu::CommandBuffer* commands,const Operation& op,const V
         matrix(root.modelViewProj,mvp);
         std::memcpy(&root.color,group.color.data(),sizeof(root.color));
         root.vertices=reinterpret_cast<float*>(task.points); root.stride=sizeof(OpaquePoint)/sizeof(float);
+        const auto& colors = packet.colors[task.group];
+        root.vertexColors = colors ? reinterpret_cast<uint32_t*>(colors->heap.range.gpu) : nullptr;
+        root.vertexColorCount = colors ? static_cast<uint32_t>(colors->bytes / sizeof(uint32_t)) : 0;
         root.pointParams={group.pointSize,float(view.width),float(view.height),1};
         root.pointOffset=0; root.pointSourceFirst=group.sourceFirstId;
         root.markerBase=group.firstId;
@@ -855,6 +861,9 @@ void pointOperation(gpu::CommandBuffer* commands,const Operation& op,const View&
         auto& group=destination[i]; matrix(group.matrix,mvp);
         std::memcpy(&group.color,source.color.data(),sizeof(group.color));
         group.firstId=source.firstId; group.endId=source.endId; group.sourceFirstId=source.sourceFirstId; group.pointSize=source.pointSize;
+        const auto& colors = packet.colors[i];
+        group.colors = colors ? reinterpret_cast<uint32_t*>(colors->heap.range.gpu) : nullptr;
+        group.colorCount = colors ? static_cast<uint32_t>(colors->bytes / sizeof(uint32_t)) : 0;
     }
     root.groups=reinterpret_cast<OpaquePointGroupData*>(groups.gpu);
     if (packet.reset) {
@@ -1466,6 +1475,12 @@ void setBuffer(uint8_t binding, IndexBufferHandle h, Access::Enum)
     require(binding == 1, "Unexpected point storage binding");
     state().encoder.points = geometry(resource(state().indexBuffers, h), 0, UINT32_MAX);
 }
+void setVertexColors(VertexBufferHandle handle)
+{
+    auto& colors = state().encoder.vertexColors;
+    colors = isValid(handle) ? geometry(resource(state().vertexBuffers, handle), 0, UINT32_MAX) : Geometry{};
+    require(!colors.owner || colors.stride == sizeof(uint32_t), "Invalid vertex color layout");
+}
 void setFaceDisplay(VertexBufferHandle faces, IndexBufferHandle triangles, FaceDisplayKind kind,
     uint32_t firstFace, uint32_t faceCount)
 {
@@ -1684,6 +1699,14 @@ void submitOpaquePoints(ViewId id,PointBackend backend,VertexBufferHandle winner
         packet->ids=resource(state().programs,programs.ids); packet->merge=resource(state().programs,programs.merge);
     }
     packet->groups.assign(groups.begin(),groups.end()); packet->reset=reset; packet->query=query; packet->budgeted=budgeted;
+    packet->colors.reserve(groups.size());
+    for (const auto& group : groups) {
+        auto colors = isValid(group.vertexColors) ? resource(state().vertexBuffers, group.vertexColors) : std::shared_ptr<Buffer>{};
+        require(!colors || (colors->stride == sizeof(uint32_t)
+            && uint64_t(group.sourceFirstId) + group.endId - group.firstId - 1 <= colors->bytes / sizeof(uint32_t)),
+            "Invalid point color buffer");
+        packet->colors.push_back(std::move(colors));
+    }
     packet->tasks.reserve(tasks.size()); packet->buffers.reserve(tasks.size());
     for (const auto& task:tasks) {
         auto buffer=resource(state().vertexBuffers,task.buffer);

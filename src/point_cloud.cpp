@@ -124,6 +124,16 @@ std::optional<Cloud> buildCloud(const Mesh& mesh,std::vector<uint32_t> sourceVer
     require(cloud.sourceVertices.size()<std::numeric_limits<uint32_t>::max(),"Point source IDs exceed 32 bits");
     try {
     checkCancel(cancel);
+    const auto& sourceColors = meshGeometry(mesh).vertexColors;
+    if (!sourceColors.empty()) {
+        require(sourceColors.size() == meshGeometry(mesh).vertices.size(), "Invalid vertex color count");
+        cloud.colors.resize(cloud.sourceVertices.size());
+        for (size_t i = 0; i < cloud.sourceVertices.size(); ++i) {
+            if ((i & 65535) == 0) { checkCancel(cancel); }
+            require(cloud.sourceVertices[i] < sourceColors.size(), "Invalid colored point vertex");
+            cloud.colors[i] = sourceColors[cloud.sourceVertices[i]];
+        }
+    }
     cloud.points.reserve(cloud.sourceVertices.size());
     for (size_t groupIndex=0;groupIndex<ranges.size();++groupIndex) {
         const auto& range=ranges[groupIndex];

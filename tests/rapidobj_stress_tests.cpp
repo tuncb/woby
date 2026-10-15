@@ -29,8 +29,9 @@ struct Fixture {
 struct Parsed {
     std::vector<std::array<double, 3>> positions, normals;
     std::vector<std::array<double, 2>> texcoords;
+    std::vector<uint32_t> colors;
     rapidobj::PrototypeResult result;
-    rapidobj::GeometryBuffers buffers() { return {positions, texcoords, normals}; }
+    rapidobj::GeometryBuffers buffers() { return {positions, texcoords, normals, &colors}; }
 };
 
 void same(const Parsed& expected, const Parsed& actual) {
@@ -45,6 +46,7 @@ void same(const Parsed& expected, const Parsed& actual) {
     CHECK(actual.positions == expected.positions);
     CHECK(actual.texcoords == expected.texcoords);
     CHECK(actual.normals == expected.normals);
+    CHECK(actual.colors == expected.colors);
     const auto& a = expected.result.polygons.shapes;
     const auto& b = actual.result.polygons.shapes;
     REQUIRE(a.size() == b.size());
@@ -260,6 +262,81 @@ TEST_CASE("Index merge validates each triplet lane and preserves relative refere
     input.fill({0, -1, -1});
     CHECK(CopyIndices(output.data(), input.data(), flags.data(), 8, {}, {1, 0, 0}).Execute() == rapidobj_errc::Success);
     CHECK(CopyIndices(output.data(), input.data(), flags.data(), 8, {}, {}).Execute() == rapidobj_errc::IndexOutOfBoundsError);
+}
+
+TEST_CASE("Packed color decoding matches the full numeric decoder") {
+    using namespace rapidobj::detail;
+    size_t mismatches = 0;
+    for (uint32_t fraction = 0; fraction < 1000000; ++fraction) {
+        const auto text = "0." + std::to_string(1000000 + fraction).substr(1) + " rest";
+        std::string_view fast = text, reference = text;
+        uint32_t actual = 0; double value = 0;
+        const bool valid = PrototypeColorNumber(fast, actual) && PrototypeNextNumber(reference, value, true);
+        mismatches += !valid || actual != static_cast<uint32_t>(value * 255 + .5) || fast != reference;
+    }
+    CHECK(mismatches == 0);
+    for (const auto text : {"0", "-0", "1", "1.000000", "9.999999", "-1.2", "+.5", ".50000000000000001",
+        "1e-20", "1e200", "nan", "inf", "1e999", "0.1/1", "0..1", "0.1234567", "0.123456#comment"}) {
+        CAPTURE(text);
+        std::string_view fast = text, reference = text;
+        uint32_t actual = 0; double value = 0;
+        const bool valid = PrototypeNextNumber(reference, value, true);
+        CHECK(PrototypeColorNumber(fast, actual) == valid);
+        if (valid) {
+            CHECK(actual == static_cast<uint32_t>(std::clamp(value, 0.0, 1.0) * 255 + .5));
+            CHECK(fast == reference);
+        }
+    }
+}
+
+TEST_CASE("Vertex colors preserve missing entries weights and order at every block boundary") {
+    const std::string text =
+        "v 0 0 0\nv 1 0 0 0.000000 0.000000 0.000000\n"
+        "v 0 1 0 .123456789012345\nv 2 2 0 1.000000 0.500000 0.000000\n"
+        "v 3 3 0 .75 0 1 0\nv 4 4 0\nv 5 5 0 +1e0 \\\n 0 1#comment\nv 6 6 0\np 1 2 3 4 5 6 7 8\n";
+    const Fixture fixture; const auto path = fixture.write(text);
+    const std::vector<uint32_t> expected{0, 0xff000000, 0, 0xff0080ff, 0xff00ff00, 0, 0xffff00ff, 0};
+    for (const auto block : {size_t{1}, size_t{17}, size_t{59}, size_t{4096}}) {
+        for (const auto workers : {size_t{1}, size_t{4}}) for (int source = 0; source < 3; ++source) {
+            CAPTURE(block); CAPTURE(workers); CAPTURE(source);
+            Parsed parsed;
+            rapidobj::PrototypeOptions options; options.chunk_bytes = block; options.read_bytes = 7; options.workers = workers;
+            std::istringstream stream(text);
+            parsed.result = source == 0 ? rapidobj::ParseMemoryPrototype(text, parsed.buffers(), rapidobj::MaterialLibrary::Ignore(), options)
+                : source == 1 ? rapidobj::ParseStreamPrototype(stream, parsed.buffers(), rapidobj::MaterialLibrary::Ignore(), options)
+                : rapidobj::ParseFilePrototype(path, parsed.buffers(), options);
+            REQUIRE_FALSE(parsed.result.polygons.error);
+            CHECK(parsed.colors == expected);
+            REQUIRE(parsed.result.weights.size() == 2);
+            CHECK(parsed.result.weights[0].weight == .123456789012345);
+            CHECK(parsed.result.weights[1].weight == .75);
+        }
+    }
+    std::string large;
+    for (size_t i = 0; i < 40000; ++i) { large += i % 3 ? "v 1 2 3\n" : "v 1 2 3 0.250000 0.500000 1.000000\n"; }
+    const auto largePath = fixture.write(large);
+    Parsed parsed; rapidobj::PrototypeOptions options; options.chunk_bytes = 256 * 1024; options.workers = 4;
+    parsed.result = rapidobj::ParseFilePrototype(largePath, parsed.buffers(), options);
+    REQUIRE_FALSE(parsed.result.polygons.error); REQUIRE(parsed.colors.size() == 40000);
+    for (size_t i = 0; i < parsed.colors.size(); ++i) { CHECK(parsed.colors[i] == (i % 3 ? 0u : 0xffff8040u)); }
+}
+
+TEST_CASE("Absent colors allocate no output and failed colored loads clear all outputs") {
+    for (const auto text : {"v 0 0 0\n", "v 0 0 0 .75\n"}) {
+        Parsed parsed;
+        parsed.result = rapidobj::ParseMemoryPrototype(text, parsed.buffers(), rapidobj::MaterialLibrary::Ignore());
+        REQUIRE_FALSE(parsed.result.polygons.error);
+        CHECK(parsed.colors.empty()); CHECK(parsed.colors.capacity() == 0);
+    }
+    for (const auto bad : {"v 0 0 0 1 0 nan\n", "v 0 0 0 1 0\n", "f 1 2 999\n"}) {
+        Parsed parsed;
+        parsed.result = rapidobj::ParseMemoryPrototype(std::string("v 0 0 0 1 0 0\nv 1 0 0\n") + bad,
+            parsed.buffers(), rapidobj::MaterialLibrary::Ignore());
+        REQUIRE(parsed.result.polygons.error);
+        CHECK(parsed.positions.empty()); CHECK(parsed.colors.empty());
+        parsed.result = rapidobj::ParseMemoryPrototype("v 0 0 0 0 0 1\n", parsed.buffers(), rapidobj::MaterialLibrary::Ignore());
+        REQUIRE_FALSE(parsed.result.polygons.error); CHECK(parsed.colors == std::vector<uint32_t>{0xffff0000});
+    }
 }
 
 TEST_CASE("Unused color validation preserves numeric acceptance and weight precision") {
