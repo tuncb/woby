@@ -1,0 +1,485 @@
+{
+  "rounds": 3,
+  "method": "Fresh processes, warm file cache before each run, alternating before/after order. Fingerprints computed after timed work. No concurrent builds, tests or profilers.",
+  "baseline_revision": "06b794027e3a8ca6da9725596c909167256472e5",
+  "platform": "Windows-10-10.0.26300-SP0",
+  "power_scheme": "Power Scheme GUID: 85d583c5-cf2e-4197-80fd-3789a227a72c  (Legion Balance Mode )",
+  "workers": 16,
+  "cpu": "AMD Ryzen 7 5800H",
+  "logical_cpus": 16,
+  "physical_cpus": 8,
+  "ram_bytes": 68564348928,
+  "idle_gate": "Two consecutive 0.5-second CPU samples at most 15%; no known build, test, viewer or profiler processes before and after each sample.",
+  "source_sha256": {
+    "third_party\\rapidobj\\include\\rapidobj\\prototype.hpp": "1cb92f1568a1b1bc38504ba5fc6b0893195cefefb12e9d4cb1ea2a2d2257bdc0",
+    "third_party\\rapidobj\\include\\rapidobj\\rapidobj.hpp": "2c6f5557df30b36e8d586dc58b1b1d9b2842eb1e6f7efffdc385b5c7a396d2e6",
+    "experiments\\parser-throughput\\benchmark.cpp": "583d58055fdd96f7ccef14e50e63f623d5153445ec728a8be8adfe36f487b590",
+    "experiments\\parser-throughput\\generate.py": "936778eb65344ab77552ff17cc3759243a2ad54709f710e4a523361453e1311c"
+  },
+  "binaries": {
+    "before": {
+      "path": "D:\\.worktree\\woby-parser-baseline-9921\\build\\vs2026-vcpkg\\bin\\Release\\woby_obj_prototype_benchmark.exe",
+      "sha256": "583681bac1eced94e437b452662f9a2c434f169834ffadd50aec60ea7209bc46"
+    },
+    "after": {
+      "path": "D:\\.worktree\\woby-parser-build-9921\\bin\\Release\\woby_obj_prototype_benchmark.exe",
+      "sha256": "78ad975a881b8dbe336348ac7cf786c5ceab46d3eb1d67a084074348ed4c6115"
+    }
+  },
+  "inputs": [
+    {
+      "model": "BearTrap",
+      "path": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "bytes": 7108991827,
+      "sha256": "7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329"
+    }
+  ],
+  "records": [
+    {
+      "chunks": 16,
+      "corner_mapping": {
+        "bucket_capacity_bytes": 4194304,
+        "gather_workers": 8,
+        "key_capacity_bytes": 10761552,
+        "position_map_capacity_bytes": 153657564,
+        "position_map_ms": 153.2934,
+        "primary_capacity_bytes": 454687740,
+        "primary_gather_ms": 421.9962,
+        "release_ms": 193.65,
+        "released_triangle_bytes": 3409739370,
+        "resolve_ms": 2608.1522,
+        "seam_gather_ms": 9.0076,
+        "seam_vertices": 523746,
+        "staged": true,
+        "total_ms": 3726.7204,
+        "vertex_allocation_ms": 318.5239,
+        "vertex_capacity_bytes": 1229260512
+      },
+      "cpu_load_ms": 11655.0495,
+      "deferred": true,
+      "files": 1,
+      "fingerprint": 16056583657800749285,
+      "freeform_ms": 0.026,
+      "input_bytes": 7108991827,
+      "mode": "prototype",
+      "parse_ms": 5130.4103,
+      "parsed_chunk_bytes": 4554883480,
+      "peak_commit_bytes": 11279122432,
+      "peak_inflight_text_bytes": 67108864,
+      "peak_working_set_bytes": 9497083904,
+      "position_copy_bytes_avoided": 909375480,
+      "prepare_ms": 6492.6953,
+      "private_bytes_after_load": 3210166272,
+      "render_vertices": 38414391,
+      "retained_mesh_buffer_capacity_bytes": 3201557388,
+      "source_points": 37890645,
+      "triangle_indices": 227315958,
+      "workers": 16,
+      "background_cpu_before": [
+        6.4,
+        2.0
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-baseline-9921\\build\\vs2026-vcpkg\\bin\\Release\\woby_obj_prototype_benchmark.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "16",
+        "deferred"
+      ],
+      "model": "BearTrap",
+      "variant": "before",
+      "round": 1,
+      "utc_started": "2026-10-15T19:32:09Z"
+    },
+    {
+      "chunks": 1695,
+      "corner_mapping": {
+        "bucket_capacity_bytes": 4194304,
+        "gather_workers": 8,
+        "key_capacity_bytes": 10761552,
+        "position_map_capacity_bytes": 153657564,
+        "position_map_ms": 118.3713,
+        "primary_capacity_bytes": 454687740,
+        "primary_gather_ms": 360.3458,
+        "release_ms": 179.9541,
+        "released_triangle_bytes": 3409739370,
+        "resolve_ms": 2077.2417,
+        "seam_gather_ms": 8.9954,
+        "seam_vertices": 523746,
+        "staged": true,
+        "total_ms": 3050.9879,
+        "vertex_allocation_ms": 284.2452,
+        "vertex_capacity_bytes": 1229260512
+      },
+      "cpu_load_ms": 9525.1748,
+      "deferred": true,
+      "files": 1,
+      "fingerprint": 16056583657800749285,
+      "freeform_ms": 0.0484,
+      "input_bytes": 7108991827,
+      "mode": "prototype",
+      "parse_ms": 3781.5259,
+      "parsed_chunk_bytes": 4554883480,
+      "peak_commit_bytes": 9614270464,
+      "peak_inflight_text_bytes": 205520896,
+      "peak_working_set_bytes": 9547472896,
+      "position_copy_bytes_avoided": 909375480,
+      "prepare_ms": 5712.113,
+      "private_bytes_after_load": 3212005376,
+      "render_vertices": 38414391,
+      "retained_mesh_buffer_capacity_bytes": 3201557388,
+      "source_points": 37890645,
+      "triangle_indices": 227315958,
+      "workers": 16,
+      "background_cpu_before": [
+        8.5,
+        10.9
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-build-9921\\bin\\Release\\woby_obj_prototype_benchmark.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "16",
+        "deferred"
+      ],
+      "model": "BearTrap",
+      "variant": "after",
+      "round": 1,
+      "utc_started": "2026-10-15T19:32:34Z"
+    },
+    {
+      "chunks": 1695,
+      "corner_mapping": {
+        "bucket_capacity_bytes": 4194304,
+        "gather_workers": 8,
+        "key_capacity_bytes": 10761552,
+        "position_map_capacity_bytes": 153657564,
+        "position_map_ms": 123.709,
+        "primary_capacity_bytes": 454687740,
+        "primary_gather_ms": 436.4625,
+        "release_ms": 180.0313,
+        "released_triangle_bytes": 3409739370,
+        "resolve_ms": 2085.3113,
+        "seam_gather_ms": 9.8582,
+        "seam_vertices": 523746,
+        "staged": true,
+        "total_ms": 3146.3429,
+        "vertex_allocation_ms": 288.2742,
+        "vertex_capacity_bytes": 1229260512
+      },
+      "cpu_load_ms": 9604.1401,
+      "deferred": true,
+      "files": 1,
+      "fingerprint": 16056583657800749285,
+      "freeform_ms": 0.0413,
+      "input_bytes": 7108991827,
+      "mode": "prototype",
+      "parse_ms": 3737.3618,
+      "parsed_chunk_bytes": 4554883480,
+      "peak_commit_bytes": 9614807040,
+      "peak_inflight_text_bytes": 205520896,
+      "peak_working_set_bytes": 9548869632,
+      "position_copy_bytes_avoided": 909375480,
+      "prepare_ms": 5835.1914,
+      "private_bytes_after_load": 3214839808,
+      "render_vertices": 38414391,
+      "retained_mesh_buffer_capacity_bytes": 3201557388,
+      "source_points": 37890645,
+      "triangle_indices": 227315958,
+      "workers": 16,
+      "background_cpu_before": [
+        5.7,
+        9.1
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-build-9921\\bin\\Release\\woby_obj_prototype_benchmark.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "16",
+        "deferred"
+      ],
+      "model": "BearTrap",
+      "variant": "after",
+      "round": 2,
+      "utc_started": "2026-10-15T19:32:56Z"
+    },
+    {
+      "chunks": 16,
+      "corner_mapping": {
+        "bucket_capacity_bytes": 4194304,
+        "gather_workers": 8,
+        "key_capacity_bytes": 10761552,
+        "position_map_capacity_bytes": 153657564,
+        "position_map_ms": 117.7804,
+        "primary_capacity_bytes": 454687740,
+        "primary_gather_ms": 371.932,
+        "release_ms": 180.0035,
+        "released_triangle_bytes": 3409739370,
+        "resolve_ms": 2104.3991,
+        "seam_gather_ms": 9.6493,
+        "seam_vertices": 523746,
+        "staged": true,
+        "total_ms": 3078.5038,
+        "vertex_allocation_ms": 272.759,
+        "vertex_capacity_bytes": 1229260512
+      },
+      "cpu_load_ms": 11344.8251,
+      "deferred": true,
+      "files": 1,
+      "fingerprint": 16056583657800749285,
+      "freeform_ms": 0.0127,
+      "input_bytes": 7108991827,
+      "mode": "prototype",
+      "parse_ms": 5458.5202,
+      "parsed_chunk_bytes": 4554883480,
+      "peak_commit_bytes": 11279544320,
+      "peak_inflight_text_bytes": 67108864,
+      "peak_working_set_bytes": 9496674304,
+      "position_copy_bytes_avoided": 909375480,
+      "prepare_ms": 5854.3762,
+      "private_bytes_after_load": 3212128256,
+      "render_vertices": 38414391,
+      "retained_mesh_buffer_capacity_bytes": 3201557388,
+      "source_points": 37890645,
+      "triangle_indices": 227315958,
+      "workers": 16,
+      "background_cpu_before": [
+        8.3,
+        9.2
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-baseline-9921\\build\\vs2026-vcpkg\\bin\\Release\\woby_obj_prototype_benchmark.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "16",
+        "deferred"
+      ],
+      "model": "BearTrap",
+      "variant": "before",
+      "round": 2,
+      "utc_started": "2026-10-15T19:33:19Z"
+    },
+    {
+      "chunks": 16,
+      "corner_mapping": {
+        "bucket_capacity_bytes": 4194304,
+        "gather_workers": 8,
+        "key_capacity_bytes": 10761552,
+        "position_map_capacity_bytes": 153657564,
+        "position_map_ms": 115.5766,
+        "primary_capacity_bytes": 454687740,
+        "primary_gather_ms": 352.0268,
+        "release_ms": 177.4634,
+        "released_triangle_bytes": 3409739370,
+        "resolve_ms": 2035.806,
+        "seam_gather_ms": 9.2822,
+        "seam_vertices": 523746,
+        "staged": true,
+        "total_ms": 2994.0938,
+        "vertex_allocation_ms": 281.6109,
+        "vertex_capacity_bytes": 1229260512
+      },
+      "cpu_load_ms": 10863.5538,
+      "deferred": true,
+      "files": 1,
+      "fingerprint": 16056583657800749285,
+      "freeform_ms": 0.0076,
+      "input_bytes": 7108991827,
+      "mode": "prototype",
+      "parse_ms": 5170.0021,
+      "parsed_chunk_bytes": 4554883480,
+      "peak_commit_bytes": 11279745024,
+      "peak_inflight_text_bytes": 67108864,
+      "peak_working_set_bytes": 9496461312,
+      "position_copy_bytes_avoided": 909375480,
+      "prepare_ms": 5662.5084,
+      "private_bytes_after_load": 3213893632,
+      "render_vertices": 38414391,
+      "retained_mesh_buffer_capacity_bytes": 3201557388,
+      "source_points": 37890645,
+      "triangle_indices": 227315958,
+      "workers": 16,
+      "background_cpu_before": [
+        7.7,
+        8.4
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-baseline-9921\\build\\vs2026-vcpkg\\bin\\Release\\woby_obj_prototype_benchmark.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "16",
+        "deferred"
+      ],
+      "model": "BearTrap",
+      "variant": "before",
+      "round": 3,
+      "utc_started": "2026-10-15T19:33:43Z"
+    },
+    {
+      "chunks": 1695,
+      "corner_mapping": {
+        "bucket_capacity_bytes": 4194304,
+        "gather_workers": 8,
+        "key_capacity_bytes": 10761552,
+        "position_map_capacity_bytes": 153657564,
+        "position_map_ms": 116.9214,
+        "primary_capacity_bytes": 454687740,
+        "primary_gather_ms": 361.0424,
+        "release_ms": 176.9469,
+        "released_triangle_bytes": 3409739370,
+        "resolve_ms": 2057.1523,
+        "seam_gather_ms": 7.9843,
+        "seam_vertices": 523746,
+        "staged": true,
+        "total_ms": 3021.27,
+        "vertex_allocation_ms": 279.078,
+        "vertex_capacity_bytes": 1229260512
+      },
+      "cpu_load_ms": 9419.8629,
+      "deferred": true,
+      "files": 1,
+      "fingerprint": 16056583657800749285,
+      "freeform_ms": 0.0429,
+      "input_bytes": 7108991827,
+      "mode": "prototype",
+      "parse_ms": 3708.0243,
+      "parsed_chunk_bytes": 4554883480,
+      "peak_commit_bytes": 9614004224,
+      "peak_inflight_text_bytes": 205520896,
+      "peak_working_set_bytes": 9546141696,
+      "position_copy_bytes_avoided": 909375480,
+      "prepare_ms": 5679.9617,
+      "private_bytes_after_load": 3214622720,
+      "render_vertices": 38414391,
+      "retained_mesh_buffer_capacity_bytes": 3201557388,
+      "source_points": 37890645,
+      "triangle_indices": 227315958,
+      "workers": 16,
+      "background_cpu_before": [
+        8.4,
+        6.4
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-build-9921\\bin\\Release\\woby_obj_prototype_benchmark.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "16",
+        "deferred"
+      ],
+      "model": "BearTrap",
+      "variant": "after",
+      "round": 3,
+      "utc_started": "2026-10-15T19:34:08Z"
+    }
+  ],
+  "summaries": [
+    {
+      "model": "BearTrap",
+      "before": {
+        "cpu_load_ms": {
+          "median": 11344.8251,
+          "minimum": 10863.5538,
+          "maximum": 11655.0495
+        },
+        "freeform_ms": {
+          "median": 0.0127,
+          "minimum": 0.0076,
+          "maximum": 0.026
+        },
+        "input_bytes": {
+          "median": 7108991827,
+          "minimum": 7108991827,
+          "maximum": 7108991827
+        },
+        "parse_ms": {
+          "median": 5170.0021,
+          "minimum": 5130.4103,
+          "maximum": 5458.5202
+        },
+        "parsed_chunk_bytes": {
+          "median": 4554883480,
+          "minimum": 4554883480,
+          "maximum": 4554883480
+        },
+        "peak_commit_bytes": {
+          "median": 11279544320,
+          "minimum": 11279122432,
+          "maximum": 11279745024
+        },
+        "peak_inflight_text_bytes": {
+          "median": 67108864,
+          "minimum": 67108864,
+          "maximum": 67108864
+        },
+        "peak_working_set_bytes": {
+          "median": 9496674304,
+          "minimum": 9496461312,
+          "maximum": 9497083904
+        },
+        "prepare_ms": {
+          "median": 5854.3762,
+          "minimum": 5662.5084,
+          "maximum": 6492.6953
+        },
+        "retained_mesh_buffer_capacity_bytes": {
+          "median": 3201557388,
+          "minimum": 3201557388,
+          "maximum": 3201557388
+        }
+      },
+      "after": {
+        "cpu_load_ms": {
+          "median": 9525.1748,
+          "minimum": 9419.8629,
+          "maximum": 9604.1401
+        },
+        "freeform_ms": {
+          "median": 0.0429,
+          "minimum": 0.0413,
+          "maximum": 0.0484
+        },
+        "input_bytes": {
+          "median": 7108991827,
+          "minimum": 7108991827,
+          "maximum": 7108991827
+        },
+        "parse_ms": {
+          "median": 3737.3618,
+          "minimum": 3708.0243,
+          "maximum": 3781.5259
+        },
+        "parsed_chunk_bytes": {
+          "median": 4554883480,
+          "minimum": 4554883480,
+          "maximum": 4554883480
+        },
+        "peak_commit_bytes": {
+          "median": 9614270464,
+          "minimum": 9614004224,
+          "maximum": 9614807040
+        },
+        "peak_inflight_text_bytes": {
+          "median": 205520896,
+          "minimum": 205520896,
+          "maximum": 205520896
+        },
+        "peak_working_set_bytes": {
+          "median": 9547472896,
+          "minimum": 9546141696,
+          "maximum": 9548869632
+        },
+        "prepare_ms": {
+          "median": 5712.113,
+          "minimum": 5679.9617,
+          "maximum": 5835.1914
+        },
+        "retained_mesh_buffer_capacity_bytes": {
+          "median": 3201557388,
+          "minimum": 3201557388,
+          "maximum": 3201557388
+        }
+      },
+      "time_reduction_percent": 16.039474244516995
+    }
+  ]
+}

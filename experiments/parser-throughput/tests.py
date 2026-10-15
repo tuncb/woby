@@ -34,5 +34,14 @@ class ComparisonContracts(unittest.TestCase):
         result=analysis.summarize(rows,['mesh'],['legacy','prototype'],2)
         self.assertEqual(analysis.regressions(result)[0]['model'],'mesh')
 
+    def test_full_precision_mismatch_cannot_hide_behind_float_fingerprints(self):
+        rows=records()
+        for row in rows:
+            row['precise_fingerprint']=10 if row['variant']=='legacy' else 20
+        analysis.summarize(rows,['mesh'],['legacy','prototype'],2)
+        rows[-1]['precise_fingerprint']=21
+        with self.assertRaisesRegex(ValueError,'Double-precision'):
+            analysis.summarize(rows,['mesh'],['legacy','prototype'],2)
+
 
 if __name__=='__main__': unittest.main()

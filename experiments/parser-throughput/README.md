@@ -36,9 +36,11 @@ are reported separately for every model, never hidden behind an aggregate score.
 
 The comparison rejects missing/repeated rounds, invalid timings and mismatched
 ordered geometry fingerprints. Position coordinates retain exact double bits.
-UVs and normals are compared at legacy float precision, because the prototype
-retains doubles. Shape names, face/line/point indices, face sizes, material IDs and
-smoothing IDs are included. Material payloads and vertex colors are not covered
+UVs and normals use legacy float precision in `fingerprint`, because the prototype
+retains doubles. A separate `precise_fingerprint` checks every double bit in
+positions, UVs and normals between prototype builds. Shape names, face/line/point
+indices, face sizes, material IDs and smoothing IDs are included in both hashes.
+Material payloads and vertex colors are not covered
 by this fingerprint; contract tests and full-viewer validation cover additional
 behavior. The working regression flag is a per-model median above both 105% of
 legacy and legacy + 0.1 ms. Five repeats are not a statistical equivalence proof.
@@ -53,9 +55,14 @@ constructs positions in a merge task, overlapping index reconciliation, so that
 cost now belongs to `merge_execute_ms`. Neither metric is a pure allocator timer.
 Attribute setup and execution are subphases of merge.
 Worker input/decode totals are sums across overlapping workers, not wall times.
-Both persistent native ranges and legacy use reader submit/wait counters. The
-older block path includes block allocation in input time; native-range setup and
-boundary handling belong to worker decode time. Do not add these sums to wall time.
+Legacy uses reader submit/wait counters. The prototype uses persistent workers
+with a bounded queue of blocks. Its input time includes block allocation and
+native reads. Decode time includes buffer sizing, numeric conversion and boundary
+selection. Earlier prototype measurements used long native ranges and reader
+submit/wait counters. Do not compare these input/decode subphases as equal scopes
+or add overlapping worker sums to wall time.
+On Windows, the benchmark also records parser process CPU time, peak working set
+and peak committed memory before output hashing. Peak commit is not resident RAM.
 Residual time includes setup/cleanup. Legacy may defer large-buffer destruction to
 a detached cleanup thread; the prototype completes its own cleanup synchronously.
 
@@ -65,3 +72,8 @@ the unsupported legacy parser alone would not be an equivalent successful load.
 
 The [measured investigation](../../doc/parser-throughput-performance/README.md)
 records fixes, the final corpus, ablations, ranges and remaining opportunities.
+
+The [15 October 2026 parser report](../../doc/benchmarks/obj-parser-20261015/report.html)
+compares the production parser before and after the numeric, buffer, worker and
+index-copy changes. It includes raw samples, full-precision output checks, CPU
+import results and build/test evidence.

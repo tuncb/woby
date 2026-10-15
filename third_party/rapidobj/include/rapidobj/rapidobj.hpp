@@ -42,6 +42,9 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 #include <utility>
 #include <variant>
 #include <vector>
+#if defined(__AVX2__)
+#include <immintrin.h>
+#endif
 
 #ifdef __linux__
 
@@ -4378,6 +4381,16 @@ struct Buffer final {
         }
     }
 
+    void reserve(size_t capacity)
+    {
+        if (capacity > m_size + m_room) {
+            auto data = std::make_unique_for_overwrite<T[]>(capacity);
+            if (m_size) { std::memcpy(data.get(), m_data.get(), m_size * sizeof(T)); }
+            m_data = std::move(data);
+            m_room = capacity - m_size;
+        }
+    }
+
   private:
     size_t               m_size{};
     size_t               m_room{};
@@ -4718,6 +4731,62 @@ struct FillIds final {
     size_t                         m_start{};
 };
 
+#if defined(__AVX2__)
+// Eight triplets with the same offset flags occupy three vector registers.
+// Reconcile relative references and validate signed ranges while copying.
+// Mixed flags retain the scalar reconciliation below.
+inline bool CopyUniformIndices(Index* dst, const Index* src, const OffsetFlags* flags,
+    size_t size, AttributeInfo offset, AttributeInfo count, size_t& copied) noexcept
+{
+    static_assert(sizeof(Index) == 12 && sizeof(int) == 4);
+    if (size < 8) { return true; }
+    constexpr size_t limit = static_cast<size_t>(std::numeric_limits<int>::max());
+    if (size && (count.position > limit || count.texcoord > limit || count.normal > limit)) { return false; }
+    const auto uniform = flags[0];
+    const auto expected = UINT64_C(0x0101010101010101) * uniform;
+    const auto min_t = uniform & ApplyOffset::Texcoord ? 0 : -1;
+    const auto min_n = uniform & ApplyOffset::Normal ? 0 : -1;
+    const auto dp = uniform & ApplyOffset::Position ? static_cast<int>(offset.position) : 0;
+    const auto dt = uniform & ApplyOffset::Texcoord ? static_cast<int>(offset.texcoord) : 0;
+    const auto dn = uniform & ApplyOffset::Normal ? static_cast<int>(offset.normal) : 0;
+    const auto delta0 = _mm256_setr_epi32(dp, dt, dn, dp, dt, dn, dp, dt);
+    const auto delta1 = _mm256_setr_epi32(dn, dp, dt, dn, dp, dt, dn, dp);
+    const auto delta2 = _mm256_setr_epi32(dt, dn, dp, dt, dn, dp, dt, dn);
+    const auto p = static_cast<int>(count.position) - 1;
+    const auto t = static_cast<int>(count.texcoord) - 1;
+    const auto n = static_cast<int>(count.normal) - 1;
+    const auto min0 = _mm256_setr_epi32(0, min_t, min_n, 0, min_t, min_n, 0, min_t);
+    const auto min1 = _mm256_setr_epi32(min_n, 0, min_t, min_n, 0, min_t, min_n, 0);
+    const auto min2 = _mm256_setr_epi32(min_t, min_n, 0, min_t, min_n, 0, min_t, min_n);
+    const auto max0 = _mm256_setr_epi32(p, t, n, p, t, n, p, t);
+    const auto max1 = _mm256_setr_epi32(n, p, t, n, p, t, n, p);
+    const auto max2 = _mm256_setr_epi32(t, n, p, t, n, p, t, n);
+    for (; size - copied >= 8; copied += 8) {
+        uint64_t offsets;
+        std::memcpy(&offsets, flags + copied, sizeof(offsets));
+        if (offsets != expected) { break; }
+        const auto* input = reinterpret_cast<const __m256i*>(src + copied);
+        auto* output = reinterpret_cast<__m256i*>(dst + copied);
+        auto a = _mm256_loadu_si256(input);
+        auto b = _mm256_loadu_si256(input + 1);
+        auto c = _mm256_loadu_si256(input + 2);
+        if (uniform) {
+            a = _mm256_add_epi32(a, delta0);
+            b = _mm256_add_epi32(b, delta1);
+            c = _mm256_add_epi32(c, delta2);
+        }
+        auto invalid = _mm256_or_si256(_mm256_cmpgt_epi32(min0, a), _mm256_cmpgt_epi32(a, max0));
+        invalid = _mm256_or_si256(invalid, _mm256_or_si256(_mm256_cmpgt_epi32(min1, b), _mm256_cmpgt_epi32(b, max1)));
+        invalid = _mm256_or_si256(invalid, _mm256_or_si256(_mm256_cmpgt_epi32(min2, c), _mm256_cmpgt_epi32(c, max2)));
+        if (_mm256_movemask_epi8(invalid)) { return false; }
+        _mm256_storeu_si256(output, a);
+        _mm256_storeu_si256(output + 1, b);
+        _mm256_storeu_si256(output + 2, c);
+    }
+    return true;
+}
+#endif
+
 struct CopyIndices final {
     CopyIndices(
         Index*             dst,
@@ -4733,7 +4802,13 @@ struct CopyIndices final {
 
     auto Execute() const noexcept
     {
-        for (size_t i = 0; i != m_size; ++i) {
+        size_t i = 0;
+#if defined(__AVX2__)
+        if (!CopyUniformIndices(m_dst, m_src, m_offset_flags, m_size, m_offset, m_count, i)) {
+            return rapidobj_errc::IndexOutOfBoundsError;
+        }
+#endif
+        for (; i != m_size; ++i) {
             auto position_index = m_src[i].position_index;
             auto texcoord_index = m_src[i].texcoord_index;
             auto normal_index   = m_src[i].normal_index;
@@ -5678,8 +5753,10 @@ inline auto ParseFace(
     auto count = size_t{};
     auto value = 0;
 
-    indices->ensure_enough_room_for(max_count);
-    offset_flags->ensure_enough_room_for(max_count);
+    // Decode one extra reference to report TooManyIndicesError. Exact buffer
+    // reservations must also leave room for that diagnostic lookahead.
+    indices->ensure_enough_room_for(max_count + 1);
+    offset_flags->ensure_enough_room_for(max_count + 1);
 
     while (count <= max_count) {
         TrimLeft(text);

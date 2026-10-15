@@ -1,0 +1,2355 @@
+{
+  "rounds": 5,
+  "method": "Fresh processes, warm file cache before each run, alternating before/after order. Fingerprints computed after timed work. No concurrent builds, tests or profilers.",
+  "baseline_revision": "06b794027e3a8ca6da9725596c909167256472e5",
+  "platform": "Windows-10-10.0.26300-SP0",
+  "power_scheme": "Power Scheme GUID: 85d583c5-cf2e-4197-80fd-3789a227a72c  (Legion Balance Mode )",
+  "workers": 16,
+  "cpu": "AMD Ryzen 7 5800H",
+  "logical_cpus": 16,
+  "physical_cpus": 8,
+  "ram_bytes": 68564348928,
+  "idle_gate": "Two consecutive 0.5-second CPU samples at most 15%; no known build, test, viewer or profiler processes before and after each sample.",
+  "source_sha256": {
+    "third_party\\rapidobj\\include\\rapidobj\\prototype.hpp": "1cb92f1568a1b1bc38504ba5fc6b0893195cefefb12e9d4cb1ea2a2d2257bdc0",
+    "third_party\\rapidobj\\include\\rapidobj\\rapidobj.hpp": "2c6f5557df30b36e8d586dc58b1b1d9b2842eb1e6f7efffdc385b5c7a396d2e6",
+    "experiments\\parser-throughput\\benchmark.cpp": "583d58055fdd96f7ccef14e50e63f623d5153445ec728a8be8adfe36f487b590",
+    "experiments\\parser-throughput\\generate.py": "936778eb65344ab77552ff17cc3759243a2ad54709f710e4a523361453e1311c"
+  },
+  "binaries": {
+    "before": {
+      "path": "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+      "sha256": "27b519b13a8a35133b010c58431611b56213b87bd7353b674d5be2fbb72c5d56"
+    },
+    "after": {
+      "path": "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+      "sha256": "8ed2ecb8ff05b73430b3482314fdd0f5928ede9671b8a672feadf70742d40dfd"
+    }
+  },
+  "inputs": [
+    {
+      "model": "BearTrap",
+      "path": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "bytes": 7108991827,
+      "sha256": "7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329"
+    },
+    {
+      "model": "Bennu",
+      "path": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "bytes": 815866103,
+      "sha256": "3890221318a2b059d8236c618903b0ea16710172651ba22f1013f9b6ad585882"
+    },
+    {
+      "model": "Powerplant",
+      "path": "D:\\temp\\obj_tests\\powerplant.obj",
+      "bytes": 817891724,
+      "sha256": "1bda60ac06a11a6299799c95f4caac63b5c2a3654464040ff5b7d4bb8db190a8"
+    },
+    {
+      "model": "San Miguel",
+      "path": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "bytes": 1143041382,
+      "sha256": "22533258be1d94aa1ece29053e98f11c91ebc17a8a3626545dee3cecf90b71e3"
+    },
+    {
+      "model": "BusGameMap",
+      "path": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "bytes": 75585857,
+      "sha256": "9ac38b16814658cee4d52415796e7c8a1cfffa70549f9b7f0eb0c1f1704e4977"
+    }
+  ],
+  "records": [
+    {
+      "attribute_allocate_ms": 112.6771,
+      "chunks": 16,
+      "cpu_ms": 62453.125,
+      "faces": 75771986,
+      "fingerprint": 4945253916492883569,
+      "line_indices": 0,
+      "merge_execute_ms": 487.8836,
+      "merge_ms": 600.8902,
+      "peak_commit_bytes": 11279175680,
+      "peak_working_set_bytes": 9495666688,
+      "point_indices": 0,
+      "positions": 37890645,
+      "precise_fingerprint": 11071775745096326807,
+      "residual_ms": 285.2201999999995,
+      "scan_ms": 4182.2752,
+      "total_ms": 5068.3856,
+      "worker_decode_ms_sum": 55565.6041,
+      "worker_input_ms_sum": 5895.4624,
+      "workers": 16,
+      "background_cpu_before": [
+        9.9,
+        7.8
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "0",
+        "16"
+      ],
+      "model": "BearTrap",
+      "variant": "before",
+      "round": 1,
+      "utc_started": "2026-10-15T19:20:39Z"
+    },
+    {
+      "attribute_allocate_ms": 125.5227,
+      "chunks": 1695,
+      "cpu_ms": 45656.25,
+      "faces": 75771986,
+      "fingerprint": 4945253916492883569,
+      "line_indices": 0,
+      "merge_execute_ms": 534.148,
+      "merge_ms": 660.7706,
+      "peak_commit_bytes": 9615486976,
+      "peak_working_set_bytes": 9546686464,
+      "point_indices": 0,
+      "positions": 37890645,
+      "precise_fingerprint": 11071775745096326807,
+      "residual_ms": 393.6175000000002,
+      "scan_ms": 2784.5602,
+      "total_ms": 3838.9483,
+      "worker_decode_ms_sum": 36729.3432,
+      "worker_input_ms_sum": 6796.3075,
+      "workers": 16,
+      "background_cpu_before": [
+        7.9,
+        10.9
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "0",
+        "16"
+      ],
+      "model": "BearTrap",
+      "variant": "after",
+      "round": 1,
+      "utc_started": "2026-10-15T19:21:11Z"
+    },
+    {
+      "attribute_allocate_ms": 0.0007,
+      "chunks": 195,
+      "cpu_ms": 7093.75,
+      "faces": 17866836,
+      "fingerprint": 3727957388007865106,
+      "line_indices": 0,
+      "merge_execute_ms": 106.2656,
+      "merge_ms": 106.5016,
+      "peak_commit_bytes": 1967263744,
+      "peak_working_set_bytes": 1961451520,
+      "point_indices": 0,
+      "positions": 8933524,
+      "precise_fingerprint": 3727957388007865106,
+      "residual_ms": 56.5145,
+      "scan_ms": 447.1343,
+      "total_ms": 610.1504,
+      "worker_decode_ms_sum": 5946.2965,
+      "worker_input_ms_sum": 819.6375,
+      "workers": 16,
+      "background_cpu_before": [
+        12.4,
+        8.6
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+        "0",
+        "16"
+      ],
+      "model": "Bennu",
+      "variant": "after",
+      "round": 1,
+      "utc_started": "2026-10-15T19:21:40Z"
+    },
+    {
+      "attribute_allocate_ms": 0.0005,
+      "chunks": 16,
+      "cpu_ms": 7671.875,
+      "faces": 17866836,
+      "fingerprint": 3727957388007865106,
+      "line_indices": 0,
+      "merge_execute_ms": 95.7837,
+      "merge_ms": 95.9286,
+      "peak_commit_bytes": 2319003648,
+      "peak_working_set_bytes": 1954467840,
+      "point_indices": 0,
+      "positions": 8933524,
+      "precise_fingerprint": 3727957388007865106,
+      "residual_ms": 45.52389999999998,
+      "scan_ms": 504.1255,
+      "total_ms": 645.578,
+      "worker_decode_ms_sum": 6595.1698,
+      "worker_input_ms_sum": 718.5721,
+      "workers": 16,
+      "background_cpu_before": [
+        8.8,
+        7.8
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+        "0",
+        "16"
+      ],
+      "model": "Bennu",
+      "variant": "before",
+      "round": 1,
+      "utc_started": "2026-10-15T19:21:46Z"
+    },
+    {
+      "attribute_allocate_ms": 3.4107,
+      "chunks": 16,
+      "cpu_ms": 7187.5,
+      "faces": 12759246,
+      "fingerprint": 6682264453835001014,
+      "line_indices": 0,
+      "merge_execute_ms": 63.84,
+      "merge_ms": 68.0324,
+      "peak_commit_bytes": 1766133760,
+      "peak_working_set_bytes": 1418092544,
+      "point_indices": 0,
+      "positions": 5984083,
+      "precise_fingerprint": 6021134162495699558,
+      "residual_ms": 33.69900000000001,
+      "scan_ms": 503.9557,
+      "total_ms": 605.6871,
+      "worker_decode_ms_sum": 6391.5346,
+      "worker_input_ms_sum": 791.0421,
+      "workers": 16,
+      "background_cpu_before": [
+        12.7,
+        7.0
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\powerplant.obj",
+        "0",
+        "16"
+      ],
+      "model": "Powerplant",
+      "variant": "before",
+      "round": 1,
+      "utc_started": "2026-10-15T19:21:53Z"
+    },
+    {
+      "attribute_allocate_ms": 3.3519,
+      "chunks": 196,
+      "cpu_ms": 7109.375,
+      "faces": 12759246,
+      "fingerprint": 6682264453835001014,
+      "line_indices": 0,
+      "merge_execute_ms": 74.0161,
+      "merge_ms": 78.3667,
+      "peak_commit_bytes": 1426968576,
+      "peak_working_set_bytes": 1423671296,
+      "point_indices": 0,
+      "positions": 5984083,
+      "precise_fingerprint": 6021134162495699558,
+      "residual_ms": 43.51269999999998,
+      "scan_ms": 447.5609,
+      "total_ms": 569.4403,
+      "worker_decode_ms_sum": 6011.1733,
+      "worker_input_ms_sum": 793.4381,
+      "workers": 16,
+      "background_cpu_before": [
+        14.5,
+        5.5
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\powerplant.obj",
+        "0",
+        "16"
+      ],
+      "model": "Powerplant",
+      "variant": "after",
+      "round": 1,
+      "utc_started": "2026-10-15T19:21:58Z"
+    },
+    {
+      "attribute_allocate_ms": 35.9972,
+      "chunks": 273,
+      "cpu_ms": 8968.75,
+      "faces": 9932385,
+      "fingerprint": 12714406684858412379,
+      "line_indices": 0,
+      "merge_execute_ms": 76.5693,
+      "merge_ms": 144.0222,
+      "peak_commit_bytes": 1552093184,
+      "peak_working_set_bytes": 1546444800,
+      "point_indices": 0,
+      "positions": 5933233,
+      "precise_fingerprint": 2239768062350047680,
+      "residual_ms": 61.18449999999996,
+      "scan_ms": 572.9278,
+      "total_ms": 778.1345,
+      "worker_decode_ms_sum": 7596.7391,
+      "worker_input_ms_sum": 1188.6949,
+      "workers": 16,
+      "background_cpu_before": [
+        7.2,
+        3.7
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\san-miguel.obj",
+        "0",
+        "16"
+      ],
+      "model": "San Miguel",
+      "variant": "after",
+      "round": 1,
+      "utc_started": "2026-10-15T19:22:04Z"
+    },
+    {
+      "attribute_allocate_ms": 33.2227,
+      "chunks": 16,
+      "cpu_ms": 10375.0,
+      "faces": 9932385,
+      "fingerprint": 12714406684858412379,
+      "line_indices": 0,
+      "merge_execute_ms": 71.4521,
+      "merge_ms": 132.5633,
+      "peak_commit_bytes": 1700364288,
+      "peak_working_set_bytes": 1539764224,
+      "point_indices": 0,
+      "positions": 5933233,
+      "precise_fingerprint": 2239768062350047680,
+      "residual_ms": 39.916799999999995,
+      "scan_ms": 672.6469,
+      "total_ms": 845.127,
+      "worker_decode_ms_sum": 9056.2805,
+      "worker_input_ms_sum": 1140.1608,
+      "workers": 16,
+      "background_cpu_before": [
+        7.5,
+        5.5
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\san-miguel.obj",
+        "0",
+        "16"
+      ],
+      "model": "San Miguel",
+      "variant": "before",
+      "round": 1,
+      "utc_started": "2026-10-15T19:22:12Z"
+    },
+    {
+      "attribute_allocate_ms": 2.0119,
+      "chunks": 16,
+      "cpu_ms": 562.5,
+      "faces": 527016,
+      "fingerprint": 5092349252672651708,
+      "line_indices": 0,
+      "merge_execute_ms": 5.288,
+      "merge_ms": 7.8749,
+      "peak_commit_bytes": 127471616,
+      "peak_working_set_bytes": 111599616,
+      "point_indices": 0,
+      "positions": 535893,
+      "precise_fingerprint": 15166123633231056696,
+      "residual_ms": 3.890700000000006,
+      "scan_ms": 65.2481,
+      "total_ms": 77.0137,
+      "worker_decode_ms_sum": 643.3532,
+      "worker_input_ms_sum": 86.7329,
+      "workers": 16,
+      "background_cpu_before": [
+        14.5,
+        12.3
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+        "0",
+        "16"
+      ],
+      "model": "BusGameMap",
+      "variant": "before",
+      "round": 1,
+      "utc_started": "2026-10-15T19:22:38Z"
+    },
+    {
+      "attribute_allocate_ms": 1.9731,
+      "chunks": 19,
+      "cpu_ms": 640.625,
+      "faces": 527016,
+      "fingerprint": 5092349252672651708,
+      "line_indices": 0,
+      "merge_execute_ms": 5.2037,
+      "merge_ms": 7.6412,
+      "peak_commit_bytes": 123944960,
+      "peak_working_set_bytes": 110321664,
+      "point_indices": 0,
+      "positions": 535893,
+      "precise_fingerprint": 15166123633231056696,
+      "residual_ms": 3.5174999999999956,
+      "scan_ms": 52.0677,
+      "total_ms": 63.2264,
+      "worker_decode_ms_sum": 427.4302,
+      "worker_input_ms_sum": 114.5877,
+      "workers": 16,
+      "background_cpu_before": [
+        10.3,
+        5.9
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+        "0",
+        "16"
+      ],
+      "model": "BusGameMap",
+      "variant": "after",
+      "round": 1,
+      "utc_started": "2026-10-15T19:22:46Z"
+    },
+    {
+      "attribute_allocate_ms": 141.5712,
+      "chunks": 1695,
+      "cpu_ms": 45078.125,
+      "faces": 75771986,
+      "fingerprint": 4945253916492883569,
+      "line_indices": 0,
+      "merge_execute_ms": 538.534,
+      "merge_ms": 681.3773,
+      "peak_commit_bytes": 9612705792,
+      "peak_working_set_bytes": 9544712192,
+      "point_indices": 0,
+      "positions": 37890645,
+      "precise_fingerprint": 11071775745096326807,
+      "residual_ms": 388.26570000000004,
+      "scan_ms": 2857.1218,
+      "total_ms": 3926.7648,
+      "worker_decode_ms_sum": 37473.0667,
+      "worker_input_ms_sum": 7189.1618,
+      "workers": 16,
+      "background_cpu_before": [
+        7.0,
+        10.8
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "0",
+        "16"
+      ],
+      "model": "BearTrap",
+      "variant": "after",
+      "round": 2,
+      "utc_started": "2026-10-15T19:22:50Z"
+    },
+    {
+      "attribute_allocate_ms": 104.2098,
+      "chunks": 16,
+      "cpu_ms": 62046.875,
+      "faces": 75771986,
+      "fingerprint": 4945253916492883569,
+      "line_indices": 0,
+      "merge_execute_ms": 470.4644,
+      "merge_ms": 574.9613,
+      "peak_commit_bytes": 11279147008,
+      "peak_working_set_bytes": 9495605248,
+      "point_indices": 0,
+      "positions": 37890645,
+      "precise_fingerprint": 11071775745096326807,
+      "residual_ms": 266.54269999999985,
+      "scan_ms": 4339.9869,
+      "total_ms": 5181.4909,
+      "worker_decode_ms_sum": 56756.0583,
+      "worker_input_ms_sum": 7711.9679,
+      "workers": 16,
+      "background_cpu_before": [
+        8.7,
+        8.3
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "0",
+        "16"
+      ],
+      "model": "BearTrap",
+      "variant": "before",
+      "round": 2,
+      "utc_started": "2026-10-15T19:23:19Z"
+    },
+    {
+      "attribute_allocate_ms": 0.0007,
+      "chunks": 16,
+      "cpu_ms": 7921.875,
+      "faces": 17866836,
+      "fingerprint": 3727957388007865106,
+      "line_indices": 0,
+      "merge_execute_ms": 97.4452,
+      "merge_ms": 97.552,
+      "peak_commit_bytes": 2318385152,
+      "peak_working_set_bytes": 1954295808,
+      "point_indices": 0,
+      "positions": 8933524,
+      "precise_fingerprint": 3727957388007865106,
+      "residual_ms": 47.27739999999996,
+      "scan_ms": 573.7409,
+      "total_ms": 718.5703,
+      "worker_decode_ms_sum": 7000.2079,
+      "worker_input_ms_sum": 1265.688,
+      "workers": 16,
+      "background_cpu_before": [
+        13.1,
+        13.3
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+        "0",
+        "16"
+      ],
+      "model": "Bennu",
+      "variant": "before",
+      "round": 2,
+      "utc_started": "2026-10-15T19:23:52Z"
+    },
+    {
+      "attribute_allocate_ms": 0.0005,
+      "chunks": 195,
+      "cpu_ms": 7203.125,
+      "faces": 17866836,
+      "fingerprint": 3727957388007865106,
+      "line_indices": 0,
+      "merge_execute_ms": 109.5457,
+      "merge_ms": 109.8172,
+      "peak_commit_bytes": 1967415296,
+      "peak_working_set_bytes": 1961017344,
+      "point_indices": 0,
+      "positions": 8933524,
+      "precise_fingerprint": 3727957388007865106,
+      "residual_ms": 57.816800000000015,
+      "scan_ms": 443.9421,
+      "total_ms": 611.5761,
+      "worker_decode_ms_sum": 6034.1054,
+      "worker_input_ms_sum": 732.2103,
+      "workers": 16,
+      "background_cpu_before": [
+        9.7,
+        10.3
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+        "0",
+        "16"
+      ],
+      "model": "Bennu",
+      "variant": "after",
+      "round": 2,
+      "utc_started": "2026-10-15T19:23:59Z"
+    },
+    {
+      "attribute_allocate_ms": 3.7788,
+      "chunks": 196,
+      "cpu_ms": 7250.0,
+      "faces": 12759246,
+      "fingerprint": 6682264453835001014,
+      "line_indices": 0,
+      "merge_execute_ms": 74.4398,
+      "merge_ms": 79.4223,
+      "peak_commit_bytes": 1426956288,
+      "peak_working_set_bytes": 1424068608,
+      "point_indices": 0,
+      "positions": 5984083,
+      "precise_fingerprint": 6021134162495699558,
+      "residual_ms": 43.63629999999995,
+      "scan_ms": 442.8451,
+      "total_ms": 565.9037,
+      "worker_decode_ms_sum": 5956.6649,
+      "worker_input_ms_sum": 785.8964,
+      "workers": 16,
+      "background_cpu_before": [
+        7.2,
+        4.3
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\powerplant.obj",
+        "0",
+        "16"
+      ],
+      "model": "Powerplant",
+      "variant": "after",
+      "round": 2,
+      "utc_started": "2026-10-15T19:24:06Z"
+    },
+    {
+      "attribute_allocate_ms": 3.4629,
+      "chunks": 16,
+      "cpu_ms": 7578.125,
+      "faces": 12759246,
+      "fingerprint": 6682264453835001014,
+      "line_indices": 0,
+      "merge_execute_ms": 70.5941,
+      "merge_ms": 74.7953,
+      "peak_commit_bytes": 1766113280,
+      "peak_working_set_bytes": 1417965568,
+      "point_indices": 0,
+      "positions": 5984083,
+      "precise_fingerprint": 6021134162495699558,
+      "residual_ms": 33.45479999999998,
+      "scan_ms": 529.8155,
+      "total_ms": 638.0656,
+      "worker_decode_ms_sum": 6584.3916,
+      "worker_input_ms_sum": 872.4828,
+      "workers": 16,
+      "background_cpu_before": [
+        9.2,
+        6.6
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\powerplant.obj",
+        "0",
+        "16"
+      ],
+      "model": "Powerplant",
+      "variant": "before",
+      "round": 2,
+      "utc_started": "2026-10-15T19:24:11Z"
+    },
+    {
+      "attribute_allocate_ms": 33.7429,
+      "chunks": 16,
+      "cpu_ms": 10265.625,
+      "faces": 9932385,
+      "fingerprint": 12714406684858412379,
+      "line_indices": 0,
+      "merge_execute_ms": 70.7068,
+      "merge_ms": 132.6542,
+      "peak_commit_bytes": 1700458496,
+      "peak_working_set_bytes": 1539592192,
+      "point_indices": 0,
+      "positions": 5933233,
+      "precise_fingerprint": 2239768062350047680,
+      "residual_ms": 37.41710000000006,
+      "scan_ms": 669.1744,
+      "total_ms": 839.2457,
+      "worker_decode_ms_sum": 9130.5128,
+      "worker_input_ms_sum": 1108.2297,
+      "workers": 16,
+      "background_cpu_before": [
+        9.5,
+        12.8
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\san-miguel.obj",
+        "0",
+        "16"
+      ],
+      "model": "San Miguel",
+      "variant": "before",
+      "round": 2,
+      "utc_started": "2026-10-15T19:24:16Z"
+    },
+    {
+      "attribute_allocate_ms": 40.4336,
+      "chunks": 273,
+      "cpu_ms": 8828.125,
+      "faces": 9932385,
+      "fingerprint": 12714406684858412379,
+      "line_indices": 0,
+      "merge_execute_ms": 82.191,
+      "merge_ms": 153.1341,
+      "peak_commit_bytes": 1552367616,
+      "peak_working_set_bytes": 1546559488,
+      "point_indices": 0,
+      "positions": 5933233,
+      "precise_fingerprint": 2239768062350047680,
+      "residual_ms": 61.65359999999998,
+      "scan_ms": 581.7604,
+      "total_ms": 796.5481,
+      "worker_decode_ms_sum": 7648.9101,
+      "worker_input_ms_sum": 1320.7868,
+      "workers": 16,
+      "background_cpu_before": [
+        10.9,
+        14.3
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\san-miguel.obj",
+        "0",
+        "16"
+      ],
+      "model": "San Miguel",
+      "variant": "after",
+      "round": 2,
+      "utc_started": "2026-10-15T19:24:28Z"
+    },
+    {
+      "attribute_allocate_ms": 2.0289,
+      "chunks": 19,
+      "cpu_ms": 531.25,
+      "faces": 527016,
+      "fingerprint": 5092349252672651708,
+      "line_indices": 0,
+      "merge_execute_ms": 5.4057,
+      "merge_ms": 8.0149,
+      "peak_commit_bytes": 123969536,
+      "peak_working_set_bytes": 115335168,
+      "point_indices": 0,
+      "positions": 535893,
+      "precise_fingerprint": 15166123633231056696,
+      "residual_ms": 3.6230999999999973,
+      "scan_ms": 51.9777,
+      "total_ms": 63.6157,
+      "worker_decode_ms_sum": 427.2407,
+      "worker_input_ms_sum": 111.1932,
+      "workers": 16,
+      "background_cpu_before": [
+        7.4,
+        8.7
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+        "0",
+        "16"
+      ],
+      "model": "BusGameMap",
+      "variant": "after",
+      "round": 2,
+      "utc_started": "2026-10-15T19:24:35Z"
+    },
+    {
+      "attribute_allocate_ms": 1.9984,
+      "chunks": 16,
+      "cpu_ms": 671.875,
+      "faces": 527016,
+      "fingerprint": 5092349252672651708,
+      "line_indices": 0,
+      "merge_execute_ms": 5.0437,
+      "merge_ms": 7.547,
+      "peak_commit_bytes": 127344640,
+      "peak_working_set_bytes": 111915008,
+      "point_indices": 0,
+      "positions": 535893,
+      "precise_fingerprint": 15166123633231056696,
+      "residual_ms": 3.637400000000004,
+      "scan_ms": 50.4372,
+      "total_ms": 61.6216,
+      "worker_decode_ms_sum": 594.3886,
+      "worker_input_ms_sum": 64.7167,
+      "workers": 16,
+      "background_cpu_before": [
+        8.2,
+        7.8
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+        "0",
+        "16"
+      ],
+      "model": "BusGameMap",
+      "variant": "before",
+      "round": 2,
+      "utc_started": "2026-10-15T19:24:36Z"
+    },
+    {
+      "attribute_allocate_ms": 102.2715,
+      "chunks": 16,
+      "cpu_ms": 61703.125,
+      "faces": 75771986,
+      "fingerprint": 4945253916492883569,
+      "line_indices": 0,
+      "merge_execute_ms": 470.0895,
+      "merge_ms": 572.6478,
+      "peak_commit_bytes": 11279622144,
+      "peak_working_set_bytes": 9495851008,
+      "point_indices": 0,
+      "positions": 37890645,
+      "precise_fingerprint": 11071775745096326807,
+      "residual_ms": 269.59939999999983,
+      "scan_ms": 5170.6368,
+      "total_ms": 6012.884,
+      "worker_decode_ms_sum": 58801.7222,
+      "worker_input_ms_sum": 12354.2817,
+      "workers": 16,
+      "background_cpu_before": [
+        7.6,
+        7.5
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "0",
+        "16"
+      ],
+      "model": "BearTrap",
+      "variant": "before",
+      "round": 3,
+      "utc_started": "2026-10-15T19:24:40Z"
+    },
+    {
+      "attribute_allocate_ms": 114.3114,
+      "chunks": 1695,
+      "cpu_ms": 44750.0,
+      "faces": 75771986,
+      "fingerprint": 4945253916492883569,
+      "line_indices": 0,
+      "merge_execute_ms": 526.0138,
+      "merge_ms": 641.3303,
+      "peak_commit_bytes": 9615650816,
+      "peak_working_set_bytes": 9546289152,
+      "point_indices": 0,
+      "positions": 37890645,
+      "precise_fingerprint": 11071775745096326807,
+      "residual_ms": 365.2007,
+      "scan_ms": 2744.6652,
+      "total_ms": 3751.1962,
+      "worker_decode_ms_sum": 36742.4786,
+      "worker_input_ms_sum": 6232.911,
+      "workers": 16,
+      "background_cpu_before": [
+        8.8,
+        7.3
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "0",
+        "16"
+      ],
+      "model": "BearTrap",
+      "variant": "after",
+      "round": 3,
+      "utc_started": "2026-10-15T19:25:11Z"
+    },
+    {
+      "attribute_allocate_ms": 0.0006,
+      "chunks": 195,
+      "cpu_ms": 7156.25,
+      "faces": 17866836,
+      "fingerprint": 3727957388007865106,
+      "line_indices": 0,
+      "merge_execute_ms": 101.8159,
+      "merge_ms": 102.0815,
+      "peak_commit_bytes": 1966665728,
+      "peak_working_set_bytes": 1961119744,
+      "point_indices": 0,
+      "positions": 8933524,
+      "precise_fingerprint": 3727957388007865106,
+      "residual_ms": 55.02779999999996,
+      "scan_ms": 427.5724,
+      "total_ms": 584.6817,
+      "worker_decode_ms_sum": 5834.7009,
+      "worker_input_ms_sum": 665.8117,
+      "workers": 16,
+      "background_cpu_before": [
+        8.5,
+        14.0
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+        "0",
+        "16"
+      ],
+      "model": "Bennu",
+      "variant": "after",
+      "round": 3,
+      "utc_started": "2026-10-15T19:25:39Z"
+    },
+    {
+      "attribute_allocate_ms": 0.0004,
+      "chunks": 16,
+      "cpu_ms": 8125.0,
+      "faces": 17866836,
+      "fingerprint": 3727957388007865106,
+      "line_indices": 0,
+      "merge_execute_ms": 94.9228,
+      "merge_ms": 95.0257,
+      "peak_commit_bytes": 2318340096,
+      "peak_working_set_bytes": 1954107392,
+      "point_indices": 0,
+      "positions": 8933524,
+      "precise_fingerprint": 3727957388007865106,
+      "residual_ms": 48.02249999999995,
+      "scan_ms": 534.3677,
+      "total_ms": 677.4159,
+      "worker_decode_ms_sum": 6918.5491,
+      "worker_input_ms_sum": 871.523,
+      "workers": 16,
+      "background_cpu_before": [
+        11.6,
+        14.8
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+        "0",
+        "16"
+      ],
+      "model": "Bennu",
+      "variant": "before",
+      "round": 3,
+      "utc_started": "2026-10-15T19:25:51Z"
+    },
+    {
+      "attribute_allocate_ms": 3.3816,
+      "chunks": 16,
+      "cpu_ms": 7171.875,
+      "faces": 12759246,
+      "fingerprint": 6682264453835001014,
+      "line_indices": 0,
+      "merge_execute_ms": 65.4596,
+      "merge_ms": 69.6387,
+      "peak_commit_bytes": 1766260736,
+      "peak_working_set_bytes": 1417932800,
+      "point_indices": 0,
+      "positions": 5984083,
+      "precise_fingerprint": 6021134162495699558,
+      "residual_ms": 33.03299999999999,
+      "scan_ms": 557.1299,
+      "total_ms": 659.8016,
+      "worker_decode_ms_sum": 6752.6895,
+      "worker_input_ms_sum": 1113.0675,
+      "workers": 16,
+      "background_cpu_before": [
+        14.9,
+        12.6
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\powerplant.obj",
+        "0",
+        "16"
+      ],
+      "model": "Powerplant",
+      "variant": "before",
+      "round": 3,
+      "utc_started": "2026-10-15T19:26:13Z"
+    },
+    {
+      "attribute_allocate_ms": 3.3438,
+      "chunks": 196,
+      "cpu_ms": 7078.125,
+      "faces": 12759246,
+      "fingerprint": 6682264453835001014,
+      "line_indices": 0,
+      "merge_execute_ms": 80.8253,
+      "merge_ms": 85.1583,
+      "peak_commit_bytes": 1426984960,
+      "peak_working_set_bytes": 1423908864,
+      "point_indices": 0,
+      "positions": 5984083,
+      "precise_fingerprint": 6021134162495699558,
+      "residual_ms": 46.68750000000006,
+      "scan_ms": 470.447,
+      "total_ms": 602.2928,
+      "worker_decode_ms_sum": 6295.5337,
+      "worker_input_ms_sum": 882.962,
+      "workers": 16,
+      "background_cpu_before": [
+        14.8,
+        10.7
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\powerplant.obj",
+        "0",
+        "16"
+      ],
+      "model": "Powerplant",
+      "variant": "after",
+      "round": 3,
+      "utc_started": "2026-10-15T19:26:24Z"
+    },
+    {
+      "attribute_allocate_ms": 35.9239,
+      "chunks": 273,
+      "cpu_ms": 9000.0,
+      "faces": 9932385,
+      "fingerprint": 12714406684858412379,
+      "line_indices": 0,
+      "merge_execute_ms": 79.8517,
+      "merge_ms": 147.3064,
+      "peak_commit_bytes": 1552064512,
+      "peak_working_set_bytes": 1545875456,
+      "point_indices": 0,
+      "positions": 5933233,
+      "precise_fingerprint": 2239768062350047680,
+      "residual_ms": 61.777300000000025,
+      "scan_ms": 545.0471,
+      "total_ms": 754.1308,
+      "worker_decode_ms_sum": 7340.9884,
+      "worker_input_ms_sum": 1002.5733,
+      "workers": 16,
+      "background_cpu_before": [
+        14.5,
+        13.2
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\san-miguel.obj",
+        "0",
+        "16"
+      ],
+      "model": "San Miguel",
+      "variant": "after",
+      "round": 3,
+      "utc_started": "2026-10-15T19:26:30Z"
+    },
+    {
+      "attribute_allocate_ms": 33.4425,
+      "chunks": 16,
+      "cpu_ms": 10250.0,
+      "faces": 9932385,
+      "fingerprint": 12714406684858412379,
+      "line_indices": 0,
+      "merge_execute_ms": 71.7145,
+      "merge_ms": 133.6723,
+      "peak_commit_bytes": 1700483072,
+      "peak_working_set_bytes": 1539809280,
+      "point_indices": 0,
+      "positions": 5933233,
+      "precise_fingerprint": 2239768062350047680,
+      "residual_ms": 40.22049999999996,
+      "scan_ms": 701.0605,
+      "total_ms": 874.9533,
+      "worker_decode_ms_sum": 9151.6594,
+      "worker_input_ms_sum": 1383.6556,
+      "workers": 16,
+      "background_cpu_before": [
+        10.9,
+        7.7
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\san-miguel.obj",
+        "0",
+        "16"
+      ],
+      "model": "San Miguel",
+      "variant": "before",
+      "round": 3,
+      "utc_started": "2026-10-15T19:26:51Z"
+    },
+    {
+      "attribute_allocate_ms": 2.0088,
+      "chunks": 16,
+      "cpu_ms": 906.25,
+      "faces": 527016,
+      "fingerprint": 5092349252672651708,
+      "line_indices": 0,
+      "merge_execute_ms": 5.4155,
+      "merge_ms": 7.9658,
+      "peak_commit_bytes": 128675840,
+      "peak_working_set_bytes": 112246784,
+      "point_indices": 0,
+      "positions": 535893,
+      "precise_fingerprint": 15166123633231056696,
+      "residual_ms": 3.6408000000000005,
+      "scan_ms": 51.6188,
+      "total_ms": 63.2254,
+      "worker_decode_ms_sum": 587.236,
+      "worker_input_ms_sum": 82.2697,
+      "workers": 16,
+      "background_cpu_before": [
+        13.4,
+        13.3
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+        "0",
+        "16"
+      ],
+      "model": "BusGameMap",
+      "variant": "before",
+      "round": 3,
+      "utc_started": "2026-10-15T19:26:56Z"
+    },
+    {
+      "attribute_allocate_ms": 1.958,
+      "chunks": 19,
+      "cpu_ms": 500.0,
+      "faces": 527016,
+      "fingerprint": 5092349252672651708,
+      "line_indices": 0,
+      "merge_execute_ms": 5.5814,
+      "merge_ms": 8.0229,
+      "peak_commit_bytes": 120766464,
+      "peak_working_set_bytes": 115359744,
+      "point_indices": 0,
+      "positions": 535893,
+      "precise_fingerprint": 15166123633231056696,
+      "residual_ms": 3.655999999999999,
+      "scan_ms": 54.4203,
+      "total_ms": 66.0992,
+      "worker_decode_ms_sum": 427.2017,
+      "worker_input_ms_sum": 153.4195,
+      "workers": 16,
+      "background_cpu_before": [
+        11.5,
+        9.3
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+        "0",
+        "16"
+      ],
+      "model": "BusGameMap",
+      "variant": "after",
+      "round": 3,
+      "utc_started": "2026-10-15T19:26:58Z"
+    },
+    {
+      "attribute_allocate_ms": 130.5164,
+      "chunks": 1695,
+      "cpu_ms": 46109.375,
+      "faces": 75771986,
+      "fingerprint": 4945253916492883569,
+      "line_indices": 0,
+      "merge_execute_ms": 548.8928,
+      "merge_ms": 680.3859,
+      "peak_commit_bytes": 9613590528,
+      "peak_working_set_bytes": 9544114176,
+      "point_indices": 0,
+      "positions": 37890645,
+      "precise_fingerprint": 11071775745096326807,
+      "residual_ms": 375.25559999999973,
+      "scan_ms": 2852.2433,
+      "total_ms": 3907.8848,
+      "worker_decode_ms_sum": 37567.5901,
+      "worker_input_ms_sum": 7016.8247,
+      "workers": 16,
+      "background_cpu_before": [
+        9.3,
+        11.3
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "0",
+        "16"
+      ],
+      "model": "BearTrap",
+      "variant": "after",
+      "round": 4,
+      "utc_started": "2026-10-15T19:27:02Z"
+    },
+    {
+      "attribute_allocate_ms": 106.9061,
+      "chunks": 16,
+      "cpu_ms": 61500.0,
+      "faces": 75771986,
+      "fingerprint": 4945253916492883569,
+      "line_indices": 0,
+      "merge_execute_ms": 444.0616,
+      "merge_ms": 551.3566,
+      "peak_commit_bytes": 11279228928,
+      "peak_working_set_bytes": 9495498752,
+      "point_indices": 0,
+      "positions": 37890645,
+      "precise_fingerprint": 11071775745096326807,
+      "residual_ms": 264.77800000000036,
+      "scan_ms": 4369.8521,
+      "total_ms": 5185.9867,
+      "worker_decode_ms_sum": 56242.9721,
+      "worker_input_ms_sum": 7557.3752,
+      "workers": 16,
+      "background_cpu_before": [
+        7.7,
+        5.6
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "0",
+        "16"
+      ],
+      "model": "BearTrap",
+      "variant": "before",
+      "round": 4,
+      "utc_started": "2026-10-15T19:27:31Z"
+    },
+    {
+      "attribute_allocate_ms": 0.0005,
+      "chunks": 16,
+      "cpu_ms": 7828.125,
+      "faces": 17866836,
+      "fingerprint": 3727957388007865106,
+      "line_indices": 0,
+      "merge_execute_ms": 90.0446,
+      "merge_ms": 90.1483,
+      "peak_commit_bytes": 2319142912,
+      "peak_working_set_bytes": 1954201600,
+      "point_indices": 0,
+      "positions": 8933524,
+      "precise_fingerprint": 3727957388007865106,
+      "residual_ms": 45.00619999999998,
+      "scan_ms": 512.2921,
+      "total_ms": 647.4466,
+      "worker_decode_ms_sum": 6657.3142,
+      "worker_input_ms_sum": 925.2834,
+      "workers": 16,
+      "background_cpu_before": [
+        13.7,
+        14.4
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+        "0",
+        "16"
+      ],
+      "model": "Bennu",
+      "variant": "before",
+      "round": 4,
+      "utc_started": "2026-10-15T19:27:59Z"
+    },
+    {
+      "attribute_allocate_ms": 0.0005,
+      "chunks": 195,
+      "cpu_ms": 7000.0,
+      "faces": 17866836,
+      "fingerprint": 3727957388007865106,
+      "line_indices": 0,
+      "merge_execute_ms": 110.1041,
+      "merge_ms": 110.3646,
+      "peak_commit_bytes": 1965744128,
+      "peak_working_set_bytes": 1959976960,
+      "point_indices": 0,
+      "positions": 8933524,
+      "precise_fingerprint": 3727957388007865106,
+      "residual_ms": 58.491300000000024,
+      "scan_ms": 464.2749,
+      "total_ms": 633.1308,
+      "worker_decode_ms_sum": 6241.896,
+      "worker_input_ms_sum": 846.9872,
+      "workers": 16,
+      "background_cpu_before": [
+        11.5,
+        12.2
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+        "0",
+        "16"
+      ],
+      "model": "Bennu",
+      "variant": "after",
+      "round": 4,
+      "utc_started": "2026-10-15T19:28:11Z"
+    },
+    {
+      "attribute_allocate_ms": 3.7141,
+      "chunks": 196,
+      "cpu_ms": 7328.125,
+      "faces": 12759246,
+      "fingerprint": 6682264453835001014,
+      "line_indices": 0,
+      "merge_execute_ms": 74.4278,
+      "merge_ms": 79.1264,
+      "peak_commit_bytes": 1427718144,
+      "peak_working_set_bytes": 1424678912,
+      "point_indices": 0,
+      "positions": 5984083,
+      "precise_fingerprint": 6021134162495699558,
+      "residual_ms": 41.798900000000046,
+      "scan_ms": 433.1868,
+      "total_ms": 554.1121,
+      "worker_decode_ms_sum": 5959.6249,
+      "worker_input_ms_sum": 668.0125,
+      "workers": 16,
+      "background_cpu_before": [
+        3.3,
+        8.4
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\powerplant.obj",
+        "0",
+        "16"
+      ],
+      "model": "Powerplant",
+      "variant": "after",
+      "round": 4,
+      "utc_started": "2026-10-15T19:28:22Z"
+    },
+    {
+      "attribute_allocate_ms": 3.3534,
+      "chunks": 16,
+      "cpu_ms": 7515.625,
+      "faces": 12759246,
+      "fingerprint": 6682264453835001014,
+      "line_indices": 0,
+      "merge_execute_ms": 66.8607,
+      "merge_ms": 70.9911,
+      "peak_commit_bytes": 1765945344,
+      "peak_working_set_bytes": 1417568256,
+      "point_indices": 0,
+      "positions": 5984083,
+      "precise_fingerprint": 6021134162495699558,
+      "residual_ms": 34.14580000000002,
+      "scan_ms": 505.0003,
+      "total_ms": 610.1372,
+      "worker_decode_ms_sum": 6384.9193,
+      "worker_input_ms_sum": 927.9096,
+      "workers": 16,
+      "background_cpu_before": [
+        7.0,
+        5.5
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\powerplant.obj",
+        "0",
+        "16"
+      ],
+      "model": "Powerplant",
+      "variant": "before",
+      "round": 4,
+      "utc_started": "2026-10-15T19:28:30Z"
+    },
+    {
+      "attribute_allocate_ms": 32.5829,
+      "chunks": 16,
+      "cpu_ms": 10265.625,
+      "faces": 9932385,
+      "fingerprint": 12714406684858412379,
+      "line_indices": 0,
+      "merge_execute_ms": 69.751,
+      "merge_ms": 131.2587,
+      "peak_commit_bytes": 1700487168,
+      "peak_working_set_bytes": 1540247552,
+      "point_indices": 0,
+      "positions": 5933233,
+      "precise_fingerprint": 2239768062350047680,
+      "residual_ms": 36.671200000000084,
+      "scan_ms": 642.9033,
+      "total_ms": 810.8332,
+      "worker_decode_ms_sum": 8931.6765,
+      "worker_input_ms_sum": 874.6906,
+      "workers": 16,
+      "background_cpu_before": [
+        7.8,
+        6.4
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\san-miguel.obj",
+        "0",
+        "16"
+      ],
+      "model": "San Miguel",
+      "variant": "before",
+      "round": 4,
+      "utc_started": "2026-10-15T19:28:35Z"
+    },
+    {
+      "attribute_allocate_ms": 38.133,
+      "chunks": 273,
+      "cpu_ms": 8875.0,
+      "faces": 9932385,
+      "fingerprint": 12714406684858412379,
+      "line_indices": 0,
+      "merge_execute_ms": 76.6169,
+      "merge_ms": 145.5426,
+      "peak_commit_bytes": 1552166912,
+      "peak_working_set_bytes": 1546719232,
+      "point_indices": 0,
+      "positions": 5933233,
+      "precise_fingerprint": 2239768062350047680,
+      "residual_ms": 64.0326,
+      "scan_ms": 553.2516,
+      "total_ms": 762.8268,
+      "worker_decode_ms_sum": 7400.9863,
+      "worker_input_ms_sum": 1086.0042,
+      "workers": 16,
+      "background_cpu_before": [
+        11.7,
+        7.9
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\san-miguel.obj",
+        "0",
+        "16"
+      ],
+      "model": "San Miguel",
+      "variant": "after",
+      "round": 4,
+      "utc_started": "2026-10-15T19:28:41Z"
+    },
+    {
+      "attribute_allocate_ms": 2.0383,
+      "chunks": 19,
+      "cpu_ms": 578.125,
+      "faces": 527016,
+      "fingerprint": 5092349252672651708,
+      "line_indices": 0,
+      "merge_execute_ms": 5.5474,
+      "merge_ms": 8.0866,
+      "peak_commit_bytes": 124104704,
+      "peak_working_set_bytes": 114016256,
+      "point_indices": 0,
+      "positions": 535893,
+      "precise_fingerprint": 15166123633231056696,
+      "residual_ms": 3.5328999999999944,
+      "scan_ms": 53.9826,
+      "total_ms": 65.6021,
+      "worker_decode_ms_sum": 437.3839,
+      "worker_input_ms_sum": 133.4502,
+      "workers": 16,
+      "background_cpu_before": [
+        8.3,
+        9.2
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+        "0",
+        "16"
+      ],
+      "model": "BusGameMap",
+      "variant": "after",
+      "round": 4,
+      "utc_started": "2026-10-15T19:28:48Z"
+    },
+    {
+      "attribute_allocate_ms": 1.9366,
+      "chunks": 16,
+      "cpu_ms": 890.625,
+      "faces": 527016,
+      "fingerprint": 5092349252672651708,
+      "line_indices": 0,
+      "merge_execute_ms": 5.1175,
+      "merge_ms": 7.4913,
+      "peak_commit_bytes": 128221184,
+      "peak_working_set_bytes": 111927296,
+      "point_indices": 0,
+      "positions": 535893,
+      "precise_fingerprint": 15166123633231056696,
+      "residual_ms": 3.5554999999999977,
+      "scan_ms": 50.1058,
+      "total_ms": 61.1526,
+      "worker_decode_ms_sum": 566.9595,
+      "worker_input_ms_sum": 59.5272,
+      "workers": 16,
+      "background_cpu_before": [
+        6.4,
+        7.6
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+        "0",
+        "16"
+      ],
+      "model": "BusGameMap",
+      "variant": "before",
+      "round": 4,
+      "utc_started": "2026-10-15T19:28:57Z"
+    },
+    {
+      "attribute_allocate_ms": 104.4962,
+      "chunks": 16,
+      "cpu_ms": 62015.625,
+      "faces": 75771986,
+      "fingerprint": 4945253916492883569,
+      "line_indices": 0,
+      "merge_execute_ms": 451.6526,
+      "merge_ms": 556.3961,
+      "peak_commit_bytes": 11278671872,
+      "peak_working_set_bytes": 9495330816,
+      "point_indices": 0,
+      "positions": 37890645,
+      "precise_fingerprint": 11071775745096326807,
+      "residual_ms": 257.46550000000013,
+      "scan_ms": 4256.5592,
+      "total_ms": 5070.4208,
+      "worker_decode_ms_sum": 55884.9453,
+      "worker_input_ms_sum": 6917.2914,
+      "workers": 16,
+      "background_cpu_before": [
+        11.0,
+        9.1
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "0",
+        "16"
+      ],
+      "model": "BearTrap",
+      "variant": "before",
+      "round": 5,
+      "utc_started": "2026-10-15T19:29:02Z"
+    },
+    {
+      "attribute_allocate_ms": 137.3833,
+      "chunks": 1695,
+      "cpu_ms": 45812.5,
+      "faces": 75771986,
+      "fingerprint": 4945253916492883569,
+      "line_indices": 0,
+      "merge_execute_ms": 580.9836,
+      "merge_ms": 719.391,
+      "peak_commit_bytes": 9613770752,
+      "peak_working_set_bytes": 9544548352,
+      "point_indices": 0,
+      "positions": 37890645,
+      "precise_fingerprint": 11071775745096326807,
+      "residual_ms": 351.88770000000034,
+      "scan_ms": 2827.6092,
+      "total_ms": 3898.8879,
+      "worker_decode_ms_sum": 37471.6827,
+      "worker_input_ms_sum": 6775.1197,
+      "workers": 16,
+      "background_cpu_before": [
+        6.4,
+        8.3
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "0",
+        "16"
+      ],
+      "model": "BearTrap",
+      "variant": "after",
+      "round": 5,
+      "utc_started": "2026-10-15T19:29:32Z"
+    },
+    {
+      "attribute_allocate_ms": 0.0005,
+      "chunks": 195,
+      "cpu_ms": 7046.875,
+      "faces": 17866836,
+      "fingerprint": 3727957388007865106,
+      "line_indices": 0,
+      "merge_execute_ms": 107.7641,
+      "merge_ms": 108.0332,
+      "peak_commit_bytes": 1965862912,
+      "peak_working_set_bytes": 1960685568,
+      "point_indices": 0,
+      "positions": 8933524,
+      "precise_fingerprint": 3727957388007865106,
+      "residual_ms": 55.00619999999995,
+      "scan_ms": 469.5459,
+      "total_ms": 632.5853,
+      "worker_decode_ms_sum": 6267.9988,
+      "worker_input_ms_sum": 912.9442,
+      "workers": 16,
+      "background_cpu_before": [
+        11.2,
+        6.2
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+        "0",
+        "16"
+      ],
+      "model": "Bennu",
+      "variant": "after",
+      "round": 5,
+      "utc_started": "2026-10-15T19:30:04Z"
+    },
+    {
+      "attribute_allocate_ms": 0.0005,
+      "chunks": 16,
+      "cpu_ms": 7828.125,
+      "faces": 17866836,
+      "fingerprint": 3727957388007865106,
+      "line_indices": 0,
+      "merge_execute_ms": 97.2796,
+      "merge_ms": 97.3853,
+      "peak_commit_bytes": 2318516224,
+      "peak_working_set_bytes": 1954197504,
+      "point_indices": 0,
+      "positions": 8933524,
+      "precise_fingerprint": 3727957388007865106,
+      "residual_ms": 45.16869999999997,
+      "scan_ms": 508.7967,
+      "total_ms": 651.3507,
+      "worker_decode_ms_sum": 6700.9587,
+      "worker_input_ms_sum": 776.1741,
+      "workers": 16,
+      "background_cpu_before": [
+        6.9,
+        7.0
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+        "0",
+        "16"
+      ],
+      "model": "Bennu",
+      "variant": "before",
+      "round": 5,
+      "utc_started": "2026-10-15T19:30:10Z"
+    },
+    {
+      "attribute_allocate_ms": 3.3475,
+      "chunks": 16,
+      "cpu_ms": 7218.75,
+      "faces": 12759246,
+      "fingerprint": 6682264453835001014,
+      "line_indices": 0,
+      "merge_execute_ms": 68.2285,
+      "merge_ms": 72.4062,
+      "peak_commit_bytes": 1766055936,
+      "peak_working_set_bytes": 1417973760,
+      "point_indices": 0,
+      "positions": 5984083,
+      "precise_fingerprint": 6021134162495699558,
+      "residual_ms": 36.07579999999997,
+      "scan_ms": 505.6223,
+      "total_ms": 614.1043,
+      "worker_decode_ms_sum": 6383.919,
+      "worker_input_ms_sum": 854.7788,
+      "workers": 16,
+      "background_cpu_before": [
+        13.9,
+        13.0
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\powerplant.obj",
+        "0",
+        "16"
+      ],
+      "model": "Powerplant",
+      "variant": "before",
+      "round": 5,
+      "utc_started": "2026-10-15T19:30:17Z"
+    },
+    {
+      "attribute_allocate_ms": 3.8663,
+      "chunks": 196,
+      "cpu_ms": 7062.5,
+      "faces": 12759246,
+      "fingerprint": 6682264453835001014,
+      "line_indices": 0,
+      "merge_execute_ms": 76.3644,
+      "merge_ms": 81.2932,
+      "peak_commit_bytes": 1427505152,
+      "peak_working_set_bytes": 1423605760,
+      "point_indices": 0,
+      "positions": 5984083,
+      "precise_fingerprint": 6021134162495699558,
+      "residual_ms": 44.42329999999994,
+      "scan_ms": 468.9734,
+      "total_ms": 594.6899,
+      "worker_decode_ms_sum": 6140.7911,
+      "worker_input_ms_sum": 878.7737,
+      "workers": 16,
+      "background_cpu_before": [
+        8.7,
+        6.4
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\powerplant.obj",
+        "0",
+        "16"
+      ],
+      "model": "Powerplant",
+      "variant": "after",
+      "round": 5,
+      "utc_started": "2026-10-15T19:30:22Z"
+    },
+    {
+      "attribute_allocate_ms": 36.8444,
+      "chunks": 273,
+      "cpu_ms": 9031.25,
+      "faces": 9932385,
+      "fingerprint": 12714406684858412379,
+      "line_indices": 0,
+      "merge_execute_ms": 77.4708,
+      "merge_ms": 144.2564,
+      "peak_commit_bytes": 1552318464,
+      "peak_working_set_bytes": 1545629696,
+      "point_indices": 0,
+      "positions": 5933233,
+      "precise_fingerprint": 2239768062350047680,
+      "residual_ms": 62.43640000000002,
+      "scan_ms": 533.8688,
+      "total_ms": 740.5616,
+      "worker_decode_ms_sum": 7283.7379,
+      "worker_input_ms_sum": 935.9109,
+      "workers": 16,
+      "background_cpu_before": [
+        9.1,
+        5.1
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\san-miguel.obj",
+        "0",
+        "16"
+      ],
+      "model": "San Miguel",
+      "variant": "after",
+      "round": 5,
+      "utc_started": "2026-10-15T19:30:27Z"
+    },
+    {
+      "attribute_allocate_ms": 34.26,
+      "chunks": 16,
+      "cpu_ms": 10453.125,
+      "faces": 9932385,
+      "fingerprint": 12714406684858412379,
+      "line_indices": 0,
+      "merge_execute_ms": 69.2524,
+      "merge_ms": 131.0239,
+      "peak_commit_bytes": 1700282368,
+      "peak_working_set_bytes": 1539809280,
+      "point_indices": 0,
+      "positions": 5933233,
+      "precise_fingerprint": 2239768062350047680,
+      "residual_ms": 36.563399999999916,
+      "scan_ms": 662.4745,
+      "total_ms": 830.0618,
+      "worker_decode_ms_sum": 8918.6854,
+      "worker_input_ms_sum": 1040.7517,
+      "workers": 16,
+      "background_cpu_before": [
+        11.4,
+        6.8
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\san-miguel.obj",
+        "0",
+        "16"
+      ],
+      "model": "San Miguel",
+      "variant": "before",
+      "round": 5,
+      "utc_started": "2026-10-15T19:30:38Z"
+    },
+    {
+      "attribute_allocate_ms": 1.9276,
+      "chunks": 16,
+      "cpu_ms": 875.0,
+      "faces": 527016,
+      "fingerprint": 5092349252672651708,
+      "line_indices": 0,
+      "merge_execute_ms": 5.1365,
+      "merge_ms": 7.5294,
+      "peak_commit_bytes": 128188416,
+      "peak_working_set_bytes": 111951872,
+      "point_indices": 0,
+      "positions": 535893,
+      "precise_fingerprint": 15166123633231056696,
+      "residual_ms": 3.769000000000001,
+      "scan_ms": 47.2687,
+      "total_ms": 58.5671,
+      "worker_decode_ms_sum": 583.6127,
+      "worker_input_ms_sum": 49.0151,
+      "workers": 16,
+      "background_cpu_before": [
+        10.9,
+        6.4
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\baseline.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+        "0",
+        "16"
+      ],
+      "model": "BusGameMap",
+      "variant": "before",
+      "round": 5,
+      "utc_started": "2026-10-15T19:30:43Z"
+    },
+    {
+      "attribute_allocate_ms": 2.041,
+      "chunks": 19,
+      "cpu_ms": 609.375,
+      "faces": 527016,
+      "fingerprint": 5092349252672651708,
+      "line_indices": 0,
+      "merge_execute_ms": 5.4971,
+      "merge_ms": 8.026,
+      "peak_commit_bytes": 124219392,
+      "peak_working_set_bytes": 113639424,
+      "point_indices": 0,
+      "positions": 535893,
+      "precise_fingerprint": 15166123633231056696,
+      "residual_ms": 3.8018000000000036,
+      "scan_ms": 52.1778,
+      "total_ms": 64.0056,
+      "worker_decode_ms_sum": 430.0043,
+      "worker_input_ms_sum": 119.6994,
+      "workers": 16,
+      "background_cpu_before": [
+        5.6,
+        6.7
+      ],
+      "command": [
+        "D:\\.worktree\\woby-parser-results-9921\\after.exe",
+        "prototype",
+        "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+        "0",
+        "16"
+      ],
+      "model": "BusGameMap",
+      "variant": "after",
+      "round": 5,
+      "utc_started": "2026-10-15T19:30:44Z"
+    }
+  ],
+  "summaries": [
+    {
+      "model": "BearTrap",
+      "before": {
+        "attribute_allocate_ms": {
+          "median": 104.4962,
+          "minimum": 102.2715,
+          "maximum": 112.6771
+        },
+        "cpu_ms": {
+          "median": 62015.625,
+          "minimum": 61500.0,
+          "maximum": 62453.125
+        },
+        "merge_execute_ms": {
+          "median": 470.0895,
+          "minimum": 444.0616,
+          "maximum": 487.8836
+        },
+        "merge_ms": {
+          "median": 572.6478,
+          "minimum": 551.3566,
+          "maximum": 600.8902
+        },
+        "peak_commit_bytes": {
+          "median": 11279175680,
+          "minimum": 11278671872,
+          "maximum": 11279622144
+        },
+        "peak_working_set_bytes": {
+          "median": 9495605248,
+          "minimum": 9495330816,
+          "maximum": 9495851008
+        },
+        "residual_ms": {
+          "median": 266.54269999999985,
+          "minimum": 257.46550000000013,
+          "maximum": 285.2201999999995
+        },
+        "scan_ms": {
+          "median": 4339.9869,
+          "minimum": 4182.2752,
+          "maximum": 5170.6368
+        },
+        "total_ms": {
+          "median": 5181.4909,
+          "minimum": 5068.3856,
+          "maximum": 6012.884
+        }
+      },
+      "after": {
+        "attribute_allocate_ms": {
+          "median": 130.5164,
+          "minimum": 114.3114,
+          "maximum": 141.5712
+        },
+        "cpu_ms": {
+          "median": 45656.25,
+          "minimum": 44750.0,
+          "maximum": 46109.375
+        },
+        "merge_execute_ms": {
+          "median": 538.534,
+          "minimum": 526.0138,
+          "maximum": 580.9836
+        },
+        "merge_ms": {
+          "median": 680.3859,
+          "minimum": 641.3303,
+          "maximum": 719.391
+        },
+        "peak_commit_bytes": {
+          "median": 9613770752,
+          "minimum": 9612705792,
+          "maximum": 9615650816
+        },
+        "peak_working_set_bytes": {
+          "median": 9544712192,
+          "minimum": 9544114176,
+          "maximum": 9546686464
+        },
+        "residual_ms": {
+          "median": 375.25559999999973,
+          "minimum": 351.88770000000034,
+          "maximum": 393.6175000000002
+        },
+        "scan_ms": {
+          "median": 2827.6092,
+          "minimum": 2744.6652,
+          "maximum": 2857.1218
+        },
+        "total_ms": {
+          "median": 3898.8879,
+          "minimum": 3751.1962,
+          "maximum": 3926.7648
+        }
+      },
+      "time_reduction_percent": 24.753551144903096
+    },
+    {
+      "model": "Bennu",
+      "before": {
+        "attribute_allocate_ms": {
+          "median": 0.0005,
+          "minimum": 0.0004,
+          "maximum": 0.0007
+        },
+        "cpu_ms": {
+          "median": 7828.125,
+          "minimum": 7671.875,
+          "maximum": 8125.0
+        },
+        "merge_execute_ms": {
+          "median": 95.7837,
+          "minimum": 90.0446,
+          "maximum": 97.4452
+        },
+        "merge_ms": {
+          "median": 95.9286,
+          "minimum": 90.1483,
+          "maximum": 97.552
+        },
+        "peak_commit_bytes": {
+          "median": 2318516224,
+          "minimum": 2318340096,
+          "maximum": 2319142912
+        },
+        "peak_working_set_bytes": {
+          "median": 1954201600,
+          "minimum": 1954107392,
+          "maximum": 1954467840
+        },
+        "residual_ms": {
+          "median": 45.52389999999998,
+          "minimum": 45.00619999999998,
+          "maximum": 48.02249999999995
+        },
+        "scan_ms": {
+          "median": 512.2921,
+          "minimum": 504.1255,
+          "maximum": 573.7409
+        },
+        "total_ms": {
+          "median": 651.3507,
+          "minimum": 645.578,
+          "maximum": 718.5703
+        }
+      },
+      "after": {
+        "attribute_allocate_ms": {
+          "median": 0.0005,
+          "minimum": 0.0005,
+          "maximum": 0.0007
+        },
+        "cpu_ms": {
+          "median": 7093.75,
+          "minimum": 7000.0,
+          "maximum": 7203.125
+        },
+        "merge_execute_ms": {
+          "median": 107.7641,
+          "minimum": 101.8159,
+          "maximum": 110.1041
+        },
+        "merge_ms": {
+          "median": 108.0332,
+          "minimum": 102.0815,
+          "maximum": 110.3646
+        },
+        "peak_commit_bytes": {
+          "median": 1966665728,
+          "minimum": 1965744128,
+          "maximum": 1967415296
+        },
+        "peak_working_set_bytes": {
+          "median": 1961017344,
+          "minimum": 1959976960,
+          "maximum": 1961451520
+        },
+        "residual_ms": {
+          "median": 56.5145,
+          "minimum": 55.00619999999995,
+          "maximum": 58.491300000000024
+        },
+        "scan_ms": {
+          "median": 447.1343,
+          "minimum": 427.5724,
+          "maximum": 469.5459
+        },
+        "total_ms": {
+          "median": 611.5761,
+          "minimum": 584.6817,
+          "maximum": 633.1308
+        }
+      },
+      "time_reduction_percent": 6.106479965401124
+    },
+    {
+      "model": "Powerplant",
+      "before": {
+        "attribute_allocate_ms": {
+          "median": 3.3816,
+          "minimum": 3.3475,
+          "maximum": 3.4629
+        },
+        "cpu_ms": {
+          "median": 7218.75,
+          "minimum": 7171.875,
+          "maximum": 7578.125
+        },
+        "merge_execute_ms": {
+          "median": 66.8607,
+          "minimum": 63.84,
+          "maximum": 70.5941
+        },
+        "merge_ms": {
+          "median": 70.9911,
+          "minimum": 68.0324,
+          "maximum": 74.7953
+        },
+        "peak_commit_bytes": {
+          "median": 1766113280,
+          "minimum": 1765945344,
+          "maximum": 1766260736
+        },
+        "peak_working_set_bytes": {
+          "median": 1417965568,
+          "minimum": 1417568256,
+          "maximum": 1418092544
+        },
+        "residual_ms": {
+          "median": 33.69900000000001,
+          "minimum": 33.03299999999999,
+          "maximum": 36.07579999999997
+        },
+        "scan_ms": {
+          "median": 505.6223,
+          "minimum": 503.9557,
+          "maximum": 557.1299
+        },
+        "total_ms": {
+          "median": 614.1043,
+          "minimum": 605.6871,
+          "maximum": 659.8016
+        }
+      },
+      "after": {
+        "attribute_allocate_ms": {
+          "median": 3.7141,
+          "minimum": 3.3438,
+          "maximum": 3.8663
+        },
+        "cpu_ms": {
+          "median": 7109.375,
+          "minimum": 7062.5,
+          "maximum": 7328.125
+        },
+        "merge_execute_ms": {
+          "median": 74.4398,
+          "minimum": 74.0161,
+          "maximum": 80.8253
+        },
+        "merge_ms": {
+          "median": 79.4223,
+          "minimum": 78.3667,
+          "maximum": 85.1583
+        },
+        "peak_commit_bytes": {
+          "median": 1426984960,
+          "minimum": 1426956288,
+          "maximum": 1427718144
+        },
+        "peak_working_set_bytes": {
+          "median": 1423908864,
+          "minimum": 1423605760,
+          "maximum": 1424678912
+        },
+        "residual_ms": {
+          "median": 43.63629999999995,
+          "minimum": 41.798900000000046,
+          "maximum": 46.68750000000006
+        },
+        "scan_ms": {
+          "median": 447.5609,
+          "minimum": 433.1868,
+          "maximum": 470.447
+        },
+        "total_ms": {
+          "median": 569.4403,
+          "minimum": 554.1121,
+          "maximum": 602.2928
+        }
+      },
+      "time_reduction_percent": 7.273031633225823
+    },
+    {
+      "model": "San Miguel",
+      "before": {
+        "attribute_allocate_ms": {
+          "median": 33.4425,
+          "minimum": 32.5829,
+          "maximum": 34.26
+        },
+        "cpu_ms": {
+          "median": 10265.625,
+          "minimum": 10250.0,
+          "maximum": 10453.125
+        },
+        "merge_execute_ms": {
+          "median": 70.7068,
+          "minimum": 69.2524,
+          "maximum": 71.7145
+        },
+        "merge_ms": {
+          "median": 132.5633,
+          "minimum": 131.0239,
+          "maximum": 133.6723
+        },
+        "peak_commit_bytes": {
+          "median": 1700458496,
+          "minimum": 1700282368,
+          "maximum": 1700487168
+        },
+        "peak_working_set_bytes": {
+          "median": 1539809280,
+          "minimum": 1539592192,
+          "maximum": 1540247552
+        },
+        "residual_ms": {
+          "median": 37.41710000000006,
+          "minimum": 36.563399999999916,
+          "maximum": 40.22049999999996
+        },
+        "scan_ms": {
+          "median": 669.1744,
+          "minimum": 642.9033,
+          "maximum": 701.0605
+        },
+        "total_ms": {
+          "median": 839.2457,
+          "minimum": 810.8332,
+          "maximum": 874.9533
+        }
+      },
+      "after": {
+        "attribute_allocate_ms": {
+          "median": 36.8444,
+          "minimum": 35.9239,
+          "maximum": 40.4336
+        },
+        "cpu_ms": {
+          "median": 8968.75,
+          "minimum": 8828.125,
+          "maximum": 9031.25
+        },
+        "merge_execute_ms": {
+          "median": 77.4708,
+          "minimum": 76.5693,
+          "maximum": 82.191
+        },
+        "merge_ms": {
+          "median": 145.5426,
+          "minimum": 144.0222,
+          "maximum": 153.1341
+        },
+        "peak_commit_bytes": {
+          "median": 1552166912,
+          "minimum": 1552064512,
+          "maximum": 1552367616
+        },
+        "peak_working_set_bytes": {
+          "median": 1546444800,
+          "minimum": 1545629696,
+          "maximum": 1546719232
+        },
+        "residual_ms": {
+          "median": 61.777300000000025,
+          "minimum": 61.18449999999996,
+          "maximum": 64.0326
+        },
+        "scan_ms": {
+          "median": 553.2516,
+          "minimum": 533.8688,
+          "maximum": 581.7604
+        },
+        "total_ms": {
+          "median": 762.8268,
+          "minimum": 740.5616,
+          "maximum": 796.5481
+        }
+      },
+      "time_reduction_percent": 9.105664765395883
+    },
+    {
+      "model": "BusGameMap",
+      "before": {
+        "attribute_allocate_ms": {
+          "median": 1.9984,
+          "minimum": 1.9276,
+          "maximum": 2.0119
+        },
+        "cpu_ms": {
+          "median": 875.0,
+          "minimum": 562.5,
+          "maximum": 906.25
+        },
+        "merge_execute_ms": {
+          "median": 5.1365,
+          "minimum": 5.0437,
+          "maximum": 5.4155
+        },
+        "merge_ms": {
+          "median": 7.547,
+          "minimum": 7.4913,
+          "maximum": 7.9658
+        },
+        "peak_commit_bytes": {
+          "median": 128188416,
+          "minimum": 127344640,
+          "maximum": 128675840
+        },
+        "peak_working_set_bytes": {
+          "median": 111927296,
+          "minimum": 111599616,
+          "maximum": 112246784
+        },
+        "residual_ms": {
+          "median": 3.6408000000000005,
+          "minimum": 3.5554999999999977,
+          "maximum": 3.890700000000006
+        },
+        "scan_ms": {
+          "median": 50.4372,
+          "minimum": 47.2687,
+          "maximum": 65.2481
+        },
+        "total_ms": {
+          "median": 61.6216,
+          "minimum": 58.5671,
+          "maximum": 77.0137
+        }
+      },
+      "after": {
+        "attribute_allocate_ms": {
+          "median": 2.0289,
+          "minimum": 1.958,
+          "maximum": 2.041
+        },
+        "cpu_ms": {
+          "median": 578.125,
+          "minimum": 500.0,
+          "maximum": 640.625
+        },
+        "merge_execute_ms": {
+          "median": 5.4971,
+          "minimum": 5.2037,
+          "maximum": 5.5814
+        },
+        "merge_ms": {
+          "median": 8.0229,
+          "minimum": 7.6412,
+          "maximum": 8.0866
+        },
+        "peak_commit_bytes": {
+          "median": 123969536,
+          "minimum": 120766464,
+          "maximum": 124219392
+        },
+        "peak_working_set_bytes": {
+          "median": 114016256,
+          "minimum": 110321664,
+          "maximum": 115359744
+        },
+        "residual_ms": {
+          "median": 3.6230999999999973,
+          "minimum": 3.5174999999999956,
+          "maximum": 3.8018000000000036
+        },
+        "scan_ms": {
+          "median": 52.1778,
+          "minimum": 51.9777,
+          "maximum": 54.4203
+        },
+        "total_ms": {
+          "median": 64.0056,
+          "minimum": 63.2264,
+          "maximum": 66.0992
+        }
+      },
+      "time_reduction_percent": -3.8687732872888736
+    }
+  ]
+}

@@ -1,6 +1,9 @@
 #include <prototype.hpp>
 #include <nlohmann/json.hpp>
 #include <iostream>
+#ifdef _WIN32
+#include <psapi.h>
+#endif
 
 namespace {
 struct Fingerprint { uint64_t value = 14695981039346656037ull; };
@@ -12,6 +15,16 @@ template <typename T> void hashValues(Fingerprint& result, const T& values) {
     hash(result, values.size());
     for (const auto& value : values) { hash(result, value); }
 }
+#ifdef _WIN32
+double cpuMilliseconds() {
+    FILETIME created{}, exited{}, kernel{}, user{};
+    if (!GetProcessTimes(GetCurrentProcess(), &created, &exited, &kernel, &user)) {
+        throw std::runtime_error("Cannot read process CPU time.");
+    }
+    const auto ticks = [](FILETIME time) { return (uint64_t{time.dwHighDateTime} << 32) | time.dwLowDateTime; };
+    return static_cast<double>(ticks(kernel) + ticks(user)) / 10000.0;
+}
+#endif
 int run(bool prototype, const std::filesystem::path& path, size_t chunkBytes, size_t workers) {
     try {
         rapidobj::PrototypeOptions options;
@@ -21,14 +34,28 @@ int run(bool prototype, const std::filesystem::path& path, size_t chunkBytes, si
         std::vector<std::array<double, 3>> positions, normals;
         std::vector<std::array<double, 2>> texcoords;
         rapidobj::PrototypeResult result;
+#ifdef _WIN32
+        const auto cpuStart = cpuMilliseconds();
+#endif
         const auto start = parser_profile::Clock::now();
         if (prototype) { result = rapidobj::ParseFilePrototype(path, {positions, texcoords, normals}, options); }
         else { result.polygons = rapidobj::ParseFile(path, rapidobj::MaterialLibrary::Default(rapidobj::Load::Optional)); }
         const auto total = parser_profile::elapsed(start);
+#ifdef _WIN32
+        const auto cpuMs = cpuMilliseconds() - cpuStart;
+        PROCESS_MEMORY_COUNTERS_EX memory{};
+        if (!GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory), sizeof(memory))) {
+            throw std::runtime_error("Cannot read process memory use.");
+        }
+#endif
         if (result.polygons.error) {
             throw std::runtime_error(result.polygons.error.code.message() + " at line " + std::to_string(result.polygons.error.line_num));
         }
         Fingerprint fingerprint;
+        Fingerprint precise;
+        if (prototype) {
+            hashValues(precise, positions); hashValues(precise, texcoords); hashValues(precise, normals);
+        }
         const auto& attributes = result.polygons.attributes;
         const auto count = prototype ? positions.size() : attributes.positions.size() / 3;
         hash(fingerprint, count);
@@ -47,6 +74,11 @@ int run(bool prototype, const std::filesystem::path& path, size_t chunkBytes, si
             hashValues(fingerprint, shape.mesh.material_ids); hashValues(fingerprint, shape.mesh.smoothing_group_ids);
             hashValues(fingerprint, shape.lines.indices); hashValues(fingerprint, shape.lines.num_line_vertices);
             hashValues(fingerprint, shape.points.indices);
+            hashValues(precise, shape.name);
+            hashValues(precise, shape.mesh.indices); hashValues(precise, shape.mesh.num_face_vertices);
+            hashValues(precise, shape.mesh.material_ids); hashValues(precise, shape.mesh.smoothing_group_ids);
+            hashValues(precise, shape.lines.indices); hashValues(precise, shape.lines.num_line_vertices);
+            hashValues(precise, shape.points.indices);
             faces += shape.mesh.num_face_vertices.size(); lineIndices += shape.lines.indices.size(); pointIndices += shape.points.indices.size();
         }
         nlohmann::json output{{"total_ms", total}, {"scan_ms", parser_profile::scan_ms}, {"merge_ms", parser_profile::merge_ms},
@@ -57,6 +89,12 @@ int run(bool prototype, const std::filesystem::path& path, size_t chunkBytes, si
             {"worker_decode_ms_sum", parser_profile::decode_ns.load() / 1e6},
             {"positions", count}, {"faces", faces}, {"line_indices", lineIndices}, {"point_indices", pointIndices},
             {"fingerprint", fingerprint.value}};
+        output["precise_fingerprint"] = precise.value;
+#ifdef _WIN32
+        output["cpu_ms"] = cpuMs;
+        output["peak_working_set_bytes"] = memory.PeakWorkingSetSize;
+        output["peak_commit_bytes"] = memory.PeakPagefileUsage;
+#endif
         std::cout << output.dump() << '\n';
         return 0;
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }

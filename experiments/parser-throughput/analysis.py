@@ -9,6 +9,12 @@ def summarize(records, models, variants, rounds):
         rows=[r for r in records if r['model']==model]
         if not rows or len({r['fingerprint'] for r in rows})!=1:
             raise ValueError('Geometry mismatch or missing model: '+model)
+        # Legacy attributes use floats. Compare full double precision only
+        # between builds and configurations of the production parser.
+        precise={r['precise_fingerprint'] for r in rows
+                 if r['variant']!='legacy' and 'precise_fingerprint' in r}
+        if len(precise)>1:
+            raise ValueError('Double-precision geometry mismatch: '+model)
         result=dict(model=model,variants={})
         for variant in variants:
             group=[r for r in rows if r['variant']==variant]

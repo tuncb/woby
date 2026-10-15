@@ -62,11 +62,6 @@ inline double elapsed(Clock::time_point begin) {
         '    if (stopped.load(std::memory_order_relaxed)) { return {}; }\n    const auto input_started = parser_profile::Clock::now();')
     text=replace(text, '    return PrototypeParseBlock(std::move(block), offset == 0, context, options, stopped);',
         '    parser_profile::input_ns.fetch_add(parser_profile::nanoseconds(input_started), std::memory_order_relaxed);\n    return PrototypeParseBlock(std::move(block), offset == 0, context, options, stopped);')
-    text=replace(text, '    // Range profiling starts here in the benchmark-only generated header.',
-        '    const auto range_started = parser_profile::Clock::now();')
-    text=replace(text, '    // Range profiling ends here in the benchmark-only generated header.', '''    const auto range_io = reader.SubmitTime() + reader.WaitTime();
-    parser_profile::input_ns.fetch_add(range_io.count(), std::memory_order_relaxed);
-    parser_profile::decode_ns.fetch_add(parser_profile::nanoseconds(range_started)-range_io.count(), std::memory_order_relaxed);''')
     text=replace(text, '    PrototypeResult result;\n    const bool names_only',
         '    const auto scan_started = parser_profile::Clock::now();\n    PrototypeResult result;\n    const bool names_only')
     text=replace(text, '        result.polygons = Merge(chunks, context);', '''        parser_profile::scan_ms = parser_profile::elapsed(scan_started);

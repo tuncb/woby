@@ -47,10 +47,10 @@ def generate(root, output, reference=False):
                    '    parser_profile::copy_ms = parser_profile::elapsed(copy_started);\n    obj_profile::end(measuredMerge);')
     (headers / "rapidobj.hpp").write_text(text, encoding="utf-8")
     text = (headers / "prototype.hpp").read_text(encoding="utf-8")
-    text = replace(text, '    const auto range_started = parser_profile::Clock::now();',
-                   '    const auto range_started = parser_profile::Clock::now();\n    const auto workerTrace = obj_profile::traceBegin("parser_worker_read_decode");\n    const auto workerCpuStart = obj_profile::threadCpu();')
-    text = replace(text, '    parser_profile::decode_ns.fetch_add(parser_profile::nanoseconds(range_started)-range_io.count(), std::memory_order_relaxed);',
-                   '    parser_profile::decode_ns.fetch_add(parser_profile::nanoseconds(range_started)-range_io.count(), std::memory_order_relaxed);\n    obj_profile::traceEnd(workerTrace);\n    obj_profile::worker(parser_profile::elapsed(range_started), std::chrono::duration<double, std::milli>(range_io).count(), workerCpuStart);')
+    text = replace(text, '    const auto input_started = parser_profile::Clock::now();',
+                   '    const auto input_started = parser_profile::Clock::now();\n    const auto workerTrace = obj_profile::traceBegin("parser_worker_read_decode");\n    const auto workerCpuStart = obj_profile::threadCpu();')
+    text = replace(text, '    return PrototypeParseBlock(std::move(block), offset == 0, context, options, stopped);',
+                   '    const auto workerIo = parser_profile::elapsed(input_started);\n    auto parsed = PrototypeParseBlock(std::move(block), offset == 0, context, options, stopped);\n    obj_profile::traceEnd(workerTrace);\n    obj_profile::worker(parser_profile::elapsed(input_started), workerIo, workerCpuStart);\n    return parsed;')
     text = replace(text, '    const auto scan_started = parser_profile::Clock::now();',
                    '    auto measuredParser = obj_profile::begin("parser_scan_collect");\n    const auto scan_started = parser_profile::Clock::now();')
     text = replace(text, '        const auto merge_started = parser_profile::Clock::now();',
