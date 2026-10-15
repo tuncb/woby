@@ -1,0 +1,33 @@
+OBJ color override UI - 2026-10-16
+
+Design: mockup.png, generated with built-in imagegen. See prompt.txt.
+Live app: ui-vertex.png and ui-custom.png, captured from the Release build.
+Review model: model.obj.
+
+Behavior
+- Vertex: source RGB is active. The swatch shows multiple colors.
+- Pick a color: use a Custom override for all vertices in the selected parts.
+- Reset arrow: use vertex colors again. Keep the fallback for missing RGB.
+- Mixed selections show Mixed. Parts without vertex colors keep the normal picker.
+- The override is stored in scenes and views. Undo and redo restore it.
+- Switching colors keeps the geometry and uploaded color buffers intact.
+
+Validation
+- Visual Studio 2026 / vs2026-vcpkg / Release: build passed without warnings.
+- Full CTest run: 120 of 121 checks passed on the first run.
+- Corrected the new round-trip test to resolve stored relative paths against
+  its own scene directory, as the real loader does. Production code was unchanged.
+- Rebuilt without warnings. The failed check then passed: all 121 checks pass.
+- GPU tests cover quad, atomic32, and atomic64 point rendering, with 1x and 4x MSAA.
+- Rendered tests cover surfaces, edges, mesh vertices, lines, point clouds,
+  manual overrides, source reset, missing RGB, opacity, and scene reload.
+- Live UI: opened the picker, chose a color, used the reset arrow, then checked
+  undo and redo. The picker opens next to the swatch.
+
+Local build and logs
+D:/.worktree/woby-parser-build-9921
+D:/.worktree/woby-color-override-build.log
+D:/.worktree/woby-color-override-incremental.log
+D:/.worktree/woby-color-override-ctest.log
+D:/.worktree/woby-color-override-test-build.log
+D:/.worktree/woby-color-override-retest.log

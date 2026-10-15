@@ -690,8 +690,8 @@ woby ctl --instance review render set scene --solid true --uv-grid true --uv-den
 | `transform set OBJECT_ID [--translation X Y Z] [--rotation-degrees X Y Z] [--scale S]` | `transform.set` | Local translation, Euler rotation, uniform scale; existing center/pivot and transform conventions. |
 | `transform reset OBJECT_ID` | `transform.reset` | Resets translation, rotation, scale **and opacity** to their defaults, matching the UI. |
 | `opacity set OBJECT_ID --value A` | `opacity.set` | Local folder/file/group or annotation opacity, clamped to 0–1. |
-| `color set OBJECT_ID --rgb R G B` | `color.set` | File/folder descendant groups, individual group, or annotation RGB; clamped to 0–1; preserves the existing color alpha. |
-| `color reset OBJECT_ID` | `color.reset` | Reset each file/folder descendant or individual group to its palette color, or an annotation to its default; preserves opacity. |
+| `color set OBJECT_ID --rgb R G B` | `color.set` | File/folder descendant groups, individual group, or annotation RGB; clamped to 0–1; preserves the existing color alpha. Overrides OBJ vertex colors. |
+| `color reset OBJECT_ID` | `color.reset` | Restore source vertex colors and the fallback palette for each descendant or individual group, or an annotation to its default; preserves opacity. |
 | `vertex-size set scene --pixels N` | `vertex-size.set` | Global base point size, clamped to 1–40 pixels. |
 | `vertex-size set OBJECT_ID --scale S` | `vertex-size.set` | File/group multiplier, clamped to 0.1–10. No folder multiplier. |
 | `grid set --visible BOOL` | `grid.set` | Ground-grid visibility. |
@@ -706,6 +706,11 @@ to line descendants and reject targets with none. Other render flags are preserv
 group details include `lineSegmentCount` and settings `lineWidth`/`lineDepthTest`.
 File details and `stats` also include `lineSegmentCount`. Parent color edits include
 hidden descendants; later child color overrides are preserved in scenes and views.
+Group settings include `hasVertexColors` and `colorOverride`. In Properties, the
+color row shows **Vertex** when source colors are active and **Custom** for an
+override. Pick a color to override. The reset arrow restores vertex colors and
+keeps the fallback color for vertices without RGB. Parts without source colors
+keep the usual color picker. These changes also support undo and redo.
 
 Object setters return `target`, `applied` local settings, `dirty`, and scene `bounds`.
 Scene-wide setters return the updated scene snapshot. Scale is clamped to 0.01–20;

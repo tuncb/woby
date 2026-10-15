@@ -1,0 +1,9 @@
+Generated with the built-in imagegen tool.
+
+Use case: ui-mockup
+Asset type: compact UI design reference for the woby native 3D model viewer.
+Primary request: Show the proposed vertex-color/manual-override control as two adjacent enlarged crops of the same Properties panel. Keep the interface extremely simple.
+Style: crisp, flat desktop utility UI, Dear ImGui style. Charcoal background #20252b, panel #323638, square small controls, thin grey separators, readable small neutral sans-serif. No rounded cards, no gradients except the multicolor color swatch.
+Composition: landscape image with two equally sized Properties panels. Each panel has a small model preview below. Left preview is a small faceted mesh with green, cyan and orange vertex colors; right preview is the exact same mesh uniformly blue. Identical panel geometry and typography. Surrounding canvas is dark and uncluttered.
+Text verbatim: each panel header "Properties", object name "Model", section heading "Appearance". Three rows only: "Opacity" with slider and value "1.00"; a row of three tiny view-mode icons; then the color row. Left color row reads "Color", followed by a small multicolor square swatch and the muted label "Vertex". Right color row reads "Color", followed by a small blue square swatch, the muted label "Custom", and a compact reset-arrow icon button. The reset arrow means return to original vertex colors. There are no long descriptions or help paragraphs. One short caption below the two panels: "Pick a color to override. Reset to restore."
+Constraints: only these UI controls; no app marketing, no giant headings, no decorative graphics, no invented toggle/dropdown for color mode, no random text. Keep all content visible, precise, and aligned. This is a design mockup, not an app screenshot.

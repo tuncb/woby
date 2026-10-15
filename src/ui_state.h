@@ -42,6 +42,8 @@ struct UiGroupState {
     std::array<float, 3> translation{};
     std::array<float, 3> rotationDegrees{};
     std::array<float, 4> color{};
+    bool colorOverride = false;
+    bool hasVertexColors = false; // Derived once from this part's source geometry; not saved.
     Bounds localBounds;
     bool localBoundsValid = false;
     std::optional<std::array<std::array<double, 3>, 2>> originalBounds;

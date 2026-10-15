@@ -67,7 +67,7 @@ std::optional<float> propertyValue(const Settings& settings, UiObjectProperty pr
     case P::scale: return settings.scale;
     case P::opacity: return settings.opacity;
     case P::vertexSize: case P::solidMesh: case P::triangles: case P::vertices:
-    case P::red: case P::green: case P::blue:
+    case P::red: case P::green: case P::blue: case P::vertexColors:
     case P::uvGrid: case P::uvDensityU: case P::uvDensityV: case P::uvColorMode: case P::uvMinimum: case P::uvMaximum:
     case P::lineWidth: case P::lineDepthTest: case P::analysisMode: break;
     }
@@ -88,6 +88,7 @@ std::optional<float> propertyValue(const Settings& settings, UiObjectProperty pr
         case P::red: return settings.color[0];
         case P::green: return settings.color[1];
         case P::blue: return settings.color[2];
+        case P::vertexColors: return settings.colorOverride ? 0.0f : 1.0f;
         case P::translationX: case P::translationY: case P::translationZ:
         case P::rotationX: case P::rotationY: case P::rotationZ:
         case P::scale: case P::opacity: case P::analysisMode: break;
@@ -103,7 +104,7 @@ bool isPartAppearanceProperty(UiObjectProperty property)
 {
     using P = UiObjectProperty;
     return property == P::solidMesh || property == P::triangles || property == P::vertices
-        || property == P::red || property == P::green || property == P::blue || isUvProperty(property)
+        || property == P::red || property == P::green || property == P::blue || property == P::vertexColors || isUvProperty(property)
         || property == P::lineWidth || property == P::lineDepthTest;
 }
 
@@ -127,7 +128,7 @@ void appendAppearanceTargets(const UiState& state, const UiSceneNode& node, bool
 struct PropertyTargetContext {
     std::vector<SceneObjectInfo> objects;
     boost::unordered_flat_map<SceneObjectId, const SceneObjectInfo*> byId;
-    std::array<boost::unordered_flat_set<SceneObjectId>, 4> eligible;
+    std::array<boost::unordered_flat_set<SceneObjectId>, 5> eligible;
 };
 PropertyTargetContext propertyTargetContext(const UiState& state)
 {
@@ -144,6 +145,7 @@ PropertyTargetContext propertyTargetContext(const UiState& state)
             if (node.lineIndexCount) { context.eligible[1].insert(id); }
             if (!node.lineIndexCount && !node.pointIndexCount) { context.eligible[2].insert(id); }
             if (node.indexCount || node.lineIndexCount || !node.pointIndexCount) { context.eligible[3].insert(id); }
+            if (file.groupSettings[i].hasVertexColors) { context.eligible[4].insert(id); }
             opacity = opacity || node.indexCount || node.lineIndexCount;
         }
         if (opacity) { context.eligible[3].insert(file.objectId); }
@@ -215,14 +217,15 @@ std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectPropert
     }
     const bool lines = property == UiObjectProperty::lineWidth || property == UiObjectProperty::lineDepthTest;
     const bool triangles = property == UiObjectProperty::solidMesh || property == UiObjectProperty::triangles;
-    if (context && (isUvProperty(property) || lines || triangles)) {
-        const auto& eligible = context->eligible[isUvProperty(property) ? 0 : lines ? 1 : 2];
+    const bool colors = property == UiObjectProperty::vertexColors;
+    if (context && (isUvProperty(property) || lines || triangles || colors)) {
+        const auto& eligible = context->eligible[colors ? 4 : isUvProperty(property) ? 0 : lines ? 1 : 2];
         std::erase_if(targets, [&](SceneObjectId id) { return !eligible.contains(id); });
-    } else if (isUvProperty(property) || lines || triangles) {
+    } else if (isUvProperty(property) || lines || triangles || colors) {
         boost::unordered_flat_set<SceneObjectId> eligible;
         for (const auto& file : state.files) {
             for (size_t i = 0; i < file.groupSettings.size() && i < meshGeometry(file.mesh).nodes.size(); ++i) {
-                if (isUvProperty(property) ? meshGeometry(file.mesh).nodes[i].hasTexcoords
+                if (colors ? file.groupSettings[i].hasVertexColors : isUvProperty(property) ? meshGeometry(file.mesh).nodes[i].hasTexcoords
                     : (lines ? meshGeometry(file.mesh).nodes[i].lineIndexCount != 0
                         : meshGeometry(file.mesh).nodes[i].lineIndexCount == 0 && meshGeometry(file.mesh).nodes[i].pointIndexCount == 0)) { eligible.insert(file.groupSettings[i].objectId); }
             }
@@ -258,7 +261,7 @@ void setProperty(Settings& settings, UiObjectProperty property, float value)
     case P::scale: settings.scale = std::clamp(value, minGroupScale, maxGroupScale); return;
     case P::opacity: settings.opacity = std::clamp(value, minGroupOpacity, maxGroupOpacity); return;
     case P::vertexSize: case P::solidMesh: case P::triangles: case P::vertices:
-    case P::red: case P::green: case P::blue:
+    case P::red: case P::green: case P::blue: case P::vertexColors:
     case P::uvGrid: case P::uvDensityU: case P::uvDensityV: case P::uvColorMode: case P::uvMinimum: case P::uvMaximum:
     case P::lineWidth: case P::lineDepthTest: case P::analysisMode: break;
     }
@@ -280,9 +283,10 @@ void setProperty(Settings& settings, UiObjectProperty property, float value)
         case P::solidMesh: setGroupRenderMode(settings, UiRenderMode::solidMesh, value != 0.0f); return;
         case P::triangles: setGroupRenderMode(settings, UiRenderMode::triangles, value != 0.0f); return;
         case P::vertices: setGroupRenderMode(settings, UiRenderMode::vertices, value != 0.0f); return;
-        case P::red: settings.color[0] = std::clamp(value, 0.0f, 1.0f); return;
-        case P::green: settings.color[1] = std::clamp(value, 0.0f, 1.0f); return;
-        case P::blue: settings.color[2] = std::clamp(value, 0.0f, 1.0f); return;
+        case P::red: settings.colorOverride = true; settings.color[0] = std::clamp(value, 0.0f, 1.0f); return;
+        case P::green: settings.colorOverride = true; settings.color[1] = std::clamp(value, 0.0f, 1.0f); return;
+        case P::blue: settings.colorOverride = true; settings.color[2] = std::clamp(value, 0.0f, 1.0f); return;
+        case P::vertexColors: settings.colorOverride = value == 0.0f; return;
         case P::translationX: case P::translationY: case P::translationZ:
         case P::rotationX: case P::rotationY: case P::rotationZ:
         case P::scale: case P::opacity: case P::analysisMode: break;
@@ -318,9 +322,10 @@ bool setObjectColor(UiState& state, const std::vector<SceneObjectId>& objects,
         for (auto& part : file.groupSettings) {
             if (included.contains(part.objectId)) {
                 const auto before = part.color;
+                const auto overrideBefore = part.colorOverride;
                 if (color) { setGroupColor(part, {(*color)[0], (*color)[1], (*color)[2], part.color[3]}); }
                 else { resetGroupColor(part, colorIndex); }
-                changed = changed || part.color != before;
+                changed = changed || part.color != before || part.colorOverride != overrideBefore;
             }
             ++colorIndex;
         }
@@ -439,6 +444,7 @@ std::array<UiPropertyValue, uiObjectPropertyCount> selectedObjectProperties(cons
     using P = UiObjectProperty;
     const auto context = propertyTargetContext(state);
     const auto family = [](P property) -> size_t {
+        if (property == P::vertexColors) { return 7; }
         if (property == P::opacity) { return 6; }
         if (property == P::vertexSize) { return 1; }
         if (isUvProperty(property)) { return 3; }
@@ -446,7 +452,7 @@ std::array<UiPropertyValue, uiObjectPropertyCount> selectedObjectProperties(cons
         if (property == P::solidMesh || property == P::triangles) { return 5; }
         return isPartAppearanceProperty(property) ? 2 : 0;
     };
-    constexpr std::array representatives{P::translationX, P::vertexSize, P::red, P::uvGrid, P::lineWidth, P::solidMesh, P::opacity};
+    constexpr std::array representatives{P::translationX, P::vertexSize, P::red, P::uvGrid, P::lineWidth, P::solidMesh, P::opacity, P::vertexColors};
     std::array<std::vector<SceneObjectId>, representatives.size()> targets;
     using Values = std::array<std::optional<float>, uiObjectPropertyCount>;
     boost::unordered_flat_map<SceneObjectId, Values> values;
@@ -495,6 +501,8 @@ void setSelectedObjectProperty(UiState& state, UiObjectProperty property, float 
     bool changed = false;
     for (const auto id : propertyTargets(state, property)) {
         const auto before = objectProperty(state, id, property);
+        const bool editsColor = property == UiObjectProperty::red || property == UiObjectProperty::green || property == UiObjectProperty::blue;
+        const auto sourceBefore = editsColor ? objectProperty(state, id, UiObjectProperty::vertexColors) : std::nullopt;
         visitObjectSettings(state, id, [&](auto& settings) { setProperty(settings, property, value); });
         if (property == UiObjectProperty::vertexSize) {
             for (auto& file : state.files) {
@@ -502,6 +510,7 @@ void setSelectedObjectProperty(UiState& state, UiObjectProperty property, float 
             }
         }
         changed = changed || before != objectProperty(state, id, property);
+        changed = changed || (editsColor && sourceBefore != objectProperty(state, id, UiObjectProperty::vertexColors));
     }
     if (changed) {
         const bool transform = property <= UiObjectProperty::scale;

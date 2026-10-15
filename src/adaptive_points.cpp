@@ -91,7 +91,7 @@ bool queueAdaptivePoints(AdaptivePointRuntime& runtime,const GpuMesh& mesh,const
     for (size_t i=0;i<3;++i) group.color[i]=std::min(1.0f,group.color[i]*1.5f);
     group.firstId=firstId; group.endId=firstId+source.endId-source.firstId;
     group.sourceFirstId=source.firstId; group.pointSize=item.pointSize;
-    group.vertexColors=mesh.pointColors;
+    group.vertexColors=item.useVertexColors ? mesh.pointColors : graphics::VertexBufferHandle{};
     runtime.draws.push_back(std::move(draw)); return true;
 }
 void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bool markerIds) {

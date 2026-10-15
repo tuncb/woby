@@ -5,6 +5,7 @@
 #include "scene_history.h"
 #include "automation_registry.h"
 #include "allocation_probe.h"
+#include "scene_draw_plan.h"
 
 #include <doctest/doctest.h>
 #include <chrono>
@@ -17,15 +18,20 @@ struct PropertiesFixture {
         / ("woby-properties-" + automationRandomHex(8));
     UiState state;
     SceneInspectorRuntime runtime;
-    explicit PropertiesFixture(size_t groups = 4) {
+    explicit PropertiesFixture(size_t groups = 4, bool colored = false) {
         std::filesystem::create_directory(root);
         Mesh mesh;
         editMeshGeometry(mesh).vertices = {{{0,0,0}, {}, {}}, {{2,0,0}, {}, {}}, {{0,3,0}, {}, {}}};
+        if (colored) {
+            editMeshGeometry(mesh).vertices.resize(6);
+            editMeshGeometry(mesh).vertexColors = {0xff000000u, 0xff0000ffu, 0, 0, 0, 0};
+        }
         mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);
         for (size_t i = 0; i < groups; ++i) {
             editMeshGeometry(mesh).nodes.push_back({"part" + std::to_string(i), static_cast<uint32_t>(meshGeometry(mesh).indices.size()), 3});
             editMeshGeometry(mesh).nodes.back().hasTexcoords = (i % 2 == 0);
-            editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {0,1,2});
+            if (colored && i >= 2) { editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {3,4,5}); }
+            else { editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(), {0,1,2}); }
         }
         state.files.push_back(createUiFileState(root / "source.obj", std::move(mesh), 0));
         appendFolderTreeSceneNode(state, root, 0, 1);
@@ -53,6 +59,105 @@ struct PropertiesFixture {
         if (dimensions) { CHECK(runtime.snapshot.dimensions->lengths == dimensions->lengths); }
     }
 };
+}
+
+TEST_CASE("vertex color controls distinguish source custom mixed and uncolored parts") {
+    PropertiesFixture f(3, true);
+    const auto fileId = f.state.files[0].objectId;
+    const auto first = f.state.files[0].groupSettings[0].objectId;
+    const auto second = f.state.files[0].groupSettings[1].objectId;
+    const auto plain = f.state.files[0].groupSettings[2].objectId;
+    const auto source = [&] { f.check(); return inspectorProperty(f.runtime.snapshot, UiObjectProperty::vertexColors); };
+    CHECK(source().available);
+    CHECK(source().value == 1);
+    CHECK_FALSE(source().mixed);
+    selectSceneObject(f.state, plain);
+    CHECK_FALSE(source().available);
+    REQUIRE(setObjectColor(f.state, {plain}, std::array<float, 3>{.2f, .3f, .4f}));
+    const auto plainColor = f.state.files[0].groupSettings[2].color;
+    selectSceneObject(f.state, first);
+    SceneDrawCache draw;
+    REQUIRE(updateSceneDrawPlan(draw, f.state));
+    CHECK(draw.plan.items[0].useVertexColors);
+    const auto* colors = meshGeometry(f.state.files[0].mesh).vertexColors.data();
+    const auto geometry = f.state.revisions.geometry;
+    // Choosing the existing fallback still changes the displayed source.
+    const auto red = f.state.files[0].groupSettings[0].color[0];
+    clearSceneDirty(f.state);
+    setSelectedObjectProperty(f.state, UiObjectProperty::red, red);
+    CHECK(f.state.isDirty);
+    CHECK(source().value == 0);
+    REQUIRE(updateSceneDrawPlan(draw, f.state));
+    CHECK_FALSE(draw.plan.items[0].useVertexColors);
+    CHECK(f.state.revisions.geometry == geometry);
+    CHECK(meshGeometry(f.state.files[0].mesh).vertexColors.data() == colors);
+    clearSceneDirty(f.state);
+    setSelectedObjectProperty(f.state, UiObjectProperty::red, red);
+    CHECK_FALSE(f.state.isDirty);
+    CHECK_FALSE(updateSceneDrawPlan(draw, f.state));
+    selectSceneObject(f.state, fileId);
+    CHECK(source().mixed);
+    const std::array restore{InspectorEdit{InspectorEditKind::property, UiObjectProperty::vertexColors, 1, {}}};
+    applyInspectorEdits(f.state, restore);
+    CHECK_FALSE(source().mixed);
+    CHECK(source().value == 1);
+    CHECK(f.state.files[0].groupSettings[2].color == plainColor);
+    CHECK(f.state.files[0].groupSettings[2].colorOverride);
+    REQUIRE(setObjectColor(f.state, {fileId, first, second}, std::array<float, 3>{.2f, .3f, .4f}));
+    CHECK(source().value == 0);
+    CHECK_FALSE(source().mixed);
+    resetSelectedObjectProperties(f.state, UiPropertyGroup::appearance);
+    CHECK(source().value == 1);
+    for (const auto& group : f.state.files[0].groupSettings) { CHECK_FALSE(group.colorOverride); }
+}
+
+TEST_CASE("color source changes survive undo redo and views without copying geometry") {
+    PropertiesFixture f(1, true);
+    const auto id = f.state.files[0].groupSettings[0].objectId;
+    selectSceneObject(f.state, id);
+    const auto vertexView = createView(f.state);
+    SceneHistory history;
+    resetSceneHistory(history, f.state);
+    const auto clean = createSceneDocument(f.state);
+    const auto* colors = meshGeometry(f.state.files[0].mesh).vertexColors.data();
+    const auto color = f.state.files[0].groupSettings[0].color;
+    REQUIRE(setObjectColor(f.state, {id}, std::array<float, 3>{color[0], color[1], color[2]}));
+    recordSceneHistory(history, f.state);
+    for (const bool redo : {false, true}) {
+        auto prepared = prepareSceneHistoryStep(history, f.state, clean, redo);
+        REQUIRE(prepared);
+        commitSceneHistoryStep(history, f.state, std::move(*prepared), redo);
+        CHECK(f.state.files[0].groupSettings[0].colorOverride == redo);
+        CHECK(f.state.files[0].groupSettings[0].hasVertexColors);
+        CHECK(meshGeometry(f.state.files[0].mesh).vertexColors.data() == colors);
+        f.check();
+    }
+    const auto customView = createView(f.state);
+    const auto path = f.root / "colors.woby";
+    const auto document = createSceneDocument(f.state);
+    writeSceneDocument(path, document);
+    auto saved = readSceneDocument(path);
+    for (auto& file : saved.files) { file.path = sceneAbsolutePath(path, file.path); }
+    CHECK(saved == document);
+    auto loaded = f.state.files;
+    for (size_t i = 0; i < loaded.size(); ++i) {
+        for (auto& group : loaded[i].groupSettings) { group.colorOverride = false; group.color = {}; }
+        applySceneFileRecord(loaded[i], saved.files[i]);
+    }
+    auto restored = prepareSceneReplacement(f.state, std::move(loaded), saved);
+    REQUIRE(restored.views.size() == 2);
+    CHECK(restored.files[0].groupSettings[0].colorOverride);
+    CHECK(restored.files[0].groupSettings[0].hasVertexColors);
+    applyView(restored, restored.views[0].id);
+    CHECK_FALSE(restored.files[0].groupSettings[0].colorOverride);
+    applyView(restored, restored.views[1].id);
+    CHECK(restored.files[0].groupSettings[0].colorOverride);
+    applyView(f.state, vertexView);
+    CHECK_FALSE(f.state.files[0].groupSettings[0].colorOverride);
+    applyView(f.state, customView);
+    CHECK(f.state.files[0].groupSettings[0].colorOverride);
+    REQUIRE(setObjectColor(f.state, {id}, std::nullopt));
+    CHECK_FALSE(f.state.files[0].groupSettings[0].colorOverride);
 }
 
 TEST_CASE("properties snapshot matches queries for overlapping mixed and unsupported selections") {

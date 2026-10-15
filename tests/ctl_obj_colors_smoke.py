@@ -2,7 +2,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["Pillow>=11"]
 # ///
-"""Render authored OBJ RGB, interpolation, missing colors, opacity and reload."""
+"""Render OBJ RGB, manual overrides, source reset, opacity and scene reload."""
 import os
 from pathlib import Path
 import sys
@@ -40,8 +40,8 @@ def exercise(executable, root, primitive):
         ctl("up-axis", "set", "y")
         ctl("camera", "look-at", "--eye", 0, 0, 5, "--target", 0, 0, 0)
         ctl("vertex-size", "set", "scene", "--pixels", 30)
+        ctl("color", "set", groups["fallback"], "--rgb", 1, 1, 0)
         for group in groups.values():
-            ctl("color", "set", group, "--rgb", 1, 1, 0)
             if primitive == "l":
                 ctl("render", "set", group, "--line-width", 12)
         picture = capture(ctl, root / f"{primitive}-colors.png")
@@ -58,15 +58,28 @@ def exercise(executable, root, primitive):
             assert len(gradient) > 30, (primitive, len(gradient))
         for group in groups.values():
             ctl("color", "set", group, "--rgb", 1, 0, 1)
-        changed = capture(ctl, root / f"{primitive}-fallback.png")
-        assert count(changed, green) == count(picture, green), "Part tint changed authored RGB"
+        changed = capture(ctl, root / f"{primitive}-override.png")
+        magenta = lambda r, g, b: r > 120 and b > 120 and g < 10
+        assert count(changed, green) == 0, "Manual color did not override authored RGB"
+        assert count(changed, magenta) > minimum * 2, "Override did not cover the colored parts"
         assert count(changed, yellow) == 0, "Missing RGB did not use the edited part color"
+        ctl("color", "reset", groups["painted"])
+        reset = capture(ctl, root / f"{primitive}-reset.png")
+        assert count(reset, green) == count(picture, green), "Reset did not restore authored RGB"
+        assert count(reset, magenta) > minimum, "Reset changed other parts"
         if primitive == "f":
             ctl("render", "set", groups["painted"], "--triangles", "true")
             assert count(capture(ctl, root / "surface-edges.png"), green) > minimum
+            ctl("color", "set", groups["painted"], "--rgb", 1, 0, 1)
+            assert count(capture(ctl, root / "surface-edges-override.png"), green) == 0
+            ctl("render", "set", groups["painted"], "--solid", "false", "--triangles", "false", "--vertices", "true")
+            assert count(capture(ctl, root / "surface-points-override.png"), green) == 0
+            ctl("color", "reset", groups["painted"])
+            assert count(capture(ctl, root / "surface-points-source.png"), green) > 1000
+            ctl("render", "set", groups["painted"], "--solid", "true", "--triangles", "true", "--vertices", "false")
             ctl("opacity", "set", groups["painted"], "--value", .5)
             transparent = capture(ctl, root / "surface-opacity.png")
-            assert ImageChops.difference(changed, transparent).getbbox() is not None
+            assert ImageChops.difference(reset, transparent).getbbox() is not None
         expected = capture(ctl, root / f"{primitive}-saved.png")
         ctl("scene", "save-as", saved)
         ctl("quit")
@@ -83,7 +96,7 @@ def main():
         root = Path(directory).resolve()
         for primitive in ("f", "l", "p"):
             exercise(executable, root, primitive)
-    print("OBJ vertex colors passed: surfaces, lines, points, gradients, fallback, opacity, and scene reload.")
+    print("OBJ colors passed: surfaces, lines, points, gradients, fallback, overrides, source reset, opacity, and reload.")
 
 
 if __name__ == "__main__":

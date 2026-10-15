@@ -1,0 +1,16 @@
+# A small colored model for the color override UI review.
+o Model
+v 0 1 0 0.1 0.85 0.8
+v 1 0 0 1 0.65 0.1
+v 0 0 1 0.1 0.8 0.35
+v -1 0 0 0.1 0.5 0.95
+v 0 0 -1 0.7 0.2 0.8
+v 0 -1 0 0.15 0.65 0.8
+f 1 3 2
+f 1 4 3
+f 1 5 4
+f 1 2 5
+f 6 2 3
+f 6 3 4
+f 6 4 5
+f 6 5 2

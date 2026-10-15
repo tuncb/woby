@@ -48,6 +48,23 @@ TEST_CASE("Point backend selection retains adaptive rendering without 64 bit ato
     CHECK(selectPointBackend(portable,PointBackend::atomic64)==PointBackend::atomic32);
     CHECK(selectPointBackend(0,PointBackend::atomic32)==PointBackend::quads);
 }
+TEST_CASE("Adaptive point queue switches source color buffers without changing point storage") {
+    woby::GpuMesh mesh;
+    mesh.pointCloud = std::make_shared<const woby::points::Cloud>(woby::points::buildCloud(cloudMesh(16), 8, 4));
+    mesh.pointColors = {42};
+    woby::AdaptivePointRuntime runtime; runtime.enabled = true;
+    woby::SceneDrawItem item; item.points = true; item.color = {.2f, .4f, .6f, .5f};
+    woby::identityMatrix(item.model.data());
+    for (const bool source : {true, false, true}) {
+        item.useVertexColors = source;
+        runtime.draws.clear();
+        REQUIRE(woby::queueAdaptivePoints(runtime, mesh, item, 1));
+        const auto& key = runtime.draws[0].key;
+        CHECK(key.cloud == mesh.pointCloud);
+        CHECK(key.group.vertexColors.idx == (source ? 42u : woby::graphics::kInvalidHandle));
+        CHECK(key.group.color[3] == 1);
+    }
+}
 TEST_CASE("Adaptive point controls persist through views scene files and history") {
     PointDirectory directory;
     woby::UiState state; REQUIRE(state.adaptivePoints);

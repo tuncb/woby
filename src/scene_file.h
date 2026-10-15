@@ -31,6 +31,7 @@ struct SceneGroupSettings {
     std::array<float, 3> translation{};
     std::array<float, 3> rotationDegrees{};
     std::array<float, 4> color{};
+    bool colorOverride = false;
 
     friend bool operator==(const SceneGroupSettings&, const SceneGroupSettings&) = default;
 };

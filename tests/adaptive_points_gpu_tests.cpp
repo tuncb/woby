@@ -144,7 +144,7 @@ void checkColors(PointGpuFixture& f,const std::vector<uint32_t>& ids,const std::
             const auto* draw=woby::findMarkerDraw(f.markers.list.draws,id); REQUIRE(draw);
             const auto& item=f.plan.items[static_cast<size_t>(draw-f.markers.list.draws.data())];
             const auto& colors=f.models[0].gpuMesh.pointCloud->colors;
-            if (!colors.empty()) {
+            if (item.useVertexColors && !colors.empty()) {
                 const auto color=colors[draw->pointOffset+id-draw->firstId];
                 if (color>>24) { sum+=float((color>>(channel*8))&255); continue; }
             }
@@ -197,6 +197,19 @@ TEST_CASE("Vertex RGB and missing-color fallback survive every point GPU backend
                 f.runtime.unavailable=true; draw(f,now); CHECK(picture()==expected); f.runtime.unavailable=false;
             };
             draw(f,1); check(1);
+            const auto authored = picture();
+            const auto epoch = f.runtime.epoch;
+            const auto buffer = f.models[0].gpuMesh.pointColors.idx;
+            for (auto& item : f.plan.items) { item.useVertexColors = false; }
+            draw(f,1.1); check(1.1);
+            CHECK(picture() != authored);
+            if (backend != g::PointBackend::quads) { CHECK(f.runtime.epoch > epoch); }
+            f.plan.items[0].useVertexColors = true;
+            draw(f,1.2); check(1.2); // Mixed vertex/custom source state.
+            f.plan.items[1].useVertexColors = true;
+            draw(f,1.3); check(1.3);
+            CHECK(picture() == authored);
+            CHECK(f.models[0].gpuMesh.pointColors.idx == buffer);
             f.plan.items.erase(f.plan.items.begin());
             draw(f,2); check(2); // Global marker IDs now differ from source IDs.
             const auto expected=picture();

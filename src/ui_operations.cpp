@@ -1737,6 +1737,7 @@ void setGroupOpacity(UiGroupState& group, float value)
 
 void setGroupColor(UiGroupState& group, const std::array<float, 4>& value)
 {
+    group.colorOverride = true;
     group.color = {
         clampFinite(value[0], 0.0f, 1.0f, 1.0f),
         clampFinite(value[1], 0.0f, 1.0f, 1.0f),
@@ -1748,6 +1749,7 @@ void setGroupColor(UiGroupState& group, const std::array<float, 4>& value)
 void resetGroupColor(UiGroupState& group, size_t colorIndex)
 {
     group.color = defaultGroupColor(colorIndex);
+    group.colorOverride = false;
 }
 
 void resetGroupTransform(UiGroupState& group)

@@ -37,6 +37,25 @@ void checkReadThrowsContaining(const std::filesystem::path& path, const std::str
 
 } // namespace
 
+TEST_CASE("legacy scenes use source colors and reject malformed override flags")
+{
+    const CameraDirectory directory;
+    const auto path = directory.root / "colors.woby";
+    const std::string prefix = "version = 24\n[[files]]\npath = \"model.obj\"\n"
+        "[[files.groups]]\nname = \"part\"\ncolor = [1, 0, 0, 1]\n";
+    writeText(path, prefix.c_str());
+    const auto legacy = woby::readSceneDocument(path);
+    REQUIRE(legacy.files.size() == 1);
+    REQUIRE(legacy.files[0].groups.size() == 1);
+    CHECK_FALSE(legacy.files[0].groups[0].settings.colorOverride);
+    writeText(path, (prefix + "color_override = true\n").c_str());
+    CHECK(woby::readSceneDocument(path).files[0].groups[0].settings.colorOverride);
+    writeText(path, (prefix + "color_override = false\n").c_str());
+    CHECK_FALSE(woby::readSceneDocument(path).files[0].groups[0].settings.colorOverride);
+    writeText(path, (prefix + "color_override = 1\n").c_str());
+    checkReadThrowsContaining(path, "Expected TOML boolean value.");
+}
+
 TEST_CASE("scene read errors preserve UTF-8 paths for automation responses")
 {
     const CameraDirectory directory;

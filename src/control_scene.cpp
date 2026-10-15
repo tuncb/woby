@@ -29,6 +29,7 @@ Json groupInfo(const UiGroupState& group)
         {"vertices", group.showVertices}, {"color", group.color}, {"vertexSizeScale", group.vertexSizeScale}});
     result.update({{"uvGrid", group.uvGrid.enabled}, {"uvDensityU", group.uvGrid.densityU}, {"uvDensityV", group.uvGrid.densityV}, {"uvColor", uvColorModeKey(group.uvGrid.mode)}, {"uvMinimum",group.uvGrid.minimum}, {"uvMaximum",group.uvGrid.maximum}});
     result.update({{"lineWidth", group.lines.width}, {"lineDepthTest", group.lines.depthTest}});
+    result.update({{"hasVertexColors", group.hasVertexColors}, {"colorOverride", group.colorOverride}});
     return result;
 }
 Json boundsInfo(const Bounds& bounds, const Coordinate& origin = {})
