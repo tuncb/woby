@@ -1,0 +1,1021 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared spatial sorting · Woby · 16 October 2026</title><style>
+:root{font-family:Segoe UI,Arial,sans-serif;color:#e7edf5;background:#10151d;line-height:1.6}body{margin:0}main{max-width:1160px;margin:auto;padding:40px 24px 80px}h1{font-size:clamp(30px,5vw,48px);line-height:1.12;letter-spacing:-1px;margin:12px 0 22px}h2{font-size:24px;margin:42px 0 12px}p{max-width:900px}.eyebrow{color:#83c9ad;font-weight:650;font-size:13px;letter-spacing:1px;text-transform:uppercase}.intro{font-size:19px;color:#c4d0df}a{color:#90c9ff}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:28px 0}.card{background:#19232e;padding:20px;border:1px solid #334252;border-radius:12px}.card b{font-size:30px;display:block;color:#90dfb8}small{display:block;color:#a6b5c7;font-size:12px}.table{overflow-x:auto;border:1px solid #334252;border-radius:10px;margin:18px 0}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:14px 16px;text-align:left;border-bottom:1px solid #2a3746;vertical-align:top}th{background:#1c2734;color:#a9bed3;font-size:12px}tr:last-child td{border:0}td:first-child{min-width:180px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.4}code{overflow-wrap:anywhere}.note{border-left:3px solid #e3bc75;background:#211f1c;padding:14px 18px}details{margin:20px 0}summary{cursor:pointer;color:#a6d2ff}img{width:100%;border-radius:10px;border:1px solid #334252}footer{margin-top:40px;color:#a6b5c7;font-size:13px}@media(max-width:650px){main{padding:26px 16px 50px}.cards{grid-template-columns:1fr}th,td{padding:11px}}
+</style></head><body><main><div class="eyebrow">Woby · loading performance · 16 October 2026</div><h1>Shared spatial sorting</h1>
+<p class="intro">One stable partition pass and two local radix passes replace four passes over the full key array. Both point preparation and annotation preparation use the same implementation.</p>
+<div class="cards"><div class="card"><small>Concurrent CPU preparation</small><b>0.506 s</b>median paired saving</div><div class="card"><small>Native request to Ready</small><b>0.624 s</b>9/10 pairs faster</div><div class="card"><small>Compatibility</small><b>Exact</b>ordered outputs and saved fingerprints match</div></div>
+<p><a href="results.json">Measurements and provenance</a> · <a href="validation.txt">Build and test results</a> · <a href="beartrap.png">Native viewer capture</a></p>
+<h2>Complete paths</h2><p>Baseline: <code>ea02965</code>, including the previous point-preparation changes. Each sample starts a fresh process. Input files are warm. The order alternates within pairs. Isolated branches have three pairs, concurrent preparation has five, and the native viewer has ten. No compiler, test runner, or other Woby process overlapped an accepted sample.</p><div class="table"><table><thead><tr><th>Measurement</th><th>Baseline median / range</th><th>Candidate median / range</th><th>Median paired saving</th></tr></thead><tbody><tr><td>Complete annotation preparation, alone</td><td><b>3.392 s</b><small>2.654–3.728 s</small></td><td><b>2.335 s</b><small>2.286–2.707 s</small></td><td>1.106 s<small>2/3 pairs faster</small></td></tr><tr><td>Complete point preparation, alone</td><td><b>1.974 s</b><small>1.938–1.990 s</small></td><td><b>1.718 s</b><small>1.653–1.889 s</small></td><td>0.220 s<small>3/3 pairs faster</small></td></tr><tr><td>Complete concurrent post-load preparation</td><td><b>4.407 s</b><small>4.305–4.762 s</small></td><td><b>3.944 s</b><small>3.308–4.655 s</small></td><td>0.506 s<small>4/5 pairs faster</small></td></tr><tr><td>Native request to Ready</td><td><b>15.861 s</b><small>13.231–20.778 s</small></td><td><b>15.231 s</b><small>12.379–17.986 s</small></td><td>0.624 s<small>9/10 pairs faster</small></td></tr><tr><td>Native Ready minus CPU import (derived)</td><td><b>6.233 s</b><small>5.378–7.727 s</small></td><td><b>5.618 s</b><small>4.564–7.517 s</small></td><td>0.693 s<small>9/10 pairs faster</small></td></tr></tbody></table></div>
+<p class="note">The laptop remains in Legion Balance Mode. Unchanged phases vary between runs. Use the within-pair savings and the ranges when judging the whole-path result. The difference between two independent medians is not the saving in a typical pair. Do not compare these absolute times with the October 14 audit in Performance Mode.</p>
+<p>The derived native remainder subtracts the recorded CPU import duration from each Ready sample. It still includes upload, preparation, and scheduling delays; it is not an isolated sort timer. Its median paired saving is 0.693 s, with 9/10 pairs faster. The unmodified importer has a +0.139 s median paired difference in this set. These medians must not be added or subtracted from one another.</p>
+<h2>What changed</h2><p>The first pass partitions keys by their high 13 bits. Chunk prefixes follow input order. Each resulting range then uses two stable local passes. One scan supplies both local histograms. Long ranges start first, but all ranges write to disjoint storage, so worker order cannot change the result.</p>
+<p>Inputs below 1,048,576 keys use the existing byte sort. If one partition contains more than one quarter of the input, the byte sort keeps the remaining work parallel. It reuses the first scan to skip constant bytes. All-equal inputs return without moving keys. The helper limits used by both preparation branches remain in force.</p>
+<p>The full key scratch array remains the same size. Additional partition tables and local histograms use less than 1 MiB per active sort on this machine. Native peak private commit was 9.521 GiB at baseline and 9.522 GiB in the candidate. These are whole-process peaks, which can occur during import.</p>
+<h2>Phase measurements</h2><p>These values come from isolated branch runs. The annotation sorting interval also includes triangle-output allocation and gathering. Phase times are not added to overlapping parent intervals.</p><div class="table"><table><thead><tr><th>Measurement</th><th>Baseline median / range</th><th>Candidate median / range</th><th>Median paired saving</th></tr></thead><tbody><tr><td>Annotation bounds</td><td><b>0.733 s</b><small>0.574–0.900 s</small></td><td><b>0.665 s</b><small>0.649–0.702 s</small></td><td>0.068 s<small>2/3 pairs faster</small></td></tr><tr><td>Annotation Morton keys</td><td><b>0.923 s</b><small>0.657–0.967 s</small></td><td><b>0.741 s</b><small>0.731–0.997 s</small></td><td>0.192 s<small>2/3 pairs faster</small></td></tr><tr><td>Annotation sorting + triangle output</td><td><b>1.278 s</b><small>1.146–1.654 s</small></td><td><b>0.646 s</b><small>0.616–0.691 s</small></td><td>0.662 s<small>3/3 pairs faster</small></td></tr><tr><td>Annotation tree</td><td><b>0.290 s</b><small>0.277–0.373 s</small></td><td><b>0.289 s</b><small>0.282–0.316 s</small></td><td>0.000 s<small>2/3 pairs faster</small></td></tr><tr><td>Point membership</td><td><b>0.422 s</b><small>0.408–0.457 s</small></td><td><b>0.431 s</b><small>0.416–0.466 s</small></td><td>-0.009 s<small>1/3 pairs faster</small></td></tr><tr><td>Point Morton keys</td><td><b>0.192 s</b><small>0.182–0.240 s</small></td><td><b>0.222 s</b><small>0.180–0.236 s</small></td><td>-0.039 s<small>1/3 pairs faster</small></td></tr><tr><td>Point sorting</td><td><b>0.335 s</b><small>0.332–0.356 s</small></td><td><b>0.223 s</b><small>0.202–0.225 s</small></td><td>0.111 s<small>3/3 pairs faster</small></td></tr><tr><td>Point position gathering</td><td><b>0.274 s</b><small>0.273–0.294 s</small></td><td><b>0.290 s</b><small>0.281–0.320 s</small></td><td>-0.016 s<small>0/3 pairs faster</small></td></tr><tr><td>Point tree</td><td><b>0.372 s</b><small>0.370–0.443 s</small></td><td><b>0.378 s</b><small>0.375–0.438 s</small></td><td>-0.007 s<small>1/3 pairs faster</small></td></tr></tbody></table></div>
+<h2>Which branch finishes last?</h2><p>In both separate traced viewer pairs, annotations still finish last. The final model branch finishes 0.296 and 0.466 s earlier. The annotation tree itself is unchanged: its isolated median is about 0.29 s before and after this change. Bounds and Morton-key generation now take more time than sorting in the traced annotation branch.</p><div class="table"><table><thead><tr><th>Measurement</th><th>Baseline median / range</th><th>Candidate median / range</th><th>Median paired saving</th></tr></thead><tbody><tr><td>Model branch</td><td><b>3.677 s</b><small>3.399–3.956 s</small></td><td><b>3.599 s</b><small>3.208–3.990 s</small></td><td>0.079 s<small>1/2 pairs faster</small></td></tr><tr><td>Annotation branch</td><td><b>4.445 s</b><small>4.097–4.793 s</small></td><td><b>3.980 s</b><small>3.504–4.456 s</small></td><td>0.465 s<small>2/2 pairs faster</small></td></tr><tr><td>Complete post-load CPU preparation</td><td><b>4.446 s</b><small>4.099–4.794 s</small></td><td><b>3.981 s</b><small>3.505–4.457 s</small></td><td>0.465 s<small>2/2 pairs faster</small></td></tr></tbody></table></div>
+<p>This table has two traced pairs. It is separate from the five fresh-process CPU pairs and the ten uninstrumented native pairs above.</p>
+<h2>Other models</h2><p>Bennu has one large uncoloured group. BusGameMap has 65 groups: its point groups use the existing byte sort, while its combined annotation array uses the new path. Each comparison has three pairs.</p><div class="table"><table><thead><tr><th>Measurement</th><th>Baseline median / range</th><th>Candidate median / range</th><th>Median paired saving</th></tr></thead><tbody><tr><td>Bennu: annotation</td><td><b>0.980 s</b><small>0.954–1.028 s</small></td><td><b>0.914 s</b><small>0.884–0.916 s</small></td><td>0.096 s<small>3/3 pairs faster</small></td></tr><tr><td>Bennu: points</td><td><b>0.504 s</b><small>0.482–0.615 s</small></td><td><b>0.430 s</b><small>0.423–0.441 s</small></td><td>0.082 s<small>3/3 pairs faster</small></td></tr><tr><td>Bennu: post-load</td><td><b>1.309 s</b><small>1.302–1.357 s</small></td><td><b>1.175 s</b><small>1.088–1.510 s</small></td><td>0.127 s<small>2/3 pairs faster</small></td></tr><tr><td>BusGameMap: points</td><td><b>0.083 s</b><small>0.082–0.085 s</small></td><td><b>0.080 s</b><small>0.080–0.083 s</small></td><td>0.002 s<small>3/3 pairs faster</small></td></tr><tr><td>BusGameMap: post-load</td><td><b>0.117 s</b><small>0.115–0.126 s</small></td><td><b>0.120 s</b><small>0.109–0.126 s</small></td><td>0.000 s<small>1/3 pairs faster</small></td></tr></tbody></table></div>
+<p>BusGameMap's annotation sorting interval in concurrent preparation fell from 25.1 to 14.5 ms. The model branch takes longer, so this gain does not reduce the complete post-load time.</p>
+<h2>Validation</h2><p>The complete annotation and point output digests match the baseline in every accepted preparation sample. The checks include saved fingerprints, stable triangle and point order, source IDs, colours, bounds, tree nodes, proxies, group ranges, and navigation cuts. Validation runs after the timed interval.</p>
+<p>The Release build has no compiler warnings. All 107 CTest entries pass: 97 default, 9 slow, and 1 graphics. The optional capture and replay tool tests also pass. New unit cases cover full-width keys, ties across chunks, constant digits, equal keys, skewed inputs, helper limits, cancellation, exceptions, and recovery.</p>
+<p>All 20 native screenshots match the reference pixel for pixel.</p>
+<img src="beartrap.png" alt="BearTrap after the final shared spatial sort change">
+<details><summary>Edge-case timing and the fallback cost</summary><p>Each synthetic input has 4,194,341 keys. The suffix is the helper limit. Each entry is the median of three in-process runs, with exact output checks outside the timer. Uniform inputs cover both 30-bit Morton codes and full-width keys.</p>
+<p>The extra discovery scan has a cost when one distant outlier prevents constant-byte skipping. That case is 5.53 ms slower with three helpers and 2.44 ms slower with eight. The fallback keeps this concentrated work parallel.</p>
+<div class="table"><table><thead><tr><th>Input / helpers</th><th>Byte reference</th><th>Candidate</th></tr></thead><tbody><tr><td>concentrated-3</td><td>69.33 ms</td><td>63.89 ms</td></tr><tr><td>concentrated-8</td><td>45.59 ms</td><td>42.03 ms</td></tr><tr><td>constant-middle-3</td><td>58.75 ms</td><td>42.91 ms</td></tr><tr><td>constant-middle-8</td><td>39.39 ms</td><td>29.62 ms</td></tr><tr><td>equal-3</td><td>52.37 ms</td><td>4.52 ms</td></tr><tr><td>equal-8</td><td>37.34 ms</td><td>2.93 ms</td></tr><tr><td>outlier-3</td><td>67.85 ms</td><td>73.38 ms</td></tr><tr><td>outlier-8</td><td>45.70 ms</td><td>48.15 ms</td></tr><tr><td>uniform-3</td><td>82.29 ms</td><td>46.33 ms</td></tr><tr><td>uniform-8</td><td>49.57 ms</td><td>33.96 ms</td></tr><tr><td>uniform30-3</td><td>77.99 ms</td><td>35.06 ms</td></tr><tr><td>uniform30-8</td><td>47.42 ms</td><td>25.94 ms</td></tr></tbody></table></div></details>
+<details><summary>All native paired savings</summary><p>Positive values mean that the candidate reached Ready first.</p><div class="table"><table><thead><tr><th>Pair</th><th>Baseline minus candidate</th></tr></thead><tbody><tr><td>1</td><td>+0.347 s</td></tr><tr><td>2</td><td>+2.793 s</td></tr><tr><td>3</td><td>+0.165 s</td></tr><tr><td>4</td><td>+1.569 s</td></tr><tr><td>5</td><td>+1.043 s</td></tr><tr><td>6</td><td>+0.852 s</td></tr><tr><td>7</td><td>+0.396 s</td></tr><tr><td>8</td><td>+0.886 s</td></tr><tr><td>9</td><td>+0.046 s</td></tr><tr><td>10</td><td>-0.060 s</td></tr></tbody></table></div></details>
+<details><summary>Final sort-only replays</summary><p>The replay uses all 75,771,986 triangle keys and 38,414,391 point keys captured from BearTrap. Input copies and exact output comparisons are outside the timer. Scratch allocation remains inside it. The byte variant reproduces the previous four-pass algorithm. These are in-process kernel measurements, not Ready measurements.</p><div class="table"><table><tbody><tr><td>final-replay-annotations-0.jsonl</td><td><pre>{
+  &quot;current&quot;: {
+    &quot;median_ms&quot;: 1531.0766,
+    &quot;min_ms&quot;: 1527.2723,
+    &quot;max_ms&quot;: 1537.4482,
+    &quot;runs&quot;: 3
+  },
+  &quot;byte&quot;: {
+    &quot;median_ms&quot;: 3215.6782,
+    &quot;min_ms&quot;: 3178.0041,
+    &quot;max_ms&quot;: 3259.7972,
+    &quot;runs&quot;: 3
+  }
+}</pre></td></tr><tr><td>final-replay-annotations-3.jsonl</td><td><pre>{
+  &quot;current&quot;: {
+    &quot;median_ms&quot;: 562.9296,
+    &quot;min_ms&quot;: 554.6418,
+    &quot;max_ms&quot;: 564.3588,
+    &quot;runs&quot;: 3
+  },
+  &quot;byte&quot;: {
+    &quot;median_ms&quot;: 1195.6357,
+    &quot;min_ms&quot;: 1175.9387,
+    &quot;max_ms&quot;: 1213.3288,
+    &quot;runs&quot;: 3
+  }
+}</pre></td></tr><tr><td>final-replay-annotations-8.jsonl</td><td><pre>{
+  &quot;current&quot;: {
+    &quot;median_ms&quot;: 404.9057,
+    &quot;min_ms&quot;: 398.3071,
+    &quot;max_ms&quot;: 410.1204,
+    &quot;runs&quot;: 3
+  },
+  &quot;byte&quot;: {
+    &quot;median_ms&quot;: 634.9133,
+    &quot;min_ms&quot;: 634.2974,
+    &quot;max_ms&quot;: 659.0991,
+    &quot;runs&quot;: 3
+  }
+}</pre></td></tr><tr><td>final-replay-points-0.jsonl</td><td><pre>{
+  &quot;current&quot;: {
+    &quot;median_ms&quot;: 822.1605,
+    &quot;min_ms&quot;: 813.8576,
+    &quot;max_ms&quot;: 829.2065,
+    &quot;runs&quot;: 3
+  },
+  &quot;byte&quot;: {
+    &quot;median_ms&quot;: 1700.9683,
+    &quot;min_ms&quot;: 1671.4404,
+    &quot;max_ms&quot;: 1705.2351,
+    &quot;runs&quot;: 3
+  }
+}</pre></td></tr><tr><td>final-replay-points-3.jsonl</td><td><pre>{
+  &quot;current&quot;: {
+    &quot;median_ms&quot;: 310.7551,
+    &quot;min_ms&quot;: 308.0312,
+    &quot;max_ms&quot;: 375.5748,
+    &quot;runs&quot;: 3
+  },
+  &quot;byte&quot;: {
+    &quot;median_ms&quot;: 629.0943,
+    &quot;min_ms&quot;: 623.7091,
+    &quot;max_ms&quot;: 631.1942,
+    &quot;runs&quot;: 3
+  }
+}</pre></td></tr><tr><td>final-replay-points-8.jsonl</td><td><pre>{
+  &quot;current&quot;: {
+    &quot;median_ms&quot;: 215.7562,
+    &quot;min_ms&quot;: 205.5981,
+    &quot;max_ms&quot;: 229.3573,
+    &quot;runs&quot;: 3
+  },
+  &quot;byte&quot;: {
+    &quot;median_ms&quot;: 347.272,
+    &quot;min_ms&quot;: 344.8568,
+    &quot;max_ms&quot;: 356.4281,
+    &quot;runs&quot;: 3
+  }
+}</pre></td></tr></tbody></table></div></details>
+<details><summary>Separate traced viewer pairs</summary><p>These captures show how the model and annotation branches overlap. They are separate from the uninstrumented Ready results.</p><div class="table"><table><tbody><tr><td>baseline / 1</td><td><pre>{
+  &quot;capacity_preflight&quot;: [
+    2.3287
+  ],
+  &quot;parser_scan_collect&quot;: [
+    3023.6894
+  ],
+  &quot;parser_merge_shape_plan&quot;: [
+    1.6069
+  ],
+  &quot;parser_attribute_allocation&quot;: [
+    139.8876
+  ],
+  &quot;parser_merge_attribute_plan&quot;: [
+    0.1471
+  ],
+  &quot;parser_merge_execute&quot;: [
+    539.7285
+  ],
+  &quot;parser_merge&quot;: [
+    682.3089
+  ],
+  &quot;parser_total&quot;: [
+    4228.1013
+  ],
+  &quot;freeform_resolve&quot;: [
+    0.0851
+  ],
+  &quot;statement_release&quot;: [
+    0.0846
+  ],
+  &quot;primitive_validation&quot;: [
+    0.005
+  ],
+  &quot;source_position_adoption&quot;: [
+    0.0015
+  ],
+  &quot;coordinate_origin&quot;: [
+    229.0072
+  ],
+  &quot;coordinate_rebase&quot;: [
+    77.1262
+  ],
+  &quot;triangulation&quot;: [
+    271.9336
+  ],
+  &quot;mesh_allocation&quot;: [
+    0.0327
+  ],
+  &quot;mapping_parallel_resolution&quot;: [
+    1164.1594
+  ],
+  &quot;mapping_resolve_total&quot;: [
+    1164.3789
+  ],
+  &quot;mapping_parser_records_release&quot;: [
+    191.9823
+  ],
+  &quot;mapping_vertex_allocate&quot;: [
+    299.5107
+  ],
+  &quot;mapping_position_map&quot;: [
+    114.6479
+  ],
+  &quot;mapping_primary_worker&quot;: [
+    398.7775,
+    400.0042,
+    400.8664,
+    400.8887,
+    401.8562,
+    402.1904,
+    402.7977,
+    403.1045
+  ],
+  &quot;mapping_primary_gather&quot;: [
+    404.6146
+  ],
+  &quot;mapping_seam_worker&quot;: [
+    7.1824,
+    7.377,
+    7.7396,
+    8.5141,
+    10.1925,
+    10.2835,
+    10.1876,
+    10.1943
+  ],
+  &quot;mapping_seam_gather&quot;: [
+    11.8357
+  ],
+  &quot;mapping_lookup_release&quot;: [
+    22.4365
+  ],
+  &quot;corner_mapping&quot;: [
+    2210.918
+  ],
+  &quot;normal_check&quot;: [
+    0.0101
+  ],
+  &quot;normal_clear&quot;: [
+    78.3419
+  ],
+  &quot;normal_face_accumulation&quot;: [
+    560.2302
+  ],
+  &quot;normal_vertex_normalize&quot;: [
+    80.5461
+  ],
+  &quot;normal_generation&quot;: [
+    719.8822
+  ],
+  &quot;render_bounds&quot;: [
+    226.6956
+  ],
+  &quot;original_bounds&quot;: [
+    0.0014
+  ],
+  &quot;mesh_publish&quot;: [
+    20.7693
+  ],
+  &quot;parser_lookup_release&quot;: [
+    0.0027
+  ],
+  &quot;cpu_import&quot;: [
+    8027.3517
+  ],
+  &quot;group_render_bounds&quot;: [
+    0.001
+  ],
+  &quot;group_original_bounds&quot;: [
+    0.0099
+  ],
+  &quot;gpu_index_validation&quot;: [
+    124.2165,
+    0.0042
+  ],
+  &quot;point_membership_allocate&quot;: [
+    0.0212,
+    0.0337
+  ],
+  &quot;point_membership_build&quot;: [
+    0.0123,
+    454.3828
+  ],
+  &quot;point_hierarchy&quot;: [
+    0.0016,
+    1831.4151
+  ],
+  &quot;gpu_upload_source_prepare&quot;: [
+    1.122,
+    0.0024
+  ],
+  &quot;gpu_buffer_allocate_and_staging&quot;: [
+    624.8011,
+    227.0941
+  ],
+  &quot;gpu_upload_final_fence_wait&quot;: [
+    0.6725,
+    1.3745
+  ],
+  &quot;gpu_upload_worker_total&quot;: [
+    627.1889,
+    229.0117
+  ],
+  &quot;post_source_indices&quot;: [
+    517.9778
+  ],
+  &quot;annotation_bounds&quot;: [
+    997.4656
+  ],
+  &quot;post_original_bounds&quot;: [
+    593.4419
+  ],
+  &quot;point_color_gather&quot;: [
+    60.6258
+  ],
+  &quot;point_range_bounds&quot;: [
+    0.0141
+  ],
+  &quot;point_morton_keys&quot;: [
+    323.6008
+  ],
+  &quot;annotation_morton_keys&quot;: [
+    1020.0037
+  ],
+  &quot;annotation_fingerprints&quot;: [
+    2156.9579
+  ],
+  &quot;point_radix_sort&quot;: [
+    686.5894
+  ],
+  &quot;point_sorted_gather&quot;: [
+    319.8811
+  ],
+  &quot;point_tree_build&quot;: [
+    432.9386
+  ],
+  &quot;point_navigation_cuts&quot;: [
+    6.0433
+  ],
+  &quot;post_point_preparation&quot;: [
+    2286.4798
+  ],
+  &quot;post_group_bounds&quot;: [
+    0.006
+  ],
+  &quot;post_model_preparation&quot;: [
+    3398.6713
+  ],
+  &quot;annotation_radix_sort&quot;: [
+    1587.4747
+  ],
+  &quot;annotation_tree_build&quot;: [
+    490.9693
+  ],
+  &quot;post_annotation_cache&quot;: [
+    4097.4981
+  ],
+  &quot;post_parallel_preparation&quot;: [
+    4098.3403
+  ],
+  &quot;post_load_cpu_total&quot;: [
+    4098.5287
+  ],
+  &quot;post_result_publish&quot;: [
+    0.0331
+  ]
+}</pre></td></tr><tr><td>candidate / 1</td><td><pre>{
+  &quot;capacity_preflight&quot;: [
+    2.0491
+  ],
+  &quot;parser_scan_collect&quot;: [
+    3082.9754
+  ],
+  &quot;parser_merge_shape_plan&quot;: [
+    1.4831
+  ],
+  &quot;parser_attribute_allocation&quot;: [
+    145.0945
+  ],
+  &quot;parser_merge_attribute_plan&quot;: [
+    0.1338
+  ],
+  &quot;parser_merge_execute&quot;: [
+    596.2041
+  ],
+  &quot;parser_merge&quot;: [
+    743.7339
+  ],
+  &quot;parser_total&quot;: [
+    4192.8866
+  ],
+  &quot;freeform_resolve&quot;: [
+    0.0706
+  ],
+  &quot;statement_release&quot;: [
+    0.1479
+  ],
+  &quot;primitive_validation&quot;: [
+    0.0036
+  ],
+  &quot;source_position_adoption&quot;: [
+    0.0009
+  ],
+  &quot;coordinate_origin&quot;: [
+    165.9584
+  ],
+  &quot;coordinate_rebase&quot;: [
+    66.8968
+  ],
+  &quot;triangulation&quot;: [
+    242.8972
+  ],
+  &quot;mesh_allocation&quot;: [
+    0.0391
+  ],
+  &quot;mapping_parallel_resolution&quot;: [
+    1124.358
+  ],
+  &quot;mapping_resolve_total&quot;: [
+    1124.5935
+  ],
+  &quot;mapping_parser_records_release&quot;: [
+    206.5437
+  ],
+  &quot;mapping_vertex_allocate&quot;: [
+    319.9937
+  ],
+  &quot;mapping_position_map&quot;: [
+    115.2359
+  ],
+  &quot;mapping_primary_worker&quot;: [
+    418.5052,
+    419.1384,
+    420.0069,
+    419.9177,
+    420.7097,
+    420.9662,
+    421.9081,
+    422.455
+  ],
+  &quot;mapping_primary_gather&quot;: [
+    422.9876
+  ],
+  &quot;mapping_seam_worker&quot;: [
+    8.1725,
+    8.1242,
+    7.827,
+    8.4533,
+    8.3737,
+    8.1855,
+    10.6062,
+    10.2495
+  ],
+  &quot;mapping_seam_gather&quot;: [
+    11.6818
+  ],
+  &quot;mapping_lookup_release&quot;: [
+    25.0835
+  ],
+  &quot;corner_mapping&quot;: [
+    2227.5612
+  ],
+  &quot;normal_check&quot;: [
+    0.0115
+  ],
+  &quot;normal_clear&quot;: [
+    76.7503
+  ],
+  &quot;normal_face_accumulation&quot;: [
+    563.1776
+  ],
+  &quot;normal_vertex_normalize&quot;: [
+    78.3979
+  ],
+  &quot;normal_generation&quot;: [
+    719.0117
+  ],
+  &quot;render_bounds&quot;: [
+    234.8059
+  ],
+  &quot;original_bounds&quot;: [
+    0.0017
+  ],
+  &quot;mesh_publish&quot;: [
+    40.7047
+  ],
+  &quot;parser_lookup_release&quot;: [
+    0.005
+  ],
+  &quot;cpu_import&quot;: [
+    7941.1174
+  ],
+  &quot;group_render_bounds&quot;: [
+    0.0014
+  ],
+  &quot;group_original_bounds&quot;: [
+    0.0014
+  ],
+  &quot;gpu_index_validation&quot;: [
+    128.4248,
+    0.0032
+  ],
+  &quot;point_membership_allocate&quot;: [
+    0.0197,
+    0.0326
+  ],
+  &quot;point_membership_build&quot;: [
+    0.0117,
+    454.4782
+  ],
+  &quot;point_hierarchy&quot;: [
+    0.0015,
+    1564.4649
+  ],
+  &quot;gpu_upload_source_prepare&quot;: [
+    1.352,
+    0.0015
+  ],
+  &quot;gpu_buffer_allocate_and_staging&quot;: [
+    617.1613,
+    176.94
+  ],
+  &quot;gpu_upload_final_fence_wait&quot;: [
+    1.3043,
+    1.1233
+  ],
+  &quot;gpu_upload_worker_total&quot;: [
+    620.4531,
+    178.5988
+  ],
+  &quot;post_source_indices&quot;: [
+    518.3787
+  ],
+  &quot;annotation_bounds&quot;: [
+    1162.2829
+  ],
+  &quot;post_original_bounds&quot;: [
+    668.8217
+  ],
+  &quot;point_color_gather&quot;: [
+    59.2125
+  ],
+  &quot;point_range_bounds&quot;: [
+    0.0196
+  ],
+  &quot;point_morton_keys&quot;: [
+    389.2328
+  ],
+  &quot;annotation_fingerprints&quot;: [
+    2179.0051
+  ],
+  &quot;annotation_morton_keys&quot;: [
+    1108.4094
+  ],
+  &quot;point_radix_sort&quot;: [
+    340.1605
+  ],
+  &quot;point_sorted_gather&quot;: [
+    367.4842
+  ],
+  &quot;annotation_radix_sort&quot;: [
+    817.5725
+  ],
+  &quot;point_tree_build&quot;: [
+    400.6279
+  ],
+  &quot;point_navigation_cuts&quot;: [
+    5.8906
+  ],
+  &quot;post_point_preparation&quot;: [
+    2019.6228
+  ],
+  &quot;post_group_bounds&quot;: [
+    0.0058
+  ],
+  &quot;post_model_preparation&quot;: [
+    3207.6429
+  ],
+  &quot;annotation_tree_build&quot;: [
+    414.286
+  ],
+  &quot;post_annotation_cache&quot;: [
+    3504.0348
+  ],
+  &quot;post_parallel_preparation&quot;: [
+    3504.739
+  ],
+  &quot;post_load_cpu_total&quot;: [
+    3504.9556
+  ],
+  &quot;post_result_publish&quot;: [
+    0.0608
+  ]
+}</pre></td></tr><tr><td>candidate / 2</td><td><pre>{
+  &quot;capacity_preflight&quot;: [
+    1.8049
+  ],
+  &quot;parser_scan_collect&quot;: [
+    3463.3952
+  ],
+  &quot;parser_merge_shape_plan&quot;: [
+    0.9688
+  ],
+  &quot;parser_attribute_allocation&quot;: [
+    148.5039
+  ],
+  &quot;parser_merge_attribute_plan&quot;: [
+    0.1364
+  ],
+  &quot;parser_merge_execute&quot;: [
+    475.6687
+  ],
+  &quot;parser_merge&quot;: [
+    626.1434
+  ],
+  &quot;parser_total&quot;: [
+    4536.4413
+  ],
+  &quot;freeform_resolve&quot;: [
+    0.068
+  ],
+  &quot;statement_release&quot;: [
+    0.066
+  ],
+  &quot;primitive_validation&quot;: [
+    0.0026
+  ],
+  &quot;source_position_adoption&quot;: [
+    0.0011
+  ],
+  &quot;coordinate_origin&quot;: [
+    184.2998
+  ],
+  &quot;coordinate_rebase&quot;: [
+    74.3338
+  ],
+  &quot;triangulation&quot;: [
+    312.2481
+  ],
+  &quot;mesh_allocation&quot;: [
+    0.0312
+  ],
+  &quot;mapping_parallel_resolution&quot;: [
+    1222.0641
+  ],
+  &quot;mapping_resolve_total&quot;: [
+    1222.3741
+  ],
+  &quot;mapping_parser_records_release&quot;: [
+    238.3281
+  ],
+  &quot;mapping_vertex_allocate&quot;: [
+    352.1419
+  ],
+  &quot;mapping_position_map&quot;: [
+    203.4566
+  ],
+  &quot;mapping_primary_worker&quot;: [
+    492.6752,
+    493.2485,
+    494.1091,
+    493.6611,
+    494.7881,
+    493.9848,
+    495.5311,
+    495.4102
+  ],
+  &quot;mapping_primary_gather&quot;: [
+    496.8678
+  ],
+  &quot;mapping_seam_worker&quot;: [
+    8.5713,
+    9.0361,
+    9.1173,
+    10.2852,
+    10.2274,
+    9.8145,
+    10.4007,
+    10.2591
+  ],
+  &quot;mapping_seam_gather&quot;: [
+    11.7597
+  ],
+  &quot;mapping_lookup_release&quot;: [
+    29.4172
+  ],
+  &quot;corner_mapping&quot;: [
+    2555.9528
+  ],
+  &quot;normal_check&quot;: [
+    0.0068
+  ],
+  &quot;normal_clear&quot;: [
+    77.0221
+  ],
+  &quot;normal_face_accumulation&quot;: [
+    714.5989
+  ],
+  &quot;normal_vertex_normalize&quot;: [
+    77.4755
+  ],
+  &quot;normal_generation&quot;: [
+    869.8774
+  ],
+  &quot;render_bounds&quot;: [
+    248.6646
+  ],
+  &quot;original_bounds&quot;: [
+    0.0013
+  ],
+  &quot;mesh_publish&quot;: [
+    25.1942
+  ],
+  &quot;parser_lookup_release&quot;: [
+    0.0034
+  ],
+  &quot;cpu_import&quot;: [
+    8854.8399
+  ],
+  &quot;group_render_bounds&quot;: [
+    0.0014
+  ],
+  &quot;group_original_bounds&quot;: [
+    0.0063
+  ],
+  &quot;gpu_index_validation&quot;: [
+    148.8912,
+    0.0035
+  ],
+  &quot;point_membership_allocate&quot;: [
+    0.0466,
+    0.0372
+  ],
+  &quot;point_membership_build&quot;: [
+    0.0122,
+    790.1339
+  ],
+  &quot;point_hierarchy&quot;: [
+    0.0012,
+    1983.9184
+  ],
+  &quot;gpu_upload_source_prepare&quot;: [
+    1.5649,
+    0.0027
+  ],
+  &quot;gpu_buffer_allocate_and_staging&quot;: [
+    632.3317,
+    201.5679
+  ],
+  &quot;gpu_upload_final_fence_wait&quot;: [
+    1.0831,
+    0.5332
+  ],
+  &quot;gpu_upload_worker_total&quot;: [
+    635.6398,
+    202.7489
+  ],
+  &quot;post_source_indices&quot;: [
+    480.0193
+  ],
+  &quot;post_original_bounds&quot;: [
+    733.9836
+  ],
+  &quot;annotation_bounds&quot;: [
+    1256.5278
+  ],
+  &quot;point_color_gather&quot;: [
+    61.3526
+  ],
+  &quot;point_range_bounds&quot;: [
+    0.0096
+  ],
+  &quot;annotation_fingerprints&quot;: [
+    2355.0637
+  ],
+  &quot;point_morton_keys&quot;: [
+    429.7172
+  ],
+  &quot;annotation_morton_keys&quot;: [
+    1453.176
+  ],
+  &quot;point_radix_sort&quot;: [
+    388.842
+  ],
+  &quot;point_sorted_gather&quot;: [
+    452.4127
+  ],
+  &quot;annotation_radix_sort&quot;: [
+    1101.1936
+  ],
+  &quot;point_tree_build&quot;: [
+    639.1524
+  ],
+  &quot;point_navigation_cuts&quot;: [
+    10.6596
+  ],
+  &quot;post_point_preparation&quot;: [
+    2774.7822
+  ],
+  &quot;post_group_bounds&quot;: [
+    0.0075
+  ],
+  &quot;post_model_preparation&quot;: [
+    3989.7168
+  ],
+  &quot;annotation_tree_build&quot;: [
+    642.8192
+  ],
+  &quot;post_annotation_cache&quot;: [
+    4455.6425
+  ],
+  &quot;post_parallel_preparation&quot;: [
+    4456.4582
+  ],
+  &quot;post_load_cpu_total&quot;: [
+    4456.6651
+  ],
+  &quot;post_result_publish&quot;: [
+    0.0296
+  ]
+}</pre></td></tr><tr><td>baseline / 2</td><td><pre>{
+  &quot;capacity_preflight&quot;: [
+    2.445
+  ],
+  &quot;parser_scan_collect&quot;: [
+    3342.8255
+  ],
+  &quot;parser_merge_shape_plan&quot;: [
+    1.4916
+  ],
+  &quot;parser_attribute_allocation&quot;: [
+    144.3299
+  ],
+  &quot;parser_merge_attribute_plan&quot;: [
+    0.141
+  ],
+  &quot;parser_merge_execute&quot;: [
+    511.3003
+  ],
+  &quot;parser_merge&quot;: [
+    658.2779
+  ],
+  &quot;parser_total&quot;: [
+    4452.2554
+  ],
+  &quot;freeform_resolve&quot;: [
+    0.0659
+  ],
+  &quot;statement_release&quot;: [
+    0.0584
+  ],
+  &quot;primitive_validation&quot;: [
+    0.0031
+  ],
+  &quot;source_position_adoption&quot;: [
+    0.0011
+  ],
+  &quot;coordinate_origin&quot;: [
+    172.0163
+  ],
+  &quot;coordinate_rebase&quot;: [
+    76.2107
+  ],
+  &quot;triangulation&quot;: [
+    377.456
+  ],
+  &quot;mesh_allocation&quot;: [
+    0.0308
+  ],
+  &quot;mapping_parallel_resolution&quot;: [
+    1216.1018
+  ],
+  &quot;mapping_resolve_total&quot;: [
+    1216.385
+  ],
+  &quot;mapping_parser_records_release&quot;: [
+    215.6344
+  ],
+  &quot;mapping_vertex_allocate&quot;: [
+    360.0008
+  ],
+  &quot;mapping_position_map&quot;: [
+    192.6988
+  ],
+  &quot;mapping_primary_worker&quot;: [
+    472.544,
+    472.1961,
+    474.8692,
+    474.659,
+    475.2992,
+    476.1863,
+    476.1222,
+    476.9289
+  ],
+  &quot;mapping_primary_gather&quot;: [
+    478.3132
+  ],
+  &quot;mapping_seam_worker&quot;: [
+    7.9924,
+    9.239,
+    10.1489,
+    10.1064,
+    10.3882,
+    10.2546,
+    10.1125,
+    10.0811
+  ],
+  &quot;mapping_seam_gather&quot;: [
+    11.9753
+  ],
+  &quot;mapping_lookup_release&quot;: [
+    25.6219
+  ],
+  &quot;corner_mapping&quot;: [
+    2502.297
+  ],
+  &quot;normal_check&quot;: [
+    0.0106
+  ],
+  &quot;normal_clear&quot;: [
+    76.5239
+  ],
+  &quot;normal_face_accumulation&quot;: [
+    712.7708
+  ],
+  &quot;normal_vertex_normalize&quot;: [
+    78.6432
+  ],
+  &quot;normal_generation&quot;: [
+    868.6832
+  ],
+  &quot;render_bounds&quot;: [
+    268.049
+  ],
+  &quot;original_bounds&quot;: [
+    0.0015
+  ],
+  &quot;mesh_publish&quot;: [
+    24.5954
+  ],
+  &quot;parser_lookup_release&quot;: [
+    0.0029
+  ],
+  &quot;cpu_import&quot;: [
+    8787.1876
+  ],
+  &quot;group_render_bounds&quot;: [
+    0.0012
+  ],
+  &quot;group_original_bounds&quot;: [
+    0.0063
+  ],
+  &quot;gpu_index_validation&quot;: [
+    199.6434,
+    0.0039
+  ],
+  &quot;point_membership_allocate&quot;: [
+    0.0149,
+    0.0433
+  ],
+  &quot;point_membership_build&quot;: [
+    0.0133,
+    736.6974
+  ],
+  &quot;point_hierarchy&quot;: [
+    0.0026,
+    2080.1203
+  ],
+  &quot;gpu_upload_source_prepare&quot;: [
+    1.4495,
+    0.0022
+  ],
+  &quot;gpu_buffer_allocate_and_staging&quot;: [
+    630.1798,
+    182.478
+  ],
+  &quot;gpu_upload_final_fence_wait&quot;: [
+    0.5289,
+    0.619
+  ],
+  &quot;gpu_upload_worker_total&quot;: [
+    632.9493,
+    183.6545
+  ],
+  &quot;post_source_indices&quot;: [
+    482.7002
+  ],
+  &quot;post_original_bounds&quot;: [
+    654.7571
+  ],
+  &quot;annotation_bounds&quot;: [
+    1217.012
+  ],
+  &quot;point_color_gather&quot;: [
+    58.633
+  ],
+  &quot;point_range_bounds&quot;: [
+    0.0126
+  ],
+  &quot;annotation_fingerprints&quot;: [
+    2320.4442
+  ],
+  &quot;point_morton_keys&quot;: [
+    396.6219
+  ],
+  &quot;annotation_morton_keys&quot;: [
+    1322.4055
+  ],
+  &quot;point_radix_sort&quot;: [
+    707.384
+  ],
+  &quot;point_sorted_gather&quot;: [
+    351.636
+  ],
+  &quot;point_tree_build&quot;: [
+    555.4872
+  ],
+  &quot;point_navigation_cuts&quot;: [
+    8.405
+  ],
+  &quot;post_point_preparation&quot;: [
+    2817.628
+  ],
+  &quot;post_group_bounds&quot;: [
+    0.0073
+  ],
+  &quot;post_model_preparation&quot;: [
+    3955.9627
+  ],
+  &quot;annotation_radix_sort&quot;: [
+    1705.7888
+  ],
+  &quot;annotation_tree_build&quot;: [
+    546.0095
+  ],
+  &quot;post_annotation_cache&quot;: [
+    4792.7749
+  ],
+  &quot;post_parallel_preparation&quot;: [
+    4793.6831
+  ],
+  &quot;post_load_cpu_total&quot;: [
+    4793.852
+  ],
+  &quot;post_result_publish&quot;: [
+    0.0226
+  ]
+}</pre></td></tr></tbody></table></div></details>
+<details><summary>Experiments and reproduction</summary><p>The replay compared a three-pass full-array LSD sort with several partition widths. Full-array LSD gave a smaller gain. The initial 16-bit prototype exhausted the default Windows stack; its large tables were moved to the heap before the complete grid was rerun. The production tables are heap allocations. Partial runs remain in the evidence, but do not enter the final summaries.</p>
+<pre>cmake --build --preset vs2026-vcpkg --config Release --parallel 4
+cmake --build --preset vs2026-vcpkg --config Release --target woby_spatial_sort_replay
+uv run experiments/obj-profile/spatial_tests.py --replay build/vs2026-vcpkg/bin/Release/woby_spatial_sort_replay.exe
+uv run experiments/obj-profile/annotation_compare.py BASELINE_BIN CANDIDATE_BIN MODEL --output NEW_DIRECTORY --rounds 5 --modes post-load,viewer</pre>
+<p><code>spatial_capture.py GENERATED_DIRECTORY NEW_CAPTURE_DIRECTORY</code> adds capture only to generated diagnostic sources. Use one load of a single-group model. Regenerate those sources before taking timings. The capture changes timings and must not be used as a performance sample. <code>woby_spatial_sort_replay KEYS HELPERS ROUNDS current-byte</code> compares the production sort with the byte reference.</p></details>
+<footer>AMD Ryzen 7 5800H · 8 cores / 16 threads · 64 GiB RAM · RTX 3070 Laptop · Release AVX2 · Raw evidence: <code>D:\.worktree\woby-annotation-35ac\build\spatial-sort-20261016</code></footer></main></body></html>

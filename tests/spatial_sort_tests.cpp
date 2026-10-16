@@ -93,6 +93,77 @@ TEST_CASE("Spatial jobs join on failure cancellation and concurrent nested prepa
     CHECK(woby::analysisWorkerCount.load() == 0);
 }
 
+TEST_CASE("Large spatial partitions preserve ties constant digits and skewed full width keys")
+{
+    constexpr size_t count = (size_t{1} << 20) + 37;
+    std::vector<Key> input(count);
+    std::mt19937 random(179);
+    uint32_t previous = 0;
+    for (size_t i = 0; i < count; ++i) {
+        if (i % 3 == 0) { previous = static_cast<uint32_t>(random()); }
+        input[i] = {previous, static_cast<uint32_t>(i)};
+    }
+    SUBCASE("all digits vary") {}
+    SUBCASE("equal keys recur across every input chunk") {
+        for (size_t i = 0; i < count; ++i) { input[i].first = static_cast<uint32_t>((i * 997) % 4093) * 2654435761u; }
+    }
+    SUBCASE("low digit is constant") { for (auto& key : input) { key.first |= 1023u; } }
+    SUBCASE("middle digit is constant") { for (auto& key : input) { key.first &= ~(511u << 10); } }
+    SUBCASE("both local digits are constant") { for (auto& key : input) { key.first |= (1u << 19) - 1; } }
+    SUBCASE("all keys are equal") { for (auto& key : input) { key.first = UINT32_MAX; } }
+    SUBCASE("one large partition with constant high bits") {
+        for (auto& key : input) { key.first = 0xabc00000u | (key.first & ((1u << 19) - 1)); }
+    }
+    SUBCASE("one large partition and a distant outlier") {
+        for (auto& key : input) { key.first &= (1u << 19) - 1; }
+        input.back().first = UINT32_MAX;
+    }
+    auto expected = input;
+    std::stable_sort(expected.begin(), expected.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+    for (const unsigned cap : {0u, 3u}) {
+        auto actual = input;
+        std::atomic<bool> exceeded = false;
+        woby::stableSpatialRadixSort(actual, [](const auto& key) { return key.first; }, [&] {
+            if (woby::analysisWorkerCount.load() > std::min(cap, woby::analysisWorkerLimit())) { exceeded = true; }
+        }, cap);
+        CHECK(actual == expected);
+        CHECK_FALSE(exceeded.load());
+        CHECK(woby::analysisWorkerCount.load() == 0);
+    }
+}
+
+TEST_CASE("Large spatial sort joins workers after cancellation in each part of the sort")
+{
+    constexpr size_t count = (size_t{1} << 20) + 19;
+    std::vector<Key> input(count);
+    std::mt19937 random(181);
+    for (size_t i = 0; i < count; ++i) { input[i] = {static_cast<uint32_t>(random()), static_cast<uint32_t>(i)}; }
+    auto sorted = input;
+    std::atomic<size_t> completedChecks = 0;
+    woby::stableSpatialRadixSort(sorted, [](const auto& key) { return key.first; }, [&] { ++completedChecks; }, 3);
+    for (const size_t after : {size_t{1}, completedChecks.load() / 5,
+        completedChecks.load() * 2 / 5, completedChecks.load() * 3 / 5, completedChecks.load() * 4 / 5}) {
+        auto actual = input;
+        std::atomic<size_t> calls = 0;
+        CHECK_THROWS_WITH(woby::stableSpatialRadixSort(actual, [](const auto& key) { return key.first; }, [&] {
+            if (++calls >= after) { throw std::runtime_error("Partition sort canceled"); }
+        }, 3), "Partition sort canceled");
+        CHECK(woby::analysisWorkerCount.load() == 0);
+    }
+    // A throwing key accessor must also leave no helpers running.
+    auto actual = input;
+    std::atomic<size_t> reads = 0;
+    CHECK_THROWS_WITH(woby::stableSpatialRadixSort(actual, [&](const auto& key) {
+        if (++reads == count + 100) { throw std::runtime_error("Key access failed"); }
+        return key.first;
+    }, [] {}, 3), "Key access failed");
+    CHECK(woby::analysisWorkerCount.load() == 0);
+    actual = input;
+    woby::stableSpatialRadixSort(actual, [](const auto& key) { return key.first; }, [] {}, 3);
+    CHECK(actual == sorted);
+    CHECK(woby::analysisWorkerCount.load() == 0);
+}
+
 TEST_CASE("Per-job helper limits keep the shared budget and preserve complete ordered output")
 {
     for (const unsigned cap : {0u, 1u, 3u}) {

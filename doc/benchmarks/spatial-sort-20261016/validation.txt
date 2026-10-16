@@ -1,0 +1,67 @@
+Shared spatial sorting validation — 2026-10-16
+
+Baseline commit: ea02965 (point-preparation changes committed before this work).
+Candidate source: src/spatial_sort.h
+Candidate SHA256: ae1ff787696b7ebb707ee3f768d7aec47c0f18630cb2b4f658b6f2b7a3fb10b9
+Build worktree: D:\.worktree\woby-annotation-35ac
+Raw evidence: D:\.worktree\woby-annotation-35ac\build\spatial-sort-20261016
+
+Release build:
+  cmake --build --preset vs2026-vcpkg --config Release --parallel 4
+  cmake --build --preset vs2026-vcpkg --config Release --target woby_spatial_sort_replay --parallel 4
+  Succeeded. No warnings. Log: sort-final-build.log
+
+CTest:
+  ctest --preset vs2026-vcpkg -C Release: 97/97 passed (36.93 s)
+  ctest --preset vs2026-vcpkg-slow -C Release: 9/9 passed (81.14 s)
+  ctest --preset vs2026-vcpkg-graphics -C Release -j 1: 1/1 passed (6.15 s)
+  The capture-tool entry was rerun after its final Python-only changes: 1/1 passed.
+  The capture/replay script with --replay: 2/2 passed.
+  Logs: sort-final-tests.log, sort-final-slow.log, sort-final-graphics.log,
+        sort-final-capture.log, sort-final-tooling.log
+
+Focused initial candidate check: 88 cases, 11,462,115 assertions, all passed.
+The final full suite includes the additional large-key tie and fallback subcases.
+
+Evidence audit:
+{
+  "preparation_captures": 70,
+  "native_captures": 20,
+  "traced_captures": 4,
+  "exact_native_images": 20,
+  "completed_kernel_rows": 261,
+  "ctest_entries": 107,
+  "optional_tool_tests": 2,
+  "build_warnings": 0
+}
+
+Every accepted preparation capture has identical complete annotation/point outputs
+for the same model, including comparisons across modes and across code variants.
+This covers fingerprints, bounds, stable orders, IDs, colours, tree nodes, proxies,
+group ranges, and navigation cuts. Output checks are outside the timed intervals.
+Every recorded binary hash matches its preserved executable. Raw capture hashes
+and candidate source copies match. Generated timing sources contain no key capture.
+All 20 native screenshots are pixel-identical.
+
+BearTrap SHA256 (rechecked after the measurements):
+7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329
+
+Timing scope:
+Fresh application processes, warm input, alternating order, Legion Balance Mode.
+Isolated final branches: 3 pairs each. Concurrent CPU preparation: 5 pairs.
+Native Ready: 10 pairs. Separate traced viewer: 2 pairs.
+Bennu: 3 pairs per branch/mode. BusGameMap: 3 pairs per mode.
+The native import duration varies and has not changed in code. The report gives
+paired Ready savings and the derived Ready-minus-import remainder separately.
+Do not add phase CPU times or overlapping wall intervals.
+
+Known experiment costs:
+The initial 16-bit prototype overflowed the Windows stack. Its tables were moved
+to heap storage before the complete grid rerun. The partial grid is not in final
+performance summaries. Production partition tables use heap storage.
+For 4,194,341 concentrated keys plus one distant outlier, the discovery scan adds
+5.53 ms with three helpers and 2.44 ms with eight in the synthetic replay.
+All other edge-case distributions improved. Correctness was exact for all of them.
+
+Report review: desktop 1280x800 and mobile 390x844. No horizontal page overflow.
+All three artifact links returned HTTP 200. The 1920x1800 viewer image loaded.
