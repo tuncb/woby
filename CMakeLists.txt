@@ -245,6 +245,7 @@ add_library(woby_core STATIC
     src/ui_operations.cpp
     src/ui_view_operations.cpp
     src/ui_property_operations.cpp
+    src/ui_transform_operations.cpp
     src/ui_operations.h
     src/ui_state.cpp
     src/ui_state.h
@@ -642,6 +643,7 @@ if(BUILD_TESTING)
         tests/freeform_trim_tests.cpp
         tests/scene_file_edge_tests.cpp
         tests/ui_operations_tests.cpp
+        tests/ui_transform_operations_tests.cpp
         tests/ui_view_tests.cpp
         tests/uv_grid_tests.cpp
         tests/uv_quality_tests.cpp

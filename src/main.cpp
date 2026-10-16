@@ -808,6 +808,39 @@ void pushRenderModeControlHeight()
         ImVec2(style.FramePadding.x, paddingY));
 }
 
+void drawSceneTransformMenu(woby::UiState& state, woby::SceneObjectId reference)
+{
+    if (!ImGui::BeginMenu("Transform")) { return; }
+    struct MenuCache {
+        const woby::UiState* owner = nullptr;
+        uint64_t generation = 0, revision = 0;
+        woby::SceneObjectId reference = 0;
+        bool ready = false;
+        std::vector<woby::SceneObjectId> selection;
+        woby::UiSelectionTransformStatus status;
+    };
+    static MenuCache cache;
+    const bool ready = woby::scenePostLoadReady(state);
+    if (cache.owner != &state || cache.generation != state.sceneGeneration || cache.revision != state.sceneEditRevision
+        || cache.reference != reference || cache.ready != ready || cache.selection != state.selectedSceneObjects) {
+        cache = {&state, state.sceneGeneration, state.sceneEditRevision, reference, ready, state.selectedSceneObjects,
+            woby::selectedObjectTransformStatus(state, reference)};
+    }
+    const auto action = [&](const char* label, const char* issue, const char* help, woby::UiSelectionTransform transform) {
+        if (ImGui::MenuItem(label, nullptr, false, issue == nullptr)) {
+            woby::transformSelectedObjects(state, reference, transform);
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) { ImGui::SetTooltip("%s", issue ? issue : help); }
+    };
+    action("Align origins here", cache.status.alignOriginsIssue,
+        "Move the other selected objects so their current pivots match this object's pivot. This object stays fixed.",
+        woby::UiSelectionTransform::alignOrigins);
+    action("Arrange beside this model", cache.status.arrangeNearbyIssue,
+        "Place the other selected objects along world +X in scene-tree order, with a small gap. This object stays fixed.",
+        woby::UiSelectionTransform::arrangeNearby);
+    ImGui::EndMenu();
+}
+
 bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     bool treeNode, bool removableFile = false)
 {
@@ -852,6 +885,8 @@ bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     }
     bool removeFile = false;
     if (ImGui::BeginPopupContextItem("scene_item_context")) {
+        drawSceneTransformMenu(state, id);
+        ImGui::Separator();
         if (ImGui::BeginMenu("Create analysis", woby::scenePostLoadReady(state) && !woby::comparisonObjectParts(state, state.selectedSceneObjects).empty())) {
             woby::drawAnalysisCreationMenu(state);
             ImGui::EndMenu();

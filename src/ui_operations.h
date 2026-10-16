@@ -91,6 +91,19 @@ void frameComparisonBounds(UiState& state, const Bounds& bounds);
 void selectSceneObject(UiState& state, SceneObjectId id, bool toggle = false, bool contextClick = false);
 void clearSceneSelection(UiState& state);
 
+enum class UiSelectionTransform { alignOrigins, arrangeNearby };
+struct UiSelectionTransformStatus {
+    const char* alignOriginsIssue = nullptr;
+    const char* arrangeNearbyIssue = nullptr;
+};
+// The reference must be selected. Null issues enable the corresponding action.
+// Use current world pivots for alignment, and hidden-inclusive transformed boxes
+// for a +X row in scene-tree order. Parent/child and shared-instance edits are rejected.
+[[nodiscard]] UiSelectionTransformStatus selectedObjectTransformStatus(const UiState& state, SceneObjectId reference);
+// Changes translations only, including descendant compensation for renderer order.
+// Validate the whole edit before publication; a no-op does not notify history.
+bool transformSelectedObjects(UiState& state, SceneObjectId reference, UiSelectionTransform action);
+
 enum class UiObjectProperty {
     translationX, translationY, translationZ,
     rotationX, rotationY, rotationZ,
