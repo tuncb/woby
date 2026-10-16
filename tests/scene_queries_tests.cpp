@@ -119,7 +119,7 @@ TEST_CASE("scene query hits reuse work and allocate nothing") {
     renameView(f.state, view, "Saved view");
     renameComparison(f.state, analysis, "Analysis label");
     setSelectedObjectProperty(f.state, UiObjectProperty::red, .2f);
-    setShowGrid(f.state, false);
+    toggleShowGrid(f.state);
     orbitUiCamera(f.state, 20, 10);
     work();
     CHECK(f.queries.parts.builds == builds);

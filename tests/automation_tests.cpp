@@ -154,7 +154,7 @@ TEST_CASE("automation history triggers preserve direction and replay outcomes wi
             woby::SceneHistory history;
             const auto clean = woby::createSceneDocument(state);
             woby::resetSceneHistory(history, state);
-            woby::setShowGrid(state, false);
+            woby::toggleShowGrid(state);
             woby::recordSceneHistory(history, state);
             if (redo) {
                 auto prepared = woby::prepareSceneHistoryStep(history, state, clean, false);
@@ -180,7 +180,7 @@ TEST_CASE("automation history triggers preserve direction and replay outcomes wi
                 woby::commitSceneHistoryStep(history, state, std::move(*prepared), redo);
                 REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationControlResult{
                     {{"action", redo ? "redo" : "undo"}, {"applied", true}, {"dirty", state.isDirty}}}));
-                CHECK(state.showGrid == !redo);
+                CHECK(state.showGrid == redo);
                 CHECK_FALSE(woby::recordSceneHistory(history, state));
             }
             const auto original = pending.get();
@@ -1104,7 +1104,7 @@ TEST_CASE("scene save retries replay success without writing the destination aga
     woby::setAutomationReady(*fixture.server);
     woby::UiState state;
     woby::SceneDocument clean = woby::createSceneDocument(state);
-    woby::setShowGrid(state, false);
+    woby::toggleShowGrid(state);
     std::optional<std::filesystem::path> currentPath;
     const auto path = fixture.directory / "saved.woby";
     const Json params = {{"path", woby::pathToUtf8(path)}, {"requestKey", "save-once"}};
@@ -1137,7 +1137,7 @@ TEST_CASE("lifecycle errors replay their original dirty state and actionable rea
     woby::setAutomationReady(*fixture.server);
     woby::UiState state;
     woby::SceneDocument clean = woby::createSceneDocument(state);
-    woby::setShowGrid(state, false);
+    woby::toggleShowGrid(state);
     std::optional<std::filesystem::path> path;
     const Json params = {{"requestKey", "new-failed"}};
     auto future = std::async(std::launch::async, [&] { return request(fixture.instance, "scene.new", params); });

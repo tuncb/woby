@@ -253,7 +253,7 @@ struct UiState {
     bool running = true;
     bool isDirty = false;
     bool showOrigin = false;
-    bool showGrid = true;
+    bool showGrid = false;
     bool showDimensions = false;
     bool triangleEdgeXray = false;
     bool adaptivePoints = true;

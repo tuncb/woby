@@ -225,7 +225,7 @@ TEST_CASE("scene history idle and camera frames consume no edit notifications")
 TEST_CASE("scene history records scene operation notifications while already dirty")
 {
     const std::vector<std::function<void(woby::UiState&)>> edits{
-        [](auto& state) { woby::setShowGrid(state, false); },
+        [](auto& state) { woby::toggleShowGrid(state); },
         [](auto& state) { woby::setShowOrigin(state, true); },
         [](auto& state) { woby::setSceneUpAxis(state, woby::SceneUpAxis::y); },
         [](auto& state) { woby::setMasterVertexPointSize(state, 12); },

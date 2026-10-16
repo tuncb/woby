@@ -287,7 +287,7 @@ TEST_CASE("applying views restores camera and selection through undo redo withou
     CHECK(state.camera.distance == 12);
     CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{state.files[0].objectId});
     state.camera.distance = 36;
-    woby::setShowGrid(state, false);
+    woby::toggleShowGrid(state);
     woby::recordSceneHistory(history, state);
     step(history, state, clean);
     CHECK(state.camera.distance == 36); // Ordinary edit undo preserves navigation.
@@ -361,6 +361,7 @@ TEST_CASE("legacy scenes have no views and malformed view camera or child tables
 TEST_CASE("view application undoes appearance and navigation together without merging adjacent edits")
 {
     auto state = viewState();
+    woby::setShowGrid(state, true);
     state.camera.distance = 10;
     const auto id = woby::createView(state);
     const auto clean = woby::createSceneDocument(state);

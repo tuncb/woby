@@ -1281,7 +1281,7 @@ TEST_CASE("dirty tracking follows scene content and excludes the persisted camer
     CHECK(state.isDirty);
 
     woby::setMasterVertexPointSize(state, woby::defaultMasterVertexPointSize);
-    woby::setShowGrid(state, false);
+    woby::toggleShowGrid(state);
     woby::updateSceneDirty(state, cleanDocument);
     CHECK(state.isDirty);
 
@@ -2011,14 +2011,14 @@ TEST_CASE("Framed bounds fit both canvas axes without changing logical camera")
     }
 }
 
-TEST_CASE("grid starts enabled and explicit visibility survives scene replacement")
+TEST_CASE("grid starts disabled and explicit visibility survives scene replacement")
 {
     woby::UiState state;
-    CHECK(state.showGrid);
+    CHECK_FALSE(state.showGrid);
     CHECK_FALSE(state.isDirty);
-    CHECK(woby::createSceneDocument(state).showGrid);
+    CHECK_FALSE(woby::createSceneDocument(state).showGrid);
 
-    for (const bool visible : {false, true}) {
+    for (const bool visible : {true, false}) {
         woby::setShowGrid(state, visible);
         const auto document = woby::createSceneDocument(state);
         CHECK(document.showGrid == visible);
@@ -2028,12 +2028,12 @@ TEST_CASE("grid starts enabled and explicit visibility survives scene replacemen
     }
 }
 
-TEST_CASE("new scenes show the grid and legacy scene display defaults are retained")
+TEST_CASE("new scenes hide the grid and legacy scene display defaults are retained")
 {
     woby::UiState state;
     state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
     CHECK_FALSE(state.showOrigin);
-    CHECK(state.showGrid);
+    CHECK_FALSE(state.showGrid);
     const auto& group = state.files.front().groupSettings.front();
     CHECK(group.showSolidMesh);
     CHECK_FALSE(group.showTriangles);
@@ -2056,7 +2056,7 @@ TEST_CASE("new scenes show the grid and legacy scene display defaults are retain
 
     auto fresh = woby::prepareSceneReplacement(restored, {}, woby::createSceneDocument(woby::UiState{}));
     CHECK_FALSE(fresh.showOrigin);
-    CHECK(fresh.showGrid);
+    CHECK_FALSE(fresh.showGrid);
     CHECK(fresh.files.empty());
     CHECK_FALSE(fresh.isDirty);
 }
