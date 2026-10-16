@@ -37,6 +37,7 @@ SceneGroupSettings normalizedAppearance(const SceneGroupSettings& value)
     setGroupRotationDegrees(group, value.rotationDegrees);
     setGroupVertexSizeScale(group, value.vertexSizeScale);
     setGroupColor(group, value.color);
+    group.colorOverride = value.colorOverride;
     return sceneGroupSettings(group);
 }
 
@@ -299,6 +300,7 @@ void applyView(UiState& state, ViewId id)
                 group.showVertices = settings.showVertices;
                 group.vertexSizeScale = settings.vertexSizeScale;
                 group.color = settings.color;
+                group.colorOverride = settings.colorOverride;
             }
         }
         visitNodes(state.sceneNodes, [&](auto& node) {

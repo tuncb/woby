@@ -12,11 +12,11 @@ EXPECTED = {
     'vertices': 240, 'pointIds': 248, 'stride': 256, 'texture0': 260,
     'texture1': 264, 'image1': 268, 'sampler': 272, 'triangleEdges': 276,
     'triangleOffset': 284, 'transparency': 288, 'analysisFaces': 304,
-    'faceKind': 312, 'firstFace': 316,
+    'faceKind': 312, 'firstFace': 316, 'vertexColors': 320, 'vertexColorCount': 328,
 }
 INTEGER_FIELDS = {
     'pointOffset', 'pointSourceFirst', 'markerBase', 'stride', 'texture0',
-    'texture1', 'image1', 'sampler', 'triangleOffset', 'faceKind', 'firstFace',
+    'texture1', 'image1', 'sampler', 'triangleOffset', 'faceKind', 'firstFace', 'vertexColorCount',
 }
 
 
@@ -62,4 +62,4 @@ if __name__ == '__main__':
     required = {'vs_marker_point', 'vs_point_sprite', 'vs_line_sprite', 'vs_mesh_edges',
                 'vs_triangle_lines', 'vs_comparison', 'fs_marker_highlight_msaa', 'cs_marker_lookup_msaa'}
     assert required <= checked, f'Missing compiled root contracts: {required - checked}'
-    print(f'{len(checked)} compiled roots: all 24 offsets and 11 uint32 fields match the 320-byte C++ ABI')
+    print(f'{len(checked)} compiled roots: all {len(EXPECTED)} offsets and {len(INTEGER_FIELDS)} uint32 fields match the 336-byte C++ ABI')

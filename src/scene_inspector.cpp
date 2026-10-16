@@ -86,6 +86,60 @@ void resetButton(InspectorEditor& editor, const char* tooltip, UiPropertyGroup g
     ImGui::PopID();
 }
 
+void colorField(InspectorEditor& editor)
+{
+    const auto red = inspectorProperty(editor.snapshot, UiObjectProperty::red);
+    const auto green = inspectorProperty(editor.snapshot, UiObjectProperty::green);
+    const auto blue = inspectorProperty(editor.snapshot, UiObjectProperty::blue);
+    const auto source = inspectorProperty(editor.snapshot, UiObjectProperty::vertexColors);
+    const bool vertex = source.available && !source.mixed && source.value != 0;
+    const bool mixed = source.mixed || (!vertex && (red.mixed || green.mixed || blue.mixed));
+    std::array<float, 3> color{red.value, green.value, blue.value};
+    ImGui::PushID("part_color");
+    ImGui::BeginDisabled(!red.available);
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted("Color");
+    ImGui::SameLine();
+    const bool open = ImGui::ColorButton("##swatch", {color[0], color[1], color[2], 1},
+        ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop);
+    const auto low = ImGui::GetItemRectMin(), high = ImGui::GetItemRectMax();
+    if (vertex || mixed) {
+        // The swatch identifies the source, rather than showing an unused tint.
+        auto* draw = ImGui::GetWindowDrawList();
+        draw->AddRectFilledMultiColor({low.x + 2, low.y + 2}, {high.x - 2, high.y - 2},
+            vertex ? IM_COL32(90,220,100,255) : IM_COL32(90,90,90,255),
+            vertex ? IM_COL32(255,190,70,255) : IM_COL32(190,190,190,255),
+            vertex ? IM_COL32(180,80,220,255) : IM_COL32(190,190,190,255),
+            vertex ? IM_COL32(50,170,240,255) : IM_COL32(90,90,90,255));
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(source.available ? "Pick a color to override vertex colors." : "Pick a color.");
+    }
+    if (open) { ImGui::OpenPopup("picker"); }
+    ImGui::SetNextWindowPos({low.x, high.y + ImGui::GetStyle().ItemSpacing.y}, ImGuiCond_Appearing);
+    if (ImGui::BeginPopup("picker")) {
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14);
+        if (ImGui::ColorPicker3("##value", color.data())) {
+            setSelectedObjectProperty(editor, UiObjectProperty::red, color[0]);
+            setSelectedObjectProperty(editor, UiObjectProperty::green, color[1]);
+            setSelectedObjectProperty(editor, UiObjectProperty::blue, color[2]);
+        }
+        ImGui::EndPopup();
+    }
+    if (source.available || mixed) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("%s", mixed ? "Mixed" : vertex ? "Vertex" : "Custom");
+    }
+    if (source.available && (source.mixed || !vertex)) {
+        ImGui::SameLine();
+        if (drawResetIconButton("source", "Use vertex colors")) {
+            setSelectedObjectProperty(editor, UiObjectProperty::vertexColors, 1);
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::PopID();
+}
+
 bool propertyHeading(InspectorEditor& editor, const char* title, const char* tooltip,
     UiPropertyGroup group, bool collapsible, const char* informationTitle = nullptr,
     const char* informationText = nullptr)
@@ -292,7 +346,6 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
                 }
                 ImGui::EndDisabled();
             }
-            const auto red = inspectorProperty(editor.snapshot, UiObjectProperty::red);
             const auto lineDepth = inspectorProperty(editor.snapshot, UiObjectProperty::lineDepthTest);
             if (lineDepth.available) {
                 ImGui::Spacing();
@@ -342,22 +395,7 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
                 }
             }
             ImGui::Spacing();
-            {
-                ImGui::BeginDisabled(!red.available);
-                const auto green = inspectorProperty(editor.snapshot, UiObjectProperty::green);
-                const auto blue = inspectorProperty(editor.snapshot, UiObjectProperty::blue);
-                std::array<float, 3> color{red.value, green.value, blue.value};
-                if (ImGui::ColorEdit3("Color picker", color.data(), ImGuiColorEditFlags_NoInputs)) {
-                    setSelectedObjectProperty(editor, UiObjectProperty::red, color[0]);
-                    setSelectedObjectProperty(editor, UiObjectProperty::green, color[1]);
-                    setSelectedObjectProperty(editor, UiObjectProperty::blue, color[2]);
-                }
-                if (red.mixed || green.mixed || blue.mixed) {
-                    ImGui::SameLine();
-                    ImGui::TextDisabled("Mixed colors");
-                }
-                ImGui::EndDisabled();
-            }
+            colorField(editor);
         }
         if (drawInformationHeader("Geometry", "Geometry",
                 "Size includes transforms and visible selected parts.\n\n"

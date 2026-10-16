@@ -1,0 +1,2 @@
+Synthetic render and reload checks passed; evidence saved.
+BearTrap source-color render saved.

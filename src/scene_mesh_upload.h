@@ -8,6 +8,8 @@ namespace woby {
 struct GpuMesh {
     uint64_t resourceRevision = nextMeshContentRevision();
     graphics::VertexBufferHandle vertexBuffer = WOBY_GPU_INVALID_HANDLE;
+    graphics::VertexBufferHandle vertexColors = WOBY_GPU_INVALID_HANDLE;
+    graphics::VertexBufferHandle pointColors = WOBY_GPU_INVALID_HANDLE;
     graphics::IndexBufferHandle triangleIndexBuffer = WOBY_GPU_INVALID_HANDLE;
     graphics::IndexBufferHandle lineIndexBuffer = WOBY_GPU_INVALID_HANDLE;
     graphics::IndexBufferHandle pointIdBuffer = WOBY_GPU_INVALID_HANDLE;
@@ -22,7 +24,7 @@ inline constexpr uint32_t pointChunkSize = 1048576;
 inline std::span<const uint32_t> meshPointVertexIndices(const GpuMesh& mesh) {
     return mesh.pointCloud ? std::span<const uint32_t>(mesh.pointCloud->sourceVertices) : mesh.pointVertexIndices;
 }
-enum class MeshUploadBuffer { vertices, triangles, importedLines, edges, pointIds, points, proxies };
+enum class MeshUploadBuffer { vertices, vertexColors, pointColors, triangles, importedLines, edges, pointIds, points, proxies };
 struct GpuMeshUpload {
     GpuMesh mesh;
     std::shared_ptr<graphics::BufferUpload> ticket;

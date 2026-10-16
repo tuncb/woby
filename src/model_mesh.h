@@ -109,6 +109,9 @@ struct TetrahedralCell {
 };
 struct MeshGeometry {
     std::vector<Vertex> vertices;
+    // Optional RGB8 in low-to-high bytes. High byte 255 means authored color;
+    // zero means use the part color. Empty when no vertex has a source color.
+    std::vector<uint32_t> vertexColors;
     std::vector<uint32_t> indices;
     std::vector<MeshNode> nodes;
     std::vector<Coordinate> precisePositions; // Direct positions for generated meshes.

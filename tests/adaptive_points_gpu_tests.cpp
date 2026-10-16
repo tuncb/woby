@@ -33,7 +33,8 @@ struct PointGpuFixture {
         g::shutdown();
     }
 };
-bool initialize(PointGpuFixture& f,uint32_t samples,bool requireAtomics=true,g::PointBackend backend=g::PointBackend::automatic) {
+bool initialize(PointGpuFixture& f,uint32_t samples,bool requireAtomics=true,g::PointBackend backend=g::PointBackend::automatic,
+    bool colored=false) {
     f.initialized=g::init({}); REQUIRE(f.initialized);
     f.runtime.preference=backend;
     const auto selected=g::selectPointBackend(g::getCaps()->supported,backend);
@@ -62,6 +63,13 @@ bool initialize(PointGpuFixture& f,uint32_t samples,bool requireAtomics=true,g::
         editMeshGeometry(source).vertices.push_back(v); editMeshGeometry(source).pointIndices.push_back(i);
     }
     editMeshGeometry(source).vertices[256].position=meshGeometry(source).vertices[255].position; // Stable equal-depth tie.
+    if (colored) {
+        auto& colors=editMeshGeometry(source).vertexColors;
+        for (uint32_t i=0;i<257;++i) {
+            const auto rgb=i%17 ? (i*17%256) | ((i*37%256)<<8) | ((i*73%256)<<16) : 0;
+            colors.push_back(i%4 ? 0xff000000u | rgb : 0); // Authored black must differ from missing RGB.
+        }
+    }
     editMeshGeometry(source).nodes={{"first"},{"second"}}; editMeshGeometry(source).nodes[0].pointIndexCount=131;
     editMeshGeometry(source).nodes[1].pointIndexOffset=131; editMeshGeometry(source).nodes[1].pointIndexCount=126;
     auto prepared=woby::prepareSceneMesh(source,woby::gpuMeshPoints,{},false); REQUIRE(prepared);
@@ -135,14 +143,81 @@ void checkColors(PointGpuFixture& f,const std::vector<uint32_t>& ids,const std::
             if (!id) { sum+=std::round(background[channel]*255); continue; }
             const auto* draw=woby::findMarkerDraw(f.markers.list.draws,id); REQUIRE(draw);
             const auto& item=f.plan.items[static_cast<size_t>(draw-f.markers.list.draws.data())];
-            sum+=std::round(std::min(1.0f,item.color[channel]*1.5f)*255);
+            const auto& colors=f.models[0].gpuMesh.pointCloud->colors;
+            if (item.useVertexColors && !colors.empty()) {
+                const auto color=colors[draw->pointOffset+id-draw->firstId];
+                if (color>>24) { sum+=float((color>>(channel*8))&255); continue; }
+            }
+            // Compare against the ideal sample value. UNORM8 storage and the
+            // MSAA resolve each round; pre-rounding ties here adds a third error.
+            sum+=std::min(1.0f,item.color[channel]*1.5f)*255;
         }
         const auto actual=pixels[((size_t(y)+5)*43+x+3)*4+channel];
-        if (std::abs(float(actual)-sum/float(f.samples))>1.1f) ++differences;
+        if (std::abs(float(actual)-sum/float(f.samples))>1.1f) {
+            if (differences == 0) {
+                MESSAGE("First color mismatch: x=",x,", y=",y,", channel=",channel,", actual=",int(actual),", expected=",sum/float(f.samples));
+                for (uint32_t sample=0;sample<f.samples;++sample) { MESSAGE("sample ",sample,", id=",ids[(size_t(y)*f.view.width+x)*f.samples+sample]); }
+            }
+            ++differences;
+        }
     }
     CHECK(differences==0);
 }
 }
+TEST_CASE("Vertex RGB and missing-color fallback survive every point GPU backend") {
+    for (const auto backend : {g::PointBackend::quads,g::PointBackend::atomic32,g::PointBackend::atomic64}) {
+        for (const uint32_t samples : {1u,4u}) {
+            INFO("backend=" << int(backend) << ", samples=" << samples);
+            PointGpuFixture f; if (!initialize(f,samples,backend!=g::PointBackend::quads,backend,true)) continue;
+            REQUIRE(g::isValid(f.models[0].gpuMesh.pointColors));
+            const auto picture = [&] {
+                std::vector<uint8_t> pixels(43*37*4);
+                const auto ready=g::readTexture(f.output,pixels.data()); while (g::frame()<ready) {}
+                return pixels;
+            };
+            const auto check = [&](double now) {
+                if (backend!=g::PointBackend::quads) {
+                    const auto expected=reference(f); checkIds(winners(f),expected); checkColors(f,expected);
+                    return;
+                }
+                // Hardware quads shade circular coverage per pixel and allow
+                // either equal-depth winner. Check RGB against their actual ID.
+                if (samples==1) {
+                    std::vector<uint8_t> pixels(43*37*4);
+                    const auto ready=g::readTexture(f.ids,pixels.data()); while (g::frame()<ready) {}
+                    std::vector<uint32_t> ids(size_t(f.view.width)*f.view.height);
+                    for (uint32_t y=0;y<f.view.height;++y) for (uint32_t x=0;x<f.view.width;++x) {
+                        const auto i=((size_t(y)+5)*43+x+3)*4;
+                        ids[size_t(y)*f.view.width+x]=uint32_t(pixels[i])|(uint32_t(pixels[i+1])<<8)
+                            |(uint32_t(pixels[i+2])<<16)|(uint32_t(pixels[i+3])<<24);
+                    }
+                    checkColors(f,ids);
+                }
+                const auto expected=picture();
+                f.runtime.unavailable=true; draw(f,now); CHECK(picture()==expected); f.runtime.unavailable=false;
+            };
+            draw(f,1); check(1);
+            const auto authored = picture();
+            const auto epoch = f.runtime.epoch;
+            const auto buffer = f.models[0].gpuMesh.pointColors.idx;
+            for (auto& item : f.plan.items) { item.useVertexColors = false; }
+            draw(f,1.1); check(1.1);
+            CHECK(picture() != authored);
+            if (backend != g::PointBackend::quads) { CHECK(f.runtime.epoch > epoch); }
+            f.plan.items[0].useVertexColors = true;
+            draw(f,1.2); check(1.2); // Mixed vertex/custom source state.
+            f.plan.items[1].useVertexColors = true;
+            draw(f,1.3); check(1.3);
+            CHECK(picture() == authored);
+            CHECK(f.models[0].gpuMesh.pointColors.idx == buffer);
+            f.plan.items.erase(f.plan.items.begin());
+            draw(f,2); check(2); // Global marker IDs now differ from source IDs.
+            const auto expected=picture();
+            draw(f,3,false,false,{},false); CHECK(picture()==expected); // Capture without marker attachment writes.
+        }
+    }
+}
+
 TEST_CASE("Integrated opaque point GPU footprints IDs refinement and invalidation match full source") {
     for (const auto backend:{g::PointBackend::atomic32,g::PointBackend::atomic64}) for (const uint32_t samples:{1u,4u}) {
         INFO("backend=" << int(backend) << ", samples=" << samples);

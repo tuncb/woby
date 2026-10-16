@@ -510,6 +510,22 @@ std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColo
             setGroupColor(group, {color[0], color[1], color[2], 1.0f});
             setGroupOpacity(group, color[3]);
         }
+        group.colorOverride = false;
+        const auto& colors = meshGeometry(mesh).vertexColors;
+        if (!colors.empty()) {
+            // Import workers compute this once. A selected part never scans its
+            // vertices, and an uncolored part in a colored file stays unmarked.
+            size_t checked = 0;
+            for (const auto index : meshNodeIndices(mesh, node)) {
+                if ((checked++ & 65535u) == 0) {
+                    reportModelLoadProgress(progress, ModelLoadStage::groups, completed, total);
+                }
+                if (index < colors.size() && (colors[index] >> 24) != 0) {
+                    group.hasVertexColors = true;
+                    break;
+                }
+            }
+        }
         group.localBounds = mesh.preparationDeferred ? mesh.bounds
             : nodeBounds(mesh, meshGeometry(mesh).nodes[groupIndex], progress, completed, total);
         group.localBoundsValid = !mesh.preparationDeferred;
@@ -785,6 +801,7 @@ SceneGroupSettings sceneGroupSettings(const UiGroupState& settings)
     result.translation = settings.translation;
     result.rotationDegrees = settings.rotationDegrees;
     result.color = settings.color;
+    result.colorOverride = settings.colorOverride;
     return result;
 }
 
@@ -951,6 +968,7 @@ void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
             minRotationDegrees,
             maxRotationDegrees);
         group.color = clampColor(recordGroup.color);
+        group.colorOverride = recordGroup.colorOverride;
     }
 
     if (!record.settings.visible) {

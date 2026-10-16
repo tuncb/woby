@@ -478,6 +478,8 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_transparency_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_obj_primitives_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_obj_primitives_smoke.py" "$<TARGET_FILE:woby>")
+        add_test(NAME woby_obj_colors_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_obj_colors_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_freeform_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_freeform_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_uv_grid_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
@@ -499,7 +501,7 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_post_loading_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_coordinate_origin COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_coordinate_origin_smoke.py" "$<TARGET_FILE:woby>")
-        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_transparency_render woby_obj_primitives_render woby_freeform_render ${woby_uv_grid_tests} woby_uv_quality_render woby_loading_preparation woby_post_loading woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics RESOURCE_LOCK woby_gpu)
+        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_transparency_render woby_obj_primitives_render woby_obj_colors_render woby_freeform_render ${woby_uv_grid_tests} woby_uv_quality_render woby_loading_preparation woby_post_loading woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics RESOURCE_LOCK woby_gpu)
     endif()
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
@@ -540,6 +542,15 @@ if(BUILD_TESTING)
     woby_enable_project_warnings(woby_rapidobj_stress_tests)
     add_test(NAME woby_rapidobj_stress COMMAND woby_rapidobj_stress_tests)
     set_tests_properties(woby_rapidobj_stress PROPERTIES TIMEOUT 180 LABELS "unit;cpu;slow")
+    if(woby_target_cpu MATCHES "^(AMD64|amd64|x86_64|x64)$")
+        add_executable(woby_rapidobj_scalar_tests tests/rapidobj_stress_tests.cpp)
+        set_target_properties(woby_rapidobj_scalar_tests PROPERTIES WOBY_LEGACY_ISA ON)
+        target_include_directories(woby_rapidobj_scalar_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
+        target_link_libraries(woby_rapidobj_scalar_tests PRIVATE doctest::doctest Threads::Threads)
+        woby_enable_project_warnings(woby_rapidobj_scalar_tests)
+        add_test(NAME woby_rapidobj_scalar COMMAND woby_rapidobj_scalar_tests)
+        set_tests_properties(woby_rapidobj_scalar PROPERTIES TIMEOUT 180 LABELS "unit;cpu;slow")
+    endif()
     if(TARGET woby_obj_prototype_benchmark)
         add_test(NAME woby_parser_throughput_analysis COMMAND "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/experiments/parser-throughput/tests.py")

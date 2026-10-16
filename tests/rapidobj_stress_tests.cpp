@@ -29,8 +29,9 @@ struct Fixture {
 struct Parsed {
     std::vector<std::array<double, 3>> positions, normals;
     std::vector<std::array<double, 2>> texcoords;
+    std::vector<uint32_t> colors;
     rapidobj::PrototypeResult result;
-    rapidobj::GeometryBuffers buffers() { return {positions, texcoords, normals}; }
+    rapidobj::GeometryBuffers buffers() { return {positions, texcoords, normals, &colors}; }
 };
 
 void same(const Parsed& expected, const Parsed& actual) {
@@ -45,6 +46,7 @@ void same(const Parsed& expected, const Parsed& actual) {
     CHECK(actual.positions == expected.positions);
     CHECK(actual.texcoords == expected.texcoords);
     CHECK(actual.normals == expected.normals);
+    CHECK(actual.colors == expected.colors);
     const auto& a = expected.result.polygons.shapes;
     const auto& b = actual.result.polygons.shapes;
     REQUIRE(a.size() == b.size());
@@ -113,6 +115,298 @@ std::string corpus(unsigned seed) {
 }
 } // namespace
 
+TEST_CASE("Face decoding matches the general decoder without partial writes") {
+    using namespace rapidobj::detail;
+    const std::vector<std::string> references = {
+        "1", "1234567", "12345678", "2147483647", "000000000001",
+        "1/2", "12345678/87654321", "2//3", "3/2/1",
+        "0", "-1", "+1", "2147483648", "9999999999999999999999999",
+        "1/0", "1/-1", "1/", "1//", "1///2", "1/a", "1/2/0", "1/2/3/4",
+        "-2147483648", "-2147483647", "1/-2/-3", "-00000000001/-2/3"
+    };
+    for (const auto& a : references) {
+        for (const auto& b : references) {
+            const auto text = a + "\t" + b + "  3/2/1 ";
+            CAPTURE(text);
+            Chunk chunk{};
+            chunk.positions.count = 10; chunk.texcoords.count = 10; chunk.normals.count = 10;
+            const bool accepted = PrototypeSimpleFace(text, chunk);
+            if (!accepted) {
+                CHECK(chunk.mesh.indices.buffer.size() == 0);
+                CHECK(chunk.mesh.indices.flags.size() == 0);
+                CHECK(chunk.mesh.faces.buffer.size() == 0);
+                continue;
+            }
+            Buffer<rapidobj::Index> expected;
+            Buffer<OffsetFlags> flags;
+            const auto [count, error] = ParseFace(text, 10, 10, 10, 3, 255,
+                static_cast<OffsetFlags>(ApplyOffset::All), &expected, &flags);
+            REQUIRE(error == rapidobj::rapidobj_errc::Success);
+            REQUIRE(chunk.mesh.indices.buffer.size() == count);
+            for (size_t i = 0; i < count; ++i) {
+                CHECK(chunk.mesh.indices.buffer.data()[i].position_index == expected.data()[i].position_index);
+                CHECK(chunk.mesh.indices.buffer.data()[i].texcoord_index == expected.data()[i].texcoord_index);
+                CHECK(chunk.mesh.indices.buffer.data()[i].normal_index == expected.data()[i].normal_index);
+                CHECK(chunk.mesh.indices.flags.data()[i] == flags.data()[i]);
+            }
+        }
+    }
+    for (const auto text : {"1 2", "1 2 3 4 5", "1 2 3garbage", "1 2 3/"}) {
+        Chunk chunk{};
+        CHECK_FALSE(PrototypeSimpleFace(text, chunk));
+        CHECK(chunk.mesh.indices.buffer.size() == 0);
+    }
+}
+
+TEST_CASE("Face sizing counts references across vector boundaries and inline comments") {
+    using namespace rapidobj::detail;
+    std::mt19937 random(471);
+    constexpr std::string_view alphabet = "0123456789/-+ \t\r#xyz";
+    for (size_t i = 0; i < 10000; ++i) {
+        std::string text(random() % 300, ' ');
+        for (auto& ch : text) { ch = alphabet[random() % alphabet.size()]; }
+        const auto offset = static_cast<size_t>(random() % (text.size() + 1));
+        const auto input = text.substr(offset);
+        std::istringstream words(input.substr(0, input.find('#')));
+        size_t expected = 0;
+        std::string word;
+        while (words >> word) { ++expected; }
+        CHECK(PrototypeFaceWords(std::string_view(text).substr(offset)) == expected);
+    }
+    for (size_t count : {size_t{3}, size_t{4}, size_t{5}, size_t{255}}) {
+        std::string face;
+        for (size_t i = 0; i < count; ++i) { face += "\t -1234567/12345678/-9 "; }
+        CHECK(PrototypeFaceWords(face + "# ignore 7 more words here") == count);
+    }
+}
+
+TEST_CASE("Uniform relative index merge validates all flag combinations") {
+    using namespace rapidobj;
+    using namespace rapidobj::detail;
+    for (OffsetFlags mask = 0; mask < 8; ++mask) {
+        std::array<Index, 25> input, output;
+        const Index value{mask & ApplyOffset::Position ? -1 : 7, -1, -1};
+        input.fill(value); output.fill({-9, -9, -9});
+        std::array<OffsetFlags, 25> flags;
+        flags.fill(mask);
+        const auto copy = [&] { return CopyIndices(output.data(), input.data(), flags.data(), 24,
+            {20, 30, 40}, {100, 80, 60}).Execute(); };
+        REQUIRE(copy() == rapidobj_errc::Success);
+        for (size_t i = 0; i < 24; ++i) {
+            CHECK(output[i].position_index == (mask & ApplyOffset::Position ? 19 : 7));
+            CHECK(output[i].texcoord_index == (mask & ApplyOffset::Texcoord ? 29 : -1));
+            CHECK(output[i].normal_index == (mask & ApplyOffset::Normal ? 39 : -1));
+        }
+        for (size_t i = 0; i < 24; ++i) {
+            input[i].position_index = mask & ApplyOffset::Position ? -21 : -1;
+            CHECK(copy() == rapidobj_errc::IndexOutOfBoundsError); input[i] = value;
+            input[i].texcoord_index = mask & ApplyOffset::Texcoord ? -31 : -2;
+            CHECK(copy() == rapidobj_errc::IndexOutOfBoundsError); input[i] = value;
+            input[i].normal_index = mask & ApplyOffset::Normal ? -41 : -2;
+            CHECK(copy() == rapidobj_errc::IndexOutOfBoundsError); input[i] = value;
+        }
+        CHECK(output.back().position_index == -9);
+    }
+}
+
+TEST_CASE("Polygon limit diagnostics leave room for the extra reference") {
+    using namespace rapidobj::detail;
+    Buffer<rapidobj::Index> indices;
+    Buffer<OffsetFlags> flags;
+    indices.reserve(255); flags.reserve(255);
+    std::string text;
+    for (size_t i = 0; i < 256; ++i) { text += "1/1/1 "; }
+    const auto [count, error] = ParseFace(text, 1, 1, 1, 3, 255,
+        static_cast<OffsetFlags>(ApplyOffset::All), &indices, &flags);
+    CHECK(count == 0);
+    CHECK(error == rapidobj::rapidobj_errc::TooManyIndicesError);
+}
+
+TEST_CASE("Index merge validates each triplet lane and preserves relative references") {
+    using namespace rapidobj;
+    using namespace rapidobj::detail;
+    for (size_t size = 0; size <= 35; ++size) {
+        for (size_t start = 0; start < 8; ++start) {
+            std::vector<Index> input(size + start, {7, -1, -1});
+            std::vector<Index> output(size + start + 1, {-9, -9, -9});
+            std::vector<OffsetFlags> flags(size + start);
+            const auto copy = [&] {
+                return CopyIndices(output.data() + start, input.data() + start, flags.data() + start,
+                    size, {20, 30, 40}, {100, 80, 60}).Execute();
+            };
+            REQUIRE(copy() == rapidobj_errc::Success);
+            CHECK(output.back().position_index == -9);
+            for (size_t i = start; i < start + size; ++i) {
+                CAPTURE(size); CAPTURE(start); CAPTURE(i);
+                CHECK(output[i].position_index == 7);
+                CHECK(output[i].texcoord_index == -1);
+                CHECK(output[i].normal_index == -1);
+                for (const auto bad : {Index{-1, -1, -1}, Index{100, -1, -1},
+                    Index{7, -2, -1}, Index{7, 80, -1}, Index{7, -1, -2}, Index{7, -1, 60},
+                    Index{std::numeric_limits<int>::max(), -1, -1}}) {
+                    input[i] = bad;
+                    CHECK(copy() == rapidobj_errc::IndexOutOfBoundsError);
+                }
+                input[i] = {-1, -1, -1};
+                flags[i] = static_cast<OffsetFlags>(ApplyOffset::All);
+                REQUIRE(copy() == rapidobj_errc::Success);
+                CHECK(output[i].position_index == 19);
+                CHECK(output[i].texcoord_index == 29);
+                CHECK(output[i].normal_index == 39);
+                input[i] = {7, -1, -1}; flags[i] = 0;
+            }
+        }
+    }
+    std::array<Index, 8> input{}, output{};
+    std::array<OffsetFlags, 8> flags{};
+    input.fill({0, -1, -1});
+    CHECK(CopyIndices(output.data(), input.data(), flags.data(), 8, {}, {1, 0, 0}).Execute() == rapidobj_errc::Success);
+    CHECK(CopyIndices(output.data(), input.data(), flags.data(), 8, {}, {}).Execute() == rapidobj_errc::IndexOutOfBoundsError);
+}
+
+TEST_CASE("Packed color decoding matches the full numeric decoder") {
+    using namespace rapidobj::detail;
+    size_t mismatches = 0;
+    for (uint32_t fraction = 0; fraction < 1000000; ++fraction) {
+        const auto text = "0." + std::to_string(1000000 + fraction).substr(1) + " rest";
+        std::string_view fast = text, reference = text;
+        uint32_t actual = 0; double value = 0;
+        const bool valid = PrototypeColorNumber(fast, actual) && PrototypeNextNumber(reference, value, true);
+        mismatches += !valid || actual != static_cast<uint32_t>(value * 255 + .5) || fast != reference;
+    }
+    CHECK(mismatches == 0);
+    for (const auto text : {"0", "-0", "1", "1.000000", "9.999999", "-1.2", "+.5", ".50000000000000001",
+        "1e-20", "1e200", "nan", "inf", "1e999", "0.1/1", "0..1", "0.1234567", "0.123456#comment"}) {
+        CAPTURE(text);
+        std::string_view fast = text, reference = text;
+        uint32_t actual = 0; double value = 0;
+        const bool valid = PrototypeNextNumber(reference, value, true);
+        CHECK(PrototypeColorNumber(fast, actual) == valid);
+        if (valid) {
+            CHECK(actual == static_cast<uint32_t>(std::clamp(value, 0.0, 1.0) * 255 + .5));
+            CHECK(fast == reference);
+        }
+    }
+}
+
+TEST_CASE("Vertex colors preserve missing entries weights and order at every block boundary") {
+    const std::string text =
+        "v 0 0 0\nv 1 0 0 0.000000 0.000000 0.000000\n"
+        "v 0 1 0 .123456789012345\nv 2 2 0 1.000000 0.500000 0.000000\n"
+        "v 3 3 0 .75 0 1 0\nv 4 4 0\nv 5 5 0 +1e0 \\\n 0 1#comment\nv 6 6 0\np 1 2 3 4 5 6 7 8\n";
+    const Fixture fixture; const auto path = fixture.write(text);
+    const std::vector<uint32_t> expected{0, 0xff000000, 0, 0xff0080ff, 0xff00ff00, 0, 0xffff00ff, 0};
+    for (const auto block : {size_t{1}, size_t{17}, size_t{59}, size_t{4096}}) {
+        for (const auto workers : {size_t{1}, size_t{4}}) for (int source = 0; source < 3; ++source) {
+            CAPTURE(block); CAPTURE(workers); CAPTURE(source);
+            Parsed parsed;
+            rapidobj::PrototypeOptions options; options.chunk_bytes = block; options.read_bytes = 7; options.workers = workers;
+            std::istringstream stream(text);
+            parsed.result = source == 0 ? rapidobj::ParseMemoryPrototype(text, parsed.buffers(), rapidobj::MaterialLibrary::Ignore(), options)
+                : source == 1 ? rapidobj::ParseStreamPrototype(stream, parsed.buffers(), rapidobj::MaterialLibrary::Ignore(), options)
+                : rapidobj::ParseFilePrototype(path, parsed.buffers(), options);
+            REQUIRE_FALSE(parsed.result.polygons.error);
+            CHECK(parsed.colors == expected);
+            REQUIRE(parsed.result.weights.size() == 2);
+            CHECK(parsed.result.weights[0].weight == .123456789012345);
+            CHECK(parsed.result.weights[1].weight == .75);
+        }
+    }
+    std::string large;
+    for (size_t i = 0; i < 40000; ++i) { large += i % 3 ? "v 1 2 3\n" : "v 1 2 3 0.250000 0.500000 1.000000\n"; }
+    const auto largePath = fixture.write(large);
+    Parsed parsed; rapidobj::PrototypeOptions options; options.chunk_bytes = 256 * 1024; options.workers = 4;
+    parsed.result = rapidobj::ParseFilePrototype(largePath, parsed.buffers(), options);
+    REQUIRE_FALSE(parsed.result.polygons.error); REQUIRE(parsed.colors.size() == 40000);
+    for (size_t i = 0; i < parsed.colors.size(); ++i) { CHECK(parsed.colors[i] == (i % 3 ? 0u : 0xffff8040u)); }
+}
+
+TEST_CASE("Absent colors allocate no output and failed colored loads clear all outputs") {
+    for (const auto text : {"v 0 0 0\n", "v 0 0 0 .75\n"}) {
+        Parsed parsed;
+        parsed.result = rapidobj::ParseMemoryPrototype(text, parsed.buffers(), rapidobj::MaterialLibrary::Ignore());
+        REQUIRE_FALSE(parsed.result.polygons.error);
+        CHECK(parsed.colors.empty()); CHECK(parsed.colors.capacity() == 0);
+    }
+    for (const auto bad : {"v 0 0 0 1 0 nan\n", "v 0 0 0 1 0\n", "f 1 2 999\n"}) {
+        Parsed parsed;
+        parsed.result = rapidobj::ParseMemoryPrototype(std::string("v 0 0 0 1 0 0\nv 1 0 0\n") + bad,
+            parsed.buffers(), rapidobj::MaterialLibrary::Ignore());
+        REQUIRE(parsed.result.polygons.error);
+        CHECK(parsed.positions.empty()); CHECK(parsed.colors.empty());
+        parsed.result = rapidobj::ParseMemoryPrototype("v 0 0 0 0 0 1\n", parsed.buffers(), rapidobj::MaterialLibrary::Ignore());
+        REQUIRE_FALSE(parsed.result.polygons.error); CHECK(parsed.colors == std::vector<uint32_t>{0xffff0000});
+    }
+}
+
+TEST_CASE("Unused color validation preserves numeric acceptance and weight precision") {
+    using namespace rapidobj::detail;
+    std::vector<std::string> values = {
+        "0", "-0", "+0", ".5", "1.", "-.00000000000000001", "123456789012345678",
+        "1e300", "1e-300", "1e309", "-1e309", "1e-999", "nan", "inf", "+-1",
+        ".", "+", "-", "1.2.3", "1e", "1x", "1,2", "1\r", "00000000000000000000000000001"
+    };
+    std::mt19937 random(87);
+    for (size_t i = 0; i < 2000; ++i) {
+        values.push_back(std::to_string(random()) + '.' + std::to_string(random()));
+    }
+    for (const auto& value : values) {
+        for (const auto suffix : {"", " ", "\t", "#comment"}) {
+            const auto token = value + suffix;
+            CAPTURE(token);
+            std::string_view actual = token, expected = token;
+            double decoded = 0;
+            const bool valid = PrototypeNextNumber(expected, decoded, true);
+            CHECK(PrototypeSkipNumber(actual) == valid);
+            if (valid) { CHECK(actual == expected); }
+        }
+    }
+    for (const auto& value : values) {
+        std::string_view token = value;
+        double decoded = 0;
+        const bool valid = PrototypeNextNumber(token, decoded, true) && token.empty();
+        if (!valid) { continue; }
+        PrototypeChunk chunk;
+        REQUIRE(PrototypePosition("1 2 3 " + value, 1, chunk) == rapidobj::rapidobj_errc::Success);
+        if (decoded != 1) {
+            REQUIRE(chunk.weights.size() == 1);
+            CHECK(chunk.weights[0].weight == decoded);
+        } else { CHECK(chunk.weights.empty()); }
+    }
+}
+
+TEST_CASE("Short decimal decoding is bit exact against the full number decoder") {
+    using namespace rapidobj::detail;
+    std::mt19937_64 random(0x849327);
+    for (size_t i = 0; i < 100000; ++i) {
+        auto text = std::to_string(random() % UINT64_C(10000000000000000));
+        if (i % 3 != 0) { text.insert(static_cast<size_t>(random() % (text.size() + 1)), "."); }
+        if (i % 2) { text.insert(0, "-"); }
+        const auto numeric_end = text.size();
+        if (i % 7 == 0) { text += "e-13"; }
+        text += i % 4 ? "\tmore" : "#comment";
+        CAPTURE(text);
+        double expected = 0, actual = 0;
+        const auto reference = fast_float::from_chars(text.data(), text.data() + text.size(), expected);
+        REQUIRE(reference.ec == std::errc{});
+        std::string_view remaining = text;
+        REQUIRE(PrototypeNextNumber(remaining, actual, false));
+        CHECK(std::bit_cast<uint64_t>(actual) == std::bit_cast<uint64_t>(expected));
+        CHECK(remaining.data() == reference.ptr);
+        CHECK(remaining.data() >= text.data() + numeric_end);
+    }
+    for (const auto text : {"-0.000000", "9007199254740992", "9007199254740993", "1.234567890123456789",
+        "000000000000000000.001", "0000000/1", "000000..0", "0000000.1e309", "0000000.1e-999"}) {
+        std::string_view remaining = text;
+        double actual = 0, expected = 0;
+        const auto reference = fast_float::from_chars(remaining.data(), remaining.data() + remaining.size(), expected);
+        const bool valid = reference.ec == std::errc{} && std::isfinite(expected)
+            && (reference.ptr == remaining.data() + remaining.size() || PrototypeNumberEnd(*reference.ptr));
+        CHECK(PrototypeNextNumber(remaining, actual, true) == valid);
+        if (valid) { CHECK(std::bit_cast<uint64_t>(actual) == std::bit_cast<uint64_t>(expected)); }
+    }
+}
+
 TEST_CASE("Seeded parser stress preserves geometry across worker counts and native fallbacks") {
     const Fixture fixture;
     for (unsigned seed = 1; seed <= 4; ++seed) {
@@ -135,6 +429,38 @@ TEST_CASE("Seeded parser stress preserves geometry across worker counts and nati
             }
         }
     }
+}
+
+TEST_CASE("Bounded parser workers preserve order through queue reuse and long boundaries") {
+    const Fixture fixture;
+    std::string text;
+    const auto part = corpus(2);
+    for (size_t i = 0; i < 5; ++i) { text += part + '\n'; }
+    // A logical line spans more than one input block. Its comment cancels the
+    // apparent continuation and must not turn its embedded text into records.
+    text.insert(part.size(), "\nv 1 2 3 #" + std::string(600000, 'x') + "\\\n");
+    const auto path = fixture.write(text);
+    Parsed expected;
+    rapidobj::PrototypeOptions options;
+    options.workers = 1; options.material_names_only = true;
+    expected.result = rapidobj::ParseMemoryPrototype(text, expected.buffers(), rapidobj::MaterialLibrary::Ignore(), options);
+    options.chunk_bytes = 256 * 1024;
+    for (const size_t workers : {size_t{2}, size_t{4}}) {
+        options.workers = workers;
+        Parsed actual;
+        actual.result = rapidobj::ParseFilePrototype(path, actual.buffers(), options);
+        same(expected, actual);
+        CHECK(actual.result.stats.chunks > workers * 4);
+        CHECK(actual.result.stats.workers == workers);
+        CHECK(actual.result.stats.peak_inflight_text_bytes <= (3 * workers + 1) * options.chunk_bytes);
+    }
+    const auto error_line = static_cast<size_t>(std::count(text.begin(), text.end(), '\n')) + 1;
+    fixture.write(text + "v broken\nv also_broken\n");
+    Parsed invalid;
+    invalid.result = rapidobj::ParseFilePrototype(path, invalid.buffers(), options);
+    REQUIRE(invalid.result.polygons.error);
+    CHECK(invalid.result.polygons.error.line_num == error_line);
+    CHECK(invalid.positions.empty());
 }
 
 TEST_CASE("Parser stress preserves first-error diagnostics at native boundaries") {

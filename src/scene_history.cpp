@@ -175,6 +175,7 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
             file.groupSettings[group].localBounds = source->groupSettings[group].localBounds;
             file.groupSettings[group].localBoundsValid = source->groupSettings[group].localBoundsValid;
             file.groupSettings[group].originalBounds = source->groupSettings[group].originalBounds;
+            file.groupSettings[group].hasVertexColors = source->groupSettings[group].hasVertexColors;
         }
         file.postLoadPhase = source->postLoadPhase;
         file.postLoadError = source->postLoadError;

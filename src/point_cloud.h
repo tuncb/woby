@@ -33,6 +33,7 @@ struct Cloud {
     // Original marker ID -> render vertex -> precise/source position in Mesh.
     // This cold CPU mapping is never traversed to draw a frame.
     std::vector<uint32_t> sourceVertices;
+    std::vector<uint32_t> colors; // Optional packed RGB, indexed by original point ID minus one.
     // Camera-independent cuts are prepared on the loading worker. They retain
     // coverage during navigation while a view-specific cut is being computed.
     std::vector<std::vector<NavigationNode>> navigationCuts;

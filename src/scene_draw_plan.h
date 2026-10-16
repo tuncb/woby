@@ -14,6 +14,7 @@ struct SceneDrawItem {
     uint32_t lineIndexOffset = 0, lineIndexCount = 0;
     bool solid = false, edges = false, points = false;
     bool importedLines = false, lineDepthTest = true;
+    bool useVertexColors = true;
 };
 struct SceneDrawPlan {
     std::vector<SceneDrawItem> items;

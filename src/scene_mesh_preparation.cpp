@@ -26,6 +26,9 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
     const auto canceled = [&] { return shouldCancel && shouldCancel(); };
     if (canceled()) { return {}; }
     (void)sceneBufferBytes(meshGeometry(mesh).vertices.size(), sizeof(Vertex));
+    if (!meshGeometry(mesh).vertexColors.empty() && meshGeometry(mesh).vertexColors.size() != meshGeometry(mesh).vertices.size()) {
+        throw std::runtime_error("Scene contains an invalid vertex color count.");
+    }
     (void)sceneBufferBytes(meshGeometry(mesh).indices.size(), sizeof(uint32_t));
     (void)sceneBufferBytes(meshGeometry(mesh).lineIndices.size(), sizeof(uint32_t));
     if (features & gpuMeshEdges) { (void)sceneBufferBytes(meshGeometry(mesh).indices.size(), 2 * sizeof(uint32_t)); }
@@ -99,7 +102,7 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
         }
     }
     if (canceled()) { return {}; }
-    result.uploadBytes = meshGeometry(mesh).vertices.size() * sizeof(Vertex)
+    result.uploadBytes = meshGeometry(mesh).vertices.size() * sizeof(Vertex) + meshGeometry(mesh).vertexColors.size() * sizeof(uint32_t)
         + (meshGeometry(mesh).indices.size() + meshGeometry(mesh).lineIndices.size() + result.edgeIndices.size()
             + ((features & gpuMeshPoints) ? result.pointVertexIndices.size() : 0)) * sizeof(uint32_t);
     if (!preparePoints && meshGeometry(mesh).indices.empty() && meshGeometry(mesh).lineIndices.empty()) {
@@ -110,9 +113,12 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
         auto cloud = points::buildCloud(mesh, std::move(result.pointVertexIndices), result.nodeRanges, shouldCancel);
         if (!cloud) { return {}; }
         result.compactOnly = meshGeometry(mesh).indices.empty() && meshGeometry(mesh).lineIndices.empty();
-        if (result.compactOnly) { result.uploadBytes -= meshGeometry(mesh).vertices.size() * sizeof(Vertex); }
+        if (result.compactOnly) {
+            result.uploadBytes -= meshGeometry(mesh).vertices.size() * sizeof(Vertex) + meshGeometry(mesh).vertexColors.size() * sizeof(uint32_t);
+        }
         if (features & gpuMeshPoints) { result.uploadBytes -= cloud->sourceVertices.size() * sizeof(uint32_t); }
         result.uploadBytes += (cloud->points.size() + cloud->proxies.size()) * sizeof(points::Point);
+        result.uploadBytes += cloud->colors.size() * sizeof(uint32_t);
         result.pointCloud = std::make_shared<const points::Cloud>(std::move(*cloud));
     }
     return result;

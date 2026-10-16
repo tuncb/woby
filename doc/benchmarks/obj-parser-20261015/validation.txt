@@ -1,0 +1,531 @@
+Woby OBJ parser validation — 15 October 2026
+
+Build preset: vs2026-vcpkg, Release, Visual Studio 2026 / MSVC 14.51.36231.
+Main build: D:/.worktree/woby-parser-build-9921
+ASan build: D:/.worktree/woby-parser-asan-9921
+AddressSanitizer: /fsanitize=address /Zi, /DEBUG /INCREMENTAL:NO.
+ASAN_OPTIONS=halt_on_error=1
+All build and test commands returned exit code 0.
+Compiler and linker warning search: no matches.
+
+
+=== woby-parser-release-build-final.log ===
+CMake is re-running because D:/.worktree/woby-parser-build-9921/experiments/parser-throughput/CMakeFiles/generate.stamp is out-of-date.
+  the file 'C:/Users/tuncb/.t3/worktrees/woby/t3code-9921b770/third_party/rapidobj/include/rapidobj/prototype.hpp'
+  is newer than 'D:/.worktree/woby-parser-build-9921/experiments/parser-throughput/CMakeFiles/generate.stamp.depend'
+  result='-1'
+-- Running vcpkg install
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe
+The following packages are already installed:
+  * boost-assert:x64-windows@1.90.0#1
+  * boost-cmake:x64-windows@1.90.0#1
+  * boost-concept-check:x64-windows@1.90.0#1
+  * boost-config:x64-windows@1.90.0#1
+  * boost-container:x64-windows@1.90.0#1
+  * boost-container-hash:x64-windows@1.90.0#1
+  * boost-core:x64-windows@1.90.0#1
+  * boost-describe:x64-windows@1.90.0#1
+  * boost-dynamic-bitset:x64-windows@1.90.0#1
+  * boost-headers:x64-windows@1.90.0#1
+  * boost-integer:x64-windows@1.90.0#1
+  * boost-intrusive:x64-windows@1.90.0#1
+  * boost-io:x64-windows@1.90.0#1
+  * boost-lexical-cast:x64-windows@1.90.0#1
+  * boost-math:x64-windows@1.90.0#1
+  * boost-move:x64-windows@1.90.0#1
+  * boost-mp11:x64-windows@1.90.0#1
+    boost-multiprecision:x64-windows@1.90.0#1
+  * boost-predef:x64-windows@1.90.0#1
+  * boost-preprocessor:x64-windows@1.90.0#1
+  * boost-random:x64-windows@1.90.0#1
+  * boost-static-assert:x64-windows@1.90.0#1
+  * boost-system:x64-windows@1.90.0#1
+  * boost-throw-exception:x64-windows@1.90.0#1
+  * boost-type-traits:x64-windows@1.90.0#1
+  * boost-uninstall:x64-windows@1.90.0#1
+    boost-unordered:x64-windows@1.90.0#1
+  * boost-utility:x64-windows@1.90.0#1
+  * boost-variant2:x64-windows@1.90.0#1
+  * boost-winapi:x64-windows@1.90.0#1
+    cdt:x64-windows@1.4.4
+  * clipper2:x64-windows@2.0.1
+    cpp-httplib:x64-windows@0.43.1
+    curl[core,sspi,ssl]:x64-windows@8.19.0
+    doctest:x64-windows@2.5.2
+  * fmt:x64-windows@12.1.0
+  * hwloc:x64-windows@2.11.2
+    imgui[core,wchar32,sdl3-binding]:x64-windows@1.92.7
+    libarchive:x64-windows@3.8.7
+    manifold:x64-windows@3.4.1
+    nlohmann-json:x64-windows@3.12.0#2
+    sdl3[core,vulkan]:x64-windows@3.4.4
+    spdlog[core,tz-offset,fmt]:x64-windows@1.17.0
+  * tbb[core,hwloc]:x64-windows@2022.3.0
+  * vcpkg-boost:x64-windows@2025-03-29
+  * vcpkg-cmake:x64-windows@2024-04-23
+  * vcpkg-cmake-config:x64-windows@2024-05-23
+  * zlib:x64-windows@1.3.2
+boost-multiprecision provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(boost_multiprecision CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE Boost::multiprecision)
+
+The package boost-unordered is compatible with built-in CMake targets of FindBoost.cmake:
+
+    find_package(Boost REQUIRED COMPONENTS unordered)
+    target_link_libraries(main PRIVATE Boost::unordered)
+
+or the generated cmake configs via:
+
+    find_package( REQUIRED CONFIG)
+    target_link_libraries(main PRIVATE Boost::unordered)
+
+cdt provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(CDT CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE CDT::CDT)
+
+cpp-httplib provides CMake targets:
+
+    find_package(httplib CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE httplib::httplib)
+
+curl is compatible with built-in CMake targets:
+
+    find_package(CURL REQUIRED)
+    target_link_libraries(main PRIVATE CURL::libcurl)
+
+doctest provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(doctest CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE doctest::doctest)
+
+sdl3 provides CMake targets:
+
+  find_package(SDL3 CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE SDL3::SDL3)
+
+imgui provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(imgui CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE imgui::imgui)
+
+libarchive is compatible with the CMake Find Module:
+
+  find_package(LibArchive REQUIRED)
+  target_link_libraries(main PRIVATE LibArchive::LibArchive) # since CMake 3.17
+
+libarchive provides pkg-config modules:
+
+  # library that can create and read several streaming archive formats
+  libarchive
+
+manifold provides CMake targets:
+
+  find_package(manifold CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE manifold::manifold)
+
+The package nlohmann-json provides CMake targets:
+
+    find_package(nlohmann_json CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
+
+The package nlohmann-json can be configured to not provide implicit conversions via a custom triplet file:
+
+    set(nlohmann-json_IMPLICIT_CONVERSIONS OFF)
+
+For more information, see the docs here:
+    
+    https://json.nlohmann.me/api/macros/json_use_implicit_conversions/
+
+The package spdlog provides CMake targets:
+
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog)
+
+    # Or use the header-only version
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog_header_only)
+
+All requested installations completed successfully in: 3.1 ms
+-- Running vcpkg install - done
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26300.
+-- Found Vulkan: C:/VulkanSDK/1.4.357.0/Lib/vulkan-1.lib (found suitable version "1.4.357", minimum required is "1.4.357") found components: glslc glslangValidator
+-- Using Vulkan 1.4.357: C:/VulkanSDK/1.4.357.0/Lib/vulkan-1.lib
+-- Using Vulkan headers: C:/VulkanSDK/1.4.357.0/include
+-- Woby renderer: NoGraphicsAPI, Slang 2026.18.3
+-- Found Python3: C:/Users/tuncb/AppData/Roaming/uv/python/cpython-3.13.14-windows-x86_64-none/python.exe (found suitable exact version "3.13.14") found components: Interpreter
+-- Found Vulkan: C:/VulkanSDK/1.4.357.0/Lib/vulkan-1.lib (found version "1.4.357") found components: glslc glslangValidator
+-- Found Python3: C:/Users/tuncb/AppData/Roaming/uv/python/cpython-3.13.14-windows-x86_64-none/python.exe (found version "3.13.14") found components: Interpreter
+-- Configuring done (19.9s)
+-- Generating done (2.0s)
+-- Build files have been written to: D:/.worktree/woby-parser-build-9921
+MSBuild version 18.6.3+84d3e95b4 for .NET Framework
+
+  Checking File Globs
+  woby_console_parent.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_console_parent.exe
+  woby_automation.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_automation.lib
+  woby_coordinate_avx512.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_coordinate_avx512.lib
+  woby_console_probe.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_console_probe.exe
+  NoGraphicsAPI.vcxproj -> D:\.worktree\woby-parser-build-9921\_deps\woby_ngapi-build\Release\NoGraphicsAPI.lib
+  woby_file_associations.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_file_associations.lib
+  woby_update_core.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_update_core.lib
+  NoGraphicsAPIUtility_allocators.vcxproj -> D:\.worktree\woby-parser-build-9921\_deps\woby_ngapi-build\utility\Release\NoGraphicsAPIUtility_allocators.lib
+  obj_mesh.cpp
+  obj_freeform.cpp
+  woby-update-helper.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby-update-helper.exe
+  woby_math.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_math.lib
+  upload_queue.cpp
+  woby_recent_files.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_recent_files.lib
+  woby_update.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_update.lib
+  woby_importer_bad_abi.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_bad_abi.dll
+  woby_importer_conflict.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_conflict.dll
+  woby_importer_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_fixture.dll
+  woby_importer_hierarchy_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_hierarchy_fixture.dll
+  woby_importer_lines_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_lines_fixture.dll
+  woby_importer_geometry_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_geometry_fixture.dll
+  NoGraphicsAPIUtility_textures.vcxproj -> D:\.worktree\woby-parser-build-9921\_deps\woby_ngapi-build\utility\Release\NoGraphicsAPIUtility_textures.lib
+  woby_importer_missing_export.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_missing_export.dll
+  woby_importer_point_ids_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_point_ids_fixture.dll
+  woby_importer_reserved.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_reserved.dll
+  woby_importer_tetrahedral_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_tetrahedral_fixture.dll
+  NoGraphicsAPIUtility_uploads.vcxproj -> D:\.worktree\woby-parser-build-9921\_deps\woby_ngapi-build\utility\Release\NoGraphicsAPIUtility_uploads.lib
+  woby_native_allocation_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_native_allocation_tests.exe
+  woby_native_command_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_native_command_tests.exe
+  woby_native_device_allocation_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_native_device_allocation_tests.exe
+  frame_pacing.cpp
+  woby_off_importer.vcxproj -> D:\.worktree\woby-parser-build-9921\example-plugins\Release\woby_off_importer.dll
+  benchmark.cpp
+  obj_mesh.cpp
+  obj_freeform.cpp
+  rapidobj_reader_tests.cpp
+  rapidobj_stress_tests.cpp
+  woby_obj_profile_pacing_test.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_obj_profile_pacing_test.exe
+  rapidobj_stress_tests.cpp
+  woby_core.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_core.lib
+  woby_update_viewer_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_update_viewer_fixture.exe
+  utility_allocation_fixture.cpp
+  woby_rapidobj_reader_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_rapidobj_reader_tests.exe
+  woby_utility_allocation_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\tests\utility_fixture\Release\woby_utility_allocation_fixture.lib
+  woby_graphics.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_graphics.lib
+  woby_utility_allocation_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_utility_allocation_tests.exe
+  woby_graphics_diagnostics_allocation_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_graphics_diagnostics_allocation_tests.exe
+  frame_pacing.cpp
+  frame_pacing.cpp
+  main.cpp
+  main.cpp
+  obj_mesh.cpp
+  model_mesh.cpp
+  scene_mesh_preparation.cpp
+  surface_annotation.cpp
+  point_cloud.cpp
+  ui_state.cpp
+  main.cpp
+  scene_mesh_preparation.cpp
+  obj_mesh.cpp
+  point_cloud.cpp
+  model_mesh.cpp
+  ui_state.cpp
+  woby_obj_fast_pacing_viewer.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_obj_fast_pacing_viewer.exe
+  woby_obj_prototype_benchmark.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_obj_prototype_benchmark.exe
+  point_cloud.cpp
+  woby_rapidobj_scalar_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_rapidobj_scalar_tests.exe
+  woby_rapidobj_stress_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_rapidobj_stress_tests.exe
+  surface_annotation.cpp
+  surface_annotation.cpp
+  main.cpp
+  ui_state.cpp
+  woby_obj_upload_viewer.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_obj_upload_viewer.exe
+  model_mesh.cpp
+  model_mesh.cpp
+  scene_mesh_preparation.cpp
+  scene_mesh_preparation.cpp
+  obj_mesh.cpp
+  point_cloud.cpp
+  obj_mesh.cpp
+  obj_mesh.cpp
+  woby_obj_profile_uvcheck.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_obj_profile_uvcheck.exe
+  main.cpp
+  surface_annotation.cpp
+  point_cloud.cpp
+  ui_state.cpp
+  ui_state.cpp
+  scene_mesh_preparation.cpp
+  woby_parser_benchmark.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_parser_benchmark.exe
+  woby_obj_profile_avx2.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_obj_profile_avx2.exe
+  woby.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby.exe
+  model_mesh.cpp
+  main.cpp
+  scene_mesh_preparation.cpp
+  model_load.cpp
+  model_mesh.cpp
+  surface_annotation.cpp
+  obj_mesh.cpp
+  ui_state.cpp
+  surface_annotation.cpp
+  main.cpp
+  obj_prototype_tests.cpp
+  post_loading.cpp
+  point_cloud.cpp
+  graphics_upload.cpp
+  woby_obj_profile_uvptr.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_obj_profile_uvptr.exe
+  woby_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_tests.exe
+  woby_obj_profile_sse2.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_obj_profile_sse2.exe
+  woby_obj_e2e_viewer.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_obj_e2e_viewer.exe
+  woby_obj_profile_diagnostic.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_obj_profile_diagnostic.exe
+
+
+=== woby-parser-unit-tests-final.log ===
+Test project D:/.worktree/woby-parser-build-9921
+      Start 92: woby_test_suite_selection
+      Start 97: woby_obj_e2e_tooling
+      Start 66: woby_tests::update_tests
+      Start  5: woby_tests::automation_tests
+ 1/88 Test  #5: woby_tests::automation_tests .....................   Passed   12.26 sec
+      Start 38: woby_tests::mesh_intersection_predicates_tests
+ 2/88 Test #66: woby_tests::update_tests .........................   Passed   14.05 sec
+      Start 74: woby_marker_shaders
+ 3/88 Test #97: woby_obj_e2e_tooling .............................   Passed   15.26 sec
+      Start 73: woby_update_packaging
+ 4/88 Test #38: woby_tests::mesh_intersection_predicates_tests ...   Passed    5.45 sec
+      Start 96: woby_obj_profile_tooling
+ 5/88 Test #74: woby_marker_shaders ..............................   Passed    4.76 sec
+      Start 98: woby_obj_profile_contract
+ 6/88 Test #73: woby_update_packaging ............................   Passed    3.78 sec
+      Start 43: woby_tests::obj_prototype_tests
+ 7/88 Test #96: woby_obj_profile_tooling .........................   Passed    2.12 sec
+      Start 39: woby_tests::mesh_intersections_tests
+ 8/88 Test #43: woby_tests::obj_prototype_tests ..................   Passed    1.41 sec
+      Start 27: woby_tests::importer_tests
+ 9/88 Test #98: woby_obj_profile_contract ........................   Passed    2.34 sec
+      Start 62: woby_tests::surface_annotation_tests
+10/88 Test #39: woby_tests::mesh_intersections_tests .............   Passed    2.07 sec
+      Start 61: woby_tests::spatial_sort_tests
+11/88 Test #27: woby_tests::importer_tests .......................   Passed    1.97 sec
+      Start 72: woby_python_selection
+12/88 Test #62: woby_tests::surface_annotation_tests .............   Passed    1.63 sec
+      Start 90: woby_test_discovery
+13/88 Test #61: woby_tests::spatial_sort_tests ...................   Passed    1.46 sec
+      Start 94: woby_windows_launch
+14/88 Test #72: woby_python_selection ............................   Passed    1.44 sec
+      Start 42: woby_tests::obj_mesh_tests
+15/88 Test #90: woby_test_discovery ..............................   Passed    1.26 sec
+      Start 55: woby_tests::scene_pick_tests
+16/88 Test #94: woby_windows_launch ..............................   Passed    1.07 sec
+      Start 33: woby_tests::mesh_comparison_tests
+17/88 Test #42: woby_tests::obj_mesh_tests .......................   Passed    0.74 sec
+      Start 40: woby_tests::mesh_topology_tests
+18/88 Test #55: woby_tests::scene_pick_tests .....................   Passed    0.97 sec
+      Start 68: woby_tests::uv_grid_tests
+19/88 Test #33: woby_tests::mesh_comparison_tests ................   Passed    0.64 sec
+      Start 77: woby_update_helper_fixtures
+20/88 Test #40: woby_tests::mesh_topology_tests ..................   Passed    0.71 sec
+      Start 48: woby_tests::recent_files_tests
+21/88 Test #77: woby_update_helper_fixtures ......................   Passed    0.76 sec
+      Start 10: woby_tests::comparison_name_tests
+22/88 Test #68: woby_tests::uv_grid_tests ........................   Passed    0.86 sec
+      Start 64: woby_tests::ui_operations_tests
+23/88 Test #48: woby_tests::recent_files_tests ...................   Passed    0.62 sec
+      Start 29: woby_tests::loading_preparation_tests
+24/88 Test #64: woby_tests::ui_operations_tests ..................   Passed    0.46 sec
+      Start 51: woby_tests::scene_file_edge_tests
+25/88 Test #10: woby_tests::comparison_name_tests ................   Passed    0.65 sec
+      Start 88: woby_runtime_staging
+26/88 Test #29: woby_tests::loading_preparation_tests ............   Passed    0.64 sec
+      Start 54: woby_tests::scene_lifecycle_tests
+27/88 Test #51: woby_tests::scene_file_edge_tests ................   Passed    0.35 sec
+      Start  3: woby_tests::analysis_results_tests
+28/88 Test #54: woby_tests::scene_lifecycle_tests ................   Passed    0.37 sec
+      Start 71: woby_tests::windows_paths_tests
+29/88 Test #88: woby_runtime_staging .............................   Passed    0.75 sec
+      Start  2: woby_tests::analysis_presentation_tests
+30/88 Test  #3: woby_tests::analysis_results_tests ...............   Passed    0.61 sec
+      Start 52: woby_tests::scene_history_tests
+31/88 Test #71: woby_tests::windows_paths_tests ..................   Passed    0.39 sec
+      Start 56: woby_tests::scene_queries_tests
+32/88 Test  #2: woby_tests::analysis_presentation_tests ..........   Passed    0.31 sec
+      Start 18: woby_tests::freeform_tests
+33/88 Test #56: woby_tests::scene_queries_tests ..................   Passed    0.36 sec
+      Start 28: woby_tests::keyboard_input_tests
+34/88 Test #52: woby_tests::scene_history_tests ..................   Passed    0.41 sec
+      Start 80: woby_parser_throughput_analysis
+35/88 Test #18: woby_tests::freeform_tests .......................   Passed    0.33 sec
+      Start 83: woby_windows_manifests
+36/88 Test #80: woby_parser_throughput_analysis ..................   Passed    0.38 sec
+      Start  7: woby_tests::background_load_tests
+37/88 Test #28: woby_tests::keyboard_input_tests .................   Passed    0.42 sec
+      Start 19: woby_tests::freeform_trim_tests
+38/88 Test #83: woby_windows_manifests ...........................   Passed    0.24 sec
+      Start 84: woby_rapidobj_reader
+39/88 Test #19: woby_tests::freeform_trim_tests ..................   Passed    0.26 sec
+      Start 12: woby_tests::coordinate_origin_tests
+40/88 Test  #7: woby_tests::background_load_tests ................   Passed    0.30 sec
+      Start  9: woby_tests::comparison_inspector_tests
+41/88 Test #84: woby_rapidobj_reader .............................   Passed    0.33 sec
+      Start 13: woby_tests::cross_section_tests
+42/88 Test #12: woby_tests::coordinate_origin_tests ..............   Passed    0.22 sec
+      Start 47: woby_tests::preparation_passes_tests
+43/88 Test  #9: woby_tests::comparison_inspector_tests ...........   Passed    0.25 sec
+      Start 36: woby_tests::mesh_degenerates_tests
+44/88 Test #13: woby_tests::cross_section_tests ..................   Passed    0.25 sec
+      Start  1: woby_tests::adaptive_points_tests
+45/88 Test #47: woby_tests::preparation_passes_tests .............   Passed    0.15 sec
+      Start 46: woby_tests::post_loading_tests
+46/88 Test #36: woby_tests::mesh_degenerates_tests ...............   Passed    0.16 sec
+      Start 75: woby_graphics_root_layout
+47/88 Test #46: woby_tests::post_loading_tests ...................   Passed    0.13 sec
+      Start 30: woby_tests::manual_path_dialog_tests
+48/88 Test  #1: woby_tests::adaptive_points_tests ................   Passed    0.19 sec
+      Start 53: woby_tests::scene_inspector_queries_tests
+49/88 Test #75: woby_graphics_root_layout ........................   Passed    0.20 sec
+      Start 37: woby_tests::mesh_duplicates_tests
+50/88 Test #30: woby_tests::manual_path_dialog_tests .............   Passed    0.18 sec
+      Start 24: woby_tests::importer_geometry_tests
+51/88 Test #53: woby_tests::scene_inspector_queries_tests ........   Passed    0.18 sec
+      Start 14: woby_tests::difference_mesh_tests
+52/88 Test #92: woby_test_suite_selection ........................   Passed   29.25 sec
+      Start 11: woby_tests::control_tests
+53/88 Test #37: woby_tests::mesh_duplicates_tests ................   Passed    0.21 sec
+      Start 25: woby_tests::importer_lines_tests
+54/88 Test #24: woby_tests::importer_geometry_tests ..............   Passed    0.20 sec
+      Start 81: woby_graphics_diagnostics_allocations
+55/88 Test #14: woby_tests::difference_mesh_tests ................   Passed    0.27 sec
+      Start 93: woby_version
+56/88 Test #81: woby_graphics_diagnostics_allocations ............   Passed    0.17 sec
+      Start 65: woby_tests::ui_view_tests
+57/88 Test #25: woby_tests::importer_lines_tests .................   Passed    0.22 sec
+      Start 85: woby_native_allocations
+58/88 Test #93: woby_version .....................................   Passed    0.08 sec
+59/88 Test #11: woby_tests::control_tests ........................   Passed    0.25 sec
+      Start 82: woby_utility_allocations
+      Start 50: woby_tests::scene_edge_tests
+60/88 Test #85: woby_native_allocations ..........................   Passed    0.13 sec
+      Start 86: woby_native_commands
+61/88 Test #82: woby_utility_allocations .........................   Passed    0.14 sec
+      Start 69: woby_tests::uv_quality_tests
+62/88 Test #65: woby_tests::ui_view_tests ........................   Passed    0.18 sec
+      Start 15: woby_tests::file_associations_tests
+63/88 Test #86: woby_native_commands .............................   Passed    0.05 sec
+      Start 49: woby_tests::scene_dimensions_tests
+64/88 Test #50: woby_tests::scene_edge_tests .....................   Passed    0.11 sec
+      Start 63: woby_tests::tetrahedral_mesh_tests
+65/88 Test #49: woby_tests::scene_dimensions_tests ...............   Passed    0.09 sec
+      Start 95: woby_obj_profile_pacing
+66/88 Test #15: woby_tests::file_associations_tests ..............   Passed    0.17 sec
+      Start  4: woby_tests::app_icon_tests
+67/88 Test #63: woby_tests::tetrahedral_mesh_tests ...............   Passed    0.13 sec
+      Start 70: woby_tests::vtk_mesh_tests
+68/88 Test #69: woby_tests::uv_quality_tests .....................   Passed    0.22 sec
+      Start 89: woby_shared_sources
+69/88 Test #95: woby_obj_profile_pacing ..........................   Passed    0.10 sec
+      Start 26: woby_tests::importer_point_ids_tests
+70/88 Test  #4: woby_tests::app_icon_tests .......................   Passed    0.10 sec
+      Start  8: woby_tests::command_line_tests
+71/88 Test #89: woby_shared_sources ..............................   Passed    0.08 sec
+      Start 16: woby_tests::file_discovery_tests
+72/88 Test #70: woby_tests::vtk_mesh_tests .......................   Passed    0.12 sec
+      Start 41: woby_tests::model_mesh_tests
+73/88 Test #26: woby_tests::importer_point_ids_tests .............   Passed    0.11 sec
+      Start 45: woby_tests::performance_capture_tests
+74/88 Test  #8: woby_tests::command_line_tests ...................   Passed    0.08 sec
+      Start 57: woby_tests::scene_renderer_tests
+75/88 Test #41: woby_tests::model_mesh_tests .....................   Passed    0.08 sec
+      Start 59: woby_tests::shared_geometry_tests
+76/88 Test #16: woby_tests::file_discovery_tests .................   Passed    0.11 sec
+      Start 60: woby_tests::simd_geometry_tests
+77/88 Test #45: woby_tests::performance_capture_tests ............   Passed    0.09 sec
+      Start 17: woby_tests::frame_pacing_tests
+78/88 Test #57: woby_tests::scene_renderer_tests .................   Passed    0.08 sec
+      Start 20: woby_tests::graphics_diagnostics_tests
+79/88 Test #59: woby_tests::shared_geometry_tests ................   Passed    0.08 sec
+      Start 22: woby_tests::graphics_upload_tests
+80/88 Test #60: woby_tests::simd_geometry_tests ..................   Passed    0.08 sec
+      Start 31: woby_tests::marker_pick_tests
+81/88 Test #17: woby_tests::frame_pacing_tests ...................   Passed    0.08 sec
+      Start 58: woby_tests::shader_types_tests
+82/88 Test #20: woby_tests::graphics_diagnostics_tests ...........   Passed    0.08 sec
+      Start 21: woby_tests::graphics_tests
+83/88 Test #31: woby_tests::marker_pick_tests ....................   Passed    0.06 sec
+      Start 23: woby_tests::hover_pick_tests
+84/88 Test #58: woby_tests::shader_types_tests ...................   Passed    0.06 sec
+      Start 32: woby_tests::math_utils_tests
+85/88 Test #21: woby_tests::graphics_tests .......................   Passed    0.07 sec
+86/88 Test #23: woby_tests::hover_pick_tests .....................   Passed    0.06 sec
+87/88 Test #32: woby_tests::math_utils_tests .....................   Passed    0.06 sec
+88/88 Test #22: woby_tests::graphics_upload_tests ................   Passed    0.16 sec
+
+100% tests passed, 0 tests failed out of 88
+
+Label Time Summary:
+cpu     =  77.06 sec*proc (77 tests)
+unit    =  77.06 sec*proc (77 tests)
+
+Total Test time (real) =  30.86 sec
+
+
+=== woby-parser-slow-tests-final.log ===
+Test project D:/.worktree/woby-parser-build-9921
+    Start  6: command history evicts results without ever reusing admitted retry keys
+    Start 34: analysis measures both surfaces above the former triangle cap
+1/9 Test #34: analysis measures both surfaces above the former triangle cap ...................   Passed    0.58 sec
+    Start 35: detector snapshots and stages accept meshes beyond the distance heatmap limit
+2/9 Test #35: detector snapshots and stages accept meshes beyond the distance heatmap limit ...   Passed    1.66 sec
+    Start 44: OBJ prototype preserves continued bodies at every raw block alignment
+3/9 Test #44: OBJ prototype preserves continued bodies at every raw block alignment ...........   Passed    2.06 sec
+    Start 67: updater removes obsolete renderer assets and restores them on rollback
+4/9 Test #67: updater removes obsolete renderer assets and restores them on rollback ..........   Passed    6.79 sec
+    Start 76: woby_update_helper_smoke
+5/9 Test  #6: command history evicts results without ever reusing admitted retry keys .........   Passed   22.24 sec
+    Start 78: woby_rapidobj_stress
+6/9 Test #78: woby_rapidobj_stress ............................................................   Passed    2.13 sec
+    Start 79: woby_rapidobj_scalar
+7/9 Test #79: woby_rapidobj_scalar ............................................................   Passed    2.08 sec
+    Start 91: woby_runtime_build_graph
+8/9 Test #91: woby_runtime_build_graph ........................................................   Passed   18.50 sec
+9/9 Test #76: woby_update_helper_smoke ........................................................   Passed   88.68 sec
+
+100% tests passed, 0 tests failed out of 9
+
+Label Time Summary:
+cpu     =  37.55 sec*proc (7 tests)
+slow    = 144.74 sec*proc (9 tests)
+unit    =  37.55 sec*proc (7 tests)
+
+Total Test time (real) =  99.83 sec
+
+
+=== woby-parser-graphics-tests-final.log ===
+Test project D:/.worktree/woby-parser-build-9921
+    Start 87: woby_native_device_allocations
+1/1 Test #87: woby_native_device_allocations ...   Passed    6.40 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Label Time Summary:
+graphics    =   6.40 sec*proc (1 test)
+unit        =   6.40 sec*proc (1 test)
+
+Total Test time (real) =   6.42 sec
+
+
+=== woby-parser-asan-build-final.log ===
+MSBuild version 18.6.3+84d3e95b4 for .NET Framework
+
+  Checking File Globs
+  rapidobj_stress_tests.cpp
+  woby_rapidobj_stress_tests.vcxproj -> D:\.worktree\woby-parser-asan-9921\bin\Release\woby_rapidobj_stress_tests.exe
+
+
+=== asan-tests.log ===
+[doctest] doctest version is "2.5.2"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:     11 |     11 passed | 0 failed | 0 skipped
+[doctest] assertions: 652443 | 652443 passed | 0 failed |
+[doctest] Status: SUCCESS!
+

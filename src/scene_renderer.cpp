@@ -86,6 +86,7 @@ void submitTriangleRange(
     uint32_t indexOffset,
     uint32_t indexCount,
     bool markerIds,
+    bool useVertexColors,
     const std::array<float, 4>& uvGrid,
     const TransparentSurfacePrograms* transparency)
 {
@@ -97,6 +98,7 @@ void submitTriangleRange(
     woby::graphics::setTransform(model);
     woby::graphics::setColor(color);
     woby::graphics::setVertexBuffer(0, mesh.vertexBuffer);
+    woby::graphics::setVertexColors(useVertexColors ? mesh.vertexColors : graphics::VertexBufferHandle{});
     woby::graphics::setIndexBuffer(mesh.triangleIndexBuffer, indexOffset, indexCount);
     const auto state = renderState(WOBY_GPU_STATE_DEPTH_TEST_LESS, true, color, 0u);
     if (transparency && color[3] < .999f) {
@@ -119,7 +121,8 @@ void submitPointSpriteRange(
     uint32_t viewHeight,
     uint32_t indexOffset,
     uint32_t indexCount,
-    bool markerIds)
+    bool markerIds,
+    bool useVertexColors)
 {
     if (!woby::graphics::isValid(mesh.vertexBuffer)
         || !woby::graphics::isValid(mesh.pointIdBuffer)
@@ -132,6 +135,7 @@ void submitPointSpriteRange(
     woby::graphics::setColor(color);
     woby::graphics::setPointParameters(pointParams);
     woby::graphics::setBuffer(0, mesh.vertexBuffer, woby::graphics::Access::Read);
+    woby::graphics::setVertexColors(useVertexColors ? mesh.vertexColors : graphics::VertexBufferHandle{});
     woby::graphics::setBuffer(1, mesh.pointIdBuffer, woby::graphics::Access::Read);
     woby::graphics::setVertexCount(4);
     woby::graphics::setInstanceCount(indexCount);
@@ -187,6 +191,8 @@ void destroyGpuMesh(GpuMesh& mesh)
         chunks->clear();
     }
     mesh.pointCloud.reset();
+    graphics::destroy(mesh.vertexColors); mesh.vertexColors = WOBY_GPU_INVALID_HANDLE;
+    graphics::destroy(mesh.pointColors); mesh.pointColors = WOBY_GPU_INVALID_HANDLE;
     mesh.compactOnly = false;
     if (woby::graphics::isValid(mesh.importedLineBuffer)) { woby::graphics::destroy(mesh.importedLineBuffer); }
     mesh.importedLineBuffer = WOBY_GPU_INVALID_HANDLE;
@@ -331,6 +337,7 @@ void submitSceneFiles(
                         graphics::setMarkerBase(firstId);
                     }
                     graphics::setBuffer(0,mesh.pointChunks.at(chunk),graphics::Access::Read);
+                    graphics::setVertexColors(item.useVertexColors ? mesh.pointColors : graphics::VertexBufferHandle{});
                     graphics::setVertexCount(4); graphics::setInstanceCount(count);
                     setMarkerRenderState(renderState(WOBY_GPU_STATE_DEPTH_TEST_LEQUAL,true,color,WOBY_GPU_STATE_PT_TRISTRIP),markerIds);
                     graphics::submit(viewId,pointSpriteProgram); used+=count;
@@ -340,7 +347,7 @@ void submitSceneFiles(
         }
         submitPointSpriteRange(viewId, mesh, pointSpriteProgram,
             item.model.data(), color, item.pointSize, width, height,
-            range.pointIndexOffset, range.pointIndexCount, markerIds);
+            range.pointIndexOffset, range.pointIndexCount, markerIds, item.useVertexColors);
     };
     if (importedLinesOnly) {
         each([&](const auto& item, const auto& mesh, const auto& range) {
@@ -350,6 +357,7 @@ void submitSceneFiles(
                 graphics::setColor(item.color);
                 graphics::setPointParameters(params);
                 graphics::setBuffer(0, mesh.vertexBuffer, graphics::Access::Read);
+                graphics::setVertexColors(item.useVertexColors ? mesh.vertexColors : graphics::VertexBufferHandle{});
                 graphics::setBuffer(1, mesh.importedLineBuffer, graphics::Access::Read);
                 graphics::setVertexCount(4); graphics::setInstanceCount(item.lineIndexCount / 2);
                 setMarkerRenderState(renderState(item.lineDepthTest ? WOBY_GPU_STATE_DEPTH_TEST_LEQUAL
@@ -370,6 +378,7 @@ void submitSceneFiles(
         graphics::setUvGrid(item.uvGrid);
         graphics::setTriangleEdges(params);
         graphics::setVertexBuffer(0, mesh.vertexBuffer);
+        graphics::setVertexColors(item.useVertexColors ? mesh.vertexColors : graphics::VertexBufferHandle{});
         if (!hardwareLines && edges.nativeBarycentrics) {
             graphics::setIndexBuffer(mesh.triangleIndexBuffer, range.triangleIndexOffset, range.triangleIndexCount);
         } else {
@@ -411,7 +420,7 @@ void submitSceneFiles(
             if (!item.solid || item.color[3] <= 0 || (item.color[3] >= .999f) != opaque) { return; }
             if (item.edges && !plan.triangleEdgeXray) { triangleEdges(item, mesh, range, false); }
             else { submitTriangleRange(viewId, mesh, meshProgram,
-                item.model.data(), item.color, range.triangleIndexOffset, range.triangleIndexCount, markerIds, item.uvGrid, transparency); }
+                item.model.data(), item.color, range.triangleIndexOffset, range.triangleIndexCount, markerIds, item.useVertexColors, item.uvGrid, transparency); }
         });
     }
     each([&](const auto& item, const auto& mesh, const auto& range) {

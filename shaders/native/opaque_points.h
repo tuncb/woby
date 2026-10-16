@@ -6,6 +6,8 @@ struct OpaquePointGroupData {
     float4 color;
     uint32 firstId, endId, sourceFirstId;
     float pointSize;
+    uint32* colors;
+    uint32 colorCount;
 };
 struct OpaquePointTaskData { OpaquePoint* points; uint32 count, group, query, padding; };
 // Metal atomics require addressable scalar fields, not uint2 vector components.
@@ -20,7 +22,7 @@ struct OpaquePointRoot {
 };
 #ifndef __SLANG__
 static_assert(sizeof(OpaquePoint)==16);
-static_assert(sizeof(OpaquePointGroupData)==96);
+static_assert(sizeof(OpaquePointGroupData)==112);
 static_assert(sizeof(OpaquePointTaskData)==24);
 static_assert(sizeof(OpaquePointBatchSample)==8);
 static_assert(sizeof(OpaquePointRoot)==80);

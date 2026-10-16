@@ -15,6 +15,34 @@
 #include <string>
 #include <set>
 
+TEST_CASE("part vertex color availability uses referenced vertices for each primitive")
+{
+    woby::Mesh mesh;
+    auto& geometry = editMeshGeometry(mesh);
+    geometry.vertices.resize(3);
+    geometry.vertexColors = {0, 0xff000000u, 0}; // Authored black is present; zero is missing.
+    geometry.indices = {0, 1, 2, 0, 2, 2};
+    geometry.lineIndices = {0, 2, 1, 2};
+    geometry.pointIndices = {2, 1};
+    geometry.nodes = {{"colored surface", 0, 3}, {"plain surface", 3, 3},
+        {"plain line"}, {"colored line"}, {"plain point"}, {"colored point"}};
+    geometry.nodes[0].defaultColor = std::array<float, 4>{1, 0, 0, .5f};
+    geometry.nodes[2].lineIndexCount = geometry.nodes[3].lineIndexCount = 2;
+    geometry.nodes[3].lineIndexOffset = 2;
+    geometry.nodes[4].pointIndexCount = geometry.nodes[5].pointIndexCount = 1;
+    geometry.nodes[5].pointIndexOffset = 1;
+    const auto groups = woby::createUiGroupStates(mesh, 0);
+    REQUIRE(groups.size() == 6);
+    for (size_t i = 0; i < groups.size(); ++i) {
+        CHECK(groups[i].hasVertexColors == (i == 0 || i == 3 || i == 5));
+        CHECK_FALSE(groups[i].colorOverride);
+    }
+    CHECK(groups[0].color == std::array<float, 4>{1, 0, 0, 1});
+    CHECK(groups[0].opacity == .5f);
+    geometry.vertexColors.clear();
+    for (const auto& group : woby::createUiGroupStates(mesh, 0)) { CHECK_FALSE(group.hasVertexColors); }
+}
+
 TEST_CASE("properties pane width is bounded and remains a session preference")
 {
     woby::UiState state;

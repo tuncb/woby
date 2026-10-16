@@ -94,7 +94,7 @@ void clearSceneSelection(UiState& state);
 enum class UiObjectProperty {
     translationX, translationY, translationZ,
     rotationX, rotationY, rotationZ,
-    scale, opacity, vertexSize, solidMesh, triangles, vertices, red, green, blue,
+    scale, opacity, vertexSize, solidMesh, triangles, vertices, red, green, blue, vertexColors,
     uvGrid, uvDensityU, uvDensityV, uvColorMode, uvMinimum, uvMaximum,
     lineWidth, lineDepthTest, analysisMode,
 };
@@ -119,7 +119,8 @@ void setGroupUvGrid(UiGroupState& group, UvGridSettings settings);
 void setGroupLineStyle(UiGroupState& group, LineStyle settings);
 bool setObjectLineStyle(UiState& state, const std::vector<SceneObjectId>& objects,
     std::optional<float> width, std::optional<bool> depthTest);
-// Edit descendant parts without changing selection. A missing color resets the palette.
+// Override descendant part colors without changing selection. A missing color
+// restores source vertex colors and resets the fallback palette.
 bool setObjectColor(UiState& state, const std::vector<SceneObjectId>& objects,
     std::optional<std::array<float, 3>> color);
 // Expand containers using existing part semantics; skip parts without complete UVs.

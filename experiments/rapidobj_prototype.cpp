@@ -56,6 +56,7 @@ uint64_t fingerprint(const woby::Mesh& mesh) {
 }
 size_t retainedBytes(const woby::Mesh& mesh) {
     size_t bytes = meshGeometry(mesh).vertices.capacity() * sizeof(woby::Vertex)
+        + meshGeometry(mesh).vertexColors.capacity() * sizeof(uint32_t)
         + meshGeometry(mesh).precisePositions.capacity() * sizeof(woby::Coordinate)
         + meshGeometry(mesh).positionIndices.capacity() * sizeof(uint32_t)
         + (meshGeometry(mesh).indices.capacity() + meshGeometry(mesh).lineIndices.capacity() + meshGeometry(mesh).pointIndices.capacity()) * sizeof(uint32_t);
@@ -140,6 +141,14 @@ int run(bool prototype, const std::filesystem::path& path, size_t workers, bool 
         Fingerprint combined;
         for (const auto& mesh : meshes) { hash(combined, fingerprint(mesh)); }
         result["fingerprint"] = combined.value;
+        Fingerprint colors;
+        size_t colorBytes = 0;
+        for (const auto& mesh : meshes) {
+            hashBuffer(colors, meshGeometry(mesh).vertexColors);
+            colorBytes += meshGeometry(mesh).vertexColors.size() * sizeof(uint32_t);
+        }
+        result["color_fingerprint"] = colors.value;
+        result["vertex_color_bytes"] = colorBytes;
         std::cout << result.dump() << '\n';
         return 0;
     } catch (const std::exception& error) {

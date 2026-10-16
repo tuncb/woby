@@ -440,6 +440,8 @@ void assignSceneGroupValue(SceneGroupRecord& record, const std::string& key, std
         record.settings.rotationDegrees = parseTomlFloat3(value);
     } else if (key == "color") {
         record.settings.color = parseTomlFloat4(value);
+    } else if (key == "color_override") {
+        record.settings.colorOverride = parseTomlBool(value);
     }
 }
 
@@ -790,6 +792,7 @@ void writeAppearance(std::ostream& stream, const SceneGroupSettings& settings)
     stream << "\n";
     stream << "color = ";
     writeTomlFloat4(stream, settings.color);
+    stream << "\ncolor_override = " << (settings.colorOverride ? "true" : "false");
     stream << "\n";
 }
 

@@ -1,0 +1,11 @@
+Test project D:/.worktree/woby-parser-build-9921
+    Start 1: woby_tests::adaptive_points_gpu_tests
+1/1 Test #1: woby_tests::adaptive_points_gpu_tests ...   Passed   10.25 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Label Time Summary:
+graphics    =  10.25 sec*proc (1 test)
+unit        =  10.25 sec*proc (1 test)
+
+Total Test time (real) =  10.74 sec

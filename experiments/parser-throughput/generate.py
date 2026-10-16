@@ -9,7 +9,7 @@ def replace(text, old, new):
     return text.replace(old, new, 1)
 
 
-def generate(root, output):
+def generate(root, output, color_reference=False):
     output.mkdir(parents=True, exist_ok=True)
     common='''#include <chrono>
 namespace parser_profile {
@@ -54,6 +54,13 @@ inline double elapsed(Clock::time_point begin) {
     text=text.replace('namespace rapidobj {', common+'\nnamespace rapidobj {',1)
     (output/'rapidobj.hpp').write_text(text,encoding='utf-8')
     text=(root/'third_party/rapidobj/include/rapidobj/prototype.hpp').read_text(encoding='utf-8')
+    if color_reference:
+        # Benchmark-only control: keep identical storage and parsing, but use
+        # the generic numeric conversion for colors instead of integer UNORM8.
+        start = text.index('inline bool PrototypeColorNumber(')
+        body = text.index('    double decoded = 0;', start)
+        signature = text[start:text.index('{', start) + 1]
+        text = text[:start] + signature + '\n' + text[body:]
     text=replace(text, '    // The first physical line may start',
         '    const auto decode_started = parser_profile::Clock::now();\n    // The first physical line may start')
     text=replace(text, '    block.middle = std::move(scanner.chunk);',
@@ -62,11 +69,6 @@ inline double elapsed(Clock::time_point begin) {
         '    if (stopped.load(std::memory_order_relaxed)) { return {}; }\n    const auto input_started = parser_profile::Clock::now();')
     text=replace(text, '    return PrototypeParseBlock(std::move(block), offset == 0, context, options, stopped);',
         '    parser_profile::input_ns.fetch_add(parser_profile::nanoseconds(input_started), std::memory_order_relaxed);\n    return PrototypeParseBlock(std::move(block), offset == 0, context, options, stopped);')
-    text=replace(text, '    // Range profiling starts here in the benchmark-only generated header.',
-        '    const auto range_started = parser_profile::Clock::now();')
-    text=replace(text, '    // Range profiling ends here in the benchmark-only generated header.', '''    const auto range_io = reader.SubmitTime() + reader.WaitTime();
-    parser_profile::input_ns.fetch_add(range_io.count(), std::memory_order_relaxed);
-    parser_profile::decode_ns.fetch_add(parser_profile::nanoseconds(range_started)-range_io.count(), std::memory_order_relaxed);''')
     text=replace(text, '    PrototypeResult result;\n    const bool names_only',
         '    const auto scan_started = parser_profile::Clock::now();\n    PrototypeResult result;\n    const bool names_only')
     text=replace(text, '        result.polygons = Merge(chunks, context);', '''        parser_profile::scan_ms = parser_profile::elapsed(scan_started);
@@ -79,4 +81,4 @@ inline double elapsed(Clock::time_point begin) {
 
 
 if __name__=='__main__':
-    generate(Path(sys.argv[1]),Path(sys.argv[2]))
+    generate(Path(sys.argv[1]),Path(sys.argv[2]), '--color-reference' in sys.argv[3:])

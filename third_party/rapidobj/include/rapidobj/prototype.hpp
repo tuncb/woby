@@ -4,6 +4,9 @@
 #include "rapidobj.hpp"
 #include <deque>
 #include <limits>
+#include <condition_variable>
+#include <bit>
+#include <span>
 
 namespace rapidobj {
 
@@ -65,10 +68,50 @@ inline std::string_view PrototypeToken(std::string_view& text) {
     text.remove_prefix(end);
     return token;
 }
+inline bool PrototypeNumberEnd(char ch) {
+    return ch == ' ' || ch == '\t' || ch == '\r' || ch == '#';
+}
+
+// Decode eight bytes around a decimal point with integer SWAR. The integer
+// conversion and division below are the same exact Clinger path as fast_float:
+// at most 2^53 in the mantissa and an exactly representable power of ten.
+// Exponents, longer decimals and all exceptional forms use the full decoder.
+inline bool PrototypeShortNumber(std::string_view& text, double& value) {
+    auto digits = text;
+    const bool negative = !digits.empty() && digits.front() == '-';
+    if (negative) { digits.remove_prefix(1); }
+    if (digits.size() < 8) { return false; }
+    auto bytes = fast_float::read_u64(digits.data());
+    const auto dots = bytes ^ UINT64_C(0x2e2e2e2e2e2e2e2e);
+    const auto dot_mask = (dots - UINT64_C(0x0101010101010101)) & ~dots & UINT64_C(0x8080808080808080);
+    size_t decimals = 0;
+    if (dot_mask) {
+        const auto dot = static_cast<unsigned>(std::countr_zero(dot_mask)) / 8;
+        const auto prefix = (UINT64_C(1) << (dot * 8)) - 1;
+        const auto suffix = dot == 7 ? UINT64_C(0) : ~((UINT64_C(1) << ((dot + 1) * 8)) - 1);
+        bytes = (bytes & suffix) | ((bytes & prefix) << 8) | UINT64_C(0x30);
+        decimals = 7 - dot;
+    }
+    if (!fast_float::is_made_of_eight_digits_fast(bytes)) { return false; }
+    uint64_t mantissa = fast_float::parse_eight_digits_unrolled(bytes);
+    size_t end = 8;
+    while (end < digits.size() && digits[end] >= '0' && digits[end] <= '9' && end < 16) {
+        mantissa = mantissa * 10 + static_cast<unsigned>(digits[end++] - '0');
+        decimals += dot_mask != 0;
+    }
+    if (mantissa > (UINT64_C(1) << 53) || (end != digits.size() && !PrototypeNumberEnd(digits[end]))) { return false; }
+    constexpr double powers[] = {1, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15};
+    value = static_cast<double>(mantissa) / powers[decimals];
+    if (negative) { value = -value; }
+    text.remove_prefix(end + static_cast<size_t>(negative));
+    return true;
+}
+
 // Let the numeric decoder find the end once, then validate its delimiter.
 inline bool PrototypeNextNumber(std::string_view& text, double& value, bool finite) {
     if (!text.empty() && text.front() == '+') { text.remove_prefix(1); }
     if (text.empty()) { return false; }
+    if (PrototypeShortNumber(text, value)) { return true; }
     const auto parsed = fast_float::from_chars(text.data(), text.data() + text.size(), value);
     if (parsed.ec != std::errc{} || (finite && !std::isfinite(value))) { return false; }
     if (parsed.ptr != text.data() + text.size() && *parsed.ptr != ' ' && *parsed.ptr != '\t' && *parsed.ptr != '\r' && *parsed.ptr != '#') {
@@ -83,6 +126,64 @@ inline bool PrototypeNumber(std::string_view text, double& value, bool finite = 
     const auto parsed = fast_float::from_chars(text.data(), text.data() + text.size(), value);
     return parsed.ec == std::errc{} && parsed.ptr == text.data() + text.size()
         && (!finite || std::isfinite(value));
+}
+// Short fixed-point decimals cannot overflow or underflow a double. Validate
+// these unused color fields without computing a mantissa, exponent or quotient.
+// All other forms keep the same numeric decoder and finite-value check.
+inline bool PrototypeSkipNumber(std::string_view& text) {
+    if (text.size() >= 8 && text[1] == '.' && (text.size() == 8 || PrototypeNumberEnd(text[8]))) {
+        // Common exported RGB values contain one digit and six decimal places.
+        const auto bytes = fast_float::read_u64(text.data()) ^ UINT64_C(0x1e00);
+        if (fast_float::is_made_of_eight_digits_fast(bytes)) { text.remove_prefix(8); return true; }
+    }
+    size_t end = 0, digits = 0;
+    if (!text.empty() && (text[0] == '+' || text[0] == '-')) { ++end; }
+    while (end < text.size() && text[end] >= '0' && text[end] <= '9') { ++end; ++digits; }
+    if (end < text.size() && text[end] == '.') {
+        ++end;
+        while (end < text.size() && text[end] >= '0' && text[end] <= '9') { ++end; ++digits; }
+    }
+    if (digits && digits <= 18 && (end == text.size() || text[end] == ' ' || text[end] == '\t'
+        || text[end] == '\r' || text[end] == '#')) {
+        text.remove_prefix(end);
+        return true;
+    }
+    double ignored = 0;
+    return PrototypeNextNumber(text, ignored, true);
+}
+
+inline uint32_t PrototypeColorByte(double value) {
+    return static_cast<uint32_t>(std::clamp(value, 0.0, 1.0) * 255.0 + 0.5);
+}
+
+// Common exported colors are d.dddddd. Decode eight bytes together and round
+// directly to UNORM8 with integer arithmetic; no floating-point conversion.
+inline bool PrototypeColorNumber(std::string_view& text, uint32_t& value) {
+    if (text.size() >= 8 && text[1] == '.' && (text.size() == 8 || PrototypeNumberEnd(text[8]))) {
+        const auto bytes = fast_float::read_u64(text.data()) ^ UINT64_C(0x1e00);
+        if (fast_float::is_made_of_eight_digits_fast(bytes)) {
+            const auto digits = fast_float::parse_eight_digits_unrolled(bytes);
+            value = digits >= 1000000 ? 255 : (digits * 255 + 500000) / 1000000;
+            text.remove_prefix(8);
+            return true;
+        }
+    }
+    double decoded = 0;
+    if (!PrototypeNextNumber(text, decoded, true)) { return false; }
+    value = PrototypeColorByte(decoded);
+    return true;
+}
+
+inline void PrototypeAppendColor(Chunk& chunk, uint32_t value) {
+    auto& colors = chunk.vertex_colors;
+    if (!colors.buffer.size()) {
+        colors.offset = chunk.positions.count;
+        if (colors.estimate > colors.offset) { colors.buffer.reserve(colors.estimate - colors.offset); }
+    }
+    const auto gap = chunk.positions.count - colors.offset - colors.buffer.size();
+    colors.buffer.ensure_enough_room_for(gap + 1);
+    colors.buffer.fill_n(gap, 0);
+    colors.buffer.push_back(value);
 }
 inline bool PrototypeInteger(std::string_view text, int64_t& value) {
     if (!text.empty() && text.front() == '+') { text.remove_prefix(1); }
@@ -123,7 +224,8 @@ struct PrototypeChunk {
     std::vector<PositionWeight> weights;
 };
 
-inline rapidobj_errc PrototypePosition(std::string_view text, size_t line_number, PrototypeChunk& out) {
+inline rapidobj_errc PrototypePosition(std::string_view text, size_t line_number, PrototypeChunk& out,
+    bool read_colors = false) {
     PrototypeOrdinary(out.statements, line_number);
     auto& chunk = out.parsed;
     chunk.precise_positions.ensure_enough_room_for(1);
@@ -133,19 +235,32 @@ inline rapidobj_errc PrototypePosition(std::string_view text, size_t line_number
         if (!PrototypeNextNumber(text, value, true)) { return rapidobj_errc::ParseError; }
     }
     // The common three-coordinate record needs neither a comment prescan nor
-    // storage/dispatch for seven potential values. Still decode every optional
-    // weight/color value once and validate the complete statement.
-    double weight = 1;
+    // storage/dispatch for seven potential values. Color output is optional;
+    // callers without it retain the validation-only path.
+    std::string_view weight_text;
+    std::array<uint32_t, 4> colors{};
     size_t extras = 0;
     for (;;) {
         TrimLeft(text);
         if (text.empty() || text.front() == '#') { break; }
-        double value = 0;
-        if (extras == 4 || !PrototypeNextNumber(text, value, true)) { return rapidobj_errc::ParseError; }
-        if (extras++ == 0) { weight = value; }
+        const auto before = text;
+        if (extras == 4 || !(read_colors ? PrototypeColorNumber(text, colors[extras]) : PrototypeSkipNumber(text))) {
+            return rapidobj_errc::ParseError;
+        }
+        if (extras++ == 0) { weight_text = before.substr(0, before.size() - text.size()); }
     }
     if (extras == 2) { return rapidobj_errc::ParseError; }
-    if (extras == 1 && weight != 1) { out.weights.emplace_back(chunk.positions.count, weight); }
+    if (extras == 1 || extras == 4) {
+        double weight = 1;
+        if (!PrototypeNumber(weight_text, weight)) { return rapidobj_errc::ParseError; }
+        if (weight != 1) { out.weights.emplace_back(chunk.positions.count, weight); }
+    }
+    if (read_colors && extras >= 3) {
+        // Six fields: xyz rgb. Seven fields: xyz w rgb. A weight remains a
+        // double; the packed color's high byte denotes presence, not opacity.
+        const size_t first = extras == 4 ? 1 : 0;
+        PrototypeAppendColor(chunk, UINT32_C(0xff000000) | colors[first] | (colors[first + 1] << 8) | (colors[first + 2] << 16));
+    }
     ++chunk.positions.count;
     return rapidobj_errc::Success;
 }
@@ -186,7 +301,7 @@ inline rapidobj_errc PrototypeGeneralLine(std::string_view line, size_t line_num
     auto& chunk = out.parsed;
     auto& records = out.statements;
 
-    if (key == "v") { return PrototypePosition(text, line_number, out); }
+    if (key == "v") { return PrototypePosition(text, line_number, out, context.output && context.output->vertex_colors); }
     if (key == "vt" || key == "vn") {
         return key == "vn" ? PrototypeAttribute<true>(text, line_number, out)
             : PrototypeAttribute<false>(text, line_number, out);
@@ -264,29 +379,76 @@ inline rapidobj_errc PrototypeGeneralLine(std::string_view line, size_t line_num
     return rapidobj_errc::Success;
 }
 
-// The usual triangle/quad without UVs or normals needs no per-index offset
-// bookkeeping. Do not mutate the chunk until the entire form is recognized;
-// negative/attributed/larger faces retain the general decoder and its errors.
+inline bool PrototypePositiveIndex(std::string_view& text, int& index) {
+    const auto* p = text.data();
+    const auto* end = p + text.size();
+    uint64_t value = 0;
+    if (end - p >= 8) {
+        const auto bytes = fast_float::read_u64(p);
+        const auto invalid = ((bytes + UINT64_C(0x4646464646464646)) | (bytes - UINT64_C(0x3030303030303030)))
+            & UINT64_C(0x8080808080808080);
+        const auto count = static_cast<unsigned>(std::countr_zero(invalid)) / 8;
+        if (!count) { return false; }
+        const auto padded = count == 8 ? bytes
+            : (bytes << ((8 - count) * 8)) | (UINT64_C(0x3030303030303030) >> (count * 8));
+        value = fast_float::parse_eight_digits_unrolled(padded);
+        p += count;
+    }
+    while (p != end && *p >= '0' && *p <= '9') {
+        value = value * 10 + static_cast<unsigned>(*p++ - '0');
+        if (value > static_cast<uint64_t>(std::numeric_limits<int>::max())) { return false; }
+    }
+    if (!value) { return false; }
+    index = static_cast<int>(value - 1);
+    text.remove_prefix(static_cast<size_t>(p - text.data()));
+    return true;
+}
+
+inline bool PrototypeFaceIndex(std::string_view& text, size_t count, int& index,
+    OffsetFlags& flags, ApplyOffset flag) {
+    const bool relative = !text.empty() && text.front() == '-';
+    if (relative) { text.remove_prefix(1); }
+    if (!PrototypePositiveIndex(text, index)) { return false; }
+    if (relative) {
+        index = static_cast<int>(count) - index - 1;
+        flags |= static_cast<OffsetFlags>(flag);
+    }
+    return true;
+}
+
+// Decode triangle/quad references once, including relative UVs and normals.
+// Commit only a fully recognized face. Polygons and invalid forms keep the
+// general decoder and its original diagnostic behavior.
 inline bool PrototypeSimpleFace(std::string_view text, Chunk& chunk) {
-    std::array<int, 4> positions;
+    std::array<Index, 4> corners;
+    std::array<OffsetFlags, 4> flags{};
     size_t count = 0;
-    for (auto& position : positions) {
+    for (auto& corner : corners) {
         TrimLeft(text);
-        if (text.empty()) { break; }
-        const auto parsed = std::from_chars(text.data(), text.data() + text.size(), position);
-        if (parsed.ec != std::errc{} || position <= 0) { return false; }
-        text.remove_prefix(static_cast<size_t>(parsed.ptr - text.data()));
-        if (!text.empty() && text.front() != ' ' && text.front() != '\t' && text.front() != '\r') { return false; }
+        if (text.empty() || text.front() == '#') { break; }
+        corner = {-1, -1, -1};
+        if (!PrototypeFaceIndex(text, chunk.positions.count, corner.position_index, flags[count], ApplyOffset::Position)) { return false; }
+        if (!text.empty() && text.front() == '/') {
+            text.remove_prefix(1);
+            if (text.empty()) { return false; }
+            if (text.front() != '/' && !PrototypeFaceIndex(text, chunk.texcoords.count, corner.texcoord_index,
+                flags[count], ApplyOffset::Texcoord)) { return false; }
+            if (!text.empty() && text.front() == '/') {
+                text.remove_prefix(1);
+                if (!PrototypeFaceIndex(text, chunk.normals.count, corner.normal_index, flags[count], ApplyOffset::Normal)) { return false; }
+            }
+        }
+        if (!text.empty() && !PrototypeNumberEnd(text.front())) { return false; }
         ++count;
     }
     TrimLeft(text);
-    if (!text.empty() || count < 3) { return false; }
+    if ((!text.empty() && text.front() != '#') || count < 3) { return false; }
     auto& indices = chunk.mesh.indices;
     indices.buffer.ensure_enough_room_for(count);
     indices.flags.ensure_enough_room_for(count);
     for (size_t i = 0; i < count; ++i) {
-        indices.buffer.push_back({positions[i] - 1, -1, -1});
-        indices.flags.push_back(static_cast<OffsetFlags>(ApplyOffset::None));
+        indices.buffer.push_back(corners[i]);
+        indices.flags.push_back(flags[i]);
     }
     chunk.mesh.faces.buffer.ensure_enough_room_for(1);
     chunk.mesh.faces.buffer.push_back(static_cast<unsigned char>(count));
@@ -299,7 +461,7 @@ inline rapidobj_errc PrototypeLine(std::string_view line, size_t line_number,
     TrimLeft(line);
     if (line.size() >= 2 && (line[1] == ' ' || line[1] == '\t')) {
         const auto kind = line.front();
-        if (kind == 'v') { return PrototypePosition(line.substr(2), line_number, out); }
+        if (kind == 'v') { return PrototypePosition(line.substr(2), line_number, out, context.output && context.output->vertex_colors); }
         if (kind == 'p') {
             auto text = line.substr(2);
             TrimLeft(text);
@@ -325,11 +487,14 @@ inline rapidobj_errc PrototypeLine(std::string_view line, size_t line_number,
             }
         }
         if (kind == 'f' || kind == 'l' || kind == 'p') {
+            if (kind == 'f' && line.size() <= kMaxLineLength && PrototypeSimpleFace(line.substr(2), out.parsed)) {
+                PrototypeOrdinary(out.statements, line_number);
+                return rapidobj_errc::Success;
+            }
             line = line.substr(0, line.find('#'));
             TrimRight(line);
             if (line.size() > kMaxLineLength) { return rapidobj_errc::LineTooLongError; }
             PrototypeOrdinary(out.statements, line_number);
-            if (kind == 'f' && PrototypeSimpleFace(line.substr(2), out.parsed)) { return rapidobj_errc::Success; }
             return ProcessLine(line, &out.parsed, &context);
         }
     }
@@ -392,13 +557,16 @@ inline void PrototypePhysical(PrototypeScanner& scanner, std::string_view line,
 // With no partial statement, keep reconstruction state outside the common loop.
 // Only an incomplete line or actual continuation needs the slower state machine.
 inline bool PrototypeCompleteLines(PrototypeScanner& scanner, std::string_view& text, SharedContext& context,
-    const PrototypeOptions& options, const std::atomic_bool& stopped) {
+    const PrototypeOptions& options, const std::atomic_bool& stopped, std::span<const uint32_t> line_ends = {}) {
+    const auto* begin = text.data();
+    size_t line_index = 0;
     auto line_number = scanner.physical_lines;
     size_t visits = 0;
     bool done = false;
     while (!text.empty()) {
         if (visits++ % 256 == 0 && stopped.load(std::memory_order_relaxed)) { done = true; break; }
-        const auto end = text.find('\n');
+        const auto end = line_index < line_ends.size()
+            ? line_ends[line_index++] - static_cast<size_t>(text.data() - begin) : text.find('\n');
         auto line = text.substr(0, end);
         if (end == std::string_view::npos || line.size() > options.max_statement_bytes) { break; }
         if (!line.empty() && line.back() == '\r') { line.remove_suffix(1); }
@@ -464,7 +632,6 @@ struct PrototypeBlock {
     std::string_view text;
     size_t storage_bytes = 0, prefix_end = 0, middle_end = 0;
     size_t input_bytes = 0;
-    bool retry_streaming = false;
     PrototypeChunk middle;
     std::error_code read_error;
 };
@@ -476,6 +643,86 @@ inline PrototypeBlock PrototypeAllocateBlock(size_t size) {
     if (!block.storage) { throw std::bad_alloc(); }
     block.text = {block.storage.get(), size};
     return block;
+}
+
+// A bounded sizing pass avoids geometric growth and copying while decoding.
+// Count only ordinary physical records. Continuations and less common syntax
+// still use the checked growable buffers; these estimates never set their size.
+inline size_t PrototypeFaceWords(std::string_view text) {
+    size_t words = 0;
+    bool previous_space = true;
+#if defined(__AVX2__)
+    const auto count = [&](uint32_t spaces, uint32_t comments, unsigned width) {
+        const auto valid = width == 32 ? UINT32_MAX : (uint32_t{1} << width) - 1;
+        auto starts = (~spaces & ((spaces << 1) | static_cast<uint32_t>(previous_space))) & valid;
+        comments &= valid;
+        if (comments) { starts &= (uint32_t{1} << std::countr_zero(comments)) - 1; }
+        words += static_cast<size_t>(std::popcount(starts));
+        previous_space = ((spaces >> (width - 1)) & 1) != 0;
+        return comments == 0;
+    };
+    while (text.size() >= 32) {
+        const auto bytes = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(text.data()));
+        const auto spaces = _mm256_or_si256(_mm256_cmpeq_epi8(bytes, _mm256_set1_epi8(' ')),
+            _mm256_or_si256(_mm256_cmpeq_epi8(bytes, _mm256_set1_epi8('\t')), _mm256_cmpeq_epi8(bytes, _mm256_set1_epi8('\r'))));
+        if (!count(static_cast<uint32_t>(_mm256_movemask_epi8(spaces)),
+            static_cast<uint32_t>(_mm256_movemask_epi8(_mm256_cmpeq_epi8(bytes, _mm256_set1_epi8('#')))), 32)) { return words; }
+        text.remove_prefix(32);
+    }
+    for (const unsigned width : {16u, 8u}) {
+        if (text.size() < width) { continue; }
+        const auto bytes = width == 16 ? _mm_loadu_si128(reinterpret_cast<const __m128i*>(text.data()))
+            : _mm_loadl_epi64(reinterpret_cast<const __m128i*>(text.data()));
+        const auto spaces = _mm_or_si128(_mm_cmpeq_epi8(bytes, _mm_set1_epi8(' ')),
+            _mm_or_si128(_mm_cmpeq_epi8(bytes, _mm_set1_epi8('\t')), _mm_cmpeq_epi8(bytes, _mm_set1_epi8('\r'))));
+        if (!count(static_cast<uint32_t>(_mm_movemask_epi8(spaces)),
+            static_cast<uint32_t>(_mm_movemask_epi8(_mm_cmpeq_epi8(bytes, _mm_set1_epi8('#')))), width)) { return words; }
+        text.remove_prefix(width);
+    }
+#endif
+    for (const char ch : text) {
+        if (ch == '#') { break; }
+        const bool space = ch == ' ' || ch == '\t' || ch == '\r';
+        words += !space && previous_space;
+        previous_space = space;
+    }
+    return words;
+}
+
+inline void PrototypeReserve(std::string_view text, Chunk& chunk, const std::atomic_bool& stopped,
+    std::vector<uint32_t>& line_ends) {
+    const auto bytes = text.size();
+    line_ends.reserve(bytes / 32);
+    size_t positions = 0, texcoords = 0, normals = 0, faces = 0, corners = 0, visits = 0;
+    while (!text.empty()) {
+        if (visits++ % 256 == 0 && stopped.load(std::memory_order_relaxed)) { return; }
+        const auto end = text.find('\n');
+        if (end != std::string_view::npos) { line_ends.push_back(static_cast<uint32_t>(bytes - text.size() + end)); }
+        auto line = text.substr(0, end);
+        text.remove_prefix(end == std::string_view::npos ? text.size() : end + 1);
+        TrimLeft(line);
+        if (line.size() >= 2 && (line[1] == ' ' || line[1] == '\t')) {
+            if (line[0] == 'v') { ++positions; }
+            else if (line[0] == 'f') {
+                ++faces;
+                corners += std::min(size_t{kMaxVerticesInFace + 1}, PrototypeFaceWords(line.substr(2)));
+            }
+        } else if (line.size() >= 3 && line[0] == 'v' && (line[2] == ' ' || line[2] == '\t')) {
+            texcoords += line[1] == 't';
+            normals += line[1] == 'n';
+        }
+    }
+    chunk.precise_positions.reserve(positions);
+    chunk.vertex_colors.estimate = positions;
+    chunk.precise_texcoords.reserve(texcoords * 2);
+    chunk.precise_normals.reserve(normals * 3);
+    chunk.mesh.faces.buffer.reserve(faces);
+    // The general decoder reserves its diagnostic lookahead before each face.
+    // Keep that margin so relative references and polygons do not force a
+    // whole-buffer growth copy near the end of an exactly sized block.
+    const auto index_capacity = corners ? corners + kMaxVerticesInFace + 1 : 0;
+    chunk.mesh.indices.buffer.reserve(index_capacity);
+    chunk.mesh.indices.flags.reserve(index_capacity);
 }
 
 inline PrototypeBlock PrototypeParseBlock(PrototypeBlock block, bool first, SharedContext& context,
@@ -515,10 +762,34 @@ inline PrototypeBlock PrototypeParseBlock(PrototypeBlock block, bool first, Shar
         end = previous;
     }
     PrototypeScanner scanner;
-    PrototypeScan(scanner, block.text.substr(block.prefix_end, block.middle_end - block.prefix_end), context, options, stopped);
+    auto middle = block.text.substr(block.prefix_end, block.middle_end - block.prefix_end);
+    if (block.text.size() >= kBlockSize) {
+        std::vector<uint32_t> line_ends;
+        PrototypeReserve(middle, scanner.chunk.parsed, stopped, line_ends);
+        PrototypeCompleteLines(scanner, middle, context, options, stopped, line_ends);
+    }
+    PrototypeScan(scanner, middle, context, options, stopped);
     scanner.chunk.parsed.text.line_count = scanner.physical_lines;
     block.middle = std::move(scanner.chunk);
     return block;
+}
+
+// Retain only boundary text after a pool worker decodes a block. Thus input
+// storage stays bounded by the worker count, even when collection is ordered.
+inline void PrototypeKeepEdges(PrototypeBlock& block) {
+    if (block.middle_end == block.prefix_end) { return; }
+    const auto suffix_size = block.text.size() - block.middle_end;
+    const auto marker = block.middle_end > block.prefix_end ? size_t{1} : size_t{0};
+    const auto bytes = block.prefix_end + marker + suffix_size;
+    if (!bytes) { block.storage.reset(); block.storage_bytes = 0; block.text = {}; return; }
+    auto edges = PrototypeAllocateBlock(bytes);
+    std::memcpy(edges.storage.get(), block.text.data(), block.prefix_end);
+    if (marker) { edges.storage.get()[block.prefix_end] = '\0'; }
+    std::memcpy(edges.storage.get() + block.prefix_end + marker, block.text.data() + block.middle_end, suffix_size);
+    block.storage = std::move(edges.storage);
+    block.storage_bytes = edges.storage_bytes;
+    block.text = {block.storage.get(), bytes};
+    block.middle_end = block.prefix_end + marker;
 }
 
 inline PrototypeBlock PrototypeReadFileBlock(sys::File& file, size_t offset, size_t size,
@@ -542,116 +813,7 @@ struct PrototypeInput {
     std::istream* stream = nullptr;
     std::string_view memory;
     sys::File* file = nullptr;
-    bool* retry_streaming = nullptr;
 };
-
-// Persistent ranges use the same bounded, overlapped reader as legacy. Only
-// boundary text survives a worker; the middle is decoded into its owned chunk.
-// Unusually long range edges fall back to the fully general streaming scanner.
-inline PrototypeBlock PrototypeReadFileRange(sys::File& file, size_t begin, size_t size,
-    SharedContext& context, const PrototypeOptions& options, const std::atomic_bool& stopped) {
-    // Range profiling starts here in the benchmark-only generated header.
-    PrototypeBlock result;
-    const auto read_size = std::min(size_t{kBlockSize}, (size + 4095) / 4096 * 4096);
-    auto front = PrototypeAllocateBlock(read_size);
-    auto back = PrototypeAllocateBlock(read_size);
-    std::string prefix, tail;
-    prefix.reserve(read_size * 2);
-    tail.reserve(read_size * 2);
-    bool prefix_done = begin == 0;
-    PrototypeScanner scanner;
-    sys::FileReader reader(file);
-    PendingRead pending{&reader}; // joins before either destination buffer dies
-    result.read_error = reader.Error();
-    size_t consumed = 0;
-    auto request = std::min(read_size, size);
-    if (!result.read_error && !stopped.load(std::memory_order_relaxed)) {
-        result.read_error = reader.ReadBlock(begin, request, front.storage.get());
-    }
-    while (!result.read_error && !stopped.load(std::memory_order_relaxed)) {
-        const auto read = reader.WaitForResult();
-        result.input_bytes += read.bytes_read;
-        result.read_error = read.error_code;
-        if (!result.read_error && read.bytes_read != request) { result.read_error = std::make_error_code(std::io_errc::stream); }
-        if (result.read_error) { break; }
-        auto text = std::string_view(front.storage.get(), read.bytes_read);
-        consumed += read.bytes_read;
-        const auto next = std::min(read_size, size - consumed);
-        // Submit the next read before decoding this buffer.
-        if (next) { result.read_error = reader.ReadBlock(begin + consumed, next, back.storage.get()); }
-
-        if (!prefix_done) {
-            const auto previous_size = prefix.size();
-            prefix.append(text);
-            auto end = prefix.find('\n');
-            size_t prefix_end = std::string_view::npos;
-            while (end != std::string_view::npos) {
-                const auto start = end + 1;
-                end = prefix.find('\n', start);
-                if (end != std::string_view::npos
-                    && PrototypeContinuation(std::string_view(prefix).substr(start, end - start)) == std::string_view::npos) {
-                    prefix_end = end + 1;
-                    break;
-                }
-            }
-            if (prefix_end == std::string_view::npos) {
-                text = {};
-                if (prefix.size() > read_size) { result.retry_streaming = true; break; }
-            } else {
-                if (prefix_end > read_size) { result.retry_streaming = true; break; }
-                text.remove_prefix(prefix_end - previous_size);
-                prefix.resize(prefix_end);
-                prefix_done = true;
-            }
-        }
-
-        auto end = text.rfind('\n');
-        size_t middle_end = 0;
-        while (end != std::string_view::npos) {
-            const auto previous = end ? text.rfind('\n', end - 1) : std::string_view::npos;
-            const auto start = previous == std::string_view::npos ? 0 : previous + 1;
-            if (PrototypeContinuation(text.substr(start, end - start)) == std::string_view::npos) {
-                middle_end = end + 1;
-                break;
-            }
-            end = previous;
-        }
-        if (middle_end) {
-            PrototypeScan(scanner, tail, context, options, stopped);
-            PrototypeScan(scanner, text.substr(0, middle_end), context, options, stopped);
-            tail.clear();
-        }
-        tail.append(text.substr(middle_end));
-        if (prefix.size() + tail.size() > read_size) { result.retry_streaming = true; break; }
-        constexpr auto safe_count = static_cast<size_t>(std::numeric_limits<int>::max()) - kBlockSize;
-        if (scanner.chunk.parsed.positions.count > safe_count || scanner.chunk.parsed.texcoords.count > safe_count
-            || scanner.chunk.parsed.normals.count > safe_count) { result.retry_streaming = true; break; }
-        if (scanner.chunk.parsed.error || !next) { break; }
-        std::swap(front, back);
-        request = next;
-    }
-    // Use one placeholder byte for the decoded middle, so ordered collection
-    // can keep its existing prefix/middle/suffix protocol without retaining it.
-    // A statement-limit error can precede the first completed physical line.
-    // Still collect that failed middle so its ordered diagnostic is not lost.
-    const auto marker = scanner.physical_lines || scanner.chunk.parsed.error ? size_t{1} : size_t{0};
-    const auto edge_bytes = prefix.size() + marker + tail.size();
-    if (edge_bytes && !result.retry_streaming) {
-        auto edges = PrototypeAllocateBlock(edge_bytes);
-        std::memcpy(edges.storage.get(), prefix.data(), prefix.size());
-        if (marker) { edges.storage.get()[prefix.size()] = '\0'; }
-        std::memcpy(edges.storage.get() + prefix.size() + marker, tail.data(), tail.size());
-        result.storage = std::move(edges.storage);
-        result.storage_bytes = edges.storage_bytes;
-        result.text = {result.storage.get(), edge_bytes};
-        result.prefix_end = prefix.size();
-        result.middle_end = prefix.size() + marker;
-    }
-    scanner.chunk.parsed.text.line_count = scanner.physical_lines;
-    result.middle = std::move(scanner.chunk);
-    // Range profiling ends here in the benchmark-only generated header.
-    return result;
-}
 
 inline size_t PrototypeBlockBytes(size_t input_size, size_t workers, size_t maximum) {
     // Keep tiny inputs on the caller, but do not leave most cores idle on a
@@ -665,7 +827,8 @@ inline size_t PrototypeBlockBytes(size_t input_size, size_t workers, size_t maxi
 
 inline PrototypeResult PrototypeParse(PrototypeInput input, GeometryBuffers output,
     const MaterialLibrary& material_library, const PrototypeOptions& options) {
-    if (!output.positions.empty() || !output.texcoords.empty() || !output.normals.empty()) {
+    if (!output.positions.empty() || !output.texcoords.empty() || !output.normals.empty()
+        || (output.vertex_colors && !output.vertex_colors->empty())) {
         throw std::invalid_argument("Prototype output buffers must be empty.");
     }
     if (!options.chunk_bytes || !options.read_bytes || !options.max_statement_bytes
@@ -741,44 +904,101 @@ inline PrototypeResult PrototypeParse(PrototypeInput input, GeometryBuffers outp
         }
         PrototypeCheckpoint(options);
         auto block = pending.front().worker.get();
-        if (block.retry_streaming) {
-            assert(input.retry_streaming);
-            *input.retry_streaming = true;
-            stopped.store(true, std::memory_order_relaxed);
-            return false;
-        }
         collect_block(std::move(block));
         inflight -= pending.front().text_bytes;
         pending.pop_front();
         PrototypeCheckpoint(options);
-        return true;
     };
     try {
         const auto input_size = input.file ? input.file->size() : input.memory.size();
         const auto block_bytes = input.stream ? options.chunk_bytes : PrototypeBlockBytes(input_size, workers, options.chunk_bytes);
         size_t offset = 0;
         bool stream_finished = false;
-        if (input.file && input.retry_streaming && input_size > kSingleThreadCutoff
-            && workers > 1 && options.chunk_bytes >= 16 * kBlockSize) {
-            const auto range_bytes = PrototypeBlockBytes(input_size, workers, std::numeric_limits<size_t>::max());
-            while (offset < input_size) {
-                PrototypeCheckpoint(options);
-                const auto size = std::min(range_bytes, input_size - offset);
-                // Conservative bound covers both native buffers, edge strings
-                // and reconstruction scratch; independent of range/file size.
-                const auto bytes = 16 * std::min(size_t{kBlockSize}, (size + 4095) / 4096 * 4096);
-                pending.push_back({std::async(std::launch::async, [&, start = offset, size] {
-                    return PrototypeReadFileRange(*input.file, start, size, *context, options, stopped);
-                }), bytes});
-                inflight += bytes;
-                result.stats.workers = pending.size();
-                result.stats.peak_inflight_text_bytes = inflight;
-                offset += size;
+        if (input.file && input_size > kSingleThreadCutoff && workers > 1) {
+            const auto block_count = (input_size - 1) / block_bytes + 1;
+            const auto pool_size = std::min(workers, block_count);
+            const auto window = std::min(2 * pool_size, block_count);
+            std::vector<PrototypeBlock> blocks(window);
+            std::vector<bool> ready(window);
+            std::atomic_size_t next_block = 0;
+            size_t collected = 0;
+            std::mutex mutex;
+            std::condition_variable changed;
+            std::exception_ptr failure;
+            const auto stop_pool = [&] {
+                { std::lock_guard lock(mutex); stopped.store(true, std::memory_order_relaxed); }
+                changed.notify_all();
+            };
+            std::vector<std::future<void>> pool;
+            pool.reserve(pool_size);
+            try {
+                for (size_t i = 0; i < pool_size; ++i) {
+                    PrototypeCheckpoint(options);
+                    pool.push_back(std::async(std::launch::async, [&] {
+                        try {
+                            while (!stopped.load(std::memory_order_relaxed)) {
+                                const auto index = next_block.fetch_add(1, std::memory_order_relaxed);
+                                if (index >= block_count) { break; }
+                                {
+                                    std::unique_lock lock(mutex);
+                                    changed.wait(lock, [&] { return index < collected + window || stopped.load(std::memory_order_relaxed); });
+                                }
+                                if (stopped.load(std::memory_order_relaxed)) { break; }
+                                const auto begin = index * block_bytes;
+                                auto block = PrototypeReadFileBlock(*input.file, begin,
+                                    std::min(block_bytes, input_size - begin), *context, options, stopped);
+                                PrototypeKeepEdges(block);
+                                {
+                                    std::lock_guard lock(mutex);
+                                    blocks[index % window] = std::move(block);
+                                    ready[index % window] = true;
+                                }
+                                changed.notify_all();
+                            }
+                        } catch (...) {
+                            {
+                                std::lock_guard lock(mutex);
+                                if (!failure) { failure = std::current_exception(); }
+                                stopped.store(true, std::memory_order_relaxed);
+                            }
+                            changed.notify_all();
+                        }
+                    }));
+                }
+                for (size_t index = 0; index < block_count; ++index) {
+                    PrototypeBlock block;
+                    for (;;) {
+                        PrototypeCheckpoint(options);
+                        std::unique_lock lock(mutex);
+                        changed.wait_for(lock, std::chrono::milliseconds(10), [&] { return ready[index % window] || failure; });
+                        if (failure) { std::rethrow_exception(failure); }
+                        if (!ready[index % window]) { continue; }
+                        block = std::move(blocks[index % window]);
+                        ready[index % window] = false;
+                        ++collected;
+                        break;
+                    }
+                    changed.notify_all();
+                    collect_block(std::move(block));
+                    if (result.polygons.error) { stop_pool(); break; }
+                }
+                for (auto& worker : pool) { worker.get(); PrototypeCheckpoint(options); }
+            } catch (...) {
+                stop_pool();
+                // All workers must join before blocks and next_block are freed.
+                for (auto& worker : pool) { if (worker.valid()) { worker.wait(); } }
+                throw;
             }
+            result.stats.workers = pool_size;
+            // Bound input storage, including a worker's temporary edge copy
+            // and the block held by the collector. The scanner's reconstructed
+            // statement has its separate max_statement_bytes limit.
+            result.stats.peak_inflight_text_bytes = (pool_size + window + 1) * ((block_bytes + 4095) / 4096 * 4096);
+            offset = input_size;
         }
         while (!result.polygons.error && (input.stream ? !stream_finished : offset < input_size)) {
             PrototypeCheckpoint(options);
-            if (pending.size() == workers && !collect_first()) { return result; }
+            if (pending.size() == workers) { collect_first(); }
             if (result.polygons.error) { break; }
             const auto size = input.stream ? block_bytes : std::min(block_bytes, input_size - offset);
             PrototypeBlock block;
@@ -816,7 +1036,7 @@ inline PrototypeResult PrototypeParse(PrototypeInput input, GeometryBuffers outp
             }
             offset += size;
         }
-        while (!pending.empty() && !result.polygons.error) { if (!collect_first()) { return result; } }
+        while (!pending.empty() && !result.polygons.error) { collect_first(); }
         if (result.polygons.error) { stopped.store(true, std::memory_order_relaxed); return result; }
         PrototypeFinish(boundary, *context, options);
         flush_boundary();
@@ -854,11 +1074,13 @@ inline PrototypeResult PrototypeParse(PrototypeInput input, GeometryBuffers outp
         PrototypeCheckpoint(options);
         if (result.polygons.error) {
             output.positions.clear(); output.texcoords.clear(); output.normals.clear();
+            if (output.vertex_colors) { output.vertex_colors->clear(); }
         } else { result.stats.position_copy_bytes_avoided = positions * sizeof(std::array<double, 3>); }
         return result;
     } catch (...) {
         stopped.store(true, std::memory_order_relaxed);
         output.positions.clear(); output.texcoords.clear(); output.normals.clear();
+        if (output.vertex_colors) { output.vertex_colors->clear(); }
         throw;
     }
 }
@@ -897,10 +1119,6 @@ inline PrototypeResult ParseFilePrototype(const std::filesystem::path& path, Geo
         return result;
     }
     const auto materials = MaterialLibrary::SearchPath(std::filesystem::absolute(path).parent_path(), Load::Optional);
-    bool retry_streaming = false;
-    auto result = detail::PrototypeParse({nullptr, {}, &input, &retry_streaming}, output, materials, options);
-    if (!retry_streaming) { return result; }
-    result = {}; // discard unpublished records before the bounded fallback starts
     return detail::PrototypeParse({nullptr, {}, &input}, output, materials, options);
 }
 } // namespace rapidobj

@@ -1,0 +1,47 @@
+MSBuild version 18.6.3+84d3e95b4 for .NET Framework
+
+  Checking File Globs
+  woby_automation.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_automation.lib
+  NoGraphicsAPI.vcxproj -> D:\.worktree\woby-parser-build-9921\_deps\woby_ngapi-build\Release\NoGraphicsAPI.lib
+  woby_update_core.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_update_core.lib
+  NoGraphicsAPIUtility_allocators.vcxproj -> D:\.worktree\woby-parser-build-9921\_deps\woby_ngapi-build\utility\Release\NoGraphicsAPIUtility_allocators.lib
+  woby-update-helper.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby-update-helper.exe
+  NoGraphicsAPIUtility_textures.vcxproj -> D:\.worktree\woby-parser-build-9921\_deps\woby_ngapi-build\utility\Release\NoGraphicsAPIUtility_textures.lib
+  woby_coordinate_avx512.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_coordinate_avx512.lib
+  upload_queue.cpp
+  woby_file_associations.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_file_associations.lib
+  woby_core.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_core.lib
+  woby_math.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_math.lib
+  woby_recent_files.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_recent_files.lib
+  woby_update.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_update.lib
+  woby_console_parent.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_console_parent.exe
+  NoGraphicsAPIUtility_uploads.vcxproj -> D:\.worktree\woby-parser-build-9921\_deps\woby_ngapi-build\utility\Release\NoGraphicsAPIUtility_uploads.lib
+  woby_console_probe.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_console_probe.exe
+  woby_importer_bad_abi.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_bad_abi.dll
+  woby_importer_conflict.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_conflict.dll
+  woby_importer_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_fixture.dll
+  woby_importer_hierarchy_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_hierarchy_fixture.dll
+  woby_importer_geometry_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_geometry_fixture.dll
+  woby_importer_lines_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_lines_fixture.dll
+  woby_importer_missing_export.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_missing_export.dll
+  woby_graphics.vcxproj -> D:\.worktree\woby-parser-build-9921\Release\woby_graphics.lib
+  woby_importer_point_ids_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_point_ids_fixture.dll
+  woby_importer_reserved.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_reserved.dll
+  woby_importer_tetrahedral_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\test-plugins\Release\woby_importer_tetrahedral_fixture.dll
+  woby_native_allocation_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_native_allocation_tests.exe
+  woby_native_command_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_native_command_tests.exe
+  woby_native_device_allocation_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_native_device_allocation_tests.exe
+  woby_obj_prototype_benchmark.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_obj_prototype_benchmark.exe
+  woby_off_importer.vcxproj -> D:\.worktree\woby-parser-build-9921\example-plugins\Release\woby_off_importer.dll
+  woby_graphics_diagnostics_allocation_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_graphics_diagnostics_allocation_tests.exe
+  woby_parser_benchmark.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_parser_benchmark.exe
+  woby_rapidobj_reader_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_rapidobj_reader_tests.exe
+  woby_rapidobj_scalar_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_rapidobj_scalar_tests.exe
+  woby_rapidobj_stress_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_rapidobj_stress_tests.exe
+  woby_update_viewer_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_update_viewer_fixture.exe
+  utility_allocation_fixture.cpp
+  woby_utility_allocation_fixture.vcxproj -> D:\.worktree\woby-parser-build-9921\tests\utility_fixture\Release\woby_utility_allocation_fixture.lib
+  woby.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby.exe
+  woby_utility_allocation_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_utility_allocation_tests.exe
+  adaptive_points_gpu_tests.cpp
+  woby_tests.vcxproj -> D:\.worktree\woby-parser-build-9921\bin\Release\woby_tests.exe
