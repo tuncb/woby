@@ -4,7 +4,10 @@
 #include "control_scene.h"
 #include <nlohmann/json.hpp>
 #include "importer_host.h"
+#include "hover_pick.h"
+#include "marker_pick.h"
 #include "obj_mesh.h"
+#include "scene_queries.h"
 #include "scene_dimensions.h"
 #include "scene_history.h"
 #include "surface_annotation.h"
@@ -237,4 +240,79 @@ TEST_CASE("coordinate origin preserves each part's original bounds and radius")
     CHECK(details["localBounds"]["radius"].get<double>() == doctest::Approx(group.localBounds.radius));
     CHECK(details["localBounds"]["min"][0].get<double>() == 8000000);
     CHECK(details["localBounds"]["max"][0].get<double>() == 8000000.125);
+}
+
+TEST_CASE("vertex readouts preserve large imported coordinates through nested transforms")
+{
+    CoordinateFixture fixture;
+    auto state = coordinateScene(fixture.obj("a.obj",8000000),fixture.obj("b.obj",8000000,.0625));
+    bool transformed = true;
+    SUBCASE("shared scene origin") {}
+    SUBCASE("distant scene origin") { state.coordinateOrigin = woby::Coordinate{}; }
+    SUBCASE("original coordinates without scene transforms") { transformed = false; }
+    woby::synchronizeCoordinateFrames(state);
+    state.files[0].fileSettings.visible = false;
+    auto& file = state.files[1];
+    auto& group = file.groupSettings[0];
+    group.showVertices = true;
+    group.center = {}; group.scale = 1.5f;
+    group.rotationDegrees = {0,0,90}; group.translation = {.01f,-.02f,.03f};
+    file.fileSettings.center = {}; file.fileSettings.scale = .5f;
+    file.fileSettings.rotationDegrees = {90,0,0}; file.fileSettings.translation = {.04f,.05f,-.06f};
+    woby::UiSceneNode folder;
+    folder.kind = woby::UiSceneNodeKind::folder;
+    folder.settings.scale = 2;
+    folder.settings.translation = {.003f,.004f,.005f};
+    folder.children = std::move(state.sceneNodes);
+    state.sceneNodes = {folder};
+    if (!transformed) {
+        group.scale = file.fileSettings.scale = 1;
+        group.rotationDegrees = group.translation = {};
+        file.fileSettings.rotationDegrees = file.fileSettings.translation = {};
+        state.sceneNodes.clear();
+    }
+    const woby::Coordinate original{8000000.125,-8000000,8000000.0625};
+    const auto p = woby::relativePosition(original,file.mesh.origin);
+    woby::CoordinateMatrix folderModel, fileModel, groupModel;
+    woby::sceneNodeTransformMatrix(folder.settings,folderModel.data());
+    woby::fileTransformMatrix(file.fileSettings,fileModel.data());
+    woby::groupTransformMatrix(group,groupModel.data());
+    // Apply each matrix separately, in the renderer's composition order.
+    const auto expected = transformed ? woby::originalPosition(woby::transformCoordinate(groupModel.data(),
+        woby::transformCoordinate(fileModel.data(),woby::transformCoordinate(folderModel.data(),p))),*state.coordinateOrigin) : original;
+    std::vector<woby::LoadedModelRuntime> runtimes(2);
+    runtimes[1].gpuMesh.nodeRanges.resize(1);
+    runtimes[1].gpuMesh.nodeRanges[0].pointIndexCount = 1;
+    runtimes[1].gpuMesh.pointVertexIndices = {1};
+    woby::ScenePickView view;
+    woby::identityMatrix(view.view.data()); woby::identityMatrix(view.projection.data());
+    view.width = view.height = 100; view.homogeneousDepth = true;
+    const auto parts = woby::scenePickParts(state);
+    REQUIRE(parts.size() == 1);
+    const auto rendered = woby::transformMarkerPosition(parts[0].model,meshGeometry(file.mesh).vertices[1].position);
+    for (size_t k = 0; k < 3; ++k) { view.view[12+k] = -rendered[k]; }
+    const auto check = [&](const std::optional<woby::HoveredVertex>& hit) {
+        REQUIRE(hit);
+        for (size_t k = 0; k < 3; ++k) {
+            CHECK(hit->localPosition[k] == original[k]);
+            CHECK(std::abs(hit->transformedPosition[k]-expected[k]) <= 8e-9);
+        }
+    };
+    check(woby::findHoveredVertex(state,parts,runtimes,{50,50},view));
+    woby::SceneQueryRuntime queries;
+    std::vector<woby::ScenePickPart> cached;
+    woby::resolveSceneParts(queries,state,cached);
+    check(woby::findHoveredVertex(state,cached,runtimes,{50,50},view));
+    check(woby::findHoveredVertex(state.files,state.sceneNodes,runtimes,{50,50},state.masterVertexPointSize,
+        view.view.data(),view.projection.data(),view.width,view.height,view.homogeneousDepth));
+    woby::SceneDrawCache draws;
+    woby::updateSceneDrawPlan(draws,state,&queries);
+    REQUIRE(draws.plan.items.size() == 1);
+    const auto& item = draws.plan.items[0];
+    woby::MarkerDraw draw{item.model,1,0,1,item.fileIndex,item.fileId};
+    draw.coordinateModel = item.coordinateModel;
+    check(woby::resolveMarkerCoordinates(1,std::span(&draw,1),state,runtimes));
+    file.fileSettings.translation = {1,2,3};
+    group.translation = {4,5,6};
+    check(woby::resolveMarkerCoordinates(1,std::span(&draw,1),state,runtimes));
 }

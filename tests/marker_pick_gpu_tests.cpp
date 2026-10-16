@@ -118,7 +118,7 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     CHECK_FALSE(picker.coordinates); // Highlight is already in the captured GPU frame.
     for (int i = 0; i < 12; ++i) { render(); }
     REQUIRE(picker.coordinates);
-    CHECK(picker.coordinates->localPosition == std::array<float, 3>{0, 0, 1});
+    CHECK(picker.coordinates->localPosition == woby::Coordinate{0, 0, 1});
     CHECK(woby::markerFrameReached(picker.frame, fixture.captureReady));
     size_t highlightedPixels = 0;
     for (size_t i = 0; i < fixture.pixels.size(); i += 4) {
@@ -182,7 +182,7 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     front.fileSettings.opacity = .4f; woby::notifySceneEdit(state);
     for (int i = 0; i < 12; ++i) { render(); }
     REQUIRE(picker.coordinates);
-    CHECK(picker.coordinates->localPosition == std::array<float, 3>{0, 0, 0});
+    CHECK(picker.coordinates->localPosition == woby::Coordinate{0, 0, 0});
 
     // Keep marker lookup consistent with the adaptive projection on a large
     // scene whose geometry lies beyond the old target-based far plane.
@@ -200,7 +200,7 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     CHECK(woby::cameraDepthRange(state.camera, state.sceneBounds, state.upAxis).nearPlane > 1000);
     for (int i = 0; i < 12; ++i) { render(); }
     REQUIRE(picker.coordinates);
-    CHECK(picker.coordinates->localPosition == std::array<float, 3>{0, 0, 0});
+    CHECK(picker.coordinates->localPosition == woby::Coordinate{0, 0, 0});
 
     woby::notifySceneEdit(state);
     render(); // Cancel a hit while its ID is still in flight.

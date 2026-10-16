@@ -60,8 +60,8 @@ TEST_CASE("Marker coordinates use the selected file and the submitted instance t
     std::vector<woby::MarkerDraw> draws = {{translated(10, 20, 30), 100, 1, 1, 1, 11}};
     const auto hit = woby::resolveMarkerCoordinates(100, draws, state, runtimes);
     REQUIRE(hit);
-    CHECK(hit->localPosition == std::array<float, 3>{1, 2, 3});
-    CHECK(hit->transformedPosition == std::array<float, 3>{11, 22, 33});
+    CHECK(hit->localPosition == woby::Coordinate{1, 2, 3});
+    CHECK(hit->transformedPosition == woby::Coordinate{11, 22, 33});
     // An in-flight snapshot is unaffected by subsequent transform edits.
     state.files[1].fileSettings.translation = {-100, 0, 0};
     CHECK(woby::resolveMarkerCoordinates(100, draws, state, runtimes)->transformedPosition == hit->transformedPosition);

@@ -60,7 +60,7 @@ bool selected(const UiState& state, SceneObjectId id)
 }
 
 void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t fileIndex,
-    size_t groupIndex, const PickMatrix& parent, float opacity, bool parentSelected, bool includeHidden)
+    size_t groupIndex, const PickMatrix& parent, const CoordinateMatrix& coordinateParent, float opacity, bool parentSelected, bool includeHidden)
 {
     if (fileIndex >= state.files.size()) { return; }
     const auto& file = state.files[fileIndex];
@@ -85,6 +85,10 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
     part.pointIndexCount = node.pointIndexCount;
     part.lineWidth = node.lineIndexCount ? group.lines.width : 0;
     part.model = compose(parent, local);
+    CoordinateMatrix preciseLocal;
+    groupTransformMatrix(group, preciseLocal.data());
+    part.coordinateModel.emplace();
+    coordinateMultiply(part.coordinateModel->data(), coordinateParent.data(), preciseLocal.data());
     if (group.localBoundsValid) { part.bounds = group.localBounds; }
     part.solid = node.indexCount && group.showSolidMesh;
     part.edges = node.lineIndexCount || (node.indexCount && group.showTriangles);
@@ -101,32 +105,36 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
 }
 
 void appendNode(std::vector<ScenePickPart>& parts, const UiState& state, const UiSceneNode& node,
-    const PickMatrix& parent, float opacity, bool parentSelected, bool includeHidden)
+    const PickMatrix& parent, const CoordinateMatrix& coordinateParent, float opacity, bool parentSelected, bool includeHidden)
 {
     const bool nodeSelected = parentSelected || selected(state, node.objectId);
     if (node.kind == UiSceneNodeKind::group) {
-        appendGroup(parts, state, node.fileIndex, node.groupIndex, parent, opacity, nodeSelected, includeHidden);
+        appendGroup(parts, state, node.fileIndex, node.groupIndex, parent, coordinateParent, opacity, nodeSelected, includeHidden);
         return;
     }
     PickMatrix local;
+    CoordinateMatrix preciseLocal, preciseWorld;
     if (node.kind == UiSceneNodeKind::folder) {
         if (!includeHidden && (!node.settings.visible || !postLoadNodeDrawable(state, node))) { return; }
         opacity *= node.settings.opacity;
         sceneNodeTransformMatrix(node.settings, local.data());
+        sceneNodeTransformMatrix(node.settings, preciseLocal.data());
     } else {
         if (node.fileIndex >= state.files.size()) { return; }
         const auto& file = state.files[node.fileIndex];
         if (!includeHidden && !file.fileSettings.visible) { return; }
         opacity *= file.fileSettings.opacity;
         fileTransformMatrix(file.fileSettings, local.data());
+        fileTransformMatrix(file.fileSettings, preciseLocal.data());
     }
     const auto model = compose(parent, local);
+    coordinateMultiply(preciseWorld.data(), coordinateParent.data(), preciseLocal.data());
     if (node.kind == UiSceneNodeKind::file && node.children.empty()) {
         for (size_t i = 0; i < state.files[node.fileIndex].groupSettings.size(); ++i) {
-            appendGroup(parts, state, node.fileIndex, i, model, opacity, nodeSelected, includeHidden);
+            appendGroup(parts, state, node.fileIndex, i, model, preciseWorld, opacity, nodeSelected, includeHidden);
         }
     } else {
-        for (const auto& child : node.children) { appendNode(parts, state, child, model, opacity, nodeSelected, includeHidden); }
+        for (const auto& child : node.children) { appendNode(parts, state, child, model, preciseWorld, opacity, nodeSelected, includeHidden); }
     }
 }
 
@@ -336,16 +344,18 @@ std::vector<ScenePickPart> scenePickParts(const UiState& state, bool includeHidd
 void scenePickParts(const UiState& state, std::vector<ScenePickPart>& result, bool includeHidden)
 {
     result.clear();
+    CoordinateMatrix preciseIdentity; coordinateIdentity(preciseIdentity.data());
     if (!state.sceneNodes.empty()) {
-        for (const auto& node : state.sceneNodes) { appendNode(result, state, node, identity(), 1, false, includeHidden); }
+        for (const auto& node : state.sceneNodes) { appendNode(result, state, node, identity(), preciseIdentity, 1, false, includeHidden); }
     } else {
         for (size_t i = 0; i < state.files.size(); ++i) {
             const auto& file = state.files[i];
             if (!includeHidden && !file.fileSettings.visible) { continue; }
             PickMatrix model;
             fileTransformMatrix(file.fileSettings, model.data());
+            CoordinateMatrix preciseModel; fileTransformMatrix(file.fileSettings, preciseModel.data());
             for (size_t j = 0; j < file.groupSettings.size(); ++j) {
-                appendGroup(result, state, i, j, model, file.fileSettings.opacity, selected(state, file.objectId), includeHidden);
+                appendGroup(result, state, i, j, model, preciseModel, file.fileSettings.opacity, selected(state, file.objectId), includeHidden);
             }
         }
     }

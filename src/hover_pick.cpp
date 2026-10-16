@@ -9,6 +9,19 @@
 
 namespace woby {
 
+HoveredVertex hoveredVertexCoordinates(const Mesh& mesh, size_t index, const float* model,
+    const Coordinate& sceneOrigin, const CoordinateMatrix* coordinateModel)
+{
+    CoordinateMatrix converted;
+    if (!coordinateModel) {
+        std::copy_n(model, 16, converted.begin());
+        coordinateModel = &converted;
+    }
+    const auto local = meshPosition(mesh, index);
+    return {originalPosition(local, mesh.origin),
+        originalPosition(transformCoordinate(coordinateModel->data(), local), sceneOrigin), 0, 0};
+}
+
 uint64_t hoverSceneSignature(const UiState& state, const std::vector<LoadedModelRuntime>& runtimes)
 {
     uint64_t key = 17;
@@ -77,20 +90,6 @@ std::array<float, 4> transformPoint4(const float* matrix, const std::array<float
     };
 }
 
-std::array<float, 3> transformPosition(const float* matrix, const std::array<float, 3>& position)
-{
-    const auto transformed = transformPoint4(matrix, {position[0], position[1], position[2], 1.0f});
-    if (std::abs(transformed[3]) <= vertexHoverEpsilon) {
-        return {transformed[0], transformed[1], transformed[2]};
-    }
-
-    return {
-        transformed[0] / transformed[3],
-        transformed[1] / transformed[3],
-        transformed[2] / transformed[3],
-    };
-}
-
 ProjectedVertex projectPosition(
     const std::array<float, 3>& position,
     const float* model,
@@ -129,8 +128,8 @@ ProjectedVertex projectPosition(
 }
 
 void updateHoveredVertexCandidate(
-    const std::array<float, 3>& localPosition,
-    const std::array<float, 3>& transformedPosition,
+    const Mesh& mesh, size_t index, const float* model,
+    const Coordinate& sceneOrigin, const CoordinateMatrix* coordinateModel,
     const ProjectedVertex& projected,
     const MousePosition& mouse,
     float hoverRadius,
@@ -150,12 +149,9 @@ void updateHoveredVertexCandidate(
         return;
     }
 
-    hoveredVertex = HoveredVertex{
-        localPosition,
-        transformedPosition,
-        projected.depth,
-        distanceSquared,
-    };
+    hoveredVertex = hoveredVertexCoordinates(mesh, index, model, sceneOrigin, coordinateModel);
+    hoveredVertex->depth = projected.depth;
+    hoveredVertex->distanceSquared = distanceSquared;
 }
 
 void hashSceneNodeSettings(uint64_t& seed, const UiSceneNodeSettings& settings)
@@ -212,6 +208,7 @@ void findHoveredGroupVertex(
     const MousePosition& mouse,
     float masterVertexPointSize,
     const float* model,
+    const double* coordinateModel,
     const float* view,
     const float* projection,
     uint32_t viewportWidth,
@@ -232,6 +229,9 @@ void findHoveredGroupVertex(
     float groupWorld[16];
     groupTransformMatrix(settings, groupModel);
     woby::multiplyMatrices(groupWorld, model, groupModel);
+    CoordinateMatrix preciseLocal, preciseWorld;
+    groupTransformMatrix(settings, preciseLocal.data());
+    coordinateMultiply(preciseWorld.data(), coordinateModel, preciseLocal.data());
 
     const uint32_t pointSize = vertexPointSize(
         masterVertexPointSize,
@@ -261,8 +261,8 @@ void findHoveredGroupVertex(
         }
 
         updateHoveredVertexCandidate(
-            localPosition,
-            transformPosition(groupWorld, localPosition),
+            file.mesh, vertexIndex, groupWorld,
+            relativePosition(file.mesh.origin, file.fileSettings.coordinateOffset), &preciseWorld,
             projected,
             mouse,
             hoverRadius,
@@ -277,6 +277,7 @@ void findHoveredSceneNodeVertex(
     const MousePosition& mouse,
     float masterVertexPointSize,
     const float* parentModel,
+    const double* coordinateParent,
     const float* view,
     const float* projection,
     uint32_t viewportWidth,
@@ -293,6 +294,9 @@ void findHoveredSceneNodeVertex(
         float model[16];
         sceneNodeTransformMatrix(node.settings, nodeModel);
         woby::multiplyMatrices(model, parentModel, nodeModel);
+        CoordinateMatrix preciseLocal, preciseWorld;
+        sceneNodeTransformMatrix(node.settings, preciseLocal.data());
+        coordinateMultiply(preciseWorld.data(), coordinateParent, preciseLocal.data());
         for (const auto& child : node.children) {
             findHoveredSceneNodeVertex(
                 files,
@@ -301,6 +305,7 @@ void findHoveredSceneNodeVertex(
                 mouse,
                 masterVertexPointSize,
                 model,
+                preciseWorld.data(),
                 view,
                 projection,
                 viewportWidth,
@@ -325,6 +330,9 @@ void findHoveredSceneNodeVertex(
         float model[16];
         fileTransformMatrix(file.fileSettings, fileModel);
         woby::multiplyMatrices(model, parentModel, fileModel);
+        CoordinateMatrix preciseLocal, preciseWorld;
+        fileTransformMatrix(file.fileSettings, preciseLocal.data());
+        coordinateMultiply(preciseWorld.data(), coordinateParent, preciseLocal.data());
         const auto& gpuMesh = runtimes[node.fileIndex].gpuMesh;
         if (node.children.empty()) {
             const size_t groupCount = std::min(file.groupSettings.size(), gpuMesh.nodeRanges.size());
@@ -336,6 +344,7 @@ void findHoveredSceneNodeVertex(
                     mouse,
                     masterVertexPointSize,
                     model,
+                    preciseWorld.data(),
                     view,
                     projection,
                     viewportWidth,
@@ -354,6 +363,7 @@ void findHoveredSceneNodeVertex(
                 mouse,
                 masterVertexPointSize,
                 model,
+                preciseWorld.data(),
                 view,
                 projection,
                 viewportWidth,
@@ -374,6 +384,7 @@ void findHoveredSceneNodeVertex(
         mouse,
         masterVertexPointSize,
         parentModel,
+        coordinateParent,
         view,
         projection,
         viewportWidth,
@@ -462,7 +473,8 @@ std::optional<HoveredVertex> findHoveredVertex(const UiState& state, std::span<c
             const auto projected = projectPosition(local, part.model.data(), view.view.data(), view.projection.data(),
                 view.width, view.height, view.homogeneousDepth);
             if (!projected.visible) { continue; }
-            updateHoveredVertexCandidate(local, transformPosition(part.model.data(), local), projected, mouse, radius, hovered);
+            updateHoveredVertexCandidate(*part.mesh, index, part.model.data(), state.coordinateOrigin.value_or(Coordinate{}),
+                part.coordinateModel ? &*part.coordinateModel : nullptr, projected, mouse, radius, hovered);
         }
     }
     return hovered;
@@ -484,6 +496,8 @@ std::optional<HoveredVertex> findHoveredVertex(
     if (!sceneNodes.empty()) {
         float identity[16];
         woby::identityMatrix(identity);
+        CoordinateMatrix preciseIdentity;
+        coordinateIdentity(preciseIdentity.data());
         for (const auto& node : sceneNodes) {
             findHoveredSceneNodeVertex(
                 files,
@@ -492,6 +506,7 @@ std::optional<HoveredVertex> findHoveredVertex(
                 mouse,
                 masterVertexPointSize,
                 identity,
+                preciseIdentity.data(),
                 view,
                 projection,
                 viewportWidth,
@@ -512,6 +527,8 @@ std::optional<HoveredVertex> findHoveredVertex(
 
         float fileModel[16];
         fileTransformMatrix(file.fileSettings, fileModel);
+        CoordinateMatrix preciseFile;
+        fileTransformMatrix(file.fileSettings, preciseFile.data());
         const size_t groupCount = std::min(file.groupSettings.size(), gpuMesh.nodeRanges.size());
         for (size_t nodeIndex = 0; nodeIndex < groupCount; ++nodeIndex) {
             const auto& settings = file.groupSettings[nodeIndex];
@@ -523,6 +540,9 @@ std::optional<HoveredVertex> findHoveredVertex(
             float model[16];
             groupTransformMatrix(settings, groupModel);
             woby::multiplyMatrices(model, fileModel, groupModel);
+            CoordinateMatrix preciseLocal, preciseWorld;
+            groupTransformMatrix(settings, preciseLocal.data());
+            coordinateMultiply(preciseWorld.data(), preciseFile.data(), preciseLocal.data());
 
             const uint32_t pointSize = vertexPointSize(
                 masterVertexPointSize,
@@ -552,8 +572,8 @@ std::optional<HoveredVertex> findHoveredVertex(
                 }
 
                 updateHoveredVertexCandidate(
-                    localPosition,
-                    transformPosition(model, localPosition),
+                    file.mesh, vertexIndex, model,
+                    relativePosition(file.mesh.origin, file.fileSettings.coordinateOffset), &preciseWorld,
                     projected,
                     mouse,
                     hoverRadius,

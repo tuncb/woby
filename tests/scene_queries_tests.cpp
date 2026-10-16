@@ -59,6 +59,7 @@ struct QueryFixture {
             CHECK(actual[i].pointIndexOffset == expected[i].pointIndexOffset);
             CHECK(actual[i].pointIndexCount == expected[i].pointIndexCount);
             CHECK(actual[i].model == expected[i].model);
+            CHECK(actual[i].coordinateModel == expected[i].coordinateModel);
             CHECK(actual[i].selected == expected[i].selected);
             CHECK(actual[i].opacity == expected[i].opacity);
             CHECK(actual[i].pointSize == expected[i].pointSize);

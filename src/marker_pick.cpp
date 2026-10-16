@@ -191,8 +191,8 @@ std::optional<HoveredVertex> resolveMarkerCoordinates(uint32_t id, std::span<con
     const auto points = meshPointVertexIndices(runtimes[draw->fileIndex].gpuMesh);
     const uint64_t rank = uint64_t{draw->pointOffset} + (id - draw->firstId);
     if (rank >= points.size() || points[static_cast<size_t>(rank)] >= meshGeometry(file.mesh).vertices.size()) { return {}; }
-    const auto& local = meshGeometry(file.mesh).vertices[points[static_cast<size_t>(rank)]].position;
-    return HoveredVertex{local, transformMarkerPosition(draw->model, local), 0, 0};
+    return hoveredVertexCoordinates(file.mesh, points[static_cast<size_t>(rank)], draw->model.data(),
+        state.coordinateOrigin.value_or(Coordinate{}), draw->coordinateModel ? &*draw->coordinateModel : nullptr);
 }
 
 void pollGpuMarkerPicking(GpuMarkerPicker& picker, uint32_t frame, const UiState& state,

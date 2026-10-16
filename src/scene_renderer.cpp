@@ -313,6 +313,7 @@ void submitSceneFiles(
         if (markers || mesh.pointCloud) {
             MarkerDraw draw;
             draw.model = item.model; draw.fileIndex = item.fileIndex; draw.fileId = item.fileId;
+            draw.coordinateModel = item.coordinateModel;
             draw.pointOffset = range.pointIndexOffset; draw.count = range.pointIndexCount;
             firstId = appendMarkerDraw(markers ? markers->list : localMarkers, draw, item.pointSize);
             if (markers) {

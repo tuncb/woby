@@ -18,6 +18,7 @@ static SceneDrawPlan buildSceneDrawPlan(const UiState& state, SceneQueryRuntime*
         SceneDrawItem item;
         item.fileIndex = part.fileIndex; item.groupIndex = part.groupIndex;
         item.fileId = file.objectId; item.model = part.model;
+        item.coordinateModel = part.coordinateModel;
         item.color = group.color; item.color[3] = part.opacity;
         item.useVertexColors = !group.colorOverride;
         item.uvGrid = uvColorParameters(group.uvGrid, node.hasTexcoords, false);

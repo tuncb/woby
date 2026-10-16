@@ -15,6 +15,7 @@ struct SceneDrawItem {
     bool solid = false, edges = false, points = false;
     bool importedLines = false, lineDepthTest = true;
     bool useVertexColors = true;
+    std::optional<CoordinateMatrix> coordinateModel;
 };
 struct SceneDrawPlan {
     std::vector<SceneDrawItem> items;

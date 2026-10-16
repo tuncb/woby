@@ -140,6 +140,26 @@ TEST_CASE("hover picking applies group transforms to hit testing")
     CHECK(hovered->transformedPosition[0] == doctest::Approx(0.2f));
 }
 
+TEST_CASE("hover readouts retain precise positions for generated and mapped source vertices")
+{
+    auto file = pointFile();
+    const woby::Coordinate expected{.123456789012345,-.234567890123456,.345678901234567};
+    auto& geometry = editMeshGeometry(file.mesh);
+    SUBCASE("generated positions") { geometry.precisePositions = {expected,{}, {}}; }
+    SUBCASE("mapped source positions") {
+        geometry.sourcePositions = std::make_shared<const std::vector<woby::Coordinate>>(
+            std::vector<woby::Coordinate>{{},expected,{}});
+        geometry.positionIndexing = woby::PositionIndexing::mapped;
+        geometry.positionIndices = {1,0,2};
+    }
+    geometry.vertices[0].position = woby::renderPosition(expected);
+    const auto hit = pick({file},{pointRuntime({0})},
+        (geometry.vertices[0].position[0]*.5f+.5f)*100,(.5f-geometry.vertices[0].position[1]*.5f)*100);
+    REQUIRE(hit);
+    CHECK(hit->localPosition == expected);
+    CHECK(hit->transformedPosition == expected);
+}
+
 TEST_CASE("hover picking ignores opacity and rejects hidden or invalid point ranges")
 {
     std::vector<woby::UiFileState> files = {pointFile()};

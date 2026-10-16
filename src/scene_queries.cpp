@@ -76,7 +76,7 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
     if (rebuild) {
         cache.records.clear();
         std::vector<SceneObjectId> ancestors;
-        const auto group = [&](size_t f, size_t g, const PickMatrix& parent, float opacity, bool visible) {
+        const auto group = [&](size_t f, size_t g, const PickMatrix& parent, const CoordinateMatrix& coordinateParent, float opacity, bool visible) {
             if (f >= state.files.size()) { return; }
             const auto& file = state.files[f];
             if (g >= file.groupSettings.size() || g >= meshGeometry(file.mesh).nodes.size()) { return; }
@@ -93,6 +93,10 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
             PickMatrix local;
             groupTransformMatrix(settings, local.data());
             woby::multiplyMatrices(part.model.data(), parent.data(), local.data());
+            CoordinateMatrix preciseLocal;
+            groupTransformMatrix(settings, preciseLocal.data());
+            part.coordinateModel.emplace();
+            coordinateMultiply(part.coordinateModel->data(), coordinateParent.data(), preciseLocal.data());
             if (settings.localBoundsValid) { part.bounds = settings.localBounds; }
             part.solid = node.indexCount && settings.showSolidMesh;
             part.edges = node.lineIndexCount || (node.indexCount && settings.showTriangles);
@@ -104,34 +108,40 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
                 ? part.vertices : node.lineIndexCount || settings.showSolidMesh || settings.showTriangles || part.vertices);
             cache.records.push_back(std::move(record));
         };
-        const auto visit = [&](auto&& self, const UiSceneNode& node, const PickMatrix& parent, float opacity, bool visible) -> void {
+        const auto visit = [&](auto&& self, const UiSceneNode& node, const PickMatrix& parent, const CoordinateMatrix& coordinateParent, float opacity, bool visible) -> void {
             ancestors.push_back(node.objectId);
-            if (node.kind == UiSceneNodeKind::group) { group(node.fileIndex, node.groupIndex, parent, opacity, visible); }
+            if (node.kind == UiSceneNodeKind::group) { group(node.fileIndex, node.groupIndex, parent, coordinateParent, opacity, visible); }
             else if (node.kind == UiSceneNodeKind::folder || node.fileIndex < state.files.size()) {
                 PickMatrix local, model;
+                CoordinateMatrix preciseLocal, preciseWorld;
                 if (node.kind == UiSceneNodeKind::folder) {
                     sceneNodeTransformMatrix(node.settings, local.data());
+                    sceneNodeTransformMatrix(node.settings, preciseLocal.data());
                     opacity *= node.settings.opacity; visible = visible && node.settings.visible && postLoadNodeDrawable(state, node);
                 } else {
                     const auto& file = state.files[node.fileIndex];
                     fileTransformMatrix(file.fileSettings, local.data());
+                    fileTransformMatrix(file.fileSettings, preciseLocal.data());
                     opacity *= file.fileSettings.opacity; visible = visible && file.fileSettings.visible;
                 }
                 woby::multiplyMatrices(model.data(), parent.data(), local.data());
+                coordinateMultiply(preciseWorld.data(), coordinateParent.data(), preciseLocal.data());
                 if (node.kind == UiSceneNodeKind::file && node.children.empty()) {
-                    for (size_t g = 0; g < state.files[node.fileIndex].groupSettings.size(); ++g) { group(node.fileIndex, g, model, opacity, visible); }
-                } else { for (const auto& child : node.children) { self(self, child, model, opacity, visible); } }
+                    for (size_t g = 0; g < state.files[node.fileIndex].groupSettings.size(); ++g) { group(node.fileIndex, g, model, preciseWorld, opacity, visible); }
+                } else { for (const auto& child : node.children) { self(self, child, model, preciseWorld, opacity, visible); } }
             }
             ancestors.pop_back();
         };
         PickMatrix identity; woby::identityMatrix(identity.data());
-        if (!state.sceneNodes.empty()) { for (const auto& node : state.sceneNodes) { visit(visit, node, identity, 1, true); } }
+        CoordinateMatrix preciseIdentity; coordinateIdentity(preciseIdentity.data());
+        if (!state.sceneNodes.empty()) { for (const auto& node : state.sceneNodes) { visit(visit, node, identity, preciseIdentity, 1, true); } }
         else {
             for (size_t f = 0; f < state.files.size(); ++f) {
                 const auto& file = state.files[f];
                 PickMatrix model; fileTransformMatrix(file.fileSettings, model.data());
+                CoordinateMatrix preciseModel; fileTransformMatrix(file.fileSettings, preciseModel.data());
                 ancestors = {file.objectId};
-                for (size_t g = 0; g < file.groupSettings.size(); ++g) { group(f, g, model, file.fileSettings.opacity, file.fileSettings.visible); }
+                for (size_t g = 0; g < file.groupSettings.size(); ++g) { group(f, g, model, preciseModel, file.fileSettings.opacity, file.fileSettings.visible); }
             }
         }
         cache.stamp = stamp; ++cache.builds;

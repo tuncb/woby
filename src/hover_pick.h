@@ -17,11 +17,14 @@ struct MousePosition {
 };
 
 struct HoveredVertex {
-    std::array<float, 3> localPosition{};
-    std::array<float, 3> transformedPosition{};
+    Coordinate localPosition{}; // Original model coordinates, before scene transforms.
+    Coordinate transformedPosition{}; // World coordinates, with the scene origin restored.
     float depth = 0.0f;
     float distanceSquared = 0.0f;
 };
+
+[[nodiscard]] HoveredVertex hoveredVertexCoordinates(const Mesh& mesh, size_t index,
+    const float* model, const Coordinate& sceneOrigin, const CoordinateMatrix* coordinateModel = nullptr);
 
 struct HoverPickCache {
     bool valid = false;

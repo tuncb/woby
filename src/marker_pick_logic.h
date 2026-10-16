@@ -18,6 +18,7 @@ struct MarkerDraw {
     uint32_t firstId = 0, pointOffset = 0, count = 0;
     size_t fileIndex = 0;
     uint64_t fileId = 0;
+    std::optional<std::array<double, 16>> coordinateModel;
 };
 
 struct MarkerDrawList {

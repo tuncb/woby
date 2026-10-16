@@ -47,6 +47,7 @@ struct ScenePickPart {
     size_t fileIndex = 0, groupIndex = 0; // Source parts only; never used for analysis copies.
     const points::Cloud* pointCloud = nullptr;
     bool sourceMesh = false; // Source passes precede analysis overlays and imported lines.
+    std::optional<CoordinateMatrix> coordinateModel; // Precise source-to-scene transform for coordinate readouts.
 };
 
 [[nodiscard]] std::span<const uint32_t> scenePartIndices(const ScenePickPart& part);
