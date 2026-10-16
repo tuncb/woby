@@ -17,9 +17,26 @@ from e2e_analyze import percentile, native_first_frame_bounds
 from e2e_hardware import sample_thread_ids
 from e2e_nsys import pair_packets, event_association
 from e2e_evidence import vtune_rows
+from annotation_compare import sample_metrics
 
 
 class TraceReadTests(unittest.TestCase):
+    def test_import_and_normal_comparisons_keep_measurement_boundaries_and_identity(self):
+        imported = sample_metrics("import", {"cpu_load_ms": 15, "peak_commit_bytes": 200,
+            "fingerprint": 123, "color_fingerprint": 456})
+        self.assertEqual(imported, {"wall_ms": 15, "peak_commit_bytes": 200,
+            "output": {"fingerprint": 123, "color_fingerprint": 456}})
+        replay = {"import_ms": 90, "vertices": 4, "triangles": 2,
+            "records": [{"wall_ms": 3, "cpu_ms": 7, "normal_digest": 789}]}
+        measured = sample_metrics("normals", replay)
+        self.assertEqual(measured["wall_ms"], 3)
+        self.assertEqual(measured["cpu_ms"], 7)
+        self.assertEqual(measured["output"], {"normal_digest": 789, "vertices": 4, "triangles": 2})
+        self.assertNotIn("output", replay["records"][0])
+        for mode in ("annotation", "post-load"):
+            self.assertEqual(sample_metrics(mode, {"records": [{"wall_ms": 5, "output": {"tree": 42}}]}),
+                             {"wall_ms": 5, "output": {"tree": 42}})
+
     def test_vtune_export_discards_progress_messages_and_keeps_function_rows(self):
         with tempfile.TemporaryDirectory(prefix="woby vtune report ") as temporary:
             path=Path(temporary).resolve()/'functions.csv'

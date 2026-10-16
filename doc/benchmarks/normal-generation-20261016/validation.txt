@@ -1,0 +1,77 @@
+Normal generation validation — 2026-10-16
+Baseline: bb97114f34744c42f2dd19775793c769e797b548
+Candidate model_mesh.cpp SHA-256: 2fc68e03f471d12bfcc8390e1057b34e697e1c344f2300ad107cd32c01b87c59
+Release build: cmake --build --preset vs2026-vcpkg --config Release --parallel 4
+No compiler warnings or errors in normal-final-build.log.
+Tests: ctest --preset vs2026-vcpkg -C Release; vs2026-vcpkg-slow; vs2026-vcpkg-graphics -j 1
+Results: 95 default + 9 slow + 1 graphics = 105 entries passed.
+Focused normal tests: 32 cases; 7999 assertions; all passed.
+
+D:\.worktree\woby-annotation-35ac\normal-final-build.log
+SHA-256: 7cf48eb465ba3bdd123d908488b85e0e11219a37bb35613521440ed5c5336237
+  freeform_tests.cpp
+  scene_file_edge_tests.cpp
+  simd_geometry_tests.cpp
+  freeform_trim_tests.cpp
+  obj_prototype_tests.cpp
+  ui_operations_tests.cpp
+  ui_view_tests.cpp
+  uv_grid_tests.cpp
+  uv_quality_tests.cpp
+  windows_paths_tests.cpp
+  file_associations_tests.cpp
+  woby_tests.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_tests.exe
+
+D:\.worktree\woby-annotation-35ac\normal-focused-test.log
+SHA-256: 7062eec872dbf8f3c6c788b6db1513360c32f396129b2731c8bef682f52d7329
+[doctest] doctest version is "2.5.2"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:   32 |   32 passed | 0 failed | 1147 skipped
+[doctest] assertions: 7999 | 7999 passed | 0 failed |
+[doctest] Status: SUCCESS!
+
+D:\.worktree\woby-annotation-35ac\normal-final-tests.log
+SHA-256: 5529b02576a1cdb1f09fde66d92938305087c42163487ace93cc2943fc123c1f
+92/95 Test #102: woby_loading_audit_accounting ....................   Passed    0.30 sec
+93/95 Test #104: woby_parser_simd_accounting ......................   Passed    3.27 sec
+94/95 Test #105: woby_parser_microarchitecture_accounting .........   Passed    3.31 sec
+95/95 Test #103: woby_loading_audit_provenance ....................   Passed    4.17 sec
+
+100% tests passed, 0 tests failed out of 95
+
+Label Time Summary:
+cpu     = 103.35 sec*proc (84 tests)
+unit    = 103.35 sec*proc (84 tests)
+
+Total Test time (real) =  39.28 sec
+
+D:\.worktree\woby-annotation-35ac\normal-final-slow.log
+SHA-256: ed77b312c58234f58af214ed6ca0c70b99a1fafc08455722b247a42fd6a5c37d
+7/9 Test #91: woby_runtime_build_graph ........................................................   Passed   18.51 sec
+8/9 Test  #6: command history evicts results without ever reusing admitted retry keys .........   Passed   21.61 sec
+9/9 Test #76: woby_update_helper_smoke ........................................................   Passed   92.52 sec
+
+100% tests passed, 0 tests failed out of 9
+
+Label Time Summary:
+cpu     =  38.24 sec*proc (7 tests)
+slow    = 149.26 sec*proc (9 tests)
+unit    =  38.24 sec*proc (7 tests)
+
+Total Test time (real) =  92.54 sec
+
+D:\.worktree\woby-annotation-35ac\normal-final-graphics.log
+SHA-256: 788c812cae059d4ab85e35f373fe9a6bf46cc1b5cb56a633f0391aec5f43b8a4
+Test project D:/.worktree/woby-annotation-35ac/build/vs2026-vcpkg
+    Start 87: woby_native_device_allocations
+1/1 Test #87: woby_native_device_allocations ...   Passed    6.21 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Label Time Summary:
+graphics    =   6.21 sec*proc (1 test)
+unit        =   6.21 sec*proc (1 test)
+
+Total Test time (real) =   6.23 sec
+

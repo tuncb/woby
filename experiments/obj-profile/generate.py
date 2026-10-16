@@ -159,7 +159,7 @@ def generate(root, output, reference=False):
     text = (root / "src/model_mesh.cpp").read_text(encoding="utf-8")
     text = section(text, 'void generateSmoothNormals(', 'Bounds calculateBounds(', [
         ('    const auto total', '    auto measuredNormals = obj_profile::begin("normal_clear");\n    const auto total'),
-        ('    for (size_t index = 0;', '    obj_profile::next(measuredNormals, "normal_face_accumulation");\n    for (size_t index = 0;'),
+        ('    const size_t faceCount =', '    obj_profile::next(measuredNormals, "normal_face_accumulation");\n    const size_t faceCount ='),
         ('    completed += indices.size();', '    obj_profile::next(measuredNormals, "normal_vertex_normalize");\n    completed += indices.size();'),
         ('    reportModelLoadProgress(progress, ModelLoadStage::normals, total, total);', '    reportModelLoadProgress(progress, ModelLoadStage::normals, total, total);\n    obj_profile::end(measuredNormals);'),
     ])

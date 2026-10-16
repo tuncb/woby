@@ -2,7 +2,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["psutil>=6", "nvidia-ml-py>=12", "Pillow>=11", "duckdb>=1.3", "pefile>=2024", "capstone>=5"]
 # ///
-"""Compare complete preparation and viewer loads in rotating fresh processes."""
+"""Compare normal generation, import, preparation and viewer loads in fresh processes."""
 import argparse
 import hashlib
 import json
@@ -25,6 +25,17 @@ def competitors(owned=()):
     return result
 
 
+def sample_metrics(mode, result):
+    if mode == "import":
+        return {"wall_ms": result["cpu_load_ms"], "peak_commit_bytes": result["peak_commit_bytes"],
+                "output": {key: result[key] for key in ("fingerprint", "color_fingerprint")}}
+    measured = dict(result["records"][0])
+    if mode == "normals":
+        measured["output"] = {"normal_digest": measured["normal_digest"],
+                              "vertices": result["vertices"], "triangles": result["triangles"]}
+    return measured
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("baseline", type=Path, help="Preserved baseline binary directory")
@@ -37,7 +48,7 @@ def main():
     if not 1 <= args.rounds <= 20:
         parser.error("Rounds must be between 1 and 20")
     modes = args.modes.split(",")
-    if set(modes) - {"annotation", "post-load", "viewer", "traced-viewer"}:
+    if set(modes) - {"normals", "import", "annotation", "post-load", "viewer", "traced-viewer"}:
         parser.error("Unknown comparison mode")
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
@@ -47,7 +58,7 @@ def main():
               "model": str(model), "model_bytes": model.stat().st_size, "runs": [], "summary": {}}
     if sys.platform == "win32":
         report["power_plan"] = subprocess.check_output(["powercfg", "/getactivescheme"], text=True).strip()
-    expected = None
+    expected = {}
     ordinal = 0
     for mode in modes:
         for round_number in range(args.rounds):
@@ -63,7 +74,9 @@ def main():
                     case.mkdir()
                     viewer = mode in {"viewer", "traced-viewer"}
                     executable = binaries[variant] / ("woby.exe" if mode == "viewer" else
-                        "woby_obj_e2e_viewer.exe" if viewer else "woby_annotation_benchmark.exe")
+                        "woby_obj_e2e_viewer.exe" if viewer else
+                        "woby_normals_benchmark.exe" if mode == "normals" else
+                        "woby_obj_prototype_benchmark.exe" if mode == "import" else "woby_annotation_benchmark.exe")
                     if viewer:
                         command = [sys.executable, str(Path(__file__).with_name("e2e_run.py")), str(executable),
                                    str(model), "--output", str(case), "--settle-seconds", "2", "--render-seconds", "2"]
@@ -71,7 +84,9 @@ def main():
                         with model.open("rb") as stream:
                             for _ in iter(lambda: stream.read(8 * 1024 * 1024), b""):
                                 pass
-                        command = [str(executable), str(model), "1", mode]
+                        command = ([str(executable), "prototype", str(model), "16", "deferred"] if mode == "import" else
+                                   [str(executable), str(model), "1"] if mode == "normals" else
+                                   [str(executable), str(model), "1", mode])
                     print(f"Starting {case.name}", flush=True)
                     contention = {}
                     with (case / "stdout.log").open("w", encoding="utf-8") as out, (case / "stderr.log").open("w", encoding="utf-8") as err:
@@ -92,19 +107,19 @@ def main():
                             raise RuntimeError(result["error"])
                         elapsed = result["load_rpc_ms"]
                     else:
-                        measured = result["records"][0]
+                        measured = sample_metrics(mode, result)
                         elapsed = measured["wall_ms"]
-                        if expected is None:
-                            expected = measured["output"]
-                        if measured["output"] != expected:
-                            raise RuntimeError(f"Annotation output differs: {case}")
+                        identity = mode if mode in {"normals", "import"} else "annotation"
+                        if measured["output"] != expected.setdefault(identity, measured["output"]):
+                            raise RuntimeError(f"Output differs: {case}")
                     accepted = not contention
                     record = {"mode": mode, "variant": variant, "round": round_number + 1,
                               "wall_ms": elapsed, "accepted": accepted, "contention": list(contention.values()),
                               "output": str(case), "command": command,
                               "executable_sha256": hashlib.sha256(executable.read_bytes()).hexdigest()}
                     if not viewer:
-                        record.update({"cpu_ms": measured["cpu_ms"], "output_identity": measured["output"]})
+                        record.update({key: measured[key] for key in ("cpu_ms", "peak_commit_bytes") if key in measured})
+                        record["output_identity"] = measured["output"]
                     report["runs"].append(record)
                     (root / "results.json").write_text(json.dumps(report, indent=2))
                     print(f"{case.name}: {elapsed / 1000:.3f} s; accepted={accepted}", flush=True)

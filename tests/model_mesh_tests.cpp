@@ -3,9 +3,12 @@
 
 #include <doctest/doctest.h>
 
+#include <bit>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 
 namespace {
@@ -20,6 +23,34 @@ woby::Vertex vertex(float x, float y, float z)
 void calculateEmptyBounds()
 {
     (void)woby::calculateBounds({});
+}
+
+void serialSmoothNormals(std::vector<woby::Vertex>& vertices, const std::vector<uint32_t>& indices)
+{
+    for (auto& item : vertices) { item.normal = {0, 0, 0}; }
+    for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+        const auto normal = woby::calculateFaceNormal(vertices[indices[i]].position,
+            vertices[indices[i + 1]].position, vertices[indices[i + 2]].position);
+        for (size_t corner = 0; corner < 3; ++corner) {
+            for (size_t axis = 0; axis < 3; ++axis) { vertices[indices[i + corner]].normal[axis] += normal[axis]; }
+        }
+    }
+    for (auto& item : vertices) {
+        auto& n = item.normal;
+        const float length = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+        if (length <= 0.000001f || !std::isfinite(length)) { n = {0, 1, 0}; }
+        else { n[0] /= length; n[1] /= length; n[2] /= length; }
+    }
+}
+
+bool sameNormalBits(const std::vector<woby::Vertex>& a, const std::vector<woby::Vertex>& b)
+{
+    if (a.size() != b.size()) { return false; }
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (std::bit_cast<std::array<uint32_t, 3>>(a[i].normal)
+            != std::bit_cast<std::array<uint32_t, 3>>(b[i].normal)) { return false; }
+    }
+    return true;
 }
 
 } // namespace
@@ -89,6 +120,109 @@ TEST_CASE("smooth normal generation fills missing vertex normals")
         CHECK(item.normal[1] == doctest::Approx(0.0f));
         CHECK(item.normal[2] == doctest::Approx(1.0f));
     }
+}
+
+TEST_CASE("batched smooth normals retain serial bits across shared vertices and batch tails")
+{
+    std::vector<woby::Vertex> vertices(131101);
+    uint32_t random = 34567;
+    const auto next = [&] { random = random * 1664525u + 1013904223u; return random; };
+    for (auto& item : vertices) {
+        for (float& axis : item.position) { axis = static_cast<float>(static_cast<int>(next() % 10001) - 5000) / 31.0f; }
+        item.normal = {7, 8, 9}; item.texcoord = {0.25f, 0.75f};
+    }
+    vertices[1].position = {-0.0f, 0, 0};
+    vertices[2].position = {std::numeric_limits<float>::infinity(), 0, 0};
+    vertices[3].position = {std::numeric_limits<float>::quiet_NaN(), 0, 0};
+    vertices[4].position = {1e30f, 1e30f, 1e30f};
+    vertices[5].position = {1e-30f, 1e-30f, 1e-30f};
+    std::vector<uint32_t> indices;
+    for (size_t face = 0; face < 1048591; ++face) {
+        // A high-valence hub exposes changes to summation order. Repeated corners,
+        // invalid face lengths, reversed faces and disconnected vertices coexist.
+        const auto a = next() % 131099u, b = next() % 131099u;
+        indices.insert(indices.end(), {face % 7 ? 0u : a, a, face % 11 ? b : a});
+    }
+    indices.insert(indices.end(), {1, 2, 3, 4, 5, 1, 0, 1}); // Ignore the incomplete last face.
+    auto expected = vertices;
+    serialSmoothNormals(expected, indices);
+    const auto caller = std::this_thread::get_id();
+    size_t previous = 0, calls = 0;
+    const size_t total = vertices.size() * 2 + indices.size();
+    woby::generateSmoothNormals(vertices, indices, [&](const auto& event) {
+        CHECK(std::this_thread::get_id() == caller);
+        CHECK(event.stage == woby::ModelLoadStage::normals);
+        CHECK(event.total == total);
+        CHECK(event.completed >= previous);
+        CHECK(event.completed <= total);
+        previous = event.completed; ++calls;
+    });
+    CHECK(previous == total);
+    CHECK(calls > 3);
+    CHECK(sameNormalBits(vertices, expected));
+    CHECK(woby::analysisWorkerCount.load() == 0);
+    bool unchanged = true;
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        unchanged &= std::bit_cast<std::array<uint32_t, 3>>(vertices[i].position)
+            == std::bit_cast<std::array<uint32_t, 3>>(expected[i].position);
+        unchanged &= vertices[i].texcoord == expected[i].texcoord;
+    }
+    CHECK(unchanged);
+}
+
+TEST_CASE("smooth normals join helpers on callback failure and recover")
+{
+    std::vector<woby::Vertex> vertices(262147, vertex(1, 2, 3));
+    std::vector<uint32_t> indices(786441);
+    for (size_t i = 0; i < indices.size(); ++i) { indices[i] = static_cast<uint32_t>(i % vertices.size()); }
+    size_t cancelAt = 1;
+    SUBCASE("clear") { cancelAt = 1; }
+    SUBCASE("face calculation") { cancelAt = vertices.size() + 1; }
+    SUBCASE("final normalization") { cancelAt = vertices.size() + indices.size() + 1; }
+    CHECK_THROWS_WITH(woby::generateSmoothNormals(vertices, indices, [&](const auto& event) {
+        if (event.completed >= cancelAt) { throw std::runtime_error("stop normals"); }
+    }), "stop normals");
+    CHECK(woby::analysisWorkerCount.load() == 0);
+    woby::generateSmoothNormals(vertices, indices);
+    auto expected = vertices;
+    serialSmoothNormals(expected, indices);
+    CHECK(sameNormalBits(vertices, expected));
+}
+
+TEST_CASE("smooth normal batch and worker thresholds retain serial results")
+{
+    for (size_t count : {16383u, 16384u, 16385u, 131071u, 131072u, 131073u}) {
+        CAPTURE(count);
+        std::vector<woby::Vertex> vertices = {vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0),
+            vertex(0, 0, -1), vertex(0.123f, 0.456f, 0.789f), vertex(4, 5, 6)};
+        std::vector<uint32_t> indices;
+        for (size_t i = 0; i < count; ++i) {
+            indices.insert(indices.end(), {0, static_cast<uint32_t>(i % 4 + 1), static_cast<uint32_t>((i + 1) % 4 + 1)});
+        }
+        auto expected = vertices;
+        serialSmoothNormals(expected, indices);
+        woby::generateSmoothNormals(vertices, indices);
+        CHECK(sameNormalBits(vertices, expected));
+        CHECK(woby::analysisWorkerCount.load() == 0);
+    }
+}
+
+TEST_CASE("smooth normals handle empty faces and equal face weights")
+{
+    std::vector<woby::Vertex> vertices = {vertex(0, 0, 0), vertex(100, 0, 0), vertex(0, 100, 0),
+        vertex(0, 0, 1), vertex(0, 1, 0), vertex(2, 3, 4)};
+    std::vector<uint32_t> indices;
+    SUBCASE("no triangles") {}
+    SUBCASE("different areas have equal weight") { indices = {0, 1, 2, 0, 4, 3}; }
+    SUBCASE("opposite faces cancel") { indices = {0, 1, 2, 0, 2, 1}; }
+    SUBCASE("incomplete face") { indices = {0, 1}; }
+    auto expected = vertices;
+    serialSmoothNormals(expected, indices);
+    woby::generateSmoothNormals(vertices, indices);
+    CHECK(sameNormalBits(vertices, expected));
+    vertices.clear();
+    woby::generateSmoothNormals(vertices, {});
+    CHECK(vertices.empty());
 }
 
 TEST_CASE("mesh finalization retains duplicate vertices and triangle indices")

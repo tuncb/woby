@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Woby normal generation — 16 October 2026</title><style>
+:root{color-scheme:light;--ink:#152a3c;--muted:#586b79;--line:#d4e1e7;--accent:#167359}
+*{box-sizing:border-box}body{font:16px/1.65 system-ui,sans-serif;color:var(--ink);background:#f3f7f9;margin:0}
+main{max-width:1050px;padding:48px 34px 72px;margin:auto}header{border-top:5px solid var(--accent);padding-top:22px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(30px,5vw,48px);line-height:1.15;letter-spacing:-.03em;margin:12px 0 20px}h2{font-size:24px;margin-top:38px}
+p{max-width:85ch}.lead{font-size:21px}.metric{color:var(--accent)}small{display:block;color:var(--muted);font-size:12px}
+table{width:100%;border-collapse:collapse;background:white;margin:20px 0}th,td{padding:12px 16px;border-bottom:1px solid var(--line);text-align:left}
+th{font-size:13px;color:var(--muted)}td:first-child{width:43%}a{color:#176ca2}code{font-size:13px;overflow-wrap:anywhere}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#e6eef2;padding:18px;font-size:13px}li{margin:9px 0}
+.note{border-left:3px solid var(--line);padding-left:17px;color:var(--muted)}footer{border-top:1px solid var(--line);margin-top:38px;padding-top:15px;font-size:13px;color:var(--muted)}
+@media(max-width:620px){main{padding:24px 16px}th,td{padding:9px 6px;font-size:13px}}
+</style>
+<main><header><div class="eyebrow">Woby · measured optimisation · 16 October 2026</div>
+<h1>Faster normal generation</h1><p class="lead">BearTrap reaches Ready <strong class="metric">1.45 seconds sooner</strong>.
+The normal pass takes 60.3% less time. Complete import takes 12.6% less time.</p></header>
+<table><thead><tr><th>Measured endpoint</th><th>Baseline</th><th>Optimised</th><th>Time reduction</th></tr></thead><tbody><tr><td>Viewer: request to Ready</td><td><strong>18.438 s</strong><small>18.138–19.708 s</small></td><td><strong>16.989 s</strong><small>16.612–17.014 s</small></td><td>7.9%<small>1.450 s saved</small></td></tr><tr><td>Complete CPU import</td><td><strong>10.675 s</strong><small>10.440–11.667 s</small></td><td><strong>9.330 s</strong><small>9.306–9.597 s</small></td><td>12.6%<small>1.346 s saved</small></td></tr><tr><td>Normal generation replay</td><td><strong>2.109 s</strong><small>2.101–2.176 s</small></td><td><strong>0.836 s</strong><small>0.823–0.965 s</small></td><td>60.3%<small>1.273 s saved</small></td></tr></tbody></table>
+<p>Each cell gives the median and range from three fresh processes. The builds ran in alternating order with warm input. The replay loads and copies the mesh before its timer, then runs production normal generation. Full import and viewer measurements are separate runs. Their times must not be added.</p>
+<p class="note">The baseline includes current main (8b5a7d9) and the completed annotation changes (5b0ad07). Both builds use Legion Balance Mode. The 14 October audit used Performance Mode; its absolute times are not the baseline for this comparison.</p>
+<h2>Implementation</h2><ol>
+<li>Clear and normalise independent vertex blocks in parallel under the existing shared worker limit.</li>
+<li>Calculate four face normals per SIMD operation on the x64 build. Keep exact square roots, division, expression order, equal face weights and degenerate-face fallbacks. Other CPU targets retain the scalar calculation.</li>
+<li>Process 16,384-face batches with at most three helpers and the caller. Calculate upcoming batches while the current batch adds its normals. An ordered hand-off preserves every face and corner addition.</li>
+<li>Use at most 768 KiB of temporary normal storage. Small meshes use the simple serial loop.</li>
+<li>Keep progress callbacks on the caller. On failure, wake waiting batches and join all workers before returning.</li></ol>
+<h2>Correctness and resource use</h2><ul>
+<li>The Release build has no compiler warnings. All 105 CTest entries pass: 95 default, 9 slow and 1 graphics. The focused normal checks pass 32 cases and 7,999 assertions.</li>
+<li>Normal digests match in every replay on all three models. The full geometry and colour fingerprints match in every import. Tests compare normal bits against the original serial algorithm, including shared vertices, batch tails, signed zero, nonfinite inputs, degenerate faces, progress and cancellation.</li>
+<li>All three baseline screenshots and two candidate screenshots are byte-identical. The remaining candidate differs in four pixels of the bottom-left grid-spacing label, outside the model and grid. <a href="beartrap.png">Open the verified render.</a></li>
+<li>Normal-pass CPU time rises from 2.094 to 2.609 CPU seconds (24.6%). This reduces latency at the cost of more CPU time. Median viewer peak private commit is 9.523 → 9.524 GiB.</li></ul>
+<h2>Other models</h2><table><thead><tr><th>Workload</th><th>Baseline</th><th>Optimised</th><th>Time change</th></tr></thead><tbody><tr><td>Bennu: forced normal replay</td><td>551.52 ms</td><td>243.02 ms</td><td>-55.9%</td></tr><tr><td>Bennu: complete import</td><td>2039.07 ms</td><td>1780.92 ms</td><td>-12.7%</td></tr><tr><td>BusGameMap: forced normal replay</td><td>19.86 ms</td><td>11.36 ms</td><td>-42.8%</td></tr><tr><td>BusGameMap: complete import</td><td>110.96 ms</td><td>113.73 ms</td><td>+2.5%</td></tr></tbody></table>
+<p>Bennu has 17,866,836 triangles; BusGameMap has 1,054,542. These are three pairs per workload, except the Bus import follow-up, which uses ten pairs. Bus supplies complete normals, so import skips generation. Its forced replay improves, but import is 2.77 ms slower in the follow-up. No import gain is claimed for this model. The initial three-pair Bus comparison is also retained in the results.</p>
+<h2>Separate diagnostic trace</h2><p>One instrumented viewer launch per build. These runs are separate from the native viewer comparison above. Nested and concurrent phases overlap.</p>
+<table><thead><tr><th>Phase</th><th>Baseline</th><th>Optimised</th></tr></thead><tbody><tr><td><code>normal_clear</code></td><td>0.104 s</td><td>0.078 s</td></tr><tr><td><code>normal_face_accumulation</code></td><td>1.693 s</td><td>0.561 s</td></tr><tr><td><code>normal_vertex_normalize</code></td><td>0.241 s</td><td>0.077 s</td></tr><tr><td><code>normal_generation</code></td><td>2.040 s</td><td>0.717 s</td></tr><tr><td><code>cpu_import</code></td><td>10.083 s</td><td>8.834 s</td></tr><tr><td><code>post_annotation_cache</code></td><td>4.150 s</td><td>4.084 s</td></tr><tr><td><code>post_point_preparation</code></td><td>3.722 s</td><td>3.574 s</td></tr><tr><td><code>post_load_cpu_total</code></td><td>4.758 s</td><td>4.656 s</td></tr></tbody></table>
+<p>The first scene frame completes on the GPU at 10.993 → 9.641 seconds in this trace. Normal generation falls from 2.040 to 0.717 seconds. Post-load CPU work is nearly unchanged, at 4.758 → 4.656 seconds. The main gain is before the first scene frame.</p>
+<h2>Trials</h2><table><thead><tr><th>Change tested</th><th>Paired median</th><th>Pairs</th><th>Decision</th></tr></thead><tbody><tr><td>Parallel face pass, ordered merge</td><td>2.447 → 1.142 s</td><td>1</td><td>Kept</td></tr><tr><td>Four-face SIMD</td><td>1.252 → 1.100 s</td><td>2</td><td>Kept</td></tr><tr><td>Small serial face batches</td><td>1.127 → 1.219 s</td><td>2</td><td>Rejected: slower</td></tr><tr><td>Overlap calculation and ordered merge</td><td>1.062 → 0.900 s</td><td>2</td><td>Kept</td></tr><tr><td>Atomic batch hand-off and four workers</td><td>0.932 → 0.859 s</td><td>2</td><td>Kept</td></tr></tbody></table>
+<p>Each trial compares the new candidate with the retained version at that point. They are separate runs and must not be combined into a cumulative timing. The final comparison at the top uses the unchanged baseline and the final implementation.</p>
+<h2>Repeat the comparison</h2><p>Preserve the baseline Release binary directory from <code>bb97114f34744c42f2dd19775793c769e797b548</code>. Add the same <code>normals.cpp</code> harness and its CMake target to the baseline; retain that revision�s profiling generator. Use the <code>vs2026-vcpkg</code> preset, Release configuration, <code>WOBY_BUILD_OBJ_PROFILE=ON</code> and <code>WOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON</code>.</p>
+<pre>uv run experiments/obj-profile/annotation_compare.py BASELINE_BIN CANDIDATE_BIN D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj --output NEW_CAPTURE_DIRECTORY --rounds 3 --modes normals,import,viewer</pre>
+<p>Use <code>--rounds 1 --modes traced-viewer</code> in a separate directory for phase diagnostics. The runner rejects samples that overlap compiler, test-runner or other viewer processes. Output validation is outside the measured intervals.</p>
+<p><strong>Scope:</strong> three triangle models, one Windows machine, warm input, Release build. The SIMD gain is measured on x64. No cold-storage or other-CPU speedup is claimed.</p>
+<footer>AMD Ryzen 7 5800H · 16 logical CPUs · 64 GiB RAM · RTX 3070 Laptop GPU<br>
+BearTrap: 75,771,986 triangles · 38,414,391 render vertices · 7,108,991,827 source bytes<br>
+Model SHA-256: <code>7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329</code><br>
+<a href="results.json">Measurements and provenance</a> · <a href="validation.txt">Build and test validation</a><br>
+Raw captures: <code>D:\.worktree\woby-annotation-35ac\build\normals-20261016</code></footer></main></html>

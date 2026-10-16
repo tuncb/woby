@@ -11,6 +11,7 @@ EXE = Path(sys.argv.pop(1)).resolve(strict=True)
 DIAGNOSTIC = Path(sys.argv.pop(1)).resolve(strict=True) if len(sys.argv) > 1 else None
 UV_CHECK = Path(sys.argv.pop(1)).resolve(strict=True) if len(sys.argv) > 1 else None
 UV_PTR = Path(sys.argv.pop(1)).resolve(strict=True) if len(sys.argv) > 1 else None
+NORMALS = Path(sys.argv.pop(1)).resolve(strict=True) if len(sys.argv) > 1 else None
 
 
 def test_triangle_and_seam_geometry():
@@ -30,6 +31,18 @@ def test_triangle_and_seam_geometry():
         checks.assertEqual(loaded["geometry"]["vertices"], 5)
         checks.assertEqual(loaded["geometry"]["triangles"], 2)
         checks.assertEqual(loaded["geometry"], prepared["geometry"])
+        if NORMALS:
+            normals = json.loads(subprocess.check_output([str(NORMALS), str(path), "2"], text=True))
+            checks.assertEqual(normals["vertices"], 5)
+            checks.assertEqual(normals["triangles"], 2)
+            checks.assertGreater(normals["import_ms"], 0)
+            checks.assertEqual(len(normals["records"]), 2)
+            checks.assertEqual(normals["records"][0]["normal_digest"], normals["records"][1]["normal_digest"])
+            checks.assertTrue(all(row["wall_ms"] > 0 and row["cpu_ms"] >= 0 for row in normals["records"]))
+            for rounds in ("0", "21"):
+                rejected = subprocess.run([str(NORMALS), str(path), rounds], capture_output=True, text=True)
+                checks.assertNotEqual(rejected.returncode, 0)
+                checks.assertIn("Rounds must be between", rejected.stderr)
         if UV_PTR:
             direct = json.loads(subprocess.check_output([str(UV_PTR), "load", str(path), "1"], text=True))
             checks.assertEqual(loaded["geometry"], direct["geometry"])

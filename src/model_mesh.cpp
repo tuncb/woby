@@ -9,6 +9,10 @@
 #include <stdexcept>
 #include <utility>
 
+#if defined(__AVX2__)
+#include <immintrin.h>
+#endif
+
 namespace woby {
 Mesh::Mesh(const Mesh& other)
     : storage(other.storage), draft(other.draft ? std::make_unique<MeshGeometry>(*other.draft) : nullptr),
@@ -142,6 +146,46 @@ void normalize(std::array<float, 3>& value)
     value[0] /= length;
     value[1] /= length;
     value[2] /= length;
+}
+
+void calculateFaceNormals(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices,
+    size_t first, size_t count, std::array<float, 3>* output)
+{
+    size_t face = 0;
+#if defined(__AVX2__)
+    // Four independent faces share the square root and division instructions.
+    // Keep the scalar expression order and exact division, including its fallback.
+    for (; face + 4 <= count; face += 4) {
+        const size_t index = (first + face) * 3;
+        const auto position = [&](size_t corner, size_t axis) {
+            return _mm_setr_ps(vertices[indices[index + corner]].position[axis],
+                vertices[indices[index + 3 + corner]].position[axis],
+                vertices[indices[index + 6 + corner]].position[axis],
+                vertices[indices[index + 9 + corner]].position[axis]);
+        };
+        const auto ax = position(0, 0), ay = position(0, 1), az = position(0, 2);
+        const auto bx = _mm_sub_ps(position(1, 0), ax), by = _mm_sub_ps(position(1, 1), ay), bz = _mm_sub_ps(position(1, 2), az);
+        const auto cx = _mm_sub_ps(position(2, 0), ax), cy = _mm_sub_ps(position(2, 1), ay), cz = _mm_sub_ps(position(2, 2), az);
+        auto x = _mm_sub_ps(_mm_mul_ps(by, cz), _mm_mul_ps(bz, cy));
+        auto y = _mm_sub_ps(_mm_mul_ps(bz, cx), _mm_mul_ps(bx, cz));
+        auto z = _mm_sub_ps(_mm_mul_ps(bx, cy), _mm_mul_ps(by, cx));
+        const auto length = _mm_sqrt_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(x, x), _mm_mul_ps(y, y)), _mm_mul_ps(z, z)));
+        const auto valid = _mm_and_ps(_mm_cmpgt_ps(length, _mm_set1_ps(0.000001f)),
+            _mm_cmple_ps(length, _mm_set1_ps(std::numeric_limits<float>::max())));
+        const auto divisor = _mm_blendv_ps(_mm_set1_ps(1), length, valid);
+        x = _mm_div_ps(_mm_and_ps(x, valid), divisor);
+        y = _mm_div_ps(_mm_blendv_ps(_mm_set1_ps(1), y, valid), divisor);
+        z = _mm_div_ps(_mm_and_ps(z, valid), divisor);
+        float xs[4], ys[4], zs[4];
+        _mm_storeu_ps(xs, x); _mm_storeu_ps(ys, y); _mm_storeu_ps(zs, z);
+        for (size_t lane = 0; lane < 4; ++lane) { output[face + lane] = {xs[lane], ys[lane], zs[lane]}; }
+    }
+#endif
+    for (; face < count; ++face) {
+        const size_t index = (first + face) * 3;
+        output[face] = calculateFaceNormal(vertices[indices[index]].position,
+            vertices[indices[index + 1]].position, vertices[indices[index + 2]].position);
+    }
 }
 
 bool hasCompleteNormals(const std::vector<Vertex>& vertices)
@@ -448,31 +492,79 @@ void generateSmoothNormals(std::vector<Vertex>& vertices, const std::vector<uint
     const ModelLoadProgressCallback& progress)
 {
     const auto total = vertices.size() * 2 + indices.size();
-    size_t completed = 0;
-    for (auto& vertex : vertices) {
-        if (completed % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::normals, completed, total); }
-        vertex.normal = {0.0f, 0.0f, 0.0f};
-        ++completed;
-    }
+    const auto caller = std::this_thread::get_id();
+    const auto vertexPass = [&](size_t offset, const auto& operation) {
+        std::atomic<size_t> finished{0};
+        parallelWorkBatches(vertices.size(), 16384, [&] {
+            // Load callbacks belong to the caller. A thrown cancellation joins
+            // all helpers before the caller can release the mesh.
+            if (progress && std::this_thread::get_id() == caller) {
+                reportModelLoadProgress(progress, ModelLoadStage::normals,
+                    offset + finished.load(std::memory_order_relaxed), total);
+            }
+        }, [&](size_t begin, size_t end) {
+            for (size_t i = begin; i < end; ++i) { operation(vertices[i].normal); }
+            finished.fetch_add(end - begin, std::memory_order_relaxed);
+        }, 131072);
+    };
+    vertexPass(0, [](auto& normal) { normal = {0.0f, 0.0f, 0.0f}; });
+    size_t completed = vertices.size();
 
-    for (size_t index = 0; index + 2 < indices.size(); index += 3u) {
-        if (index % 49152 == 0) { reportModelLoadProgress(progress, ModelLoadStage::normals, completed + index, total); }
-        Vertex& a = vertices[indices[index + 0u]];
-        Vertex& b = vertices[indices[index + 1u]];
-        Vertex& c = vertices[indices[index + 2u]];
-
-        const auto faceNormal = calculateFaceNormal(a.position, b.position, c.position);
-        add(a.normal, faceNormal);
-        add(b.normal, faceNormal);
-        add(c.normal, faceNormal);
+    const size_t faceCount = indices.size() / 3;
+    constexpr size_t faceBatchSize = 16384;
+    if (faceCount < faceBatchSize) {
+        reportModelLoadProgress(progress, ModelLoadStage::normals, completed, total);
+        for (size_t face = 0; face < faceCount; ++face) {
+            const size_t index = face * 3;
+            Vertex& a = vertices[indices[index]], &b = vertices[indices[index + 1]], &c = vertices[indices[index + 2]];
+            const auto normal = calculateFaceNormal(a.position, b.position, c.position);
+            add(a.normal, normal); add(b.normal, normal); add(c.normal, normal);
+        }
+    } else {
+        // Each live batch uses 192 KiB. Three helpers plus the caller overlap face
+        // calculation with ordered accumulation, with no full-mesh scratch buffer.
+        std::atomic<size_t> nextFace{0};
+        constexpr size_t canceled = std::numeric_limits<size_t>::max();
+        const auto fail = [&] {
+            nextFace.store(canceled, std::memory_order_release);
+            nextFace.notify_all();
+        };
+        parallelWorkBatches(faceCount, faceBatchSize, [&] {
+            try {
+                const size_t finished = nextFace.load(std::memory_order_relaxed);
+                if (finished != canceled && progress && std::this_thread::get_id() == caller) {
+                    reportModelLoadProgress(progress, ModelLoadStage::normals, completed + finished * 3, total);
+                }
+            } catch (...) { fail(); throw; }
+        }, [&](size_t begin, size_t end) {
+            try {
+                std::array<std::array<float, 3>, faceBatchSize> faceNormals;
+                calculateFaceNormals(vertices, indices, begin, end - begin, faceNormals.data());
+                // Acquire the preceding batch's writes before adding to shared
+                // vertices. Face and corner order match the serial algorithm.
+                for (size_t ready = nextFace.load(std::memory_order_acquire); ready != begin;
+                     ready = nextFace.load(std::memory_order_acquire)) {
+                    if (ready == canceled) { return; }
+                    nextFace.wait(ready, std::memory_order_acquire);
+                }
+                for (size_t face = begin; face < end; ++face) {
+                    const size_t index = face * 3;
+                    const auto& normal = faceNormals[face - begin];
+                    add(vertices[indices[index]].normal, normal);
+                    add(vertices[indices[index + 1]].normal, normal);
+                    add(vertices[indices[index + 2]].normal, normal);
+                }
+                // A cancellation can arrive during accumulation. Never overwrite
+                // its sentinel: all waiting batches must wake and leave.
+                size_t expected = begin;
+                nextFace.compare_exchange_strong(expected, end, std::memory_order_release, std::memory_order_relaxed);
+                nextFace.notify_all();
+            } catch (...) { fail(); throw; }
+        }, 131072, 3);
     }
 
     completed += indices.size();
-    for (auto& vertex : vertices) {
-        if (completed % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::normals, completed, total); }
-        normalize(vertex.normal);
-        ++completed;
-    }
+    vertexPass(completed, [](auto& normal) { normalize(normal); });
     reportModelLoadProgress(progress, ModelLoadStage::normals, total, total);
 }
 
