@@ -2,6 +2,17 @@
 
 Notable changes by release tag. Versions with no notable changes are omitted.
 
+## v0.30.0
+
+- Added VTK ASCII unstructured grids with linear and quadratic tetrahedra, including importer support.
+- Added OBJ vertex colors and manual color overrides saved in scenes.
+- Added actions to align selected object origins and arrange selected objects in a row.
+- Added length and area measurements to annotation properties.
+- Kept large model loads responsive with background preparation and streamed GPU uploads.
+- Accelerated OBJ parsing, normal generation, annotation and point preparation, and spatial sorting.
+- Reduced delays when selecting large models.
+- Added AVX2 and Apple NEON acceleration. x64 systems now require AVX2; supported CPUs use AVX-512 for coordinate rebasing.
+
 ## v0.29.0
 
 - Added recent scene and model file menus.
