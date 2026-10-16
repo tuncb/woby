@@ -2,6 +2,7 @@
 
 #include "obj_mesh.h"
 #include "scene_buffer_size.h"
+#include "parallel_work.h"
 #include <rapidobj/rapidobj.hpp>
 #include <rapidobj/prototype.hpp>
 #include <algorithm>
@@ -44,6 +45,15 @@ using Clock = std::chrono::steady_clock;
 inline double elapsed(Clock::time_point start) {
     return std::chrono::duration<double,std::milli>(Clock::now()-start).count();
 }
+struct FaceResolutionTimes {
+    double allocate = 0, discover = 0, count = 0, assign = 0, output = 0, merge = 0, bounds = 0;
+    size_t scanned = 0, scratchBytes = 0;
+};
+template<bool Precise>
+inline FaceResolutionTimes resolveParallelFaces(const rapidobj::Result& result, Table& table,
+    MeshGeometry& geometry, SourceMeshData& source, const rapidobj::GeometryBuffers* buffers,
+    const ModelLoadProgressCallback& progress, size_t corners, bool deferred, size_t workers,
+    size_t discoverySize = 1024, size_t totalIndices = 0);
 inline size_t hashKey(const Key& key) {
     uint64_t hash = uint64_t(static_cast<uint32_t>(key.position))*0x9e3779b185ebca87ull;
     hash ^= uint64_t(static_cast<uint32_t>(key.normal))*0xc2b2ae3d27d4eb4full;
@@ -199,7 +209,18 @@ inline void resolveFaceIndices(const rapidobj::Result& result, Table& table,
 template<bool Precise>
 inline void resolveFaces(const rapidobj::Result& result, Table& table,
     MeshGeometry& geometry, SourceMeshData& source, const rapidobj::GeometryBuffers* buffers,
-    const ModelLoadProgressCallback& progress, size_t corners, bool deferred, size_t totalIndices = 0) {
+    const ModelLoadProgressCallback& progress, size_t corners, bool deferred, size_t totalIndices = 0,
+    ObjCornerMappingMetrics* metrics = nullptr) {
+    const auto active = analysisWorkerCount.load(std::memory_order_relaxed);
+    const auto limit = analysisWorkerLimit();
+    const size_t workers = std::min(8u,1u+(limit > active ? limit-active : 0u));
+    // Small jobs and busy worker budgets keep the single-pass resolver.
+    if (corners >= 1048576 && sourcePositions(source).size() >= 65536 && workers >= 4) {
+        const auto times = resolveParallelFaces<Precise>(result,table,geometry,source,buffers,
+            progress,corners,deferred,workers,1024,totalIndices);
+        if (metrics) { metrics->resolveWorkers = workers; metrics->resolveScratchBytes = times.scratchBytes; }
+        return;
+    }
     table.primary.resize(sourcePositions(source).size());
     table.seams.reserve(std::min({sourcePositions(source).size(),corners,size_t{1024}}));
     geometry.indices.resize(corners);
@@ -373,7 +394,7 @@ inline void buildGeometry(rapidobj::Result& result, MeshGeometry& geometry, Sour
     }
     if (!totalIndices) { return; } // Freeform-only files have no OBJ primitive IDs.
     Table table;
-    resolveFaces<Precise>(result,table,geometry,source,buffers,progress,corners,deferred,totalIndices);
+    resolveFaces<Precise>(result,table,geometry,source,buffers,progress,corners,deferred,totalIndices,&metrics);
     if (counts.lineIndices || counts.pointIndices) {
         resolvePrimitives<Precise>(result,table,geometry,progress,corners,totalIndices);
     }
@@ -424,3 +445,5 @@ inline void buildGeometry(rapidobj::Result& result, MeshGeometry& geometry, Sour
     metrics.gatherWorkers = std::max(metrics.gatherWorkers,seamWorkers); metrics.seamGatherMs = elapsed(start);
 }
 } // namespace woby::obj_mapping
+
+#include "obj_corner_mapping_parallel.h"

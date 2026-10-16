@@ -92,6 +92,8 @@ int run(bool prototype, const std::filesystem::path& path, size_t workers, bool 
             metrics.peakInflightTextBytes = std::max(metrics.peakInflightTextBytes, current.peakInflightTextBytes);
             const auto& mapping = current.mapping;
             metrics.mapping.staged = metrics.mapping.staged || mapping.staged;
+            metrics.mapping.resolveWorkers = std::max(metrics.mapping.resolveWorkers,mapping.resolveWorkers);
+            metrics.mapping.resolveScratchBytes += mapping.resolveScratchBytes;
             metrics.mapping.gatherWorkers = std::max(metrics.mapping.gatherWorkers,mapping.gatherWorkers);
             metrics.mapping.primaryCapacityBytes += mapping.primaryCapacityBytes;
             metrics.mapping.keyCapacityBytes += mapping.keyCapacityBytes;
@@ -131,6 +133,7 @@ int run(bool prototype, const std::filesystem::path& path, size_t workers, bool 
             result["deferred"] = deferred;
             const auto& m = metrics.mapping;
             result["corner_mapping"] = {{"staged",m.staged},{"gather_workers",m.gatherWorkers},
+                {"resolve_workers",m.resolveWorkers},{"resolve_scratch_bytes",m.resolveScratchBytes},
                 {"primary_capacity_bytes",m.primaryCapacityBytes},{"key_capacity_bytes",m.keyCapacityBytes},
                 {"bucket_capacity_bytes",m.bucketCapacityBytes},{"seam_vertices",m.seamVertices},{"released_triangle_bytes",m.releasedTriangleBytes},
                 {"vertex_capacity_bytes",m.vertexCapacityBytes},{"position_map_capacity_bytes",m.positionMapCapacityBytes},

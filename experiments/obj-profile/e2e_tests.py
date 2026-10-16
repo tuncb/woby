@@ -17,10 +17,19 @@ from e2e_analyze import percentile, native_first_frame_bounds
 from e2e_hardware import sample_thread_ids
 from e2e_nsys import pair_packets, event_association
 from e2e_evidence import vtune_rows
-from annotation_compare import sample_metrics
+from annotation_compare import sample_metrics, viewer_contention
 
 
 class TraceReadTests(unittest.TestCase):
+    def test_completed_viewer_identity_removes_only_owned_launch_races(self):
+        processes = {11: {"pid": 11, "name": "woby.exe"}, 12: {"pid": 12, "name": "woby.exe"},
+                     13: {"pid": 13, "name": "woby.exe"}, 14: {"pid": 14, "name": "cl.exe"}}
+        filtered = viewer_contention(processes, {"launcher_pid": 11, "pid": 12})
+        self.assertEqual(filtered, {pid: processes[pid] for pid in (13, 14)})
+        self.assertEqual(len(processes), 4)
+        self.assertEqual(viewer_contention(processes, {}), processes)
+        self.assertEqual(viewer_contention({11: processes[11]}, {"pid": 11, "launcher_pid": 11}), {})
+
     def test_import_and_normal_comparisons_keep_measurement_boundaries_and_identity(self):
         imported = sample_metrics("import", {"cpu_load_ms": 15, "peak_commit_bytes": 200,
             "fingerprint": 123, "color_fingerprint": 456})

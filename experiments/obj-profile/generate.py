@@ -90,6 +90,13 @@ def generate(root, output, reference=False):
 
     # Diagnostics count the common resolver, including explicit primitives.
     text = (root / "src/obj_corner_mapping.h").read_text(encoding="utf-8")
+    # Probe counters mutate one table. Keep this diagnostic variant serial.
+    text = replace(text, '    const size_t workers = std::min(8u,1u+(limit > active ? limit-active : 0u));',
+                   '''    const size_t workers = std::min(8u,1u+(limit > active ? limit-active : 0u))
+#ifdef OBJ_PROFILE_DIAGNOSTIC
+        * 0 + 1
+#endif
+        ;''')
     text = replace(text, '    uint32_t next = 0;', '''    uint32_t next = 0;
 #ifdef OBJ_PROFILE_DIAGNOSTIC
     uint64_t firstPositions = 0, primaryHits = 0, secondaryLookups = 0, secondaryHits = 0, probes = 0, growths = 0;

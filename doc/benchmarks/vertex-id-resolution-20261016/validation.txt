@@ -1,0 +1,93 @@
+Vertex-ID resolution validation — 2026-10-16
+Baseline: 6f81778
+Release build: cmake --build --preset vs2026-vcpkg --config Release --parallel 4
+No compiler warnings or errors. 96 default + 9 slow + 1 graphics = 106 CTest entries passed.
+All 48 OBJ contract cases passed.
+{
+  "src/obj_corner_mapping.h": "6a2196d3c4ac086591ab74e18ce3be2009cd5b4b29a744cb8a4a55fb60632b17",
+  "src/obj_corner_mapping_parallel.h": "55f7be49b5c815a6d0bbc293932215631c183bc44637591a99a9f9de97f2d6a4",
+  "src/obj_mesh.h": "91b83afee02b013651186934308df4a376d66d8051fcc69e0637f40b6bf3144f"
+}
+
+D:\.worktree\woby-annotation-35ac\id-final-build.log
+SHA-256: 61d3e13371b77e6a0e996de54d873c1d31cd51b7906e5ee7da84024aa8eb7e9c
+  woby_obj_profile_sse2.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_obj_profile_sse2.exe
+  obj_prototype_tests.cpp
+  obj_mesh_tests.cpp
+  freeform_tests.cpp
+  freeform_trim_tests.cpp
+  woby_obj_profile_avx2.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_obj_profile_avx2.exe
+  difference_mesh_tests.cpp
+  woby_obj_e2e_viewer.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_obj_e2e_viewer.exe
+  coordinate_origin_tests.cpp
+  windows_paths_tests.cpp
+  woby_obj_profile_uvcheck.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_obj_profile_uvcheck.exe
+  woby_tests.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_tests.exe
+
+D:\.worktree\woby-annotation-35ac\id-second-focused-tests.log
+SHA-256: 36e4a57872ea3151f1457d1d77750cc138756eae420144fc26d7c52e097c2429
+[doctest] doctest version is "2.5.2"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:      48 |      48 passed | 0 failed | 0 skipped
+[doctest] assertions: 1541906 | 1541906 passed | 0 failed |
+[doctest] Status: SUCCESS!
+
+D:\.worktree\woby-annotation-35ac\id-final-tests.log
+SHA-256: 0ae8d2a7e4e2a312be15595849ac4b8e6dce84c2fba4e5895172251c95a04056
+93/96 Test  #32: woby_tests::math_utils_tests .....................   Passed    0.09 sec
+94/96 Test  #23: woby_tests::hover_pick_tests .....................   Passed    0.08 sec
+95/96 Test  #58: woby_tests::shader_types_tests ...................   Passed    0.07 sec
+96/96 Test #106: woby_id_resolution_contract ......................   Passed    0.97 sec
+
+100% tests passed, 0 tests failed out of 96
+
+Label Time Summary:
+cpu     = 103.39 sec*proc (85 tests)
+unit    = 103.39 sec*proc (85 tests)
+
+Total Test time (real) =  40.19 sec
+
+D:\.worktree\woby-annotation-35ac\id-final-slow.log
+SHA-256: d692462700fa92211b492458f621e715e43d7cda4cc28620e70f32654f42b050
+7/9 Test #91: woby_runtime_build_graph ........................................................   Passed   20.68 sec
+8/9 Test  #6: command history evicts results without ever reusing admitted retry keys .........   Passed   22.52 sec
+9/9 Test #76: woby_update_helper_smoke ........................................................   Passed   82.94 sec
+
+100% tests passed, 0 tests failed out of 9
+
+Label Time Summary:
+cpu     =  40.10 sec*proc (7 tests)
+slow    = 143.72 sec*proc (9 tests)
+unit    =  40.10 sec*proc (7 tests)
+
+Total Test time (real) =  82.96 sec
+
+D:\.worktree\woby-annotation-35ac\id-final-graphics.log
+SHA-256: a573f10cd43f25c6a9cc2973c23d654eb6ffc62cfe08bd87d770d6c04a4b6cdc
+Test project D:/.worktree/woby-annotation-35ac/build/vs2026-vcpkg
+    Start 87: woby_native_device_allocations
+1/1 Test #87: woby_native_device_allocations ...   Passed    9.35 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Label Time Summary:
+graphics    =   9.35 sec*proc (1 test)
+unit        =   9.35 sec*proc (1 test)
+
+Total Test time (real) =   9.37 sec
+
+D:\.worktree\woby-annotation-35ac\id-tooling-tests.log
+SHA-256: 38331d208719cb9816bade471359655cf0810ef416d78f9b0eb71c1c7be3d110
+Test project D:/.worktree/woby-annotation-35ac/build/vs2026-vcpkg
+    Start 99: woby_obj_e2e_tooling
+1/1 Test #99: woby_obj_e2e_tooling .............   Passed   13.52 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Label Time Summary:
+cpu     =  13.52 sec*proc (1 test)
+unit    =  13.52 sec*proc (1 test)
+
+Total Test time (real) =  13.54 sec
+

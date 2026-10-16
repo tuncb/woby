@@ -55,6 +55,7 @@ struct ObjPrototypeOptions {
 };
 struct ObjCornerMappingMetrics {
     bool staged = false;
+    size_t resolveWorkers = 1, resolveScratchBytes = 0;
     size_t gatherWorkers = 0, primaryCapacityBytes = 0, keyCapacityBytes = 0, bucketCapacityBytes = 0;
     size_t seamVertices = 0, releasedTriangleBytes = 0, vertexCapacityBytes = 0, positionMapCapacityBytes = 0;
     double resolveMs = 0, releaseMs = 0, vertexAllocationMs = 0, positionMapMs = 0;

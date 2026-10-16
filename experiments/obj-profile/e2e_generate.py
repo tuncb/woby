@@ -49,6 +49,8 @@ def generate(root, output, reference=False):
          '    metrics.gatherWorkers = std::max(metrics.gatherWorkers,seamWorkers); metrics.seamGatherMs = elapsed(start);\n    obj_profile::next(measuredMapping, "mapping_lookup_release");\n    table = {};\n    obj_profile::end(measuredMapping);'),
     ])
     if not reference:
+        text = replace(text, '        const auto times = resolveParallelFaces<Precise>',
+                       '        const obj_profile::Range measuredParallel("mapping_parallel_resolution");\n        const auto times = resolveParallelFaces<Precise>')
         text = replace(text, '        resolvePrimitives<Precise>(result,table,geometry,progress,corners,totalIndices);',
                        '        const obj_profile::Range measuredPrimitives("mapping_primitive_resolution");\n        resolvePrimitives<Precise>(result,table,geometry,progress,corners,totalIndices);')
     (output / "obj_corner_mapping.h").write_text('#include "profile.h"\n' + text, encoding="utf-8")

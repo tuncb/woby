@@ -218,6 +218,20 @@ Json resolve(const rapidobj::Result& result, SourceMeshData& source, const rapid
 
 Json dispatch(std::string_view name, const rapidobj::Result& result, SourceMeshData& source,
     const rapidobj::GeometryBuffers& buffers, size_t corners, const Reference& reference) {
+    if (name.starts_with("parallel")) {
+        Table table; MeshGeometry geometry; const auto start = Clock::now();
+        ModelLoadProgressCallback progress = [](const ModelLoadProgress&) {};
+        const auto workers = std::stoull(std::string(name.substr(8)));
+        const auto dash = name.find('-');
+        const auto discoverySize = dash == std::string_view::npos ? 1024 : std::stoull(std::string(name.substr(dash+1)));
+        const auto times = resolveParallelFaces<true>(result,table,geometry,source,&buffers,progress,corners,true,workers,discoverySize);
+        const auto ms = elapsed(start);
+        validate(table.primary,table,geometry,reference,sourcePositions(source).size());
+        return {{"resolve_ms",ms},{"exact",true},{"vertices",table.next},{"seams",table.seams.size()},
+            {"allocate_ms",times.allocate},{"discover_ms",times.discover},{"count_ms",times.count},
+            {"assign_ms",times.assign},{"output_ms",times.output},{"merge_ms",times.merge},
+            {"bounds_ms",times.bounds},{"scanned_corners",times.scanned}};
+    }
     if (name == "original" || name == "production") {
         Table table; MeshGeometry geometry; const auto start = Clock::now();
         ModelLoadProgressCallback progress = [](const ModelLoadProgress&) {};
@@ -319,7 +333,7 @@ int wmain(int argc, wchar_t** argv) {
         std::vector<std::string> variants;
         for (int i = 4; i < argc; ++i) { variants.push_back(std::filesystem::path(argv[i]).string()); }
         if (variants.empty()) {
-            variants = {"original","production","aos12","aos16","packed16","reordered12","split","batch","match",
+            variants = {"original","production","parallel1","parallel4","parallel8","aos12","aos16","packed16","reordered12","split","batch","match",
                 "p4","p8","p16","p32","p64","p128","p256","uv-p16","uv-p32","uv-p64","uv-only32",
                 "uv-batch","finite","finite-batch","finite-p32"};
             if (normals.empty()) { variants.insert(variants.end(),{"compact","uv-compact","finite-compact"}); }

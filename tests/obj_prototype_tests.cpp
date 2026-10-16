@@ -338,8 +338,52 @@ TEST_CASE("OBJ gathering validates worker limits before parsing") {
     CHECK_THROWS_AS((void)woby::loadObjMeshTextPrototype("malformed",{},options),std::invalid_argument);
 }
 
+TEST_CASE("Parallel OBJ resolution keeps full meshes colors and mixed primitive identities") {
+    std::string text;
+    constexpr size_t positions = 65539, faces = 349527;
+    text.reserve(32*1024*1024);
+    for (size_t i = 0; i < positions; ++i) {
+        text += "v "+std::to_string(i%997)+" "+std::to_string(i/997)+" 0 .25 .5 .75\n";
+    }
+    text += "vt .125 .25\nvt 1e40 .5\nvn 0 0 1\nvn 0 1 0\ng mixed\n";
+    for (size_t face = 0; face < faces; ++face) {
+        if (face == 180001) { text += "g mixed\n"; }
+        text += "f";
+        for (size_t corner = 0; corner < 3; ++corner) {
+            const auto position = ((face*3+corner)*71)%65537+1;
+            text += " "+std::to_string(position)+(face%9999 == 0 ? "/2/2" : "/1/1");
+        }
+        text += '\n';
+    }
+    text += "l 2 65539 3\np 1 65538\n";
+    woby::ObjPrototypeOptions options;
+    bool deferred = false;
+    SUBCASE("immediate source indices") {}
+    SUBCASE("deferred source indices") { deferred = true; }
+    options.deferPreparation = deferred;
+    woby::ObjPrototypeMetrics serialMetrics, parallelMetrics;
+    woby::Mesh serial;
+    {
+        struct ReservedWorkers {
+            unsigned previous = woby::analysisWorkerCount.exchange(woby::analysisWorkerLimit());
+            ~ReservedWorkers() { woby::analysisWorkerCount.store(previous); }
+        } reserved;
+        serial = woby::loadObjMeshTextPrototype(text,{},options,&serialMetrics);
+    }
+    const auto parallel = woby::loadObjMeshTextPrototype(text,{},options,&parallelMetrics);
+    CHECK(serialMetrics.mapping.resolveWorkers == 1);
+    if (woby::analysisWorkerLimit() >= 3) {
+        CHECK(parallelMetrics.mapping.resolveWorkers >= 4);
+        CHECK(parallelMetrics.mapping.resolveScratchBytes > 0);
+    } else { CHECK(parallelMetrics.mapping.resolveWorkers == 1); }
+    sameMesh(serial,parallel);
+    const auto& a = woby::meshGeometry(serial); const auto& b = woby::meshGeometry(parallel);
+    CHECK(a.positionIndices == b.positionIndices);
+    CHECK(std::memcmp(a.vertices.data(),b.vertices.data(),a.vertices.size()*sizeof(woby::Vertex)) == 0);
+}
+
 namespace {
-template<bool Precise> void checkResolvedCorners(bool deferred, bool finiteUvs) {
+template<bool Precise> void checkResolvedCorners(bool deferred, bool finiteUvs, bool parallel = false) {
     std::vector<woby::Coordinate> positions(37), normals;
     std::vector<std::array<double,2>> uvs{{.125,.25},
         {std::numeric_limits<double>::quiet_NaN(),.5}, {std::numeric_limits<double>::infinity(),.5},
@@ -358,7 +402,7 @@ template<bool Precise> void checkResolvedCorners(bool deferred, bool finiteUvs) 
     std::vector<woby::MeshNode> nodes;
     // Empty shapes and both sides of the prefetch and progress boundaries.
     for (const size_t count : {size_t{0},size_t{1},size_t{31},size_t{32},size_t{33},
-        size_t{63},size_t{64},size_t{65},size_t{16385},size_t{2},size_t{0}}) {
+        size_t{63},size_t{64},size_t{65},size_t{16385},size_t{65535},size_t{65536},size_t{65537},size_t{2},size_t{0}}) {
         const auto shapeIndex = input.shapes.size();
         auto& shape = input.shapes.emplace_back();
         shape.mesh.indices = rapidobj::Array<rapidobj::Index>(count);
@@ -389,7 +433,11 @@ template<bool Precise> void checkResolvedCorners(bool deferred, bool finiteUvs) 
     const auto progress = [&](const woby::ModelLoadProgress& p) {
         CHECK(std::this_thread::get_id() == caller); CHECK(p.completed <= p.total); ++callbacks;
     };
-    woby::obj_mapping::resolveFaces<Precise>(input,table,geometry,source,&buffers,progress,expected.size(),deferred);
+    if (parallel) {
+        woby::obj_mapping::resolveParallelFaces<Precise>(input,table,geometry,source,&buffers,progress,expected.size(),deferred,8);
+    } else {
+        woby::obj_mapping::resolveFaces<Precise>(input,table,geometry,source,&buffers,progress,expected.size(),deferred);
+    }
     CHECK(callbacks > 0);
     CHECK(geometry.indices == expected); CHECK(table.next == firstUse.size());
     CHECK(source.indices == (deferred ? std::vector<uint32_t>{} : sourceIndices));
@@ -399,6 +447,80 @@ template<bool Precise> void checkResolvedCorners(bool deferred, bool finiteUvs) 
         CHECK(geometry.nodes[i].indexOffset == nodes[i].indexOffset);
         CHECK(geometry.nodes[i].indexCount == nodes[i].indexCount);
         CHECK(geometry.nodes[i].hasTexcoords == nodes[i].hasTexcoords);
+    }
+}
+
+TEST_CASE("Parallel OBJ discovery preserves ordered IDs seams and group UV flags") {
+    bool finiteUvs = false;
+    SUBCASE("non-finite UV values") {}
+    SUBCASE("finite UV values and missing corners") { finiteUvs = true; }
+    for (const bool deferred : {false,true}) {
+        checkResolvedCorners<true>(deferred,finiteUvs,true);
+        checkResolvedCorners<false>(deferred,finiteUvs,true);
+    }
+}
+
+TEST_CASE("Parallel OBJ discovery joins workers on cancellation and invalid positions") {
+    woby::SourceMeshData source; source.draftPositions.resize(65539);
+    rapidobj::Result input; auto& shape = input.shapes.emplace_back();
+    constexpr size_t count = 262147;
+    shape.mesh.indices = rapidobj::Array<rapidobj::Index>(count);
+    for (size_t i = 0; i < count; ++i) { shape.mesh.indices[i] = {static_cast<int>((i*71)%65537),-1,-1}; }
+    size_t cancelCall = 0; bool cancelOutput = false, invalid = false;
+    SUBCASE("negative position") { shape.mesh.indices[count-1].position_index = -1; invalid = true; }
+    SUBCASE("position beyond source") { shape.mesh.indices[count-1].position_index = 65539; invalid = true; }
+    SUBCASE("first callback") { cancelCall = 1; }
+    SUBCASE("partition callback") { cancelCall = 8; }
+    SUBCASE("discovery callback") { cancelCall = 64; }
+    SUBCASE("index output callback") { cancelOutput = true; }
+    const auto active = woby::analysisWorkerCount.load();
+    const auto caller = std::this_thread::get_id();
+    size_t callbacks = 0, completed = 0;
+    woby::obj_mapping::Table table; woby::MeshGeometry geometry;
+    const auto progress = [&](const woby::ModelLoadProgress& p) {
+        CHECK(std::this_thread::get_id() == caller);
+        CHECK(p.completed >= completed); completed = p.completed;
+        CHECK(p.total == count+9);
+        if (++callbacks == cancelCall || (cancelOutput && p.completed)) { throw std::runtime_error("cancel parallel IDs"); }
+    };
+    CHECK_THROWS_WITH(woby::obj_mapping::resolveParallelFaces<false>(input,table,geometry,source,nullptr,
+        progress,count,false,8,1024,count+9),invalid ? "OBJ contains an invalid source position index." : "cancel parallel IDs");
+    CHECK(woby::analysisWorkerCount.load() == active);
+    // A failed operation must not leave helper capacity reserved.
+    shape.mesh.indices[count-1].position_index = 0;
+    table = {}; geometry = {};
+    CHECK_NOTHROW(woby::obj_mapping::resolveParallelFaces<false>(input,table,geometry,source,nullptr,{},count,false,8));
+    CHECK(woby::analysisWorkerCount.load() == active);
+}
+
+TEST_CASE("Parallel OBJ discovery handles empty input dense first uses and capacity limits") {
+    woby::SourceMeshData source;
+    rapidobj::Result input;
+    woby::obj_mapping::Table table; woby::MeshGeometry geometry;
+    CHECK_NOTHROW(woby::obj_mapping::resolveParallelFaces<false>(input,table,geometry,source,nullptr,{},0,true,8));
+    CHECK(table.next == 0); CHECK(geometry.indices.empty()); CHECK(geometry.nodes.empty());
+    CHECK_THROWS_AS(woby::obj_mapping::resolveParallelFaces<false>(input,table,geometry,source,nullptr,{},0,true,0),std::invalid_argument);
+    CHECK_THROWS_AS(woby::obj_mapping::resolveParallelFaces<false>(input,table,geometry,source,nullptr,{},0,true,9),std::invalid_argument);
+    CHECK_THROWS_AS(woby::obj_mapping::resolveParallelFaces<false>(input,table,geometry,source,nullptr,{},0,true,8,0),std::invalid_argument);
+    CHECK_THROWS_WITH(woby::obj_mapping::resolveParallelFaces<false>(input,table,geometry,source,nullptr,{},
+        size_t(std::numeric_limits<woby::SceneBufferSize>::max())/sizeof(uint32_t)+1,true,8),
+        "Scene exceeds the supported 32-bit GPU buffer size.");
+    constexpr size_t count = 131075;
+    source.draftPositions.resize(count+1);
+    input.shapes.emplace_back().mesh.indices = rapidobj::Array<rapidobj::Index>(count);
+    std::vector<uint32_t> expected(count);
+    for (size_t i = 0; i < count; ++i) {
+        input.shapes[0].mesh.indices[i] = {static_cast<int>(count-i),-1,-1};
+        expected[i] = static_cast<uint32_t>(i);
+    }
+    for (const size_t workers : {size_t{1},size_t{8}}) {
+        table = {}; geometry = {};
+        woby::obj_mapping::resolveParallelFaces<false>(input,table,geometry,source,nullptr,{},count,true,workers);
+        CHECK(geometry.indices == expected); CHECK(table.next == count); CHECK(table.seams.empty());
+        CHECK(table.primary[0].id == woby::obj_mapping::empty);
+        bool exact = true;
+        for (size_t i = 0; i < count; ++i) { exact = exact && table.primary[count-i].id == (static_cast<uint32_t>(i)|woby::obj_mapping::invalidUv); }
+        CHECK(exact);
     }
 }
 } // namespace

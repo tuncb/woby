@@ -35,7 +35,7 @@ def check_fixture(executable, mode):
         assert rows[0]["corners"] == 291
         assert rows[0]["positions"] == 37
         measured = [row for row in rows if "variant" in row]
-        assert {"original", "production", "uv-p32", "finite-batch"} <= {row["variant"] for row in measured}
+        assert {"original", "production", "parallel1", "parallel4", "parallel8", "uv-p32", "finite-batch"} <= {row["variant"] for row in measured}
         assert all(row["exact"] and row["resolve_ms"] >= 0 for row in measured)
         assert len({row["vertices"] for row in measured}) == 1
         saved = output.read_bytes()

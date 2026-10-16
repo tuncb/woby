@@ -36,6 +36,13 @@ def sample_metrics(mode, result):
     return measured
 
 
+def viewer_contention(contention, result):
+    # A child can start between the process-tree read and the competitor scan.
+    # The completed capture supplies its identity even after that child exits.
+    owned = {result.get("pid"), result.get("launcher_pid")}
+    return {pid: item for pid, item in contention.items() if pid not in owned}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("baseline", type=Path, help="Preserved baseline binary directory")
@@ -105,6 +112,7 @@ def main():
                     if viewer:
                         if result.get("error"):
                             raise RuntimeError(result["error"])
+                        contention = viewer_contention(contention, result)
                         elapsed = result["load_rpc_ms"]
                     else:
                         measured = sample_metrics(mode, result)
