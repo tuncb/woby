@@ -1791,7 +1791,9 @@ try
     c.stats.presentationSubmitted = swap.render_view != nullptr;
     c.stats.drawableWidth = swap.render_view ? swap.extent.x : 0;
     c.stats.drawableHeight = swap.render_view ? swap.extent.y : 0;
-    const auto *displayMode = c.window ? SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(c.window)) : nullptr;
+    // SDL caches the desktop mode; querying the current mode can enumerate fullscreen modes.
+    // Resolve the window's display each frame so pacing follows monitor changes.
+    const auto *displayMode = c.window ? SDL_GetDesktopDisplayMode(SDL_GetDisplayForWindow(c.window)) : nullptr;
     c.stats.displayRefreshRate = displayMode ? displayMode->refresh_rate : 0.0;
     c.stats.mailboxPresentation = false;
     c.stats.pacingPeriodNanoseconds = 0;
