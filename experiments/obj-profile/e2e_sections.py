@@ -66,7 +66,7 @@ def detailed_sections(evidence, native, hardware, example, output, table, save):
     sections['workers']+=table(['Parser worker in branch profile','Wall s','CPU s','Read submit/wait s','Cycle samples','Estimated IPC'],[[
         w['thread_id'],fmt(w['wall_ms']/1000),fmt(w['caller_cpu_ms']/1000),fmt(w['io_submit_wait_ms']/1000),
         int(w.get('counts',{}).get('076:00',{}).get('samples',0)),fmt(w.get('ipc_estimate'),2)] for w in hardware['branch'].get('parser_worker_counters',[])])+'''<p>Read submit/wait time is measured around the worker's file API calls. It does not include decode time. Parser worker intervals are separate from the waiting parent. Their CPU times and counter samples must be evaluated per thread.</p>'''
-    selected=['parser_scan_collect','parser_merge_execute','mapping_id_resolution','mapping_primary_gather','normal_face_accumulation','normal_vertex_normalize','post_source_indices','post_original_bounds','point_range_bounds','point_morton_keys','point_radix_sort','point_tree_build','annotation_blocks_fingerprints','annotation_morton_keys','annotation_radix_sort','annotation_tree_build']
+    selected=['parser_scan_collect','parser_merge_execute','mapping_id_resolution','mapping_primary_gather','normal_face_accumulation','normal_vertex_normalize','post_source_indices','post_original_bounds','point_range_bounds','point_morton_keys','point_radix_sort','point_tree_build','annotation_blocks_fingerprints','annotation_bounds','annotation_fingerprints','annotation_morton_keys','annotation_radix_sort','annotation_tree_build']
     metrics=[]
     for name in selected:
         cache=next((s for s in hardware['cache']['stages'] if s['name']==name),None)

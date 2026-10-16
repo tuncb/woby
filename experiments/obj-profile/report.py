@@ -113,7 +113,8 @@ def main():
             io_rows.append([mode, workers, f'{wall/1000:.3f}', f'{min(times)/1000:.3f}–{max(times)/1000:.3f}', f'{rate:.2f}'])
     annotation = data["annotation"]["records"][0]
     annotation_rows = [[name, f'{value(annotation,name)/1000:.3f}'] for name in (
-        "annotation_cache", "annotation_blocks_fingerprints", "annotation_morton_keys", "annotation_radix_sort", "annotation_tree_build")]
+        "annotation_cache", "annotation_blocks_fingerprints", "annotation_bounds", "annotation_fingerprints",
+        "annotation_morton_keys", "annotation_radix_sort", "annotation_tree_build") if name in phases(annotation)]
     peak = statistics.median(next(event["process_peak_working_set"] for event in record["events"] if event["name"] == "cpu_import") for record in baseline)
     retained = geometry["retained_buffer_capacity_bytes"]
     actual = geometry["vertex_bytes"] + geometry["index_bytes"] * 2 + geometry["vertices"] * 4 + geometry["source_positions"] * 24

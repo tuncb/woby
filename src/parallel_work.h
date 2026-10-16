@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <exception>
+#include <limits>
 #include <mutex>
 #include <stdexcept>
 #include <stop_token>
@@ -24,13 +25,15 @@ inline unsigned analysisWorkerLimit()
 
 // The check function can run on any worker. Exceptions stop the queue and are
 // rethrown only after all workers join. Nested jobs use the same worker budget.
+// A local helper cap leaves capacity for another branch without reserving idle
+// workers or increasing the shared limit. Zero keeps all work on the caller.
 template <typename Check, typename Function>
 void parallelWorkBatches(size_t count, size_t batchSize, const Check& checkCanceled, const Function& function,
-    size_t minimumParallelCount = 4096)
+    size_t minimumParallelCount = 4096, unsigned maximumHelpers = std::numeric_limits<unsigned>::max())
 {
     if (batchSize == 0) { throw std::invalid_argument("Analysis batch size must be positive."); }
     checkCanceled();
-    if (count < minimumParallelCount || analysisWorkerLimit() == 0) {
+    if (count < minimumParallelCount || analysisWorkerLimit() == 0 || maximumHelpers == 0) {
         for (size_t begin = 0; begin < count;) {
             checkCanceled();
             const size_t end = begin + std::min(batchSize, count - begin);
@@ -63,7 +66,7 @@ void parallelWorkBatches(size_t count, size_t batchSize, const Check& checkCance
         std::vector<std::jthread> workers;
         const auto limit = analysisWorkerLimit();
         workers.reserve(limit);
-        for (unsigned i = 0; i < limit && i + 1 < count / batchSize; ++i) {
+        for (unsigned i = 0; i < std::min(limit, maximumHelpers) && i + 1 < count / batchSize; ++i) {
             auto active = analysisWorkerCount.load(std::memory_order_relaxed);
             while (active < limit && !analysisWorkerCount.compare_exchange_weak(active, active + 1,
                 std::memory_order_relaxed)) {}

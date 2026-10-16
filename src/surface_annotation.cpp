@@ -692,149 +692,236 @@ bool annotationMeshSnapshotReady(const Mesh& mesh)
 std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
     Mesh mesh, const std::function<bool()>& shouldCancel)
 {
+    struct Canceled {};
     std::mutex cancelMutex;
     bool stopped = false;
-    const auto canceled = [&] {
+    const auto check = [&] {
+        if (!shouldCancel) { return; }
         std::lock_guard lock(cancelMutex);
-        if (!stopped && shouldCancel) { stopped = shouldCancel(); }
-        return stopped;
+        if (stopped || (stopped = shouldCancel())) { throw Canceled{}; }
     };
     publishMeshGeometry(mesh);
-    const auto& vertices = meshGeometry(mesh).vertices;
-    const auto& indices = meshGeometry(mesh).indices;
-    const auto& nodes = meshGeometry(mesh).nodes;
+    const auto& geometry = meshGeometry(mesh);
+    const auto& vertices = geometry.vertices;
+    const auto& indices = geometry.indices;
+    const auto& nodes = geometry.nodes;
     if (indices.empty() || nodes.empty()) { return {}; }
+    // Post-load point work shares this budget. Leave half of the helpers for
+    // that branch after accounting for its coordinator and our fingerprint job.
+    const auto limit = analysisWorkerLimit();
+    const auto helpers = limit > 3 && analysisWorkerCount.load(std::memory_order_relaxed) != 0
+        ? (limit - 2) / 2 : limit;
     auto cache = std::make_shared<MeshAnnotationCache>();
     cache->vertexCount = vertices.size();
     cache->indexCount = indices.size();
     cache->vertexData = vertices.data();
     cache->indexData = indices.data();
-    cache->fingerprints.reserve(nodes.size());
-    cache->localBounds.reserve(nodes.size());
-    constexpr size_t blockIndices = 256 * 3;
-    for (const auto& node : nodes) {
-        if (canceled()) { return {}; }
-        const size_t end = std::min(indices.size(), size_t{node.indexOffset} + node.indexCount);
-        uint64_t hash = 1469598103934665603ull;
-        hashCombine(hash, node.indexCount);
-        std::array<Coordinate, 2> exact;
-        exact[0].fill(std::numeric_limits<double>::infinity());
-        exact[1].fill(-std::numeric_limits<double>::infinity());
-        for (size_t begin = node.indexOffset; begin < end; begin += blockIndices) {
-            if (canceled()) { return {}; }
-            MeshAnnotationBlock block;
-            block.begin = begin;
-            block.end = std::min(end, begin + blockIndices);
-            block.minimum.fill(std::numeric_limits<float>::infinity());
-            block.maximum.fill(-std::numeric_limits<float>::infinity());
-            for (size_t i = begin; i < block.end; ++i) {
-                const auto index = indices[i];
-                hashCombine(hash, index);
-                if (index >= vertices.size()) { continue; }
-                const auto& p = vertices[index].position;
-                hashArray3(hash, p);
-                if (!finitePosition(p)) { continue; }
-                const auto precise = meshPosition(mesh, index);
-                if (finiteCoordinate(precise)) {
-                    for (size_t axis = 0; axis < 3; ++axis) {
-                        exact[0][axis] = std::min(exact[0][axis], precise[axis]);
-                        exact[1][axis] = std::max(exact[1][axis], precise[axis]);
-                    }
-                }
-                for (size_t axis = 0; axis < 3; ++axis) {
-                    block.minimum[axis] = std::min(block.minimum[axis], p[axis]);
-                    block.maximum[axis] = std::max(block.maximum[axis], p[axis]);
-                }
-            }
-            if (std::isfinite(block.minimum[0])) { cache->blocks.push_back(block); }
-        }
-        cache->fingerprints.push_back(std::to_string(hash));
-        cache->localBounds.push_back(std::isfinite(exact[0][0])
-            ? std::optional{exact} : std::nullopt);
-    }
-    auto spatial = std::make_shared<MeshAnnotationIndex>();
-    const auto check = [&] {
-        if (canceled()) { throw std::runtime_error("Annotation preparation canceled."); }
+    cache->fingerprints.resize(nodes.size());
+    cache->localBounds.resize(nodes.size());
+    const auto finite = [](const auto& p) {
+        return std::isfinite(p[0]) && std::isfinite(p[1]) && std::isfinite(p[2]);
     };
-    {
-        // Consecutive OBJ triangles can be scattered across the entire model.
-        // Sort compact centroid keys once, then build spatial leaves independently
-        // of file order. The original offsets remain the persistent identities.
-        std::array<double, 3> low{}, extent{};
-        for (size_t axis = 0; axis < 3; ++axis) {
-            double minimum = std::numeric_limits<double>::infinity(), maximum = -minimum;
-            for (const auto& block : cache->blocks) {
-                minimum = std::min(minimum, double{block.minimum[axis]});
-                maximum = std::max(maximum, double{block.maximum[axis]});
-            }
-            low[axis] = minimum; extent[axis] = maximum - minimum;
-        }
-        const auto coordinate = [](double value) {
-            uint32_t bits = static_cast<uint32_t>(std::clamp(value, 0.0, 1.0) * 1023);
-            bits = (bits | (bits << 16)) & 0x030000ffu;
-            bits = (bits | (bits << 8)) & 0x0300f00fu;
-            bits = (bits | (bits << 4)) & 0x030c30c3u;
-            return (bits | (bits << 2)) & 0x09249249u;
-        };
-        // Reserve a separate output range for each block. Invalid triangles are
-        // compacted in block order before sorting, so ties retain source order.
-        std::vector<size_t> starts(cache->blocks.size() + 1), counts(cache->blocks.size());
-        for (size_t b = 0; b < cache->blocks.size(); ++b) {
-            const auto& block = cache->blocks[b];
-            starts[b + 1] = starts[b] + (block.end - block.begin) / 3;
-        }
-        std::vector<std::pair<uint32_t, uint32_t>> keys(starts.back());
-        parallelWorkBatches(cache->blocks.size(), 256, check, [&](size_t begin, size_t end) {
-            for (size_t b = begin; b < end; ++b) {
-                const auto& block = cache->blocks[b];
-                size_t output = starts[b];
-                check();
-                for (size_t i = block.begin; i + 2 < block.end; i += 3) {
-                    std::array<double, 3> center{};
-                    bool valid = true;
-                    for (size_t k = 0; k < 3; ++k) {
-                        if (indices[i + k] >= vertices.size() || !finitePosition(vertices[indices[i + k]].position)) { valid = false; break; }
-                        for (size_t axis = 0; axis < 3; ++axis) { center[axis] += vertices[indices[i + k]].position[axis] / 3.0; }
-                    }
-                    if (!valid) { continue; }
-                    uint32_t key = 0;
-                    for (size_t axis = 0; axis < 3; ++axis) {
-                        key |= coordinate(extent[axis] > 0 ? (center[axis] - low[axis]) / extent[axis] : 0) << axis;
-                    }
-                    keys[output++] = {key, static_cast<uint32_t>(i)};
-                }
-                counts[b] = output - starts[b];
-            }
-        }, 512);
-        size_t output = 0;
-        for (size_t b = 0; b < counts.size(); ++b) {
+    const auto combine = [](uint64_t& hash, uint64_t value) {
+        hash ^= value + 0x9e3779b97f4a7c15ull + (hash << 6u) + (hash >> 2u);
+    };
+    const auto buildFingerprints = [&] {
+        // Saved annotations use this ordered recurrence. Keep every corner and
+        // every render-coordinate bit pattern, including invalid coordinates.
+        for (size_t n = 0; n < nodes.size(); ++n) {
             check();
-            if (output != starts[b]) {
-                std::move(keys.begin() + static_cast<std::ptrdiff_t>(starts[b]),
-                    keys.begin() + static_cast<std::ptrdiff_t>(starts[b] + counts[b]),
-                    keys.begin() + static_cast<std::ptrdiff_t>(output));
+            const auto& node = nodes[n];
+            const size_t end = std::min(indices.size(), size_t{node.indexOffset} + node.indexCount);
+            uint64_t hash = 1469598103934665603ull;
+            combine(hash, node.indexCount);
+            for (size_t begin = node.indexOffset; begin < end;) {
+                check();
+                const size_t finish = begin + std::min(size_t{65536}, end - begin);
+                for (size_t i = begin; i < finish; ++i) {
+                    const auto index = indices[i];
+                    combine(hash, index);
+                    if (index < vertices.size()) {
+                        for (const auto value : vertices[index].position) {
+                            combine(hash, std::bit_cast<uint32_t>(value));
+                        }
+                    }
+                }
+                begin = finish;
             }
-            output += counts[b];
+            cache->fingerprints[n] = std::to_string(hash);
         }
-        keys.resize(output);
-        stableSpatialRadixSort(keys, [](const auto& key) { return key.first; }, check);
-        spatial->triangles.reserve(keys.size());
-        for (size_t i = 0; i < keys.size(); ++i) {
-            if (i % 1024 == 0) { check(); }
-            spatial->triangles.push_back(keys[i].second);
-        }
-    }
-    const auto build = [&](const auto& self, size_t begin, size_t end) -> size_t {
+    };
+    const auto buildSpatial = [&] {
         check();
-        MeshAnnotationNode node;
-        node.begin = begin; node.end = end;
-        node.minimum.fill(std::numeric_limits<float>::infinity());
-        node.maximum.fill(-std::numeric_limits<float>::infinity());
-        node.indexBegin = std::numeric_limits<size_t>::max();
-        const size_t index = spatial->tree.size(); spatial->tree.push_back(node);
-        if (end - begin > 128) {
-            const size_t middle = begin + (end - begin) / 2;
-            node.left = self(self, begin, middle); node.right = self(self, middle, end);
+        constexpr size_t blockIndices = 256 * 3;
+        std::vector<size_t> nodeBlocks(nodes.size() + 1);
+        for (size_t n = 0; n < nodes.size(); ++n) {
+            check();
+            const auto& node = nodes[n];
+            const size_t end = std::min(indices.size(), size_t{node.indexOffset} + node.indexCount);
+            const size_t count = end > node.indexOffset ? end - node.indexOffset : 0;
+            nodeBlocks[n + 1] = nodeBlocks[n] + count / blockIndices + (count % blockIndices != 0);
+        }
+        cache->blocks.resize(nodeBlocks.back());
+        for (size_t n = 0; n < nodes.size(); ++n) {
+            check();
+            const auto& node = nodes[n];
+            const size_t end = std::min(indices.size(), size_t{node.indexOffset} + node.indexCount);
+            for (size_t b = nodeBlocks[n]; b < nodeBlocks[n + 1]; ++b) {
+                auto& block = cache->blocks[b];
+                block.begin = size_t{node.indexOffset} + (b - nodeBlocks[n]) * blockIndices;
+                block.end = std::min(end, block.begin + blockIndices);
+            }
+        }
+        {
+            // Reduce in block order after the workers join. This keeps the first
+            // equal value, including its signed-zero bits, just as the serial pass.
+            std::vector<std::array<Coordinate, 2>> precise(cache->blocks.size());
+            const auto buildBounds = [&](const auto& position) {
+                parallelWorkBatches(cache->blocks.size(), 32, check, [&](size_t begin, size_t end) {
+                    for (size_t b = begin; b < end; ++b) {
+                        auto& block = cache->blocks[b];
+                        auto& exact = precise[b];
+                        block.minimum.fill(std::numeric_limits<float>::infinity());
+                        block.maximum.fill(-std::numeric_limits<float>::infinity());
+                        exact[0].fill(std::numeric_limits<double>::infinity());
+                        exact[1].fill(-std::numeric_limits<double>::infinity());
+                        for (size_t i = block.begin; i < block.end; ++i) {
+                            const auto index = indices[i];
+                            if (index >= vertices.size()) { continue; }
+                            const auto& p = vertices[index].position;
+                            if (!finite(p)) { continue; }
+                            const auto point = position(index);
+                            if (finite(point)) {
+                                for (size_t axis = 0; axis < 3; ++axis) {
+                                    exact[0][axis] = std::min(exact[0][axis], point[axis]);
+                                    exact[1][axis] = std::max(exact[1][axis], point[axis]);
+                                }
+                            }
+                            for (size_t axis = 0; axis < 3; ++axis) {
+                                block.minimum[axis] = std::min(block.minimum[axis], p[axis]);
+                                block.maximum[axis] = std::max(block.maximum[axis], p[axis]);
+                            }
+                        }
+                    }
+                }, 512, helpers);
+            };
+            // Select storage once. Checked inline access also protects owners
+            // supplied without the usual publication-time position validation.
+            if (geometry.sourcePositions) {
+                const auto& positions = *geometry.sourcePositions;
+                if (geometry.positionIndexing == PositionIndexing::identity) {
+                    buildBounds([&](size_t i) { return positions.at(i); });
+                } else {
+                    buildBounds([&](size_t i) { return positions.at(geometry.positionIndices.at(i)); });
+                }
+            } else if (!geometry.precisePositions.empty()) {
+                buildBounds([&](size_t i) { return geometry.precisePositions.at(i); });
+            } else {
+                buildBounds([&](size_t i) {
+                    const auto& p = vertices[i].position;
+                    return Coordinate{p[0], p[1], p[2]};
+                });
+            }
+            for (size_t n = 0; n < nodes.size(); ++n) {
+                check();
+                std::array<Coordinate, 2> exact;
+                exact[0].fill(std::numeric_limits<double>::infinity());
+                exact[1].fill(-std::numeric_limits<double>::infinity());
+                for (size_t b = nodeBlocks[n]; b < nodeBlocks[n + 1]; ++b) {
+                    for (size_t axis = 0; axis < 3; ++axis) {
+                        exact[0][axis] = std::min(exact[0][axis], precise[b][0][axis]);
+                        exact[1][axis] = std::max(exact[1][axis], precise[b][1][axis]);
+                    }
+                }
+                if (std::isfinite(exact[0][0])) { cache->localBounds[n] = exact; }
+            }
+        }
+        std::erase_if(cache->blocks, [](const auto& block) { return !std::isfinite(block.minimum[0]); });
+        auto spatial = std::make_shared<MeshAnnotationIndex>();
+        {
+            // Consecutive OBJ triangles can be scattered across the entire model.
+            // Sort compact centroid keys once, then build spatial leaves independently
+            // of file order. The original offsets remain the persistent identities.
+            std::array<double, 3> low{}, extent{};
+            for (size_t axis = 0; axis < 3; ++axis) {
+                double minimum = std::numeric_limits<double>::infinity(), maximum = -minimum;
+                for (const auto& block : cache->blocks) {
+                    minimum = std::min(minimum, double{block.minimum[axis]});
+                    maximum = std::max(maximum, double{block.maximum[axis]});
+                }
+                low[axis] = minimum; extent[axis] = maximum - minimum;
+            }
+            const auto coordinate = [](double value) {
+                uint32_t bits = static_cast<uint32_t>(std::clamp(value, 0.0, 1.0) * 1023);
+                bits = (bits | (bits << 16)) & 0x030000ffu;
+                bits = (bits | (bits << 8)) & 0x0300f00fu;
+                bits = (bits | (bits << 4)) & 0x030c30c3u;
+                return (bits | (bits << 2)) & 0x09249249u;
+            };
+            // Reserve a separate output range for each block. Invalid triangles are
+            // compacted in block order before sorting, so ties retain source order.
+            std::vector<size_t> starts(cache->blocks.size() + 1), counts(cache->blocks.size());
+            for (size_t b = 0; b < cache->blocks.size(); ++b) {
+                const auto& block = cache->blocks[b];
+                starts[b + 1] = starts[b] + (block.end - block.begin) / 3;
+            }
+            std::vector<std::pair<uint32_t, uint32_t>> keys(starts.back());
+            parallelWorkBatches(cache->blocks.size(), 256, check, [&](size_t begin, size_t end) {
+                for (size_t b = begin; b < end; ++b) {
+                    const auto& block = cache->blocks[b];
+                    size_t output = starts[b];
+                    check();
+                    for (size_t i = block.begin; i + 2 < block.end; i += 3) {
+                        std::array<double, 3> center{};
+                        bool valid = true;
+                        for (size_t k = 0; k < 3; ++k) {
+                            if (indices[i + k] >= vertices.size() || !finite(vertices[indices[i + k]].position)) { valid = false; break; }
+                            for (size_t axis = 0; axis < 3; ++axis) { center[axis] += vertices[indices[i + k]].position[axis] / 3.0; }
+                        }
+                        if (!valid) { continue; }
+                        uint32_t key = 0;
+                        for (size_t axis = 0; axis < 3; ++axis) {
+                            key |= coordinate(extent[axis] > 0 ? (center[axis] - low[axis]) / extent[axis] : 0) << axis;
+                        }
+                        keys[output++] = {key, static_cast<uint32_t>(i)};
+                    }
+                    counts[b] = output - starts[b];
+                }
+            }, 512, helpers);
+            size_t output = 0;
+            for (size_t b = 0; b < counts.size(); ++b) {
+                check();
+                if (output != starts[b]) {
+                    std::move(keys.begin() + static_cast<std::ptrdiff_t>(starts[b]),
+                        keys.begin() + static_cast<std::ptrdiff_t>(starts[b] + counts[b]),
+                        keys.begin() + static_cast<std::ptrdiff_t>(output));
+                }
+                output += counts[b];
+            }
+            keys.resize(output);
+            stableSpatialRadixSort(keys, [](const auto& key) { return key.first; }, check, helpers);
+            spatial->triangles.resize(keys.size());
+            parallelWorkBatches(keys.size(), spatialKeyBatchSize, check, [&](size_t begin, size_t end) {
+                for (size_t i = begin; i < end; ++i) { spatial->triangles[i] = keys[i].second; }
+            }, spatialKeyBatchSize * 2, helpers);
+        }
+        const auto treeSize = [](size_t count) {
+            if (count <= 128) { return size_t{1}; }
+            // At the last full level, each partition has 128..255 triangles.
+            // Split those above 128 once more. A binary tree has 2*leaves-1 nodes.
+            const size_t partitions = std::bit_floor(count / 128);
+            const size_t leaves = count / partitions == 128
+                ? partitions + count % partitions : partitions * 2;
+            return leaves * 2 - 1;
+        };
+        const auto clearBounds = [](MeshAnnotationNode& node) {
+            node.minimum.fill(std::numeric_limits<float>::infinity());
+            node.maximum.fill(-std::numeric_limits<float>::infinity());
+            node.indexBegin = std::numeric_limits<size_t>::max();
+            node.indexEnd = 0;
+        };
+        const auto mergeChildren = [&](MeshAnnotationNode& node) {
+            clearBounds(node);
             for (const auto child : {node.left, node.right}) {
                 const auto& bounds = spatial->tree[child];
                 node.indexBegin = std::min(node.indexBegin, bounds.indexBegin);
@@ -844,25 +931,80 @@ std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
                     node.maximum[axis] = std::max(node.maximum[axis], bounds.maximum[axis]);
                 }
             }
-        } else {
-            for (size_t i = begin; i < end; ++i) {
-                const size_t offset = spatial->triangles[i];
-                node.indexBegin = std::min(node.indexBegin, offset); node.indexEnd = std::max(node.indexEnd, offset + 3);
-                for (size_t k = 0; k < 3; ++k) {
-                    const auto& p = vertices[indices[offset + k]].position;
-                    for (size_t axis = 0; axis < 3; ++axis) {
-                        node.minimum[axis] = std::min(node.minimum[axis], p[axis]);
-                        node.maximum[axis] = std::max(node.maximum[axis], p[axis]);
+        };
+        const auto build = [&](const auto& self, size_t begin, size_t end, size_t index) -> void {
+            auto& node = spatial->tree[index];
+            node.begin = begin; node.end = end;
+            if (end - begin > 128) {
+                const size_t middle = begin + (end - begin) / 2;
+                node.left = index + 1; node.right = node.left + treeSize(middle - begin);
+                self(self, begin, middle, node.left); self(self, middle, end, node.right);
+                mergeChildren(node);
+            } else {
+                clearBounds(node);
+                for (size_t i = begin; i < end; ++i) {
+                    const size_t offset = spatial->triangles[i];
+                    node.indexBegin = std::min(node.indexBegin, offset); node.indexEnd = std::max(node.indexEnd, offset + 3);
+                    for (size_t k = 0; k < 3; ++k) {
+                        const auto& p = vertices[indices[offset + k]].position;
+                        for (size_t axis = 0; axis < 3; ++axis) {
+                            node.minimum[axis] = std::min(node.minimum[axis], p[axis]);
+                            node.maximum[axis] = std::max(node.maximum[axis], p[axis]);
+                        }
                     }
                 }
             }
+        };
+        if (!spatial->triangles.empty()) {
+            check();
+            spatial->tree.resize(treeSize(spatial->triangles.size()));
+            struct TreeTask { size_t begin, end, index; };
+            std::vector<TreeTask> tasks;
+            std::vector<size_t> parents;
+            const auto partition = [&](const auto& self, size_t begin, size_t end, size_t index) -> void {
+                check();
+                if (end - begin <= spatialKeyBatchSize) {
+                    tasks.push_back({begin, end, index});
+                    return;
+                }
+                const size_t middle = begin + (end - begin) / 2;
+                auto& node = spatial->tree[index];
+                node.begin = begin; node.end = end;
+                node.left = index + 1; node.right = node.left + treeSize(middle - begin);
+                parents.push_back(index);
+                self(self, begin, middle, node.left); self(self, middle, end, node.right);
+            };
+            partition(partition, 0, spatial->triangles.size(), 0);
+            // Each worker owns a complete subtree in the original preorder.
+            // Check cancellation between bounded subtrees, without a mutex per leaf.
+            parallelWorkBatches(tasks.size(), 1, check, [&](size_t begin, size_t end) {
+                for (size_t i = begin; i < end; ++i) {
+                    const auto& task = tasks[i];
+                    build(build, task.begin, task.end, task.index);
+                }
+            }, 2, helpers);
+            for (auto i = parents.rbegin(); i != parents.rend(); ++i) {
+                check();
+                mergeChildren(spatial->tree[*i]);
+            }
         }
-        spatial->tree[index] = node;
-        return index;
+        cache->spatial = std::move(spatial);
+        cache->geometry = mesh.storage;
     };
-    if (!spatial->triangles.empty()) { build(build, 0, spatial->triangles.size()); }
-    cache->spatial = std::move(spatial);
-    cache->geometry = mesh.storage;
+    try {
+        // Hashing has no dependency on bounds or the spatial index. Its ordered
+        // pass can overlap that work without changing saved annotation identity.
+        // Nested work uses the same helper budget as point preparation.
+        if (indices.size() < 65536) { buildFingerprints(); buildSpatial(); }
+        else {
+            parallelWorkBatches(2, 1, check, [&](size_t begin, size_t end) {
+                for (size_t task = begin; task < end; ++task) {
+                    if (task == 0) { buildFingerprints(); }
+                    else { buildSpatial(); }
+                }
+            }, 2);
+        }
+    } catch (const Canceled&) { return {}; }
     return cache;
 }
 std::string gestureFingerprint(const Mesh& mesh, size_t offset, size_t count)

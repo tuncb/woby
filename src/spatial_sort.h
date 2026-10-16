@@ -12,7 +12,8 @@ inline constexpr size_t spatialKeyBatchSize = 65536;
 // Stable LSD radix sort. Each input chunk scans in order and writes to its own
 // range in each bucket. Prefixes use input chunk order, not worker finish order.
 template <typename Key, typename Morton, typename Check>
-void stableSpatialRadixSort(std::vector<Key>& keys, const Morton& morton, const Check& check)
+void stableSpatialRadixSort(std::vector<Key>& keys, const Morton& morton, const Check& check,
+    unsigned maximumHelpers = std::numeric_limits<unsigned>::max())
 {
     check();
     if (keys.size() < 2) { return; }
@@ -35,7 +36,7 @@ void stableSpatialRadixSort(std::vector<Key>& keys, const Morton& morton, const 
                     ++histogram[(morton(keys[i]) >> shift) & 255];
                 }
             }
-        }, 2);
+        }, 2, maximumHelpers);
         size_t total = 0;
         for (size_t bucket = 0; bucket < 256; ++bucket) {
             for (auto& chunk : offsets) {
@@ -52,7 +53,7 @@ void stableSpatialRadixSort(std::vector<Key>& keys, const Morton& morton, const 
                     scratch[output[(morton(key) >> shift) & 255]++] = key;
                 }
             }
-        }, 2);
+        }, 2, maximumHelpers);
         keys.swap(scratch);
     }
     check();

@@ -198,7 +198,8 @@ def generate(root, output, reference=False):
     (output / "point_cloud.cpp").write_text('#include "profile.h"\n' + text, encoding="utf-8")
     text = (root / "src/surface_annotation.cpp").read_text(encoding="utf-8")
     text = section(text, 'std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(', 'std::string gestureFingerprint(', [
-        ('    auto cache =', '    auto measuredAnnotations = obj_profile::begin("annotation_blocks_fingerprints");\n    auto cache ='),
+        ('    const auto buildSpatial = [&] {',
+         '    const auto buildSpatial = [&] {\n        auto measuredAnnotations = obj_profile::begin("annotation_bounds");'),
         ('    auto spatial =', '    obj_profile::next(measuredAnnotations, "annotation_morton_keys");\n    auto spatial ='),
         ('        stableSpatialRadixSort(keys,', '        obj_profile::next(measuredAnnotations, "annotation_radix_sort");\n        stableSpatialRadixSort(keys,'),
         ('    const auto build =', '    obj_profile::next(measuredAnnotations, "annotation_tree_build");\n    const auto build ='),

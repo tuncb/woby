@@ -81,6 +81,13 @@ woby_enable_enum_switch_warnings(woby_obj_fast_pacing_viewer)
 list(APPEND woby_runtime_targets woby_obj_fast_pacing_viewer)
 set(woby_runtime_targets "${woby_runtime_targets}" PARENT_SCOPE)
 
+add_executable(woby_annotation_benchmark annotation.cpp profile.cpp "${profile_generated}/surface_annotation.cpp")
+target_include_directories(woby_annotation_benchmark PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(woby_annotation_benchmark PRIVATE woby_core nlohmann_json::nlohmann_json psapi dbghelp)
+woby_enable_project_warnings(woby_annotation_benchmark)
+list(APPEND woby_runtime_targets woby_annotation_benchmark)
+set(woby_runtime_targets "${woby_runtime_targets}" PARENT_SCOPE)
+
 set(e2e_generated "${CMAKE_CURRENT_BINARY_DIR}/e2e-viewer")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/e2e_generate.py"

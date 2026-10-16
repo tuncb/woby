@@ -1,0 +1,1477 @@
+{
+  "base_revision": "06b794027e3a8ca6da9725596c909167256472e5",
+  "model": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+  "model_bytes": 7108991827,
+  "machine": {
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+    "logical_cpus": 16,
+    "ram_bytes": 68564348928,
+    "power_plan": "Power Scheme GUID: 85d583c5-cf2e-4197-80fd-3789a227a72c  (Legion Balance Mode )",
+    "model_sha256": "7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329"
+  },
+  "method": "Warm input; rotating order; fresh process for each sample; no competing compiler or viewer",
+  "scope": "BearTrap, warm file cache, Release /O2 /arch:AVX2, 3 fresh processes per version and endpoint. Traced runs are separate diagnostics.",
+  "results": {
+    "annotation": {
+      "baseline": {
+        "median_ms": 10618.3491,
+        "min_ms": 10596.0118,
+        "max_ms": 10661.1566,
+        "runs": 3,
+        "cpu_ms": {
+          "median": 18312.5,
+          "min": 17937.5,
+          "max": 18421.875
+        }
+      },
+      "candidate": {
+        "median_ms": 2639.0424,
+        "min_ms": 2599.8463,
+        "max_ms": 2654.2609,
+        "runs": 3,
+        "cpu_ms": {
+          "median": 17406.25,
+          "min": 17281.25,
+          "max": 17718.75
+        }
+      },
+      "saved_ms": 7979.306699999999,
+      "reduction_percent": 75.14639634517196,
+      "speed_ratio": 4.023561387266836
+    },
+    "post-load": {
+      "baseline": {
+        "median_ms": 11052.7746,
+        "min_ms": 11014.3315,
+        "max_ms": 11313.9722,
+        "runs": 3,
+        "cpu_ms": {
+          "median": 25625.0,
+          "min": 24484.375,
+          "max": 25781.25
+        }
+      },
+      "candidate": {
+        "median_ms": 4592.0144,
+        "min_ms": 4496.0831,
+        "max_ms": 4614.7051,
+        "runs": 3,
+        "cpu_ms": {
+          "median": 23359.375,
+          "min": 22953.125,
+          "max": 23593.75
+        }
+      },
+      "saved_ms": 6460.760200000001,
+      "reduction_percent": 58.45374065621496,
+      "speed_ratio": 2.4069555618118272
+    },
+    "viewer": {
+      "baseline": {
+        "median_ms": 28794.83880000771,
+        "min_ms": 27903.639700001804,
+        "max_ms": 31031.984000001103,
+        "runs": 3
+      },
+      "candidate": {
+        "median_ms": 21260.269899998093,
+        "min_ms": 20660.334600004717,
+        "max_ms": 22338.46199999971,
+        "runs": 3
+      },
+      "saved_ms": 7534.568900009617,
+      "reduction_percent": 26.166386804039337,
+      "speed_ratio": 1.3543966720765992
+    }
+  },
+  "production_observations": {
+    "baseline": {
+      "peak_private_commit_bytes": {
+        "median": 11575083008,
+        "min": 11573137408,
+        "max": 11576958976
+      },
+      "first_model_frame_brackets_ms": [
+        [
+          12977.644800003425,
+          14174.02580000499
+        ],
+        [
+          14838.253100006561,
+          16057.313800000422
+        ],
+        [
+          12905.215300009506,
+          14967.437900007273
+        ]
+      ],
+      "image_sha256": [
+        "5d5b0b45e0dcc8efe15368861590bd657343e1a42bc0ff74e368f93aca641d85",
+        "5d5b0b45e0dcc8efe15368861590bd657343e1a42bc0ff74e368f93aca641d85",
+        "d9cbca46f81d6708ef8b2db4887ce506179769513d46c7230c49505ff9fdd1ce"
+      ],
+      "gpu": {
+        "name": "NVIDIA GeForce RTX 3070 Laptop GPU",
+        "driver": "616.92"
+      }
+    },
+    "candidate": {
+      "peak_private_commit_bytes": {
+        "median": 11577270272,
+        "min": 11573878784,
+        "max": 11578408960
+      },
+      "first_model_frame_brackets_ms": [
+        [
+          15719.429800003254,
+          17060.000699995853
+        ],
+        [
+          14663.996200002024,
+          15864.329100001945
+        ],
+        [
+          15162.167299996134,
+          15170.469600000422
+        ]
+      ],
+      "image_sha256": [
+        "5d5b0b45e0dcc8efe15368861590bd657343e1a42bc0ff74e368f93aca641d85",
+        "5d5b0b45e0dcc8efe15368861590bd657343e1a42bc0ff74e368f93aca641d85",
+        "5d5b0b45e0dcc8efe15368861590bd657343e1a42bc0ff74e368f93aca641d85"
+      ],
+      "gpu": {
+        "name": "NVIDIA GeForce RTX 3070 Laptop GPU",
+        "driver": "616.92"
+      }
+    }
+  },
+  "traced_diagnostics": [
+    {
+      "variant": "baseline",
+      "ready_rpc_ms": 24967.39949999028,
+      "phases": [
+        {
+          "name": "cpu_import",
+          "wall_ms": 12668.0135,
+          "start_ms": 1966.4892,
+          "end_ms": 14634.5027,
+          "caller_cpu_ms": 7250.0,
+          "average_logical_cpus": 6.054866060886342
+        },
+        {
+          "name": "point_membership_allocate",
+          "wall_ms": 0.0086,
+          "start_ms": 14764.4286,
+          "end_ms": 14764.4372,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        },
+        {
+          "name": "point_membership_build",
+          "wall_ms": 0.0059,
+          "start_ms": 14764.6036,
+          "end_ms": 14764.6095,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        },
+        {
+          "name": "point_hierarchy",
+          "wall_ms": 0.0011,
+          "start_ms": 14764.7623,
+          "end_ms": 14764.7634,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        },
+        {
+          "name": "post_source_indices",
+          "wall_ms": 307.4932,
+          "start_ms": 15378.334,
+          "end_ms": 15685.8272,
+          "caller_cpu_ms": 312.5,
+          "average_logical_cpus": 5.79281102801623
+        },
+        {
+          "name": "post_original_bounds",
+          "wall_ms": 548.8894,
+          "start_ms": 15686.1254,
+          "end_ms": 16235.0148,
+          "caller_cpu_ms": 546.875,
+          "average_logical_cpus": 2.049593233172293
+        },
+        {
+          "name": "point_membership_allocate",
+          "wall_ms": 53.4691,
+          "start_ms": 16235.4233,
+          "end_ms": 16288.8924,
+          "caller_cpu_ms": 62.5,
+          "average_logical_cpus": 2.337798840825823
+        },
+        {
+          "name": "point_membership_build",
+          "wall_ms": 1050.7776,
+          "start_ms": 16289.1812,
+          "end_ms": 17339.9588,
+          "caller_cpu_ms": 1031.25,
+          "average_logical_cpus": 2.052051737684549
+        },
+        {
+          "name": "point_range_bounds",
+          "wall_ms": 0.0042,
+          "start_ms": 17340.3501,
+          "end_ms": 17340.3543,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        },
+        {
+          "name": "point_morton_keys",
+          "wall_ms": 224.5277,
+          "start_ms": 17340.483,
+          "end_ms": 17565.0107,
+          "caller_cpu_ms": 218.75,
+          "average_logical_cpus": 7.167823836435326
+        },
+        {
+          "name": "point_radix_sort",
+          "wall_ms": 474.0089,
+          "start_ms": 17565.2188,
+          "end_ms": 18039.2277,
+          "caller_cpu_ms": 328.125,
+          "average_logical_cpus": 5.636761250685377
+        },
+        {
+          "name": "point_sorted_gather",
+          "wall_ms": 890.7777,
+          "start_ms": 18039.4734,
+          "end_ms": 18930.2511,
+          "caller_cpu_ms": 890.625,
+          "average_logical_cpus": 2.087361414638018
+        },
+        {
+          "name": "point_tree_build",
+          "wall_ms": 368.0649,
+          "start_ms": 18930.4808,
+          "end_ms": 19298.5457,
+          "caller_cpu_ms": 359.375,
+          "average_logical_cpus": 2.037684114948206
+        },
+        {
+          "name": "point_navigation_cuts",
+          "wall_ms": 6.6132,
+          "start_ms": 19298.7649,
+          "end_ms": 19305.3781,
+          "caller_cpu_ms": 15.625,
+          "average_logical_cpus": 4.7253976894695455
+        },
+        {
+          "name": "point_hierarchy",
+          "wall_ms": 1965.326,
+          "start_ms": 17340.2133,
+          "end_ms": 19305.5393,
+          "caller_cpu_ms": 1812.5,
+          "average_logical_cpus": 3.529948720975553
+        },
+        {
+          "name": "post_point_preparation",
+          "wall_ms": 3086.8149,
+          "start_ms": 16235.2623,
+          "end_ms": 19322.0772,
+          "caller_cpu_ms": 2921.875,
+          "average_logical_cpus": 3.001678202343782
+        },
+        {
+          "name": "post_group_bounds",
+          "wall_ms": 0.0164,
+          "start_ms": 19322.2931,
+          "end_ms": 19322.3095,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        },
+        {
+          "name": "post_model_preparation",
+          "wall_ms": 3944.1136,
+          "start_ms": 15378.2876,
+          "end_ms": 19322.4012,
+          "caller_cpu_ms": 3781.25,
+          "average_logical_cpus": 3.086086313538231
+        },
+        {
+          "name": "annotation_blocks_fingerprints",
+          "wall_ms": 8140.4518,
+          "start_ms": 15378.709,
+          "end_ms": 23519.1608,
+          "caller_cpu_ms": 8093.75,
+          "average_logical_cpus": 2.0461087921434533
+        },
+        {
+          "name": "annotation_morton_keys",
+          "wall_ms": 685.5998,
+          "start_ms": 23519.4972,
+          "end_ms": 24205.097,
+          "caller_cpu_ms": 656.25,
+          "average_logical_cpus": 6.267322423372936
+        },
+        {
+          "name": "annotation_radix_sort",
+          "wall_ms": 1142.0153,
+          "start_ms": 24205.2919,
+          "end_ms": 25347.3072,
+          "caller_cpu_ms": 953.125,
+          "average_logical_cpus": 3.4341702777537217
+        },
+        {
+          "name": "annotation_tree_build",
+          "wall_ms": 1290.4814,
+          "start_ms": 25347.5344,
+          "end_ms": 26638.0158,
+          "caller_cpu_ms": 1296.875,
+          "average_logical_cpus": 1.0776017383900303
+        },
+        {
+          "name": "post_annotation_cache",
+          "wall_ms": 11259.5907,
+          "start_ms": 15378.6136,
+          "end_ms": 26638.2043,
+          "caller_cpu_ms": 11000.0,
+          "average_logical_cpus": 2.3327335513181664
+        },
+        {
+          "name": "post_parallel_preparation",
+          "wall_ms": 11260.4545,
+          "start_ms": 15378.1271,
+          "end_ms": 26638.5816,
+          "caller_cpu_ms": 3781.25,
+          "average_logical_cpus": 2.3325546051449346
+        },
+        {
+          "name": "post_load_cpu_total",
+          "wall_ms": 11260.6504,
+          "start_ms": 15378.0597,
+          "end_ms": 26638.7101,
+          "caller_cpu_ms": 3781.25,
+          "average_logical_cpus": 2.3325140260104336
+        },
+        {
+          "name": "post_result_publish",
+          "wall_ms": 0.0223,
+          "start_ms": 26803.426,
+          "end_ms": 26803.4483,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        }
+      ],
+      "note": "Nested and concurrent rows overlap; do not add them to obtain elapsed time."
+    },
+    {
+      "variant": "candidate",
+      "ready_rpc_ms": 21101.756100004422,
+      "phases": [
+        {
+          "name": "cpu_import",
+          "wall_ms": 14593.4184,
+          "start_ms": 2064.6099,
+          "end_ms": 16658.0283,
+          "caller_cpu_ms": 8218.75,
+          "average_logical_cpus": 5.297764915723927
+        },
+        {
+          "name": "point_membership_allocate",
+          "wall_ms": 0.0074,
+          "start_ms": 16810.6204,
+          "end_ms": 16810.6278,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        },
+        {
+          "name": "point_membership_build",
+          "wall_ms": 0.0053,
+          "start_ms": 16810.7893,
+          "end_ms": 16810.7946,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        },
+        {
+          "name": "point_hierarchy",
+          "wall_ms": 0.0009,
+          "start_ms": 16810.9462,
+          "end_ms": 16810.9471,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        },
+        {
+          "name": "post_source_indices",
+          "wall_ms": 481.2992,
+          "start_ms": 17449.5311,
+          "end_ms": 17930.8303,
+          "caller_cpu_ms": 468.75,
+          "average_logical_cpus": 7.596625965719453
+        },
+        {
+          "name": "post_original_bounds",
+          "wall_ms": 659.7498,
+          "start_ms": 17931.1886,
+          "end_ms": 18590.9384,
+          "caller_cpu_ms": 656.25,
+          "average_logical_cpus": 6.0392212320488765
+        },
+        {
+          "name": "annotation_bounds",
+          "wall_ms": 1173.2094,
+          "start_ms": 17450.041,
+          "end_ms": 18623.2504,
+          "caller_cpu_ms": 1171.875,
+          "average_logical_cpus": 6.699038551856131
+        },
+        {
+          "name": "point_membership_allocate",
+          "wall_ms": 63.8033,
+          "start_ms": 18591.3649,
+          "end_ms": 18655.1682,
+          "caller_cpu_ms": 62.5,
+          "average_logical_cpus": 3.673399338278741
+        },
+        {
+          "name": "annotation_fingerprints",
+          "wall_ms": 2284.0391,
+          "start_ms": 17449.8342,
+          "end_ms": 19733.8733,
+          "caller_cpu_ms": 2265.625,
+          "average_logical_cpus": 6.115810364192102
+        },
+        {
+          "name": "annotation_morton_keys",
+          "wall_ms": 1232.5113,
+          "start_ms": 18623.5959,
+          "end_ms": 19856.1072,
+          "caller_cpu_ms": 1187.5,
+          "average_logical_cpus": 5.362526899347698
+        },
+        {
+          "name": "point_membership_build",
+          "wall_ms": 1486.0007,
+          "start_ms": 18655.4217,
+          "end_ms": 20141.4224,
+          "caller_cpu_ms": 1468.75,
+          "average_logical_cpus": 5.036589148309284
+        },
+        {
+          "name": "point_range_bounds",
+          "wall_ms": 0.0048,
+          "start_ms": 20141.7689,
+          "end_ms": 20141.7737,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        },
+        {
+          "name": "point_morton_keys",
+          "wall_ms": 362.7551,
+          "start_ms": 20141.9079,
+          "end_ms": 20504.663,
+          "caller_cpu_ms": 359.375,
+          "average_logical_cpus": 6.676336183833114
+        },
+        {
+          "name": "point_radix_sort",
+          "wall_ms": 692.862,
+          "start_ms": 20504.9205,
+          "end_ms": 21197.7825,
+          "caller_cpu_ms": 515.625,
+          "average_logical_cpus": 6.810519266462874
+        },
+        {
+          "name": "annotation_radix_sort",
+          "wall_ms": 1691.4996,
+          "start_ms": 19856.3485,
+          "end_ms": 21547.8481,
+          "caller_cpu_ms": 1390.625,
+          "average_logical_cpus": 5.708691861351903
+        },
+        {
+          "name": "annotation_tree_build",
+          "wall_ms": 542.8131,
+          "start_ms": 21548.2044,
+          "end_ms": 22091.0175,
+          "caller_cpu_ms": 531.25,
+          "average_logical_cpus": 4.893489121762169
+        },
+        {
+          "name": "post_annotation_cache",
+          "wall_ms": 4641.7903,
+          "start_ms": 17449.6764,
+          "end_ms": 22091.4667,
+          "caller_cpu_ms": 2265.625,
+          "average_logical_cpus": 5.776327293372129
+        },
+        {
+          "name": "point_sorted_gather",
+          "wall_ms": 1086.9766,
+          "start_ms": 21198.085,
+          "end_ms": 22285.0616,
+          "caller_cpu_ms": 1062.5,
+          "average_logical_cpus": 4.254921403091842
+        },
+        {
+          "name": "point_tree_build",
+          "wall_ms": 423.8662,
+          "start_ms": 22285.3005,
+          "end_ms": 22709.1667,
+          "caller_cpu_ms": 421.875,
+          "average_logical_cpus": 2.13805677357619
+        },
+        {
+          "name": "point_navigation_cuts",
+          "wall_ms": 5.8148,
+          "start_ms": 22709.3773,
+          "end_ms": 22715.1921,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        },
+        {
+          "name": "point_hierarchy",
+          "wall_ms": 2573.7081,
+          "start_ms": 20141.6543,
+          "end_ms": 22715.3624,
+          "caller_cpu_ms": 2359.375,
+          "average_logical_cpus": 4.923586711329074
+        },
+        {
+          "name": "post_point_preparation",
+          "wall_ms": 4144.0848,
+          "start_ms": 18591.1796,
+          "end_ms": 22735.2644,
+          "caller_cpu_ms": 3921.875,
+          "average_logical_cpus": 4.935498665471325
+        },
+        {
+          "name": "post_group_bounds",
+          "wall_ms": 0.0065,
+          "start_ms": 22735.605,
+          "end_ms": 22735.6115,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        },
+        {
+          "name": "post_model_preparation",
+          "wall_ms": 5286.2251,
+          "start_ms": 17449.488,
+          "end_ms": 22735.7131,
+          "caller_cpu_ms": 5062.5,
+          "average_logical_cpus": 5.3292991628373905
+        },
+        {
+          "name": "post_parallel_preparation",
+          "wall_ms": 5286.4642,
+          "start_ms": 17449.3501,
+          "end_ms": 22735.8143,
+          "caller_cpu_ms": 5062.5,
+          "average_logical_cpus": 5.329058125466923
+        },
+        {
+          "name": "post_load_cpu_total",
+          "wall_ms": 5286.6114,
+          "start_ms": 17449.3109,
+          "end_ms": 22735.9223,
+          "caller_cpu_ms": 5062.5,
+          "average_logical_cpus": 5.328909743583575
+        },
+        {
+          "name": "post_result_publish",
+          "wall_ms": 0.0184,
+          "start_ms": 22894.0636,
+          "end_ms": 22894.082,
+          "caller_cpu_ms": 0.0,
+          "average_logical_cpus": 0.0
+        }
+      ],
+      "note": "Nested and concurrent rows overlap; do not add them to obtain elapsed time."
+    }
+  ],
+  "worker_budget_trial": {
+    "post-load": {
+      "baseline": {
+        "median_ms": 5035.9459,
+        "min_ms": 4936.591,
+        "max_ms": 5061.3238,
+        "runs": 3
+      },
+      "candidate": {
+        "median_ms": 4376.0182,
+        "min_ms": 4366.3109,
+        "max_ms": 4797.6445,
+        "runs": 3
+      }
+    }
+  },
+  "validation": {
+    "ctest_passed": {
+      "default": 87,
+      "slow": 8,
+      "graphics": 1
+    },
+    "release_build_warnings": 0,
+    "annotation_identity": "Every accepted headless run matches saved fingerprints and digests of every float block bound, precise group bound, ordered triangle offset and tree field.",
+    "unit_coverage": "All coordinate storage modes, exact and nonfinite bounds, signed zero, irregular and overlapping groups, invalid indices, tree partition boundaries, serial/parallel equality, cancellation, callback failures and shared/local helper limits.",
+    "all_production_screenshots_identical": false,
+    "screenshot_comparison": {
+      "all_decoded_pixels_identical": false,
+      "images": [
+        {
+          "variant": "baseline",
+          "round": 1,
+          "path": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\014-viewer-baseline-r1\\beartrap.png",
+          "pixel_sha256": "3166b4b891b4f7a77a5bff9d4626004c766742a7c1284e74a6419f3fdc4a9b73",
+          "changed_pixels": 0,
+          "maximum_channel_difference": 0,
+          "changed_bounds": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "metadata": {},
+          "chunks": [
+            {
+              "kind": "IHDR",
+              "bytes": 13,
+              "sha256": "bf72aebfbc2a1e2e9edc98ea81a9a16af533abb20251067b834b18af0f216bc1"
+            },
+            {
+              "kind": "IDAT",
+              "bytes": 281222,
+              "sha256": "27c9b85ef27bb2e83585765f2fa27afe603d10289bf097f26517c732b7e44120"
+            },
+            {
+              "kind": "IEND",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ]
+        },
+        {
+          "variant": "candidate",
+          "round": 1,
+          "path": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\015-viewer-candidate-r1\\beartrap.png",
+          "pixel_sha256": "3166b4b891b4f7a77a5bff9d4626004c766742a7c1284e74a6419f3fdc4a9b73",
+          "changed_pixels": 0,
+          "maximum_channel_difference": 0,
+          "changed_bounds": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "metadata": {},
+          "chunks": [
+            {
+              "kind": "IHDR",
+              "bytes": 13,
+              "sha256": "bf72aebfbc2a1e2e9edc98ea81a9a16af533abb20251067b834b18af0f216bc1"
+            },
+            {
+              "kind": "IDAT",
+              "bytes": 281222,
+              "sha256": "27c9b85ef27bb2e83585765f2fa27afe603d10289bf097f26517c732b7e44120"
+            },
+            {
+              "kind": "IEND",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ]
+        },
+        {
+          "variant": "candidate",
+          "round": 2,
+          "path": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\016-viewer-candidate-r2\\beartrap.png",
+          "pixel_sha256": "3166b4b891b4f7a77a5bff9d4626004c766742a7c1284e74a6419f3fdc4a9b73",
+          "changed_pixels": 0,
+          "maximum_channel_difference": 0,
+          "changed_bounds": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "metadata": {},
+          "chunks": [
+            {
+              "kind": "IHDR",
+              "bytes": 13,
+              "sha256": "bf72aebfbc2a1e2e9edc98ea81a9a16af533abb20251067b834b18af0f216bc1"
+            },
+            {
+              "kind": "IDAT",
+              "bytes": 281222,
+              "sha256": "27c9b85ef27bb2e83585765f2fa27afe603d10289bf097f26517c732b7e44120"
+            },
+            {
+              "kind": "IEND",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ]
+        },
+        {
+          "variant": "baseline",
+          "round": 2,
+          "path": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\017-viewer-baseline-r2\\beartrap.png",
+          "pixel_sha256": "3166b4b891b4f7a77a5bff9d4626004c766742a7c1284e74a6419f3fdc4a9b73",
+          "changed_pixels": 0,
+          "maximum_channel_difference": 0,
+          "changed_bounds": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "metadata": {},
+          "chunks": [
+            {
+              "kind": "IHDR",
+              "bytes": 13,
+              "sha256": "bf72aebfbc2a1e2e9edc98ea81a9a16af533abb20251067b834b18af0f216bc1"
+            },
+            {
+              "kind": "IDAT",
+              "bytes": 281222,
+              "sha256": "27c9b85ef27bb2e83585765f2fa27afe603d10289bf097f26517c732b7e44120"
+            },
+            {
+              "kind": "IEND",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ]
+        },
+        {
+          "variant": "baseline",
+          "round": 3,
+          "path": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\018-viewer-baseline-r3\\beartrap.png",
+          "pixel_sha256": "837f12119b2f6ba0c503d483764432cc008842474fa2bfc09c713f38cac13197",
+          "changed_pixels": 4,
+          "maximum_channel_difference": 36,
+          "changed_bounds": [
+            [
+              38,
+              1773,
+              39,
+              1777
+            ],
+            [
+              38,
+              1773,
+              39,
+              1777
+            ],
+            [
+              38,
+              1773,
+              39,
+              1777
+            ],
+            null
+          ],
+          "metadata": {},
+          "chunks": [
+            {
+              "kind": "IHDR",
+              "bytes": 13,
+              "sha256": "bf72aebfbc2a1e2e9edc98ea81a9a16af533abb20251067b834b18af0f216bc1"
+            },
+            {
+              "kind": "IDAT",
+              "bytes": 281223,
+              "sha256": "cbb689f9b468153e4a8ca953549f2f9109c074b59f9e70c9ffabab030b7fac0c"
+            },
+            {
+              "kind": "IEND",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ]
+        },
+        {
+          "variant": "candidate",
+          "round": 3,
+          "path": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\019-viewer-candidate-r3\\beartrap.png",
+          "pixel_sha256": "3166b4b891b4f7a77a5bff9d4626004c766742a7c1284e74a6419f3fdc4a9b73",
+          "changed_pixels": 0,
+          "maximum_channel_difference": 0,
+          "changed_bounds": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "metadata": {},
+          "chunks": [
+            {
+              "kind": "IHDR",
+              "bytes": 13,
+              "sha256": "bf72aebfbc2a1e2e9edc98ea81a9a16af533abb20251067b834b18af0f216bc1"
+            },
+            {
+              "kind": "IDAT",
+              "bytes": 281222,
+              "sha256": "27c9b85ef27bb2e83585765f2fa27afe603d10289bf097f26517c732b7e44120"
+            },
+            {
+              "kind": "IEND",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ]
+        }
+      ]
+    },
+    "screenshot_note": "All three candidate screenshots are byte-identical to two original screenshots. The third original differs only in four pixels of the bottom-left grid-spacing label, outside the model and grid. The rendered scene matches in every run.",
+    "logs": {
+      "build-final.log": {
+        "path": "D:\\.worktree\\woby-annotation-35ac\\build-final.log",
+        "sha256": "b2e17678396feeba9dfdd8d5b32d044b6b6429263f99771f879ba7d9d2e40cc8"
+      },
+      "test-final.log": {
+        "path": "D:\\.worktree\\woby-annotation-35ac\\test-final.log",
+        "sha256": "680ee047663333881f43da4242f785c171f0b5f772a689da26f94ecaa8c3a56b"
+      },
+      "test-final-slow.log": {
+        "path": "D:\\.worktree\\woby-annotation-35ac\\test-final-slow.log",
+        "sha256": "25def6d87f24b2ac213d4b242f27ee6ca98975b9e35967b29b9260b6f5346651"
+      },
+      "test-final-graphics.log": {
+        "path": "D:\\.worktree\\woby-annotation-35ac\\test-final-graphics.log",
+        "sha256": "f75ad453e5baafb173daebd1e213fcf77e2122629028d37af34656a929b208d4"
+      }
+    }
+  },
+  "raw_capture_directory": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016",
+  "comparison_runs": [
+    {
+      "mode": "annotation",
+      "variant": "baseline",
+      "round": 1,
+      "wall_ms": 11232.9242,
+      "accepted": false,
+      "contention": [
+        {
+          "pid": 34964,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 27896,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 15936,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 32196,
+          "name": "woby-update-helper.exe"
+        },
+        {
+          "pid": 29932,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 25336,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 10536,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 19364,
+          "name": "woby-update-helper.exe"
+        },
+        {
+          "pid": 28064,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 35740,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 15352,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 35380,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 34504,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 30280,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 35240,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 28572,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 16900,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 14868,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 32008,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 2252,
+          "name": "ctest.exe"
+        },
+        {
+          "pid": 35752,
+          "name": "ctest.exe"
+        }
+      ],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\001-annotation-baseline-r1",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\baseline\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "annotation"
+      ],
+      "executable_sha256": "1be148a123693f60a749da79f6c0bb0560de034965eef678c611a4ac5d76e078",
+      "cpu_ms": 20078.125,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "annotation",
+      "variant": "baseline",
+      "round": 1,
+      "wall_ms": 10618.3491,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\002-annotation-baseline-r1",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\baseline\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "annotation"
+      ],
+      "executable_sha256": "1be148a123693f60a749da79f6c0bb0560de034965eef678c611a4ac5d76e078",
+      "cpu_ms": 17937.5,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "annotation",
+      "variant": "candidate",
+      "round": 1,
+      "wall_ms": 2599.8463,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\003-annotation-candidate-r1",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\vs2026-vcpkg\\bin\\Release\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "annotation"
+      ],
+      "executable_sha256": "4c34e79d43b7c4f7de1bc76207cb79ec6dc40b99ca3c9213eba43dc552694471",
+      "cpu_ms": 17281.25,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "annotation",
+      "variant": "candidate",
+      "round": 2,
+      "wall_ms": 2639.0424,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\004-annotation-candidate-r2",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\vs2026-vcpkg\\bin\\Release\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "annotation"
+      ],
+      "executable_sha256": "4c34e79d43b7c4f7de1bc76207cb79ec6dc40b99ca3c9213eba43dc552694471",
+      "cpu_ms": 17406.25,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "annotation",
+      "variant": "baseline",
+      "round": 2,
+      "wall_ms": 10596.0118,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\005-annotation-baseline-r2",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\baseline\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "annotation"
+      ],
+      "executable_sha256": "1be148a123693f60a749da79f6c0bb0560de034965eef678c611a4ac5d76e078",
+      "cpu_ms": 18421.875,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "annotation",
+      "variant": "baseline",
+      "round": 3,
+      "wall_ms": 10661.1566,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\006-annotation-baseline-r3",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\baseline\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "annotation"
+      ],
+      "executable_sha256": "1be148a123693f60a749da79f6c0bb0560de034965eef678c611a4ac5d76e078",
+      "cpu_ms": 18312.5,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "annotation",
+      "variant": "candidate",
+      "round": 3,
+      "wall_ms": 2654.2609,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\007-annotation-candidate-r3",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\vs2026-vcpkg\\bin\\Release\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "annotation"
+      ],
+      "executable_sha256": "4c34e79d43b7c4f7de1bc76207cb79ec6dc40b99ca3c9213eba43dc552694471",
+      "cpu_ms": 17718.75,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "post-load",
+      "variant": "baseline",
+      "round": 1,
+      "wall_ms": 11014.3315,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\008-post-load-baseline-r1",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\baseline\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "post-load"
+      ],
+      "executable_sha256": "1be148a123693f60a749da79f6c0bb0560de034965eef678c611a4ac5d76e078",
+      "cpu_ms": 24484.375,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "post-load",
+      "variant": "candidate",
+      "round": 1,
+      "wall_ms": 4496.0831,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\009-post-load-candidate-r1",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\vs2026-vcpkg\\bin\\Release\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "post-load"
+      ],
+      "executable_sha256": "4c34e79d43b7c4f7de1bc76207cb79ec6dc40b99ca3c9213eba43dc552694471",
+      "cpu_ms": 22953.125,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "post-load",
+      "variant": "candidate",
+      "round": 2,
+      "wall_ms": 4592.0144,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\010-post-load-candidate-r2",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\vs2026-vcpkg\\bin\\Release\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "post-load"
+      ],
+      "executable_sha256": "4c34e79d43b7c4f7de1bc76207cb79ec6dc40b99ca3c9213eba43dc552694471",
+      "cpu_ms": 23359.375,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "post-load",
+      "variant": "baseline",
+      "round": 2,
+      "wall_ms": 11052.7746,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\011-post-load-baseline-r2",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\baseline\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "post-load"
+      ],
+      "executable_sha256": "1be148a123693f60a749da79f6c0bb0560de034965eef678c611a4ac5d76e078",
+      "cpu_ms": 25781.25,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "post-load",
+      "variant": "baseline",
+      "round": 3,
+      "wall_ms": 11313.9722,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\012-post-load-baseline-r3",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\baseline\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "post-load"
+      ],
+      "executable_sha256": "1be148a123693f60a749da79f6c0bb0560de034965eef678c611a4ac5d76e078",
+      "cpu_ms": 25625.0,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "post-load",
+      "variant": "candidate",
+      "round": 3,
+      "wall_ms": 4614.7051,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\013-post-load-candidate-r3",
+      "command": [
+        "D:\\.worktree\\woby-annotation-35ac\\build\\vs2026-vcpkg\\bin\\Release\\woby_annotation_benchmark.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "1",
+        "post-load"
+      ],
+      "executable_sha256": "4c34e79d43b7c4f7de1bc76207cb79ec6dc40b99ca3c9213eba43dc552694471",
+      "cpu_ms": 23593.75,
+      "output_identity": {
+        "block_digest": 10130703518982266387,
+        "blocks": 295985,
+        "corners": 227315958,
+        "fingerprints": [
+          "4717001999744359802"
+        ],
+        "precise_bounds_digest": 5777818836907082660,
+        "tree_digest": 2411475054838998243,
+        "tree_nodes": 2097151,
+        "triangle_order_digest": 18227578788763634998,
+        "triangles": 75771986,
+        "vertices": 38414391
+      }
+    },
+    {
+      "mode": "viewer",
+      "variant": "baseline",
+      "round": 1,
+      "wall_ms": 27903.639700001804,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\014-viewer-baseline-r1",
+      "command": [
+        "C:\\Users\\tuncb\\AppData\\Local\\uv\\cache\\environments-v2\\annotation-compare-ff3007a1f13e7d3e\\Scripts\\python.exe",
+        "D:\\.worktree\\woby-annotation-35ac\\experiments\\obj-profile\\e2e_run.py",
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\baseline\\woby.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "--output",
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\014-viewer-baseline-r1",
+        "--settle-seconds",
+        "2",
+        "--render-seconds",
+        "2"
+      ],
+      "executable_sha256": "60de67bd7001fd6b5c35a84896c08826befe8e261f284b7ebc8d01fd46348f8d"
+    },
+    {
+      "mode": "viewer",
+      "variant": "candidate",
+      "round": 1,
+      "wall_ms": 22338.46199999971,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\015-viewer-candidate-r1",
+      "command": [
+        "C:\\Users\\tuncb\\AppData\\Local\\uv\\cache\\environments-v2\\annotation-compare-ff3007a1f13e7d3e\\Scripts\\python.exe",
+        "D:\\.worktree\\woby-annotation-35ac\\experiments\\obj-profile\\e2e_run.py",
+        "D:\\.worktree\\woby-annotation-35ac\\build\\vs2026-vcpkg\\bin\\Release\\woby.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "--output",
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\015-viewer-candidate-r1",
+        "--settle-seconds",
+        "2",
+        "--render-seconds",
+        "2"
+      ],
+      "executable_sha256": "c4b11ad97dc6424affe56e5b92d59d353a8df8af08fdeef31c1b241d4273b525"
+    },
+    {
+      "mode": "viewer",
+      "variant": "candidate",
+      "round": 2,
+      "wall_ms": 21260.269899998093,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\016-viewer-candidate-r2",
+      "command": [
+        "C:\\Users\\tuncb\\AppData\\Local\\uv\\cache\\environments-v2\\annotation-compare-ff3007a1f13e7d3e\\Scripts\\python.exe",
+        "D:\\.worktree\\woby-annotation-35ac\\experiments\\obj-profile\\e2e_run.py",
+        "D:\\.worktree\\woby-annotation-35ac\\build\\vs2026-vcpkg\\bin\\Release\\woby.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "--output",
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\016-viewer-candidate-r2",
+        "--settle-seconds",
+        "2",
+        "--render-seconds",
+        "2"
+      ],
+      "executable_sha256": "c4b11ad97dc6424affe56e5b92d59d353a8df8af08fdeef31c1b241d4273b525"
+    },
+    {
+      "mode": "viewer",
+      "variant": "baseline",
+      "round": 2,
+      "wall_ms": 31031.984000001103,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\017-viewer-baseline-r2",
+      "command": [
+        "C:\\Users\\tuncb\\AppData\\Local\\uv\\cache\\environments-v2\\annotation-compare-ff3007a1f13e7d3e\\Scripts\\python.exe",
+        "D:\\.worktree\\woby-annotation-35ac\\experiments\\obj-profile\\e2e_run.py",
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\baseline\\woby.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "--output",
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\017-viewer-baseline-r2",
+        "--settle-seconds",
+        "2",
+        "--render-seconds",
+        "2"
+      ],
+      "executable_sha256": "60de67bd7001fd6b5c35a84896c08826befe8e261f284b7ebc8d01fd46348f8d"
+    },
+    {
+      "mode": "viewer",
+      "variant": "baseline",
+      "round": 3,
+      "wall_ms": 28794.83880000771,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\018-viewer-baseline-r3",
+      "command": [
+        "C:\\Users\\tuncb\\AppData\\Local\\uv\\cache\\environments-v2\\annotation-compare-ff3007a1f13e7d3e\\Scripts\\python.exe",
+        "D:\\.worktree\\woby-annotation-35ac\\experiments\\obj-profile\\e2e_run.py",
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\baseline\\woby.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "--output",
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\018-viewer-baseline-r3",
+        "--settle-seconds",
+        "2",
+        "--render-seconds",
+        "2"
+      ],
+      "executable_sha256": "60de67bd7001fd6b5c35a84896c08826befe8e261f284b7ebc8d01fd46348f8d"
+    },
+    {
+      "mode": "viewer",
+      "variant": "candidate",
+      "round": 3,
+      "wall_ms": 20660.334600004717,
+      "accepted": true,
+      "contention": [],
+      "output": "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\019-viewer-candidate-r3",
+      "command": [
+        "C:\\Users\\tuncb\\AppData\\Local\\uv\\cache\\environments-v2\\annotation-compare-ff3007a1f13e7d3e\\Scripts\\python.exe",
+        "D:\\.worktree\\woby-annotation-35ac\\experiments\\obj-profile\\e2e_run.py",
+        "D:\\.worktree\\woby-annotation-35ac\\build\\vs2026-vcpkg\\bin\\Release\\woby.exe",
+        "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+        "--output",
+        "D:\\.worktree\\woby-annotation-35ac\\build\\annotation-20261016\\paired-final\\019-viewer-candidate-r3",
+        "--settle-seconds",
+        "2",
+        "--render-seconds",
+        "2"
+      ],
+      "executable_sha256": "c4b11ad97dc6424affe56e5b92d59d353a8df8af08fdeef31c1b241d4273b525"
+    }
+  ],
+  "source_sha256": {
+    "src/surface_annotation.cpp": "b4739d5aca825667d2ce967dbdaa061932eef18445969e657fbe14bbf5e8bcbd",
+    "src/parallel_work.h": "d31a0e2e80012213a6955460f7e98ea3c23607be4fadba21347a8f2b0cd38cc5",
+    "src/spatial_sort.h": "efebdaac3effba044c75b1a7c008f61a99ae10826f77b872455d1f645de0b4d4",
+    "tests/spatial_sort_tests.cpp": "116841ae95131daa50798a1ddaeee9d23c6e2b0e0e149f5bb03cdf4e5a6553be"
+  },
+  "excluded_exploration": "The split-only pilot overlapped another compiler build. Its interrupted and contended samples are excluded from the final results. Earlier iterations remain in the capture directory."
+}

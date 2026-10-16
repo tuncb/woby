@@ -8,6 +8,10 @@ from generate import generate as generate_cpu, replace, section
 def generate(root, output, reference=False):
     generate_cpu(root, output, reference=reference)
     (output / "profile.h").write_text('#include "e2e_trace.h"\n', encoding="utf-8")
+    annotation = (output / "surface_annotation.cpp").read_text(encoding="utf-8")
+    annotation = replace(annotation, '    const auto buildFingerprints = [&] {',
+                         '    const auto buildFingerprints = [&] {\n        const obj_profile::Range measuredFingerprint("annotation_fingerprints");')
+    (output / "surface_annotation.cpp").write_text(annotation, encoding="utf-8")
     mapping = "experiments/obj-mapping-reference/obj_corner_mapping.h" if reference else "src/obj_corner_mapping.h"
     build = 'inline void buildFaces(' if reference else 'inline void buildGeometry('
     text = (root / mapping).read_text(encoding="utf-8")
