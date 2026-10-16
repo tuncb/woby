@@ -1,4 +1,5 @@
 #include "analysis_presentation.h"
+#include "count_format.h"
 #include <algorithm>
 
 namespace woby {
@@ -130,8 +131,8 @@ DiagnosticSummary diagnosticSummary(const SurfaceComparison& surface, Diagnostic
 
 std::string diagnosticSummaryText(const DiagnosticSummary& summary)
 {
-    if (summary.state == AnalysisResultState::ready) { return std::to_string(summary.count); }
-    if (summary.state == AnalysisResultState::partial) { return std::to_string(summary.count) + "+ Partial"; }
+    if (summary.state == AnalysisResultState::ready) { return formatCount(summary.count); }
+    if (summary.state == AnalysisResultState::partial) { return formatCount(summary.count) + "+ Partial"; }
     return analysisResultStateLabel(summary.state);
 }
 

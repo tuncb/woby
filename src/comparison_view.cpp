@@ -4,6 +4,7 @@
 #include "comparison_gpu.h"
 #include "difference_runtime.h"
 #include "analysis_presentation.h"
+#include "count_format.h"
 #include "comparison_scene.h"
 #include "comparison_legend.h"
 #include "ui_operations.h"
@@ -133,7 +134,7 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
     const bool open = ImGui::TreeNodeEx("node", flags, "%s", node.name.c_str());
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
-        ImGui::Text("%zu parts, %zu triangles", node.partCount, node.triangleCount);
+        ImGui::Text("%s parts, %s triangles", formatCount(node.partCount).c_str(), formatCount(node.triangleCount).c_str());
         if (const auto object = findSceneObject(state, node.objectId); object && !object->path.empty()) {
             ImGui::TextUnformatted(pathToUtf8(object->path).c_str());
         }
@@ -181,8 +182,8 @@ void membershipTree(UiState& state, ComparisonRuntime& runtime, ComparisonSide s
     const auto& roots = input.roots;
     const auto revision = state.sceneEditRevision;
     const bool open = ImGui::TreeNodeEx("root", ImGuiTreeNodeFlags_FramePadding,
-        "%s (%zu/%zu %s on) %zu triangles", label, summary.enabledPartCount, summary.partCount,
-        summary.partCount == 1 ? "part" : "parts", input.triangleCount);
+        "%s (%s/%s %s on) %s triangles", label, formatCount(summary.enabledPartCount).c_str(), formatCount(summary.partCount).c_str(),
+        summary.partCount == 1 ? "part" : "parts", formatCount(input.triangleCount).c_str());
     if (ImGui::BeginDragDropTarget()) {
         if (const auto* payload = ImGui::AcceptDragDropPayload(comparisonSourcePayload)) {
             if (payload->DataSize > 0 && payload->DataSize % sizeof(SceneObjectId) == 0) {
@@ -475,7 +476,7 @@ void drawDuplicateFindings(UiState& state, const ComparisonRuntime& runtime, boo
     if (result.unavailableSources) {
         ImGui::TextWrapped("%zu source(s) unavailable: original source records were not retained.", result.unavailableSources);
     }
-    ImGui::TextWrapped("%zu extra %s in %zu group%s", result.duplicateCount, points ? "points" : "triangles",
+    ImGui::TextWrapped("%s extra %s in %zu group%s", formatCount(result.duplicateCount).c_str(), points ? "points" : "triangles",
         result.findings.size(), result.findings.size() == 1 ? "" : "s");
     if (result.findings.empty()) { return; }
     const auto* comparison = findComparison(state, id);
@@ -578,7 +579,8 @@ void drawDegenerateFindings(UiState& state, const ComparisonRuntime& runtime, bo
         || inspectorEnabledPartCount(runtime, state, settings.diagnosticSide, id) == 0) { return; }
     const auto& result = (settings.diagnosticSide == ComparisonSide::a ? runtime.results.value.original : runtime.results.value.repaired).degenerates;
     if (result.unavailableSources) { ImGui::TextWrapped("%zu source(s) unavailable: retained source records are missing.", result.unavailableSources); }
-    ImGui::TextWrapped("%zu affected triangles: %zu collapsed / collinear, %zu needles, %zu caps", result.findings.size(), result.collapsedCount, result.needleCount, result.capCount);
+    ImGui::TextWrapped("%s affected triangles: %s collapsed / collinear, %s needles, %s caps", formatCount(result.findings.size()).c_str(),
+        formatCount(result.collapsedCount).c_str(), formatCount(result.needleCount).c_str(), formatCount(result.capCount).c_str());
     if (result.findings.empty()) { return; }
     const auto* comparison = findComparison(state, id);
     const size_t selected = comparison->diagnosticFocus ? comparison->diagnosticFocus->index : 0;
@@ -645,7 +647,7 @@ void drawTopologyInspectionFindings(UiState& state, const ComparisonRuntime& run
         }
         ImGui::TextWrapped("%zu simple loops; %zu pass size ratio <= %.6g. %zu open and %zu branched boundary regions are excluded. All edges remain available under Boundary edges.", loops, topology.holes.size(), settings.topologyInspection.holeSizeRatioTolerance, open, branched);
     } else {
-        ImGui::TextWrapped("Vertex links must form one interior cycle or one boundary path. %zu vertices on non-manifold edges excluded; unused points are not defects here.", topology.excludedNonManifoldEdgeVertices);
+        ImGui::TextWrapped("Vertex links must form one interior cycle or one boundary path. %s vertices on non-manifold edges excluded; unused points are not defects here.", formatCount(topology.excludedNonManifoldEdgeVertices).c_str());
     }
     const size_t count = fins ? topology.fins.size() : holes ? topology.holes.size() : topology.nonManifoldVertices.size();
     if (!count) { return; }
@@ -731,8 +733,8 @@ void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool
     const auto& findings = topologyFindings(topology, category);
     if (findings.empty()) { return; }
     if (category == DiagnosticCategory::winding) {
-        ImGui::TextWrapped("%zu affected triangle instances across %zu conflict edges. Both incident faces are reported; no unique erroneous face or repair direction is implied. %zu orientation contradiction witnesses.",
-            topology.windingFaces.size(), findings.size(), topology.orientationContradictions);
+        ImGui::TextWrapped("%s affected triangle instances across %s conflict edges. Both incident faces are reported; no unique erroneous face or repair direction is implied. %s orientation contradiction witnesses.",
+            formatCount(topology.windingFaces.size()).c_str(), formatCount(findings.size()).c_str(), formatCount(topology.orientationContradictions).c_str());
     }
     const auto* comparison = findComparison(state, id);
     const size_t selected = comparison->diagnosticFocus ? comparison->diagnosticFocus->index : 0;
@@ -1016,9 +1018,9 @@ void drawSurfaceQualityStatistics(const MeshComparison& result, const Comparison
             ImGui::TableNextColumn();
             ImGui::TextUnformatted(value(result.original.quality).c_str());
         };
-        row("Triangles", [](const auto& q) { return std::to_string(q.triangles.size()); });
-        row("Degenerate", [](const auto& q) { return std::to_string(q.degenerateTriangles); });
-        row("Measured faces", [&](const auto& q) { return std::to_string(q.statistics[index].count); });
+        row("Triangles", [](const auto& q) { return formatCount(q.triangles.size()); });
+        row("Degenerate", [](const auto& q) { return formatCount(q.degenerateTriangles); });
+        row("Measured faces", [&](const auto& q) { return formatCount(q.statistics[index].count); });
         const auto statisticRow = [&](const char* name, double QualityStatistics::*field) {
             row(name, [&](const auto& q) { return q.statistics[index].count ? measurementNumber(q.statistics[index].*field) : "N/A"; });
         };
@@ -1067,7 +1069,7 @@ void drawUvFindings(UiState& state, const Mesh& display, uint64_t signature, Sce
 {
     const auto& quality = *display.uvQuality;
     ImGui::SeparatorText("Findings");
-    ImGui::TextWrapped("%zu triangles with findings", quality.findings.size());
+    ImGui::TextWrapped("%s triangles with findings", formatCount(quality.findings.size()).c_str());
     if (quality.findings.empty()) { ImGui::TextDisabled("No findings in the checked UV categories."); return; }
     bool scrollToFocus = false;
     if (ImGui::Button("Previous finding")) { navigateUvFinding(state, display, signature, -1, id); scrollToFocus = true; }
@@ -1184,10 +1186,10 @@ void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId i
         const auto& quality = *display.uvQuality;
         if (ImGui::BeginTable("UV result summary", 2, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp)) {
             ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 4);
+            ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed);
             const auto row = [](const char* label, size_t count) {
                 ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextWrapped("%s", label);
-                ImGui::TableNextColumn(); ImGui::Text("%zu", count);
+                ImGui::TableNextColumn(); ImGui::TextUnformatted(formatCount(count).c_str());
             };
             row("Triangles checked", uvMeasurements(quality).triangles.size());
             row("Collapsed UV triangles", uvMeasurements(quality).collapsed);
@@ -1404,11 +1406,11 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     const auto &b = runtime.results.value.repaired.diagnostics;
     if (!inspectorStagesReady(runtime, state, id, comparisonTopology)) { return; }
     if (both) {
-        ImGui::TextWrapped("Numerically collapsed triangles: %zu -> %zu", a.degenerateTriangles, b.degenerateTriangles);
-        ImGui::TextWrapped("Geometric duplicate triangles: %zu -> %zu", a.duplicateTriangles, b.duplicateTriangles);
+        ImGui::TextWrapped("Numerically collapsed triangles: %s -> %s", formatCount(a.degenerateTriangles).c_str(), formatCount(b.degenerateTriangles).c_str());
+        ImGui::TextWrapped("Geometric duplicate triangles: %s -> %s", formatCount(a.duplicateTriangles).c_str(), formatCount(b.duplicateTriangles).c_str());
     } else {
-        ImGui::TextWrapped("Numerically collapsed triangles: %zu", surface.diagnostics.degenerateTriangles);
-        ImGui::TextWrapped("Geometric duplicate triangles: %zu", surface.diagnostics.duplicateTriangles);
+        ImGui::TextWrapped("Numerically collapsed triangles: %s", formatCount(surface.diagnostics.degenerateTriangles).c_str());
+        ImGui::TextWrapped("Geometric duplicate triangles: %s", formatCount(surface.diagnostics.duplicateTriangles).c_str());
     }
 }
 

@@ -3,6 +3,7 @@
 #include "background_load.h"
 #include "post_loading.h"
 #include "camera.h"
+#include "count_format.h"
 #include "scene_viewport.h"
 #include "command_line.h"
 #include "console.h"
@@ -946,10 +947,11 @@ void drawGroupControls(
         woby::sceneObjectSelected(state, settings.objectId), badge);
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         if (node.pointIndexCount) {
-            ImGui::SetTooltip("%s\nPoints: %u", woby::meshNodeDisplayName(node).c_str(), node.pointIndexCount);
+            ImGui::SetTooltip("%s\nPoints: %s", woby::meshNodeDisplayName(node).c_str(), woby::formatCount(node.pointIndexCount).c_str());
         } else {
-            ImGui::SetTooltip(node.lineIndexCount ? "%s\nVertices: %u  Line segments: %u" : "%s\nVertices: %u  Triangles: %u",
-                woby::meshNodeDisplayName(node).c_str(), range.pointIndexCount, node.lineIndexCount ? node.lineIndexCount / 2u : node.indexCount / 3u);
+            ImGui::SetTooltip(node.lineIndexCount ? "%s\nVertices: %s  Line segments: %s" : "%s\nVertices: %s  Triangles: %s",
+                woby::meshNodeDisplayName(node).c_str(), woby::formatCount(range.pointIndexCount).c_str(),
+                woby::formatCount(node.lineIndexCount ? node.lineIndexCount / 2u : node.indexCount / 3u).c_str());
         }
     }
     drawSceneItemInteraction(state, settings.objectId, false);
@@ -1022,8 +1024,9 @@ void drawSceneTreeNode(
         if (std::find(revealPath.begin(), revealPath.end(), node.objectId) != revealPath.end()) { ImGui::SetNextItemOpen(true); }
         const bool fileTreeOpen = ImGui::TreeNodeEx("file", flags, "%s", node.name.c_str());
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("%s\nVertices: %zu  Triangles: %zu", woby::pathToUtf8(file.path).c_str(),
-                meshGeometry(file.mesh).vertices.size(), meshGeometry(file.mesh).indices.size() / 3u);
+            ImGui::SetTooltip("%s\nVertices: %s  Triangles: %s", woby::pathToUtf8(file.path).c_str(),
+                woby::formatCount(meshGeometry(file.mesh).vertices.size()).c_str(),
+                woby::formatCount(meshGeometry(file.mesh).indices.size() / 3u).c_str());
         }
         if (drawSceneItemInteraction(state, node.objectId, true, true)) {
             removeFileIndex = node.fileIndex;
@@ -3274,8 +3277,9 @@ int main(int argc, char** argv)
                         triangleCountTotal += meshGeometry(file.mesh).indices.size() / 3u;
                         lineCountTotal += meshGeometry(file.mesh).lineIndices.size() / 2u;
                     }
-                    ImGui::TextDisabled("%zu vertices | %zu triangles", vertexCountTotal, triangleCountTotal);
-                    if (lineCountTotal) { ImGui::SameLine(); ImGui::TextDisabled("| %zu lines", lineCountTotal); }
+                    ImGui::TextDisabled("%s vertices | %s triangles", woby::formatCount(vertexCountTotal).c_str(),
+                        woby::formatCount(triangleCountTotal).c_str());
+                    if (lineCountTotal) { ImGui::SameLine(); ImGui::TextDisabled("| %s lines", woby::formatCount(lineCountTotal).c_str()); }
                     ImGui::TextDisabled("%s | %.1f FPS", woby::graphics::getRendererName(woby::graphics::getRendererType()), fps);
                 }
                     ImGui::End();

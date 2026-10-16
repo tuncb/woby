@@ -592,6 +592,7 @@ if(BUILD_TESTING)
         tests/app_icon_tests.cpp
         tests/update_tests.cpp
         tests/analysis_presentation_tests.cpp
+        tests/count_format_tests.cpp
         tests/mesh_intersections_tests.cpp
         tests/mesh_intersection_predicates_tests.cpp
         tests/mesh_intersection_reference.cpp

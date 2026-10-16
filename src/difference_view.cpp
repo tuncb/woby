@@ -1,4 +1,5 @@
 #include "difference_runtime.h"
+#include "count_format.h"
 #include "math_utils.h"
 #include "graphics_helpers.h"
 #include "marker_pick.h"
@@ -75,7 +76,7 @@ void drawDifferenceInspector(UiState &state, ComparisonRuntime &runtime, SceneOb
         }
         ImGui::Text("%s: %.9g", v.constructed ? "Constructed gap" : "Total changed", v.volumes[0] + v.volumes[1]);
         if (v.constructed) {
-            ImGui::Text("Closure triangles: %zu", v.closureTriangles);
+            ImGui::Text("Closure triangles: %s", formatCount(v.closureTriangles).c_str());
         }
         if (ImGui::Button("Frame result")) {
             frameComparison(state, id);

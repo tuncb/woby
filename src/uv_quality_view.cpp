@@ -1,4 +1,5 @@
 #include "uv_quality_view.h"
+#include "count_format.h"
 #include "ui_operations.h"
 #include "comparison_scene.h"
 #include "ui_icon_controls.h"
@@ -36,8 +37,8 @@ void histogram(const UvQualityStatistics& s, ComparisonSettings& settings)
         const size_t bin = std::min(uvHistogramBins-1,static_cast<size_t>(std::max(0.0f,ImGui::GetIO().MousePos.x-origin.x)/binWidth));
         const double step = (s.histogramMaximum-s.histogramMinimum)/uvHistogramBins;
         const double low = s.histogramMinimum+static_cast<double>(bin)*step, high = low+step;
-        ImGui::SetTooltip("[%.6g, %.6g%s\n%zu faces (%.3g%%); %.3g%% of surface area\nClick to highlight this range in cyan",
-            low,high,bin+1==uvHistogramBins ? "]" : ")",s.counts[bin],fraction(bin,false)*100,fraction(bin,true)*100);
+        ImGui::SetTooltip("[%.6g, %.6g%s\n%s faces (%.3g%%); %.3g%% of surface area\nClick to highlight this range in cyan",
+            low,high,bin+1==uvHistogramBins ? "]" : ")",formatCount(s.counts[bin]).c_str(),fraction(bin,false)*100,fraction(bin,true)*100);
         if (ImGui::IsItemClicked()) {
             settings.uvRangeEnabled = true;
             settings.uvRangeMinimum = static_cast<float>(low);
@@ -101,19 +102,21 @@ void drawUvQualityControls(UiState& state, ComparisonSettings& settings, const U
     if (!quality) { ImGui::TextDisabled("Computing UV measurements..."); return; }
     const auto& q = *quality;
     const auto& s = q.statistics;
-    ImGui::TextWrapped("%zu collapsed UV; %zu mixed-orientation patches; %zu missing UV; %zu degenerate surface triangles",
-        uvMeasurements(q).collapsed,uvMeasurements(q).mixedOrientationPatches,uvMeasurements(q).missing,uvMeasurements(q).degenerateSurface);
-    ImGui::TextWrapped("%zu valid triangles near collapse (stretch < %.6g)",s.nearCollapseCount,q.settings.uvNearCollapse);
+    ImGui::TextWrapped("%s collapsed UV; %s mixed-orientation patches; %s missing UV; %s degenerate surface triangles",
+        formatCount(uvMeasurements(q).collapsed).c_str(),formatCount(uvMeasurements(q).mixedOrientationPatches).c_str(),
+        formatCount(uvMeasurements(q).missing).c_str(),formatCount(uvMeasurements(q).degenerateSurface).c_str());
+    ImGui::TextWrapped("%s valid triangles near collapse (stretch < %.6g)",formatCount(s.nearCollapseCount).c_str(),q.settings.uvNearCollapse);
     if (numeric && s.count) {
         ImGui::TextWrapped("Minimum %.6g | Median %.6g | P95 %.6g | Maximum %.6g",s.minimum,s.median,s.percentile95,s.maximum);
-        ImGui::TextWrapped("Threshold: %zu / %zu faces (%.3g%%); %.3g%% of valid surface area",s.thresholdCount,s.count,
+        ImGui::TextWrapped("Threshold: %s / %s faces (%.3g%%); %.3g%% of valid surface area",formatCount(s.thresholdCount).c_str(),formatCount(s.count).c_str(),
             100*static_cast<double>(s.thresholdCount)/static_cast<double>(s.count),s.thresholdAreaPercent);
         ImGui::TextWrapped("Percentiles weight faces equally. Invalid triangles are excluded. Area statistics use physical surface area.");
         histogram(s,settings);
     }
     if (bool(q.overlap)) {
-        ImGui::TextWrapped("%zu overlap pairs: %zu within patches, %zu cross-patch; %zu affected triangles",
-            uvOverlapResult(q).pairs.size(),uvOverlapResult(q).pairs.size()-uvOverlapResult(q).crossPatchPairs,uvOverlapResult(q).crossPatchPairs,uvOverlapResult(q).overlappingTriangles);
+        ImGui::TextWrapped("%s overlap pairs: %s within patches, %s cross-patch; %s affected triangles",
+            formatCount(uvOverlapResult(q).pairs.size()).c_str(),formatCount(uvOverlapResult(q).pairs.size()-uvOverlapResult(q).crossPatchPairs).c_str(),
+            formatCount(uvOverlapResult(q).crossPatchPairs).c_str(),formatCount(uvOverlapResult(q).overlappingTriangles).c_str());
         if (uvOverlapResult(q).truncated) {
             const auto reason = uvOverlapResult(q).truncation;
             const char* limit = reason == UvOverlapTruncation::pairs ? "pair"

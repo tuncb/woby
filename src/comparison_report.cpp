@@ -1,4 +1,5 @@
 #include "comparison_report.h"
+#include "count_format.h"
 #include "uv_quality.h"
 
 #include <algorithm>
@@ -90,19 +91,19 @@ std::vector<std::string> comparisonReportLines(
                 const auto& s = q.statistics;
                 if (s.count) {
                     lines.push_back("Min / median / P95 / max: "+measurementNumber(s.minimum)+" / "+measurementNumber(s.median)+" / "+measurementNumber(s.percentile95)+" / "+measurementNumber(s.maximum));
-                    lines.push_back("Threshold "+measurementNumber(q.settings.uvThreshold)+": "+std::to_string(s.thresholdCount)+" faces; "+measurementNumber(s.thresholdAreaPercent)+"% surface area");
+                    lines.push_back("Threshold "+measurementNumber(q.settings.uvThreshold)+": "+formatCount(s.thresholdCount)+" faces; "+measurementNumber(s.thresholdAreaPercent)+"% surface area");
                 }
-                lines.push_back(std::to_string(s.nearCollapseCount)+" near-collapse triangles (stretch < "+measurementNumber(q.settings.uvNearCollapse)+")");
+                lines.push_back(formatCount(s.nearCollapseCount)+" near-collapse triangles (stretch < "+measurementNumber(q.settings.uvNearCollapse)+")");
                 if (bool(q.overlap)) {
                     const auto& overlap = uvOverlapResult(q);
-                    auto line = std::to_string(overlap.pairs.size())+" UV overlap pairs; "+std::to_string(overlap.crossPatchPairs)+" cross-patch (may be intentional)";
+                    auto line = formatCount(overlap.pairs.size())+" UV overlap pairs; "+formatCount(overlap.crossPatchPairs)+" cross-patch (may be intentional)";
                     if (overlap.truncated) {
                         line += std::string("; PARTIAL: ")+uvOverlapTruncationKey(overlap.truncation)+" limit; highlights cover retained pairs only";
                     }
                     lines.push_back(std::move(line));
                 }
                 if (settings.uvThresholdEnabled || settings.uvRangeEnabled) { lines.push_back("Cyan: highlighted threshold / histogram range"); }
-                lines.push_back(std::to_string(uvMeasurements(q).collapsed)+" collapsed UV triangles; "+std::to_string(uvMeasurements(q).mixedOrientationPatches)+" patches with mixed orientation");
+                lines.push_back(formatCount(uvMeasurements(q).collapsed)+" collapsed UV triangles; "+formatCount(uvMeasurements(q).mixedOrientationPatches)+" patches with mixed orientation");
             }
         } else if (options.legend && settings.uvGrid.enabled && settings.uvGrid.mode != UvColorMode::grid) {
             lines.push_back(std::string(uvColorModeKey(settings.uvGrid.mode))+" gradient: blue "+measurementNumber(settings.uvGrid.minimum)+"; yellow "+measurementNumber(settings.uvGrid.maximum));
@@ -126,7 +127,7 @@ std::vector<std::string> comparisonReportLines(
             if (meshGeometry(surface->source).indices.empty()) { continue; }
             const auto append = [&](const char* name, const DuplicateResult& duplicates) {
                 if (!duplicates.enabled) { return; }
-                lines.push_back(label + " " + name + ": " + std::to_string(duplicates.duplicateCount) + " (" + duplicateStatus(duplicates) + ")");
+                lines.push_back(label + " " + name + ": " + formatCount(duplicates.duplicateCount) + " (" + duplicateStatus(duplicates) + ")");
             };
             const char* detectorNames[] = {"boundary edges", "non-manifold edges", "inconsistent triangles", "duplicate points",
                 "source-ID duplicate triangles", "degenerate triangles", "non-manifold vertices", "holes", "fin candidates"};
@@ -134,50 +135,50 @@ std::vector<std::string> comparisonReportLines(
                 const auto& status = result.detectors[i];
                 if (status.phase == IntersectionPhase::complete) { continue; }
                 lines.push_back(label + " " + detectorNames[i] + ": " + detectorPhaseName(status.phase)
-                    + (status.hasResult ? "; previous result: " + std::to_string(status.knownCounts[side - 1]) + " known findings" : ""));
+                    + (status.hasResult ? "; previous result: " + formatCount(status.knownCounts[side - 1]) + " known findings" : ""));
             }
             const auto& topology = surface->topology;
             lines.push_back(label + " topology: " + topologyModeName(topology.mode) + "; per batch (" + topologyStatus(topology) + ")");
             if (ready(DiagnosticCategory::boundary) && ready(DiagnosticCategory::nonManifold) && ready(DiagnosticCategory::winding)) {
                 lines.push_back(label + " known boundary / non-manifold edges / inconsistent triangles: "
-                    + std::to_string(topology.boundaries.size()) + " / " + std::to_string(topology.nonManifoldEdges.size())
-                    + " / " + std::to_string(topology.windingFaces.size()));
+                    + formatCount(topology.boundaries.size()) + " / " + formatCount(topology.nonManifoldEdges.size())
+                    + " / " + formatCount(topology.windingFaces.size()));
             } else {
-                if (ready(DiagnosticCategory::boundary)) { lines.push_back(label + " boundary edges: " + std::to_string(topology.boundaries.size())); }
-                if (ready(DiagnosticCategory::nonManifold)) { lines.push_back(label + " non-manifold edges: " + std::to_string(topology.nonManifoldEdges.size())); }
-                if (ready(DiagnosticCategory::winding)) { lines.push_back(label + " inconsistent triangles: " + std::to_string(topology.windingFaces.size())); }
+                if (ready(DiagnosticCategory::boundary)) { lines.push_back(label + " boundary edges: " + formatCount(topology.boundaries.size())); }
+                if (ready(DiagnosticCategory::nonManifold)) { lines.push_back(label + " non-manifold edges: " + formatCount(topology.nonManifoldEdges.size())); }
+                if (ready(DiagnosticCategory::winding)) { lines.push_back(label + " inconsistent triangles: " + formatCount(topology.windingFaces.size())); }
             }
             if (ready(DiagnosticCategory::nonManifoldVertices)) {
-                lines.push_back(label + " non-manifold vertices: " + std::to_string(topology.nonManifoldVertices.size()) + " known (" + topologyStatus(topology) + ")");
+                lines.push_back(label + " non-manifold vertices: " + formatCount(topology.nonManifoldVertices.size()) + " known (" + topologyStatus(topology) + ")");
             }
             if (ready(DiagnosticCategory::fins)) {
-                lines.push_back(label + " Woby fin candidates: " + std::to_string(topology.fins.size()) + " known (" + finStatus(topology) + "); heuristic");
+                lines.push_back(label + " Woby fin candidates: " + formatCount(topology.fins.size()) + " known (" + finStatus(topology) + "); heuristic");
             }
             if (ready(DiagnosticCategory::holes)) {
                 size_t branched = 0, open = 0;
                 for (const auto& boundary : topology.boundaryRegions) { branched += boundary.kind == BoundaryKind::branched; open += boundary.kind == BoundaryKind::open; }
-                lines.push_back(label + " holes: " + std::to_string(topology.holes.size()) + " known (" + topologyStatus(topology) + "); "
-                    + std::to_string(branched) + " branched / " + std::to_string(open) + " open boundary regions");
+                lines.push_back(label + " holes: " + formatCount(topology.holes.size()) + " known (" + topologyStatus(topology) + "); "
+                    + formatCount(branched) + " branched / " + formatCount(open) + " open boundary regions");
             }
-            if (topology.excludedCollapsedFaces) { lines.push_back(label + " topology excluded collapsed faces: " + std::to_string(topology.excludedCollapsedFaces)); }
+            if (topology.excludedCollapsedFaces) { lines.push_back(label + " topology excluded collapsed faces: " + formatCount(topology.excludedCollapsedFaces)); }
             if (ready(DiagnosticCategory::duplicatePoints)) { append("duplicate points", surface->duplicates.points); }
             if (ready(DiagnosticCategory::duplicateTriangles)) { append("source-ID duplicate triangles", surface->duplicates.triangles); }
             {
                 const auto& d = surface->intersections;
                 if (d.phase != IntersectionPhase::complete) {
                     lines.push_back(label + " self-intersections: " + intersectionStatus(d)
-                        + (d.hasResult ? "; previous result: " + std::to_string(d.findings.size()) + " known pairs" : ""));
+                        + (d.hasResult ? "; previous result: " + formatCount(d.findings.size()) + " known pairs" : ""));
                 } else {
                     lines.push_back(label + " self-intersections: " + ((d.unavailableSources || d.truncated) ? std::string("N/A; known ") : std::string{})
-                        + std::to_string(d.findings.size()) + " pairs; " + std::to_string(d.affectedFaces) + " known affected faces (" + intersectionStatus(d) + ")");
+                        + formatCount(d.findings.size()) + " pairs; " + formatCount(d.affectedFaces) + " known affected faces (" + intersectionStatus(d) + ")");
                 }
             }
             if (ready(DiagnosticCategory::degenerateTriangles)) {
                 const auto& d = surface->degenerates;
                 lines.push_back(label + " degenerate triangles: " + (d.unavailableSources ? std::string("N/A; known ") : std::string{})
-                    + std::to_string(d.findings.size()) + " (" + degenerateStatus(d) + ")");
-                lines.push_back(label + " collapsed / needle / cap: " + std::to_string(d.collapsedCount) + " / "
-                    + std::to_string(d.needleCount) + " / " + std::to_string(d.capCount) + " (reasons overlap)");
+                    + formatCount(d.findings.size()) + " (" + degenerateStatus(d) + ")");
+                lines.push_back(label + " collapsed / needle / cap: " + formatCount(d.collapsedCount) + " / "
+                    + formatCount(d.needleCount) + " / " + formatCount(d.capCount) + " (reasons overlap)");
             }
         }
     }
@@ -218,8 +219,8 @@ std::vector<std::string> comparisonReportLines(
             for (const auto* quality : {&result.original.quality, &result.repaired.quality}) {
                 const std::string label = sources ? "Sources" : side++ == 0 ? "A" : "B";
                 if (quality->triangles.empty()) { continue; }
-                lines.push_back(label + ": " + std::to_string(quality->triangles.size()) + " triangles; " +
-                    std::to_string(quality->degenerateTriangles) + " degenerate");
+                lines.push_back(label + ": " + formatCount(quality->triangles.size()) + " triangles; " +
+                    formatCount(quality->degenerateTriangles) + " degenerate");
                 const auto& stats = quality->statistics[index];
                 lines.push_back(label + " min / P5 / median / P95 / max: " + (stats.count ?
                     measurementNumber(stats.minimum) + " / " + measurementNumber(stats.percentile5) + " / " +
@@ -241,7 +242,7 @@ std::vector<std::string> comparisonReportLines(
                     const std::string label = sources ? "Sources" : side++ == 0 ? "A" : "B";
                     if (quality->triangles.empty()) { continue; }
                     const auto limits = surfaceQualitySizeLimits(*quality, settings.quality);
-                    lines.push_back(label + " below / above limits: " + std::to_string(limits.below) + " / " + std::to_string(limits.above));
+                    lines.push_back(label + " below / above limits: " + formatCount(limits.below) + " / " + formatCount(limits.above));
                     lines.push_back(label + " outside limits: " + (limits.validTriangles ? measurementNumber(limits.trianglePercent) +
                         "% of faces; " + measurementNumber(limits.areaPercent) + "% of area" : "N/A"));
                 }
