@@ -12,6 +12,7 @@ DIAGNOSTIC = Path(sys.argv.pop(1)).resolve(strict=True) if len(sys.argv) > 1 els
 UV_CHECK = Path(sys.argv.pop(1)).resolve(strict=True) if len(sys.argv) > 1 else None
 UV_PTR = Path(sys.argv.pop(1)).resolve(strict=True) if len(sys.argv) > 1 else None
 NORMALS = Path(sys.argv.pop(1)).resolve(strict=True) if len(sys.argv) > 1 else None
+PREPARATION = Path(sys.argv.pop(1)).resolve(strict=True) if len(sys.argv) > 1 else None
 
 
 def test_triangle_and_seam_geometry():
@@ -123,6 +124,37 @@ def test_triangle_and_seam_geometry():
                 checks.assertIn("uv_validation_cache", [row["name"] for row in cached["events"]])
 
 
+def test_point_preparation_identity():
+    if not PREPARATION:
+        return
+    checks = unittest.TestCase()
+    with tempfile.TemporaryDirectory(prefix="woby point preparation ") as temporary:
+        path = Path(temporary).resolve() / "rgb.obj"
+        vertices = "".join(f"v {i % 97} {i % 31} {i % 13} 1 0 0\n" for i in range(65538))
+        faces = "".join(f"f {i} {i + 1} {i + 2}\n" for i in range(1, 65539, 3))
+        path.write_text(vertices + faces, encoding="ascii")
+        outputs = {}
+        for mode in ("membership", "points", "post-load", "annotation"):
+            result = json.loads(subprocess.check_output([str(PREPARATION), str(path), "2", mode], text=True))
+            checks.assertEqual(result["mode"], mode)
+            checks.assertEqual(result["records"][0]["output"], result["records"][1]["output"])
+            checks.assertTrue(all(row["wall_ms"] > 0 for row in result["records"]))
+            outputs[mode] = result["records"][0]["output"]
+        checks.assertEqual(outputs["points"], outputs["post-load"]["points"])
+        checks.assertEqual(outputs["membership"]["membership_digest"], outputs["points"]["membership_digest"])
+        checks.assertEqual(outputs["points"]["point_count"], 65538)
+        checks.assertGreater(outputs["points"]["node_count"], 0)
+        checks.assertEqual(outputs["annotation"], {k: v for k, v in outputs["post-load"].items() if k != "points"})
+        path.write_text(vertices.replace("1 0 0\n", "0 1 0\n") + faces, encoding="ascii")
+        changed = json.loads(subprocess.check_output([str(PREPARATION), str(path), "1", "points"], text=True))["records"][0]["output"]
+        checks.assertNotEqual(changed["colors_digest"], outputs["points"]["colors_digest"])
+        checks.assertEqual({k: v for k, v in changed.items() if k != "colors_digest"},
+                           {k: v for k, v in outputs["points"].items() if k != "colors_digest"})
+        for rounds, mode in (("0", "points"), ("21", "points"), ("1", "invalid")):
+            checks.assertNotEqual(subprocess.run([str(PREPARATION), str(path), rounds, mode], capture_output=True).returncode, 0)
+
+
 if __name__ == "__main__":
-    result = unittest.TextTestRunner(verbosity=2).run(unittest.FunctionTestCase(test_triangle_and_seam_geometry))
+    result = unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite([
+        unittest.FunctionTestCase(test_triangle_and_seam_geometry), unittest.FunctionTestCase(test_point_preparation_identity)]))
     sys.exit(not result.wasSuccessful())

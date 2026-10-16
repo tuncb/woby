@@ -11,6 +11,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <numeric>
+#include <tuple>
 
 namespace {
 woby::Mesh indexedMesh(size_t count = 600003)
@@ -210,6 +212,227 @@ TEST_CASE("Point bounds reuse needs a proven complete group and current validate
     g.vertices[0].position[0] = std::numeric_limits<float>::quiet_NaN();
     CHECK_THROWS_AS((void)woby::points::buildCloud(mesh, ranges->pointVertexIndices, ranges->nodeRanges, {}, 2, 1), std::invalid_argument);
     CHECK_THROWS_AS((void)woby::calculateBounds(g.vertices), std::runtime_error);
+}
+
+TEST_CASE("Compact point membership retains first use at word boundaries and across groups")
+{
+    woby::Mesh mesh;
+    auto& g = woby::editMeshGeometry(mesh);
+    g.vertices.resize(130);
+    const std::vector<uint32_t> indices{129, 64, 63, 0, 64, 1, 129, 65, 63, 128, 127, 0};
+    g.nodes = {{"first"}};
+    SUBCASE("triangles") { g.indices = indices; g.nodes[0].indexCount = static_cast<uint32_t>(indices.size()); }
+    SUBCASE("lines") { g.lineIndices = indices; g.nodes[0].lineIndexCount = static_cast<uint32_t>(indices.size()); }
+    SUBCASE("points") { g.pointIndices = indices; g.nodes[0].pointIndexCount = static_cast<uint32_t>(indices.size()); }
+    SUBCASE("overlapping groups and empty group") {
+        g.pointIndices = indices;
+        g.nodes[0].pointIndexCount = static_cast<uint32_t>(indices.size());
+        g.nodes.push_back({"empty"});
+        auto second = g.nodes[0]; second.name = "second";
+        second.pointIndexOffset = 2; second.pointIndexCount -= 2;
+        g.nodes.push_back(second);
+    }
+    std::vector<uint32_t> expected;
+    std::vector<uint32_t> counts;
+    for (const auto& node : g.nodes) {
+        const auto first = expected.size();
+        std::vector<bool> visited(g.vertices.size());
+        for (const auto vertex : woby::meshNodeIndices(mesh, node)) {
+            if (!visited[vertex]) { visited[vertex] = true; expected.push_back(vertex); }
+        }
+        counts.push_back(static_cast<uint32_t>(expected.size() - first));
+    }
+    const auto prepared = woby::prepareSceneMesh(mesh, woby::gpuMeshPoints, {}, false);
+    REQUIRE(prepared);
+    CHECK(prepared->pointVertexIndices == expected);
+    uint32_t offset = 0;
+    for (size_t i = 0; i < counts.size(); ++i) {
+        CHECK(prepared->nodeRanges[i].pointIndexOffset == offset);
+        CHECK(prepared->nodeRanges[i].pointIndexCount == counts[i]);
+        CHECK_FALSE(prepared->nodeRanges[i].completeVertexSet);
+        offset += counts[i];
+    }
+    const auto omitted = woby::prepareSceneMesh(mesh, 0, {}, false, false);
+    REQUIRE(omitted);
+    CHECK(omitted->pointVertexIndices.empty());
+}
+
+TEST_CASE("Complete membership validates trailing indices and cancellation before skipping duplicates")
+{
+    auto mesh = indexedMesh();
+    const auto prepared = woby::prepareSceneMesh(mesh, woby::gpuMeshPoints, {}, false);
+    REQUIRE(prepared);
+    CHECK(prepared->pointVertexIndices == std::vector<uint32_t>{0, 1, 2});
+    CHECK(prepared->nodeRanges[0].completeVertexSet);
+    SUBCASE("invalid tail") {
+        woby::editMeshGeometry(mesh).indices.back() = 3;
+        CHECK_THROWS_AS((void)woby::prepareSceneMesh(mesh, woby::gpuMeshPoints, {}, false), std::runtime_error);
+    }
+    SUBCASE("invalid primitive range") {
+        woby::editMeshGeometry(mesh).nodes[0].indexCount += 3;
+        CHECK_THROWS_AS((void)woby::prepareSceneMesh(mesh, woby::gpuMeshPoints, {}, false), std::runtime_error);
+    }
+    SUBCASE("cancel after cached validation") {
+        size_t calls = 0;
+        CHECK_FALSE(woby::prepareSceneMesh(mesh, woby::gpuMeshPoints, [&] { return ++calls == 3; }, false));
+        CHECK(calls == 3);
+    }
+}
+
+TEST_CASE("Ordered membership prefix falls back without losing visited bits or first-use order")
+{
+    for (const uint32_t prefix : {0u, 1u, 63u, 64u, 65u, 128u}) {
+        woby::Mesh mesh;
+        auto& g = woby::editMeshGeometry(mesh);
+        g.vertices.resize(130);
+        for (uint32_t i = 0; i < prefix; ++i) { g.pointIndices.push_back(i); g.pointIndices.push_back(i); }
+        for (uint32_t i = 130; i-- > prefix;) { g.pointIndices.push_back(i); }
+        for (uint32_t i = 0; i < 130; ++i) { g.pointIndices.push_back(i); }
+        g.nodes = {{"points"}}; g.nodes[0].pointIndexCount = static_cast<uint32_t>(g.pointIndices.size());
+        std::vector<uint32_t> expected;
+        for (uint32_t i = 0; i < prefix; ++i) { expected.push_back(i); }
+        for (uint32_t i = 130; i-- > prefix;) { expected.push_back(i); }
+        const auto result = woby::prepareSceneMesh(mesh, woby::gpuMeshPoints, {}, false);
+        REQUIRE(result); CHECK(result->pointVertexIndices == expected);
+        CHECK(result->nodeRanges[0].completeVertexSet);
+        // A proven prefix can also be the complete membership of a partial group.
+        g.nodes[0].pointIndexCount = prefix * 2;
+        const auto partial = woby::prepareSceneMesh(mesh, woby::gpuMeshPoints, {}, false);
+        REQUIRE(partial);
+        expected.resize(prefix);
+        CHECK(partial->pointVertexIndices == expected);
+        CHECK_FALSE(partial->nodeRanges[0].completeVertexSet);
+    }
+}
+
+TEST_CASE("Parallel point gathering preserves complete cloud output and stable color IDs")
+{
+    woby::Mesh mesh;
+    auto& g = woby::editMeshGeometry(mesh);
+    constexpr uint32_t count = 196613;
+    g.vertices.resize(count);
+    g.vertexColors.resize(count);
+    g.pointIndices.resize(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        // Repeated Morton keys and reverse membership expose unstable ties and
+        // accidental use of the spatial offset as a color or original ID.
+        g.vertices[i].position = {float(i % 97), float(i % 31), float(i % 13)};
+        g.vertexColors[i] = 0xff000000u | i;
+        g.pointIndices[i] = count - i - 1;
+    }
+    g.nodes = {{"first"}, {"empty"}, {"overlap"}};
+    g.nodes[0].pointIndexCount = count;
+    g.nodes[2].pointIndexOffset = 17; g.nodes[2].pointIndexCount = count - 31;
+    SUBCASE("RGB") {}
+    SUBCASE("without colors") { g.vertexColors.clear(); }
+    const auto prepared = woby::prepareSceneMesh(mesh, woby::gpuMeshPoints, {}, false);
+    REQUIRE(prepared);
+    std::optional<woby::points::Cloud> serial;
+    {
+        struct ReservedHelpers {
+            unsigned previous = woby::analysisWorkerCount.exchange(woby::analysisWorkerLimit());
+            ~ReservedHelpers() { woby::analysisWorkerCount.store(previous); }
+        } reserved;
+        serial = woby::points::buildCloud(mesh, prepared->pointVertexIndices, prepared->nodeRanges, {});
+    }
+    const auto parallel = woby::points::buildCloud(mesh, prepared->pointVertexIndices, prepared->nodeRanges, {});
+    REQUIRE(serial); REQUIRE(parallel);
+    CHECK(woby::analysisWorkerCount.load() == 0);
+    CHECK(parallel->sourceVertices == serial->sourceVertices);
+    CHECK(parallel->groups == serial->groups);
+    CHECK(parallel->colors == serial->colors);
+    CHECK(parallel->roots == serial->roots);
+    REQUIRE(parallel->points.size() == serial->points.size());
+    REQUIRE(parallel->proxies.size() == serial->proxies.size());
+    for (const auto vectors : {std::pair{&parallel->points, &serial->points}, std::pair{&parallel->proxies, &serial->proxies}}) {
+        for (size_t i = 0; i < vectors.first->size(); ++i) {
+            const auto& a = (*vectors.first)[i]; const auto& b = (*vectors.second)[i];
+            CHECK(a.id == b.id); CHECK(a.position == b.position);
+            const auto vertex = parallel->sourceVertices[a.id - 1];
+            CHECK(a.position == g.vertices[vertex].position);
+            if (!g.vertexColors.empty()) { CHECK(parallel->colors[a.id - 1] == g.vertexColors[vertex]); }
+        }
+    }
+    REQUIRE(parallel->nodes.size() == serial->nodes.size());
+    for (size_t i = 0; i < parallel->nodes.size(); ++i) {
+        const auto& a = parallel->nodes[i]; const auto& b = serial->nodes[i];
+        CHECK(a.low == b.low); CHECK(a.high == b.high); CHECK(a.extrema == b.extrema);
+        CHECK(std::tie(a.begin, a.count, a.left, a.right, a.proxyBegin, a.proxyCount, a.group)
+            == std::tie(b.begin, b.count, b.left, b.right, b.proxyBegin, b.proxyCount, b.group));
+    }
+    REQUIRE(parallel->navigationCuts.size() == serial->navigationCuts.size());
+    for (size_t level = 0; level < parallel->navigationCuts.size(); ++level) {
+        const auto& a = parallel->navigationCuts[level]; const auto& b = serial->navigationCuts[level];
+        REQUIRE(a.size() == b.size());
+        for (size_t i = 0; i < a.size(); ++i) { CHECK(a[i].node == b[i].node); CHECK(a[i].full == b[i].full); }
+    }
+}
+
+TEST_CASE("Parallel point gathering joins workers on invalid input cancellation and callback exceptions")
+{
+    woby::Mesh mesh;
+    auto& g = woby::editMeshGeometry(mesh);
+    constexpr uint32_t count = 196613;
+    g.vertices.resize(count); g.vertexColors.resize(count, 0xffabcdef);
+    std::vector<uint32_t> sources(count);
+    std::iota(sources.begin(), sources.end(), 0u);
+    woby::GpuNodeRange range; range.pointIndexCount = count;
+    SUBCASE("invalid color source in final batch") {
+        sources.back() = count;
+        CHECK_THROWS_AS((void)woby::points::buildCloud(mesh, sources, {&range, 1}, {}), std::invalid_argument);
+    }
+    SUBCASE("invalid uncolored source") {
+        g.vertexColors.clear(); sources.back() = count;
+        CHECK_THROWS_AS((void)woby::points::buildCloud(mesh, sources, {&range, 1}, {}), std::invalid_argument);
+    }
+    SUBCASE("canceled parallel color pass") {
+        size_t calls = 0;
+        CHECK_FALSE(woby::points::buildCloud(mesh, sources, {&range, 1}, [&] { return ++calls == 5; }));
+        CHECK(calls == 5);
+    }
+    SUBCASE("callback throws on a worker") {
+        const auto caller = std::this_thread::get_id();
+        if (woby::analysisWorkerLimit()) {
+            CHECK_THROWS_WITH((void)woby::points::buildCloud(mesh, sources, {&range, 1}, [&] {
+                if (std::this_thread::get_id() != caller) { throw std::runtime_error("point callback failed"); }
+                return false;
+            }), "point callback failed");
+        }
+    }
+    CHECK(woby::analysisWorkerCount.load() == 0);
+    sources.back() = count - 1;
+    REQUIRE(woby::points::buildCloud(mesh, sources, {&range, 1}, {}));
+}
+
+TEST_CASE("Point key sort and gather passes leave helpers for concurrent annotations")
+{
+    const auto limit = woby::analysisWorkerLimit();
+    if (limit <= 3) { return; }
+    woby::Mesh mesh;
+    auto& g = woby::editMeshGeometry(mesh);
+    constexpr uint32_t count = 8 * 65536 + 7;
+    g.vertices.resize(count); g.vertexColors.resize(count, 0xffabcdef);
+    std::vector<uint32_t> sources(count);
+    std::iota(sources.begin(), sources.end(), 0u);
+    woby::GpuNodeRange range; range.pointIndexCount = count;
+    unsigned peak = 0;
+    {
+        // The post-load coordinator and fingerprint job occupy two helpers.
+        struct ReservedHelpers {
+            unsigned previous = woby::analysisWorkerCount.exchange(2);
+            ~ReservedHelpers() { woby::analysisWorkerCount.store(previous); }
+        } reserved;
+        const auto cloud = woby::points::buildCloud(mesh, sources, {&range, 1}, [&] {
+            // buildCloud serializes these callbacks even when workers call them.
+            peak = std::max(peak, woby::analysisWorkerCount.load());
+            return false;
+        });
+        REQUIRE(cloud);
+        CHECK(cloud->points.size() == count);
+        CHECK(woby::analysisWorkerCount.load() == 2);
+    }
+    CHECK(peak <= 2 + (limit - 2) / 2);
+    CHECK(woby::analysisWorkerCount.load() == 0);
 }
 
 TEST_CASE("Preparation pass benchmark" * doctest::skip())

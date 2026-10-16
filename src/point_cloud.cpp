@@ -20,8 +20,8 @@ uint32_t hash(uint32_t x) { x^=x>>16; x*=0x7feb352du; x^=x>>15; x*=0x846ca68bu; 
 struct Key { uint32_t morton,id; };
 struct Canceled {};
 void checkCancel(const std::function<bool()>& cancel) { if (cancel && cancel()) throw Canceled{}; }
-void radix(std::vector<Key>& keys, const std::function<bool()>& cancel) {
-    stableSpatialRadixSort(keys, [](const Key& key) { return key.morton; }, [&] { checkCancel(cancel); });
+void radix(std::vector<Key>& keys, const std::function<bool()>& cancel, unsigned helpers) {
+    stableSpatialRadixSort(keys, [](const Key& key) { return key.morton; }, [&] { checkCancel(cancel); }, helpers);
 }
 uint32_t buildNode(Cloud& cloud,uint32_t begin,uint32_t count,uint32_t group,uint32_t leafSize,uint32_t proxySize,const std::function<bool()>& cancel) {
     checkCancel(cancel);
@@ -120,6 +120,12 @@ std::optional<Cloud> buildCloud(const Mesh& mesh,std::vector<uint32_t> sourceVer
         return canceled;
     };
     require(leafSize>=2 && proxySize>0 && proxySize<=leafSize,"Invalid hierarchy sizes");
+    // Match the annotation branch's share of the helper budget. Faster membership
+    // can start our key/sort passes before its next pass acquires workers. Without
+    // a local cap, that pass can be left on one thread for its whole duration.
+    const auto limit = analysisWorkerLimit();
+    const auto helpers = limit > 3 && analysisWorkerCount.load(std::memory_order_relaxed) != 0
+        ? (limit - 2) / 2 : limit;
     Cloud cloud; cloud.sourceVertices=std::move(sourceVertices);
     require(cloud.sourceVertices.size()<std::numeric_limits<uint32_t>::max(),"Point source IDs exceed 32 bits");
     try {
@@ -128,11 +134,13 @@ std::optional<Cloud> buildCloud(const Mesh& mesh,std::vector<uint32_t> sourceVer
     if (!sourceColors.empty()) {
         require(sourceColors.size() == meshGeometry(mesh).vertices.size(), "Invalid vertex color count");
         cloud.colors.resize(cloud.sourceVertices.size());
-        for (size_t i = 0; i < cloud.sourceVertices.size(); ++i) {
-            if ((i & 65535) == 0) { checkCancel(cancel); }
-            require(cloud.sourceVertices[i] < sourceColors.size(), "Invalid colored point vertex");
-            cloud.colors[i] = sourceColors[cloud.sourceVertices[i]];
-        }
+        parallelWorkBatches(cloud.sourceVertices.size(), spatialKeyBatchSize, [&] { checkCancel(cancel); },
+            [&](size_t begin, size_t end) {
+                for (size_t i = begin; i < end; ++i) {
+                    require(cloud.sourceVertices[i] < sourceColors.size(), "Invalid colored point vertex");
+                    cloud.colors[i] = sourceColors[cloud.sourceVertices[i]];
+                }
+            }, spatialKeyBatchSize * 2, std::min(helpers, 3u));
     }
     cloud.points.reserve(cloud.sourceVertices.size());
     for (size_t groupIndex=0;groupIndex<ranges.size();++groupIndex) {
@@ -178,10 +186,17 @@ std::optional<Cloud> buildCloud(const Mesh& mesh,std::vector<uint32_t> sourceVer
                 }
                 keys[i]={key,id};
             }
-        },spatialKeyBatchSize*2);
-        radix(keys,cancel);
+        },spatialKeyBatchSize*2,helpers);
+        radix(keys,cancel,helpers);
         const auto begin=static_cast<uint32_t>(cloud.points.size());
-        for (size_t i=0;i<keys.size();++i) { if ((i&65535)==0) checkCancel(cancel); const auto key=keys[i]; cloud.points.push_back({position(key.id),key.id}); }
+        cloud.points.resize(cloud.points.size()+keys.size());
+        // Spatial order and original IDs are fixed before workers fill disjoint
+        // ranges. Limit helpers so the annotation branch can run at the same time.
+        parallelWorkBatches(keys.size(),spatialKeyBatchSize,[&] { checkCancel(cancel); },[&](size_t firstKey,size_t lastKey) {
+            for (size_t i=firstKey;i<lastKey;++i) {
+                const auto key=keys[i]; cloud.points[begin+i]={position(key.id),key.id};
+            }
+        },spatialKeyBatchSize*2,std::min(helpers,3u));
         keys.clear(); keys.shrink_to_fit();
         cloud.roots.push_back(buildNode(cloud,begin,end-first,static_cast<uint32_t>(groupIndex),leafSize,proxySize,cancel));
     }

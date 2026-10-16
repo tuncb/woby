@@ -180,6 +180,14 @@ def generate(root, output, reference=False):
     ])
     (output / "model_mesh.cpp").write_text('#include "profile.h"\n' + text, encoding="utf-8")
     text = (root / "src/scene_mesh_preparation.cpp").read_text(encoding="utf-8")
+    if '    // Release membership scratch' in text:
+        text = replace(text, '    // Release membership scratch',
+                       '    const auto measuredMembershipScratch = visited.capacity()*sizeof(uint64_t) + vertexGroups.capacity()*sizeof(size_t);\n    // Release membership scratch')
+    else:
+        # The preceding revision retains its marker array until function exit.
+        # Accept it too, so both builds can use the same comparison harness.
+        text = replace(text, '    if (buildPointHierarchy &&',
+                       '    const auto measuredMembershipScratch = vertexGroups.capacity()*sizeof(size_t);\n    if (buildPointHierarchy &&')
     text = section(text, 'std::optional<SceneMeshPreparation> prepareSceneMesh(', '} // namespace woby', [
         ('    const auto canceled', '    auto measuredPrepare = obj_profile::begin("gpu_index_validation");\n    const auto canceled'),
         ('    if (!cacheCurrent || !cache->indicesValidated.load(std::memory_order_acquire)) {',
@@ -187,16 +195,19 @@ def generate(root, output, reference=False):
         ('    SceneMeshPreparation result;',
          '    obj_profile::next(measuredPrepare, "point_membership_allocate", {{"validation_reused", size_t(measuredValidationReused)}});\n    SceneMeshPreparation result;'),
         ('    for (size_t nodeIndex = 0;', '    obj_profile::next(measuredPrepare, "point_membership_build");\n    for (size_t nodeIndex = 0;'),
-        ('    if (buildPointHierarchy &&', '    obj_profile::next(measuredPrepare, "point_hierarchy");\n    if (buildPointHierarchy &&'),
+        ('    if (buildPointHierarchy &&', '    obj_profile::next(measuredPrepare, "point_hierarchy", {{"membership_scratch_bytes", measuredMembershipScratch}});\n    if (buildPointHierarchy &&'),
         ('    return result;', '    obj_profile::end(measuredPrepare);\n    return result;'),
     ])
     (output / "scene_mesh_preparation.cpp").write_text('#include "profile.h"\n' + text, encoding="utf-8")
 
     text = (root / "src/point_cloud.cpp").read_text(encoding="utf-8")
+    radix_call = '        radix(keys,cancel,helpers);' if 'radix(keys,cancel,helpers);' in text else '        radix(keys,cancel);'
     text = section(text, 'std::optional<Cloud> buildCloud(', 'Selection selectDetail(', [
+        ('    const auto& sourceColors =', '    const auto measuredColors = obj_profile::begin("point_color_gather");\n    const auto& sourceColors ='),
+        ('    cloud.points.reserve', '    obj_profile::end(measuredColors, {{"colors", cloud.colors.size()}});\n    cloud.points.reserve'),
         ('        auto low=position(first), high=low;', '        auto measuredPoints = obj_profile::begin("point_range_bounds");\n        auto low=position(first), high=low;'),
         ('        std::vector<Key> keys(end-first);', '        obj_profile::next(measuredPoints, "point_morton_keys", {{"bounds_reused", size_t(bounds != nullptr)}, {"scanned_vertices", bounds ? 0 : size_t(range.pointIndexCount)}});\n        std::vector<Key> keys(end-first);'),
-        ('        radix(keys,cancel);', '        obj_profile::next(measuredPoints, "point_radix_sort");\n        radix(keys,cancel);\n        obj_profile::next(measuredPoints, "point_sorted_gather");'),
+        (radix_call, '        obj_profile::next(measuredPoints, "point_radix_sort");\n' + radix_call + '\n        obj_profile::next(measuredPoints, "point_sorted_gather");'),
         ('        cloud.roots.push_back(buildNode', '        obj_profile::next(measuredPoints, "point_tree_build");\n        cloud.roots.push_back(buildNode'),
         ('leafSize,proxySize,cancel));', 'leafSize,proxySize,cancel));\n        obj_profile::end(measuredPoints);'),
         ('    std::vector<uint32_t> budgets', '    const auto measuredCuts = obj_profile::begin("point_navigation_cuts");\n    std::vector<uint32_t> budgets'),

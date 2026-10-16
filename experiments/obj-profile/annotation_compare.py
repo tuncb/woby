@@ -55,7 +55,7 @@ def main():
     if not 1 <= args.rounds <= 20:
         parser.error("Rounds must be between 1 and 20")
     modes = args.modes.split(",")
-    if set(modes) - {"normals", "import", "annotation", "post-load", "viewer", "traced-viewer"}:
+    if set(modes) - {"normals", "import", "annotation", "membership", "points", "post-load", "viewer", "traced-viewer"}:
         parser.error("Unknown comparison mode")
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
@@ -117,7 +117,7 @@ def main():
                     else:
                         measured = sample_metrics(mode, result)
                         elapsed = measured["wall_ms"]
-                        identity = mode if mode in {"normals", "import"} else "annotation"
+                        identity = mode
                         if measured["output"] != expected.setdefault(identity, measured["output"]):
                             raise RuntimeError(f"Output differs: {case}")
                     accepted = not contention

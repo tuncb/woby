@@ -87,7 +87,8 @@ target_link_libraries(woby_normals_benchmark PRIVATE woby_core nlohmann_json::nl
 woby_enable_project_warnings(woby_normals_benchmark)
 list(APPEND woby_runtime_targets woby_normals_benchmark)
 
-add_executable(woby_annotation_benchmark annotation.cpp profile.cpp "${profile_generated}/surface_annotation.cpp")
+add_executable(woby_annotation_benchmark annotation.cpp profile.cpp "${profile_generated}/surface_annotation.cpp"
+    "${profile_generated}/scene_mesh_preparation.cpp" "${profile_generated}/point_cloud.cpp")
 target_include_directories(woby_annotation_benchmark PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(woby_annotation_benchmark PRIVATE woby_core nlohmann_json::nlohmann_json psapi dbghelp)
 woby_enable_project_warnings(woby_annotation_benchmark)
@@ -144,7 +145,7 @@ if(BUILD_TESTING)
         --viewer "$<TARGET_FILE:woby_obj_e2e_viewer>")
     set_tests_properties(woby_obj_e2e_tooling PROPERTIES LABELS "unit;cpu" TIMEOUT 120)
     add_test(NAME woby_obj_profile_contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests.py"
-        "$<TARGET_FILE:woby_obj_profile_sse2>" "$<TARGET_FILE:woby_obj_profile_diagnostic>" "$<TARGET_FILE:woby_obj_profile_uvcheck>" "$<TARGET_FILE:woby_obj_profile_uvptr>" "$<TARGET_FILE:woby_normals_benchmark>")
+        "$<TARGET_FILE:woby_obj_profile_sse2>" "$<TARGET_FILE:woby_obj_profile_diagnostic>" "$<TARGET_FILE:woby_obj_profile_uvcheck>" "$<TARGET_FILE:woby_obj_profile_uvptr>" "$<TARGET_FILE:woby_normals_benchmark>" "$<TARGET_FILE:woby_annotation_benchmark>")
     set_tests_properties(woby_obj_profile_contract PROPERTIES LABELS "unit;cpu" TIMEOUT 60)
 endif()
 

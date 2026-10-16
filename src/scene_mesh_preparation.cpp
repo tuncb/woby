@@ -3,6 +3,7 @@
 #include "point_cloud.h"
 
 #include <algorithm>
+#include <numeric>
 #include <stdexcept>
 
 namespace woby {
@@ -60,7 +61,12 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
     result.features = features;
     result.nodeRanges.reserve(meshGeometry(mesh).nodes.size());
     if (preparePoints) { result.pointVertexIndices.reserve(meshGeometry(mesh).vertices.size()); }
-    std::vector<size_t> vertexGroups(preparePoints ? meshGeometry(mesh).vertices.size() : 0, meshGeometry(mesh).nodes.size());
+    const auto vertexCount = meshGeometry(mesh).vertices.size();
+    const bool singleGroup = preparePoints && meshGeometry(mesh).nodes.size() == 1;
+    // A single group needs only a visited bit. Keep the scan in source order:
+    // its first occurrences define persistent point IDs, including UV seams.
+    std::vector<uint64_t> visited;
+    std::vector<size_t> vertexGroups(preparePoints && !singleGroup ? vertexCount : 0, meshGeometry(mesh).nodes.size());
     for (size_t nodeIndex = 0; nodeIndex < meshGeometry(mesh).nodes.size(); ++nodeIndex) {
         if (canceled()) { return {}; }
         const auto& node = meshGeometry(mesh).nodes[nodeIndex];
@@ -80,12 +86,45 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
         range.lineIndexCount = node.indexCount * 2u;
         range.pointIndexOffset = static_cast<uint32_t>(result.pointVertexIndices.size());
         const auto indices = preparePoints ? meshNodeIndices(mesh, node) : std::span<const uint32_t>{};
-        for (size_t i = 0; i < indices.size(); ++i) {
-            if (i % 65536 == 0 && canceled()) { return {}; }
-            const auto vertex = indices[i];
-            if (vertexGroups[vertex] != nodeIndex) {
-                vertexGroups[vertex] = nodeIndex;
-                result.pointVertexIndices.push_back(vertex);
+        if (singleGroup) {
+            // Importers often assign render vertices in first-use order. Prove
+            // that prefix while scanning; it needs no marker reads or writes.
+            uint32_t nextVertex = 0;
+            size_t i = 0;
+            for (; i < indices.size(); ++i) {
+                if (i % 65536 == 0 && canceled()) { return {}; }
+                const auto vertex = indices[i];
+                if (vertex > nextVertex) { break; }
+                nextVertex += static_cast<uint32_t>(vertex == nextVertex);
+                if (nextVertex == vertexCount) { break; }
+            }
+            result.pointVertexIndices.resize(nextVertex);
+            std::iota(result.pointVertexIndices.begin(), result.pointVertexIndices.end(), 0u);
+            if (i < indices.size() && nextVertex < vertexCount) {
+                visited.resize((vertexCount + 63) / 64);
+                std::fill_n(visited.begin(), nextVertex / 64, ~uint64_t{0});
+                if (nextVertex % 64) { visited[nextVertex / 64] = (uint64_t{1} << (nextVertex % 64)) - 1; }
+            } else { i = indices.size(); }
+            for (; i < indices.size(); ++i) {
+                if (i % 65536 == 0 && canceled()) { return {}; }
+                const auto vertex = indices[i];
+                auto& word = visited[vertex / 64];
+                const auto bit = uint64_t{1} << (vertex % 64);
+                if (!(word & bit)) {
+                    word |= bit;
+                    result.pointVertexIndices.push_back(vertex);
+                    // All indices were validated above, including this tail.
+                    if (result.pointVertexIndices.size() == vertexCount) { break; }
+                }
+            }
+        } else {
+            for (size_t i = 0; i < indices.size(); ++i) {
+                if (i % 65536 == 0 && canceled()) { return {}; }
+                const auto vertex = indices[i];
+                if (vertexGroups[vertex] != nodeIndex) {
+                    vertexGroups[vertex] = nodeIndex;
+                    result.pointVertexIndices.push_back(vertex);
+                }
             }
         }
         (void)sceneBufferBytes(result.pointVertexIndices.size(), sizeof(uint32_t));
@@ -93,6 +132,9 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
         range.completeVertexSet = preparePoints && range.pointIndexCount == meshGeometry(mesh).vertices.size();
         result.nodeRanges.push_back(range);
     }
+    // Release membership scratch before allocating the point hierarchy.
+    std::vector<uint64_t>().swap(visited);
+    std::vector<size_t>().swap(vertexGroups);
     if (features & gpuMeshEdges) {
         result.edgeIndices.reserve(meshGeometry(mesh).indices.size() * 2);
         for (size_t i = 0; i < meshGeometry(mesh).indices.size(); i += 3) {

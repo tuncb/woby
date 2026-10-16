@@ -1,0 +1,77 @@
+Point preparation validation — 2026-10-16
+Baseline: 9b31ed7
+Release build: cmake --build --preset vs2026-vcpkg --config Release --parallel 4
+No compiler warnings or errors. 96 default + 9 slow + 1 graphics = 106 CTest entries passed.
+{
+  "src/scene_mesh_preparation.cpp": "e13dcf112fc6a9160e533e1dc5ebd6c5523b525c70356e001a1a2f50f56e6ccb",
+  "src/point_cloud.cpp": "3d49c76b99a97d701d19f5675e294771e84ce691cdf3e31f234982ce5c6e680d"
+}
+
+D:\.worktree\woby-annotation-35ac\point-final-build.log
+SHA-256: 67486cdddf6d4771ea6620613ba7b06acd30375d19f3113dc58da96b15e5a784
+  surface_annotation.cpp
+  ui_state.cpp
+  frame_pacing.cpp
+  woby_obj_fast_pacing_viewer.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_obj_fast_pacing_viewer.exe
+  woby_obj_profile_diagnostic.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_obj_profile_diagnostic.exe
+  woby_utility_allocation_tests.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_utility_allocation_tests.exe
+  woby_parser_benchmark.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_parser_benchmark.exe
+  woby_tests.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_tests.exe
+  woby_obj_profile_avx2.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_obj_profile_avx2.exe
+  woby_obj_profile_sse2.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_obj_profile_sse2.exe
+  woby_obj_e2e_viewer.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_obj_e2e_viewer.exe
+  woby_obj_upload_viewer.vcxproj -> D:\.worktree\woby-annotation-35ac\build\vs2026-vcpkg\bin\Release\woby_obj_upload_viewer.exe
+
+D:\.worktree\woby-annotation-35ac\point-v4-tests.log
+SHA-256: d167fc78741b1ac9f870585dcb22d7c306ca0d6033964b5fa6605efe4d626830
+[doctest] doctest version is "2.5.2"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:      22 |      22 passed | 0 failed | 1167 skipped
+[doctest] assertions: 3002705 | 3002705 passed | 0 failed |
+[doctest] Status: SUCCESS!
+
+D:\.worktree\woby-annotation-35ac\point-final-tests.log
+SHA-256: 22ef81f1bcb4c5f5c07afedd3fa89f50055b85a2910b24dfa4cbaf560ee7154b
+93/96 Test  #22: woby_tests::graphics_upload_tests ................   Passed    0.12 sec
+94/96 Test  #45: woby_tests::performance_capture_tests ............   Passed    0.09 sec
+95/96 Test  #23: woby_tests::hover_pick_tests .....................   Passed    0.08 sec
+96/96 Test  #58: woby_tests::shader_types_tests ...................   Passed    0.08 sec
+
+100% tests passed, 0 tests failed out of 96
+
+Label Time Summary:
+cpu     = 110.67 sec*proc (85 tests)
+unit    = 110.67 sec*proc (85 tests)
+
+Total Test time (real) =  42.13 sec
+
+D:\.worktree\woby-annotation-35ac\point-final-slow.log
+SHA-256: 2c11fb22aa80e8ce9b7d933a1a813e34c86fed65c2916db02a0d469a722bf09d
+7/9 Test #91: woby_runtime_build_graph ........................................................   Passed   21.51 sec
+8/9 Test  #6: command history evicts results without ever reusing admitted retry keys .........   Passed   21.57 sec
+9/9 Test #76: woby_update_helper_smoke ........................................................   Passed   88.54 sec
+
+100% tests passed, 0 tests failed out of 9
+
+Label Time Summary:
+cpu     =  39.52 sec*proc (7 tests)
+slow    = 149.57 sec*proc (9 tests)
+unit    =  39.52 sec*proc (7 tests)
+
+Total Test time (real) =  88.56 sec
+
+D:\.worktree\woby-annotation-35ac\point-final-graphics.log
+SHA-256: 13421de08e62bc2e44a96776047235252f2744874e69bf5d83a56e2c6ad5e494
+Test project D:/.worktree/woby-annotation-35ac/build/vs2026-vcpkg
+    Start 87: woby_native_device_allocations
+1/1 Test #87: woby_native_device_allocations ...   Passed    6.73 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Label Time Summary:
+graphics    =   6.73 sec*proc (1 test)
+unit        =   6.73 sec*proc (1 test)
+
+Total Test time (real) =   6.75 sec
+

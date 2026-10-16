@@ -42,7 +42,7 @@ class TraceReadTests(unittest.TestCase):
         self.assertEqual(measured["cpu_ms"], 7)
         self.assertEqual(measured["output"], {"normal_digest": 789, "vertices": 4, "triangles": 2})
         self.assertNotIn("output", replay["records"][0])
-        for mode in ("annotation", "post-load"):
+        for mode in ("annotation", "post-load", "membership", "points"):
             self.assertEqual(sample_metrics(mode, {"records": [{"wall_ms": 5, "output": {"tree": 42}}]}),
                              {"wall_ms": 5, "output": {"tree": 42}})
 
