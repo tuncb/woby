@@ -655,6 +655,7 @@ struct AnnotationUiFixture {
     Fixture scene;
     AnnotationInteraction interaction;
     AnnotationNameEdit nameEdit;
+    SceneQueryRuntime queries;
     ScenePickView pickView = view();
     ImVec2 lineButton{}, rectangleButton{}, sectionButton{}, dimensions{};
     bool pointerAllowed = true, captureMouse = false, disabled = false;
@@ -702,7 +703,7 @@ struct AnnotationUiFixture {
             ImGui::SetNextWindowPos({300,0}); ImGui::SetNextWindowSize({480,600});
             ImGui::Begin("Properties");
             ImGui::LogToBuffer();
-            drawAnnotationInspector(scene.state);
+            drawAnnotationInspector(scene.state, &queries);
             inspectorContents = ImGui::GetCurrentContext()->LogBuffer.c_str();
             ImGui::LogFinish();
             ImGui::End();
@@ -1463,6 +1464,150 @@ TEST_CASE("annotation Properties never reports vertices for unresolved targets")
         validateAnnotationTargets(fixture.state);
     }
     CHECK(annotationVertices(fixture.state, *findAnnotation(fixture.state, id)).empty());
+}
+TEST_CASE("annotation line length follows folds and remains available when hidden")
+{
+    Fixture fixture(true);
+    const auto id = fixture.add();
+    const auto* item = findAnnotation(fixture.state, id);
+    const double expected = std::hypot(1.6, .8, .96);
+    const auto length = annotationLength(*item, scenePickParts(fixture.state, true));
+    REQUIRE(length);
+    CHECK(*length == doctest::Approx(expected));
+    auto settings = item->settings; settings.visible = false; settings.color[3] = 0;
+    setAnnotationSettings(fixture.state, id, settings);
+    setFileVisible(fixture.state.files[0], false);
+    setFileOpacity(fixture.state.files[0].fileSettings, 0);
+    setFileTranslation(fixture.state.files[0].fileSettings, {3,4,5});
+    REQUIRE(annotationLength(*item, scenePickParts(fixture.state, true)));
+    CHECK(*annotationLength(*item, scenePickParts(fixture.state, true)) == doctest::Approx(expected));
+    CHECK_FALSE(annotationLength(*item, {}));
+}
+TEST_CASE("annotation area uses four corners in three dimensions")
+{
+    std::array<Coordinate, 4> corners{{{0,0,0}, {3,0,0}, {3,0,4}, {0,0,4}}};
+    SUBCASE("vertical plane") {}
+    SUBCASE("reversed winding") { std::reverse(corners.begin(), corners.end()); }
+    SUBCASE("large translated origin") {
+        for (auto& corner : corners) { for (auto& value : corner) { value += 1e12; } }
+    }
+    SUBCASE("slanted plane") { corners = {{{0,0,0}, {3,0,0}, {3,2.4,3.2}, {0,2.4,3.2}}}; }
+    REQUIRE(annotationArea(corners));
+    CHECK(*annotationArea(corners) == doctest::Approx(12));
+}
+TEST_CASE("annotation area handles nonplanar and degenerate corners without surface sampling")
+{
+    const std::array<Coordinate, 4> corners{{{0,0,0}, {2,0,0}, {2,2,0}, {0,2,2}}};
+    REQUIRE(annotationArea(corners));
+    CHECK(*annotationArea(corners) == doctest::Approx(2 + std::sqrt(12.0)));
+    const std::array<Coordinate, 4> collapsed{};
+    REQUIRE(annotationArea(collapsed));
+    CHECK(*annotationArea(collapsed) == 0);
+    CHECK_FALSE(annotationArea(std::span{corners}.first(3)));
+    auto invalid = corners; invalid[2][0] = std::numeric_limits<double>::quiet_NaN();
+    CHECK_FALSE(annotationArea(invalid));
+    invalid[2][0] = std::numeric_limits<double>::infinity();
+    CHECK_FALSE(annotationArea(invalid));
+}
+TEST_CASE("annotation Properties caches measurements and updates them after reshape")
+{
+    Fixture fixture(true);
+    SceneQueryRuntime queries;
+    auto shape = AnnotationShape::line;
+    SUBCASE("line") {}
+    SUBCASE("rectangle") { shape = AnnotationShape::rectangle; }
+    const auto id = fixture.add(shape);
+    const auto* item = findAnnotation(fixture.state, id);
+    clearSceneDirty(fixture.state);
+    const auto revision = fixture.state.sceneEditRevision;
+    const auto& query = updateAnnotationInspectorQuery(queries, fixture.state, *item);
+    REQUIRE(query.vertices.size() == (shape == AnnotationShape::line ? 2u : 4u));
+    if (shape == AnnotationShape::line) {
+        REQUIRE(query.length);
+        CHECK(*query.length == doctest::Approx(std::hypot(1.6, .8, .96)));
+        REQUIRE(query.straightLength);
+        CHECK(*query.straightLength == doctest::Approx(std::hypot(1.6, .8)));
+        CHECK_FALSE(query.area);
+    } else {
+        REQUIRE(query.area);
+        CHECK(*query.area == doctest::Approx(1.28));
+        CHECK_FALSE(query.length);
+        CHECK_FALSE(query.straightLength);
+    }
+    const auto builds = query.builds;
+    const auto* vertexData = query.vertices.data();
+    for (int i = 0; i < 3; ++i) { updateAnnotationInspectorQuery(queries, fixture.state, *item); }
+    CHECK(query.builds == builds);
+    CHECK(query.vertices.data() == vertexData);
+    CHECK_FALSE(fixture.state.isDirty);
+    CHECK(fixture.state.sceneEditRevision == revision);
+    renameAnnotation(fixture.state, id, "Measured annotation");
+    updateAnnotationInspectorQuery(queries, fixture.state, *item);
+    CHECK(query.builds == builds);
+    const auto reshaped = projectAnnotation(fixture.projection(), shape, {-.5f,-.3f}, {.5f,.3f});
+    reshapeAnnotation(fixture.state, id, reshaped);
+    updateAnnotationInspectorQuery(queries, fixture.state, *item);
+    CHECK(query.builds == builds + 1);
+    if (shape == AnnotationShape::line) {
+        REQUIRE(query.length); CHECK(*query.length == doctest::Approx(std::hypot(1.0, .6, .6)));
+        REQUIRE(query.straightLength); CHECK(*query.straightLength == doctest::Approx(std::hypot(1.0, .6)));
+    }
+    else { REQUIRE(query.area); CHECK(*query.area == doctest::Approx(.6)); }
+}
+TEST_CASE("annotation Properties clears measurements while targets are unavailable")
+{
+    Fixture fixture;
+    SceneQueryRuntime queries;
+    auto shape = AnnotationShape::line;
+    SUBCASE("line") {}
+    SUBCASE("rectangle") { shape = AnnotationShape::rectangle; }
+    const auto id = fixture.add(shape);
+    const auto* item = findAnnotation(fixture.state, id);
+    const auto& query = updateAnnotationInspectorQuery(queries, fixture.state, *item);
+    REQUIRE((query.length || query.area));
+    fixture.state.annotations.front().targetPending = true;
+    updateAnnotationInspectorQuery(queries, fixture.state, *item);
+    CHECK_FALSE(query.length); CHECK_FALSE(query.straightLength); CHECK_FALSE(query.area); CHECK(query.vertices.empty());
+    fixture.state.annotations.front().targetPending = false;
+    updateAnnotationInspectorQuery(queries, fixture.state, *item);
+    REQUIRE((query.length || query.area));
+    fixture.state.files.clear(); notifySceneEdit(fixture.state, SceneChange::geometry);
+    updateAnnotationInspectorQuery(queries, fixture.state, *item);
+    CHECK_FALSE(query.length); CHECK_FALSE(query.straightLength); CHECK_FALSE(query.area); CHECK(query.vertices.empty());
+}
+TEST_CASE("annotation measurements preserve small dimensions at a distant coordinate origin")
+{
+    Fixture fixture;
+    SceneQueryRuntime queries;
+    auto shape = AnnotationShape::line;
+    SUBCASE("line") {}
+    SUBCASE("rectangle") { shape = AnnotationShape::rectangle; }
+    const auto id = fixture.add(shape);
+    fixture.state.files[0].mesh.origin = {1e12, -1e12, 1e12};
+    const auto& query = updateAnnotationInspectorQuery(queries, fixture.state, *findAnnotation(fixture.state, id));
+    REQUIRE_FALSE(query.vertices.empty());
+    CHECK(query.vertices[0][0] > 1e11);
+    if (shape == AnnotationShape::line) {
+        REQUIRE(query.length); REQUIRE(query.straightLength);
+        CHECK(*query.length == doctest::Approx(std::hypot(1.6, .8)));
+        CHECK(*query.straightLength == doctest::Approx(std::hypot(1.6, .8)));
+    } else { REQUIRE(query.area); CHECK(*query.area == doctest::Approx(1.28)); }
+}
+TEST_CASE("annotation Properties shows both line lengths or rectangle area with units")
+{
+    AnnotationUiFixture fixture;
+    auto shape = AnnotationShape::line;
+    SUBCASE("line") {}
+    SUBCASE("rectangle") { shape = AnnotationShape::rectangle; }
+    fixture.scene.add(shape); fixture.showInspector = true; fixture.frame();
+    const auto label = shape == AnnotationShape::line ? "Surface length:" : "Area:";
+    CHECK(fixture.inspectorContents.find(label) != std::string::npos);
+    CHECK(fixture.inspectorContents.find(shape == AnnotationShape::line ? "units" : "square units") != std::string::npos);
+    CHECK(fixture.inspectorContents.find(label) < fixture.inspectorContents.find("Vertex coordinates"));
+    if (shape == AnnotationShape::line) { CHECK(fixture.inspectorContents.find("Straight length:") != std::string::npos); }
+    fixture.scene.state.annotations.front().targetValid = false; fixture.frame();
+    CHECK(fixture.inspectorContents.find(std::string(label) + " unavailable") != std::string::npos);
+    if (shape == AnnotationShape::line) { CHECK(fixture.inspectorContents.find("Straight length: unavailable") != std::string::npos); }
 }
 TEST_CASE("multiline annotation comments preserve long UTF-8 text and coalesce undo redo")
 {
@@ -2601,6 +2746,38 @@ TEST_CASE("sibling bridges retain separate endpoint attachments after transforms
     const auto hiddenControls = annotationVertices(fixture.state, item);
     REQUIRE(hiddenControls.size() == 2);
     nearPoint(hiddenControls.back(), {.8f,.4f,2.5f + depthJump});
+}
+TEST_CASE("annotation measurements include sibling bridges and follow source transforms")
+{
+    Fixture fixture; siblingSurface(fixture, .2f, .2f);
+    auto shape = AnnotationShape::line;
+    SUBCASE("line lengths") {}
+    SUBCASE("rectangle area") { shape = AnnotationShape::rectangle; }
+    const auto id = drawSiblingAnnotation(fixture, shape);
+    const auto* item = findAnnotation(fixture.state, id);
+    SceneQueryRuntime queries;
+    const auto& query = updateAnnotationInspectorQuery(queries, fixture.state, *item);
+    const auto checkMeasurement = [&](double height) {
+        if (shape == AnnotationShape::line) {
+            REQUIRE(query.length); REQUIRE(query.straightLength);
+            CHECK(*query.length == doctest::Approx(1.2 * std::sqrt(1.25) + std::hypot(.4, .2, height)));
+            CHECK(*query.straightLength == doctest::Approx(std::hypot(1.6, .8, height)));
+        } else {
+            REQUIRE(query.area);
+            CHECK(*query.area == doctest::Approx(.8 * std::hypot(1.6, height)));
+        }
+    };
+    checkMeasurement(.2);
+    const auto builds = query.builds;
+    fixture.state.files[0].groupSettings[1].translation[2] += 2;
+    notifySceneEdit(fixture.state, SceneChange::geometry);
+    updateAnnotationInspectorQuery(queries, fixture.state, *item);
+    CHECK(query.builds == builds + 1);
+    checkMeasurement(2.2);
+    fixture.state.files[0].groupSettings[1].visible = false;
+    notifySceneEdit(fixture.state, SceneChange::visibility);
+    updateAnnotationInspectorQuery(queries, fixture.state, *item);
+    checkMeasurement(2.2);
 }
 TEST_CASE("group annotations still reject unrelated foreground objects")
 {

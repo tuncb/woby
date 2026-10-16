@@ -67,6 +67,15 @@ struct SceneAnnotationQueries {
     boost::unordered_flat_map<SceneObjectId, AnnotationQuery> objects;
 };
 
+struct AnnotationInspectorQuery {
+    SceneQueryStamp stamp;
+    SceneObjectId id = 0;
+    uint64_t revision = 0, postLoadRevision = 0, builds = 0;
+    bool valid = false, pending = false;
+    std::vector<Coordinate> vertices;
+    std::optional<double> length, straightLength, area;
+};
+
 struct ComparisonQuery {
     ComparisonInspectorCache inputs;
     uint64_t boundsSignature = 0, boundsBuilds = 0;
@@ -93,6 +102,7 @@ struct SceneQueryRuntime {
     SceneTreeQueries tree;
     ScenePartQueries parts;
     SceneAnnotationQueries annotations;
+    AnnotationInspectorQuery annotationInspector;
     SceneSelectionQueries selection;
     boost::unordered_flat_map<SceneObjectId, ComparisonQuery> comparisons;
     const UiState* comparisonOwner = nullptr;
@@ -108,6 +118,8 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state);
 void resolveSceneParts(SceneQueryRuntime& runtime, const UiState& state,
     std::vector<ScenePickPart>& parts, bool includeHidden = false);
 void updateSceneAnnotationQueries(SceneQueryRuntime& runtime, const UiState& state);
+const AnnotationInspectorQuery& updateAnnotationInspectorQuery(SceneQueryRuntime& runtime,
+    const UiState& state, const UiAnnotation& item);
 void updateAnnotationProjection(AnnotationQuery& cache, const UiAnnotation& item,
     std::span<const ScenePickPart> parts, const ScenePickView& view);
 void appendSceneAnnotationParts(SceneQueryRuntime& runtime, const UiState& state, std::vector<ScenePickPart>& parts);

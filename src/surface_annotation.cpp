@@ -1371,6 +1371,53 @@ void validateAnnotationGeometry(const AnnotationGeometry& geometry)
         }
     }
 }
+std::optional<double> annotationLength(const UiAnnotation& item, std::span<const ScenePickPart> parts)
+{
+    if (!item.targetValid || item.targetPending || item.section || item.geometry->segments.empty()) { return {}; }
+    std::vector<const ScenePickPart*> sources;
+    for (size_t i = 0; i < std::max(size_t{1}, item.targetIds.size()); ++i) {
+        const auto* part = annotationSourcePart(item, parts, static_cast<uint32_t>(i));
+        if (!part || !part->mesh) { return {}; }
+        sources.push_back(part);
+    }
+    double length = 0;
+    for (const auto& segment : item.geometry->segments) {
+        std::array<Coordinate, 2> endpoints{};
+        for (size_t k = 0; k < endpoints.size(); ++k) {
+            const auto source = k == 0 ? segment.source : segment.endSource.value_or(segment.source);
+            if (source >= sources.size()) { return {}; }
+            const auto& part = *sources[source];
+            const auto triangle = k == 0 ? segment.triangle : segment.endTriangle.value_or(segment.triangle);
+            const auto local = annotationPosition(*part.mesh, part.indexOffset, triangle, k == 0 ? segment.a : segment.b);
+            for (size_t row = 0; row < 3; ++row) {
+                if (item.targetIds.empty()) { endpoints[k][row] = local[row]; }
+                else {
+                    endpoints[k][row] = part.model[12 + row];
+                    for (size_t axis = 0; axis < 3; ++axis) { endpoints[k][row] += double(part.model[axis * 4 + row]) * local[axis]; }
+                }
+            }
+        }
+        length += std::hypot(endpoints[1][0] - endpoints[0][0], endpoints[1][1] - endpoints[0][1], endpoints[1][2] - endpoints[0][2]);
+    }
+    return std::isfinite(length) ? std::optional{length} : std::nullopt;
+}
+std::optional<double> annotationArea(std::span<const Coordinate> corners)
+{
+    if (corners.size() != 4) { return {}; }
+    for (const auto& corner : corners) {
+        for (const auto value : corner) { if (!std::isfinite(value)) { return {}; } }
+    }
+    const auto triangleArea = [&](size_t b, size_t c) {
+        Coordinate u{}, v{};
+        for (size_t axis = 0; axis < 3; ++axis) {
+            u[axis] = corners[b][axis] - corners[0][axis];
+            v[axis] = corners[c][axis] - corners[0][axis];
+        }
+        return .5 * std::hypot(u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]);
+    };
+    const double area = triangleArea(1, 2) + triangleArea(2, 3);
+    return std::isfinite(area) ? std::optional{area} : std::nullopt;
+}
 std::vector<std::array<float, 3>> annotationControlPositions(const Mesh& mesh, size_t offset,
     const AnnotationGeometry& geometry)
 {

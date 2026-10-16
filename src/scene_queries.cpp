@@ -249,6 +249,38 @@ void updateSceneAnnotationQueries(SceneQueryRuntime& runtime, const UiState& sta
     cache.stamp = stamp; cache.revision = state.revisions.annotations;
 }
 
+const AnnotationInspectorQuery& updateAnnotationInspectorQuery(SceneQueryRuntime& runtime,
+    const UiState& state, const UiAnnotation& item)
+{
+    auto& cache = runtime.annotationInspector;
+    const auto stamp = sceneQueryStamp(state);
+    if (cache.builds && cache.stamp == stamp && cache.id == item.objectId
+        && cache.revision == item.geometryRevision && cache.postLoadRevision == state.postLoadRevision
+        && cache.valid == item.targetValid && cache.pending == item.targetPending) { return cache; }
+    cache.stamp = stamp; cache.id = item.objectId; cache.revision = item.geometryRevision;
+    cache.postLoadRevision = state.postLoadRevision; cache.valid = item.targetValid; cache.pending = item.targetPending;
+    ++cache.builds; cache.vertices.clear(); cache.length.reset(); cache.straightLength.reset(); cache.area.reset();
+    if (!item.targetValid || item.targetPending || item.section) { return cache; }
+    const auto positions = annotationVertices(state, item);
+    cache.vertices = annotationOriginalVertices(state, item, positions);
+    if (positions.empty()) { return cache; }
+    // Measure in the recentered frame, before adding a possibly distant origin.
+    std::vector<Coordinate> vertices;
+    for (const auto& p : positions) { vertices.push_back({p[0], p[1], p[2]}); }
+    if (item.geometry->shape == AnnotationShape::rectangle) { cache.area = annotationArea(vertices); }
+    else {
+        if (vertices.size() == 2) {
+            const auto& a = vertices[0]; const auto& b = vertices[1];
+            const double length = std::hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+            if (std::isfinite(length)) { cache.straightLength = length; }
+        }
+        std::vector<ScenePickPart> parts;
+        resolveSceneParts(runtime, state, parts, true);
+        cache.length = annotationLength(item, parts);
+    }
+    return cache;
+}
+
 void updateAnnotationProjection(AnnotationQuery& cache, const UiAnnotation& item,
     std::span<const ScenePickPart> parts, const ScenePickView& view)
 {

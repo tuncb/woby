@@ -110,6 +110,12 @@ inline constexpr size_t annotationInlineSnapshotBytes = 4 * 1024 * 1024;
 // Model-local endpoints, or four corners in outline order, shared by handles and Properties.
 [[nodiscard]] std::vector<std::array<float, 3>> annotationControlPositions(const Mesh& mesh,
     size_t offset, const AnnotationGeometry& geometry);
+// Sum the drawn surface segments, including bridges. Use the same coordinate
+// frame as Properties: model-local for legacy single-part, world for groups.
+[[nodiscard]] std::optional<double> annotationLength(const UiAnnotation& item,
+    std::span<const ScenePickPart> parts);
+// Two triangles along the first-to-third corner diagonal; no surface sampling.
+[[nodiscard]] std::optional<double> annotationArea(std::span<const Coordinate> corners);
 [[nodiscard]] std::array<float, 4> annotationTransform(const PickMatrix& matrix, const std::array<float, 4>& point);
 [[nodiscard]] std::array<double, 4> annotationTransform(const AnnotationProjector& matrix, const std::array<float, 4>& point);
 [[nodiscard]] PickMatrix annotationCompose(const PickMatrix& first, const PickMatrix& second);

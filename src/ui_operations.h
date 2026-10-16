@@ -306,6 +306,8 @@ void navigateUiCamera(UiState& state, const CameraNavigation& navigation);
 SceneObjectId createCrossSection(UiState& state, CrossSectionSettings settings, std::vector<SceneObjectId> sources);
 void setCrossSectionSettings(UiState& state, SceneObjectId id, CrossSectionSettings settings);
 [[nodiscard]] std::vector<Coordinate> annotationOriginalVertices(const UiState& state, const UiAnnotation& item);
+[[nodiscard]] std::vector<Coordinate> annotationOriginalVertices(const UiState& state, const UiAnnotation& item,
+    std::span<const std::array<float, 3>> vertices);
 [[nodiscard]] std::vector<std::array<float, 3>> annotationVertices(const UiState& state, const UiAnnotation& item);
 SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationGeometry geometry,
     std::vector<SceneObjectId> targets = {});

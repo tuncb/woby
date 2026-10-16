@@ -214,10 +214,24 @@ void drawAnnotationInspector(UiState& state, SceneQueryRuntime* queries)
     changed |= ImGui::ColorEdit4("Color", settings.color.data(), ImGuiColorEditFlags_NoInputs);
     changed |= ImGui::SliderFloat("Line width", &settings.width, 1, 12, "%.1f px");
     if (changed) { setAnnotationSettings(state, id, std::move(settings)); }
+    SceneQueryRuntime localQueries;
+    const auto& properties = updateAnnotationInspectorQuery(queries ? *queries : localQueries, state, *item);
+    const bool rectangle = item->geometry->shape == AnnotationShape::rectangle;
+    const auto drawMeasurement = [](const char* label, const std::optional<double>& value, const char* units) {
+        if (value) { ImGui::Text("%s: %.12g %s", label, *value, units); }
+        else { ImGui::Text("%s: unavailable", label); }
+    };
+    drawMeasurement(rectangle ? "Area" : "Surface length", rectangle ? properties.area : properties.length,
+        rectangle ? "square units" : "units");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("%s", rectangle ? "Area of two triangles between the four corners. Values use the model's units."
+            : "Length along the drawn surface line, including bridges. Values use the model's units.");
+    }
+    if (!rectangle) { drawMeasurement("Straight length", properties.straightLength, "units"); }
     ImGui::SeparatorText("Vertex coordinates");
     ImGui::TextWrapped(item->targetIds.empty() ? "Model coordinates, before scene transforms. Values use the model's units."
         : "World coordinates. Each vertex follows its attached source part.");
-    const auto vertices = annotationOriginalVertices(state, *item);
+    const auto& vertices = properties.vertices;
     if (item->targetPending) { ImGui::TextWrapped("Preparing annotation data..."); }
     else if (vertices.empty()) { ImGui::TextWrapped("Coordinates unavailable: restore the original source model."); }
     else if (ImGui::BeginTable("vertices", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {

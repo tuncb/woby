@@ -161,6 +161,11 @@ std::vector<std::array<float, 3>> annotationVertices(const UiState& state, const
 }
 std::vector<Coordinate> annotationOriginalVertices(const UiState& state, const UiAnnotation& item)
 {
+    return annotationOriginalVertices(state, item, annotationVertices(state, item));
+}
+std::vector<Coordinate> annotationOriginalVertices(const UiState& state, const UiAnnotation& item,
+    std::span<const std::array<float, 3>> vertices)
+{
     Coordinate origin = state.coordinateOrigin.value_or(Coordinate{});
     if (item.targetIds.empty()) {
         for (const auto& file : state.files) {
@@ -169,7 +174,7 @@ std::vector<Coordinate> annotationOriginalVertices(const UiState& state, const U
         }
     }
     std::vector<Coordinate> result;
-    for (const auto& p : annotationVertices(state, item)) { result.push_back(originalPosition({p[0],p[1],p[2]}, origin)); }
+    for (const auto& p : vertices) { result.push_back(originalPosition({p[0],p[1],p[2]}, origin)); }
     return result;
 }
 void validateAnnotationTargets(UiState& state, bool notifyEdit)
