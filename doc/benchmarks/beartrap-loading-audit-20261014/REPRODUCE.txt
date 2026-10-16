@@ -1,0 +1,22 @@
+Model: D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj
+Model SHA256: 7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329
+Base revision: 06b794027e3a8ca6da9725596c909167256472e5
+Capture folder: D:\woby\build\beartrap-loading-audit-20261014
+Build: cmake --preset vs2026-vcpkg -DWOBY_BUILD_OBJ_PROFILE=ON -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON -DWOBY_PARSER_FASTFLOAT_HEADER=D:/woby/build/beartrap-loading-audit-20261014/fast_float-v8.3.2.h
+cmake --build --preset vs2026-vcpkg --config Release
+ctest --preset vs2026-vcpkg -C Release
+uv run experiments/loading-audit/run.py build/vs2026-vcpkg/bin/Release "D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj" --output NEW_UNIQUE_CAPTURE_FOLDER --rounds 3 --fast-float-header "D:\woby\build\beartrap-loading-audit-20261014\fast_float-v8.3.2.h"
+build/vs2026-vcpkg/bin/Release/woby_loading_audit_kernels.exe "D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj" 3 > NEW_UNIQUE_CAPTURE_FOLDER/kernels.json
+python experiments/loading-audit/census.py "D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj" NEW_UNIQUE_CAPTURE_FOLDER/census.json
+uv run experiments/obj-profile/deep_tools.py "D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj" --executable build/vs2026-vcpkg/bin/Release/woby_obj_profile_sse2.exe --output NEW_UNIQUE_CAPTURE_FOLDER/calibration --mode flop-control --sets fp
+uv run experiments/obj-profile/run.py build/vs2026-vcpkg/bin/Release/woby_obj_profile_sse2.exe "D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj" --modes parser --workers 1,16 --rounds 3 --compare-executable build/vs2026-vcpkg/bin/Release/woby_obj_profile_avx2.exe --output NEW_UNIQUE_CAPTURE_FOLDER/parser-simd/isa-comparison.json
+Preserve both compiler variants and their main.asm listings before any rebuild. Collect separate --instructions runs into parser-simd/context-samples.json; keep them out of medians.
+uv run experiments/loading-audit/parser_simd.py CAPTURE_FOLDER
+uv run experiments/loading-audit/micro_run.py PRESERVED_AVX2_PROFILE_EXE "D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj" NEW_UNIQUE_CAPTURE_FOLDER/parser-microarchitecture --steps topology,timing,collect
+Run woby_parser_allocation_audit.exe prototype "D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj" 0 16 separately; save its JSON as parser-microarchitecture/allocation-audit.json and preserve its binary/PDB hash.
+python experiments/loading-audit/metadata_scan.py "D:\temp\obj_tests\20190810_BearTrap_Ground_Model.obj" NEW_UNIQUE_CAPTURE_FOLDER/parser-microarchitecture/metadata-scan.json
+uv run experiments/loading-audit/micro_analyze.py CAPTURE_FOLDER
+uv run experiments/loading-audit/report.py CAPTURE_FOLDER REPORT_FOLDER
+No cache flush or power-plan change is performed. Do not run builds, tests, or competing benchmarks during captures.
+The current campaign uses a downloaded research-only fast_float 8.3.2 header. Download it from the official release and preserve its hash.
+The report file embeds every SVG plot and all interactive data. Nearby PNG/SVG/CSV/JSON files are optional export/evidence links. Report QA uses the T3 collaborative browser.

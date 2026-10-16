@@ -136,6 +136,11 @@ class ViewerTraceTests(unittest.TestCase):
             names = ("model_add_requested", "first_scene_frame_submitted", "first_scene_frame_gpu_complete", "all_tools_ready", "model_add_rpc_complete")
             self.assertTrue(set(names) <= marks.keys(), marks.keys())
             self.assertEqual(sorted(marks[n]["time_ms"] for n in names), [marks[n]["time_ms"] for n in names])
+            toast_names = ("all_tools_ready", "ready_toast_drawn", "ready_toast_frame_submitted", "ready_toast_frame_gpu_complete")
+            self.assertTrue(set(toast_names) <= marks.keys(), marks.keys())
+            self.assertEqual(sorted(marks[n]["time_ms"] for n in toast_names), [marks[n]["time_ms"] for n in toast_names])
+            self.assertEqual(marks["ready_toast_frame_submitted"]["data"]["frame_token"],
+                             marks["ready_toast_frame_gpu_complete"]["data"]["frame_token"])
             self.assertTrue(record["post_load_navigation"])
             self.assertLessEqual(marks["first_scene_frame_gpu_complete"]["time_ms"], marks["post_navigation_begin"]["time_ms"])
             self.assertLess(marks["post_navigation_begin"]["time_ms"], marks["all_tools_ready"]["time_ms"])

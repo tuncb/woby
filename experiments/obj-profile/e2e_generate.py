@@ -104,6 +104,9 @@ def generate(root, output, reference=False):
     # changing the production viewer or sending queued navigation commands.
     text = replace(text, '        bool measuredFirstComplete = false;',
                    '        bool measuredFirstComplete = false;\n'
+                   '        bool measuredReadyToastDrawn = false;\n'
+                   '        uint64_t measuredReadyToastFrame = 0;\n'
+                   '        bool measuredReadyToastComplete = false;\n'
                    '        const bool measuredPostNavigation = SDL_getenv("WOBY_E2E_POST_LOAD_NAVIGATION") != nullptr;\n'
                    '        bool measuredPostNavigating = false;')
     text = replace(text, '            const float deltaSeconds = std::chrono::duration<float>(now - previousFrame).count();',
@@ -115,9 +118,23 @@ def generate(root, output, reference=False):
                    '            }\n'
                    '            if (measuredNavigate) { woby::navigateUiCamera(ui, {30.0f * deltaSeconds}); }')
     text = replace(text, '            if (!historyRestore.active) { woby::updatePostLoading(',
-                   '            if (measuredFirstFrame && !measuredFirstComplete && woby::graphics::completedFrameToken() >= measuredFirstFrame) {\n                obj_profile::mark("first_scene_frame_gpu_complete", {{"frame_token", measuredFirstFrame}});\n                measuredFirstComplete = true;\n            }\n            if (!historyRestore.active) { woby::updatePostLoading(')
+                   '            if (measuredFirstFrame && !measuredFirstComplete && woby::graphics::completedFrameToken() >= measuredFirstFrame) {\n                obj_profile::mark("first_scene_frame_gpu_complete", {{"frame_token", measuredFirstFrame}});\n                measuredFirstComplete = true;\n            }\n'
+                   '            if (measuredReadyToastFrame && !measuredReadyToastComplete && woby::graphics::completedFrameToken() >= measuredReadyToastFrame) {\n'
+                   '                obj_profile::mark("ready_toast_frame_gpu_complete", {{"frame_token", measuredReadyToastFrame}});\n'
+                   '                measuredReadyToastComplete = true;\n'
+                   '            }\n            if (!historyRestore.active) { woby::updatePostLoading(')
+    text = replace(text, '                const auto postMessage = woby::postLoadNotice(postLoading, ui, postLoadNow);',
+                   '                const auto postMessage = woby::postLoadNotice(postLoading, ui, postLoadNow);\n'
+                   '                if (postMessage == "Ready" && !measuredReadyToastDrawn) {\n'
+                   '                    obj_profile::mark("ready_toast_drawn");\n'
+                   '                    measuredReadyToastDrawn = true;\n'
+                   '                }')
     text = replace(text, '            woby::notePostLoadFrame(postLoading, ui, woby::graphics::submittedFrameToken());',
-                   '            woby::notePostLoadFrame(postLoading, ui, woby::graphics::submittedFrameToken());\n            if (!ui.files.empty() && !measuredFirstFrame) {\n                measuredFirstFrame = woby::graphics::submittedFrameToken();\n                obj_profile::mark("first_scene_frame_submitted", {{"frame_token", measuredFirstFrame}, {"frame_index", frameIndex}});\n            }')
+                   '            woby::notePostLoadFrame(postLoading, ui, woby::graphics::submittedFrameToken());\n            if (!ui.files.empty() && !measuredFirstFrame) {\n                measuredFirstFrame = woby::graphics::submittedFrameToken();\n                obj_profile::mark("first_scene_frame_submitted", {{"frame_token", measuredFirstFrame}, {"frame_index", frameIndex}});\n            }\n'
+                   '            if (measuredReadyToastDrawn && !measuredReadyToastFrame) {\n'
+                   '                measuredReadyToastFrame = woby::graphics::submittedFrameToken();\n'
+                   '                obj_profile::mark("ready_toast_frame_submitted", {{"frame_token", measuredReadyToastFrame}});\n'
+                   '            }')
     text = replace(text, '                                automationAppend = AutomationAppendRuntime{command->id, ui.files.size(), {}, false};',
                    '                                obj_profile::mark("model_add_requested");\n                                automationAppend = AutomationAppendRuntime{command->id, ui.files.size(), {}, false};')
     text = section(text, '        auto completeAppend = [&]() {', '        DragDropState dragDropState;', [

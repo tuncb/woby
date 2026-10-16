@@ -6,6 +6,16 @@ file opening/reading, numeric decoding, index reconciliation, allocation, mergin
 and synchronous cleanup. Hashing output, fixture generation and input warming are
 outside the timer. This is not a triangulation or full-viewer benchmark.
 
+The executable also accepts `prototype-memory`. It allocates and reads the full
+file before the parse timer. It reports that preparation time and retained input
+size separately. Include both times and the extra memory when comparing a load.
+Windows records include parse CPU time, private memory, peak working set, and
+logical read bytes. The output hash remains outside the parse timer.
+
+`WOBY_PARSER_FASTFLOAT_HEADER` can select a supplied standalone fast_float header
+for the opt-in `woby_parser_benchmark_modern` target. This replaces the embedded
+decoder in generated research headers. It does not change production parsing.
+
 ```powershell
 cmake --preset vs2026-vcpkg -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON
 cmake --build --preset vs2026-vcpkg --config Release --target woby_parser_benchmark

@@ -1,0 +1,91 @@
+Initial verification, 14 October 2026; parser hardware extension, 15 October 2026
+
+Build:
+  cmake --build --preset vs2026-vcpkg --config Release
+  Succeeded. No compiler or CMake warnings in final-release-build.log.
+
+Original campaign tests:
+  ctest --preset vs2026-vcpkg -C Release
+  118 selected checks passed in 27.54 seconds.
+  This selection includes 104 unit tests and 14 research/control checks.
+
+  ctest --test-dir build/vs2026-vcpkg -C Release -L unit -L "^(slow|graphics)$" --output-on-failure --parallel 2
+  The remaining 14 unit tests passed in 24.26 seconds: 6 slow and 8 graphics.
+  All 118 then-registered unit tests passed. 132 distinct checks passed overall.
+
+Parser SIMD extension:
+  cmake --build --preset vs2026-vcpkg --config Release
+  Succeeded. No compiler or CMake warnings in parser-simd/release-build.log.
+  ctest --test-dir build/vs2026-vcpkg -C Release -L unit --output-on-failure --parallel 2
+  All 119 unit tests passed in 57.42 seconds, including all slow and graphics tests.
+  SIMD accounting checks cover scalar FP versus packed operations, vector moves/setup,
+  compiler function boundaries, unresolved runtime functions, process/thread scopes,
+  exclusion of sampled runs from timing medians, and output fingerprint agreement.
+  The final procedural SIMD-accounting test also passed separately in 0.52 seconds.
+  The campaign now has 133 distinct passed checks, including the earlier 14 auxiliary checks.
+
+Parser branch/cache/allocation extension:
+  cmake --build --preset vs2026-vcpkg --config Release
+  Succeeded. No compiler or CMake warnings in parser-microarchitecture/final-release-build.log.
+  ctest --test-dir build/vs2026-vcpkg -C Release -L unit --output-on-failure --parallel 2
+  All 121 unit tests passed in 56.76 seconds, including slow and graphics tests.
+  Added checks cover audited/baseline parser output, growth accounting, range byte totals,
+  weighted event intervals, distinct cache/TLB populations, unresolved functions,
+  PID/thread/time scopes, Windows topology, and the minimum core-event interval.
+  The metadata scanner boundary/whitespace/comment/continuation checks also passed
+  in the final targeted hardware-accounting test (0.75 seconds).
+  The campaign has 135 distinct passed checks, including the earlier 14 auxiliary checks.
+
+Added behavior checks cover:
+  - Distinct Ready-toast draw, submission, and GPU completion endpoints.
+  - File/memory parser equivalence with precise positions, seams, and negative references.
+  - Safe replacement of the embedded decoder in isolated generated headers.
+  - Exact replay fingerprints, block bounds, and precise group bounds.
+  - Overlapping interval accounting and native thread/process counter scopes.
+  - OBJ record counting across block boundaries.
+  - Capture hashes, explicit decoder-header paths, missing optional PDBs, and snapshot preservation.
+
+Data:
+  12 fresh native full loads, 48 parser samples, 21 read/copy samples.
+  All parser output fingerprints matched.
+  Three CPU event sets, VTune software hotspots, NVTX/WDDM, CPU power/frequency, and a known-loop calibration.
+  21 annotation kernel replays checked against one production cache for the full model.
+  12 additional paired SSE2/AVX2 parser timings: three runs each at 1 and 16 workers.
+  All 12 ordered full-double coordinate/UV/normal and face-index fingerprints matched.
+  Two separate CPU-progress-filtered instruction-context captures are excluded from medians.
+  Parser-only worker scopes from the existing native event capture retain unresolved
+  runtime instruction locations. Matching binaries/PDBs and compiler assembly are preserved.
+  17 accepted parser-only PMC captures: branch, data cache, L2 outcomes/prefetch,
+  TLB/crossing loads, instruction supply, and dispatch queues.
+  Three branch and two data-cache captures are pooled at 16 workers.
+  Eight-worker physical-core and four-core SMT controls include branch/cache/frontend/backend events.
+  All accepted pinned hardware captures passed native sample core-ID affinity validation.
+  Rejected inherited-affinity and build-overlap captures are excluded from the numerical report.
+  12 new unprofiled affinity controls use verified inherited affinity and matching full-double fingerprints.
+  Buffer-growth/range audit fingerprint matches the original parser benchmark.
+  Growth copy payload: 6,318,587,276 bytes; minimum copy reads plus writes: 12,637,174,552 bytes.
+  Whole-file rare-metadata scan: no s command; one usemtl at byte 45, before the first face.
+  No backslash ambiguity. Uniform normal/material/smoothing fields occupy 1,515,439,720 output bytes.
+  IBS collection returned "IBS counters are not available"; no system security/virtualization setting was changed.
+  Model SHA-256: 7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329
+  All 230 captured canonical source hashes still match the current files.
+  Production behavior and canonical application sources are unchanged.
+
+HTML QA in the T3 collaborative browser:
+  Eighteen embedded SVG charts and eight report sections render, with SIMD and deep parser subsections.
+  Unique SVG/HTML IDs; UTF-8 text checked after embedding.
+  Both what-if controls and the timeline control update their results.
+  Anchor destinations and local artifact links checked.
+  Desktop viewport 1280 pixels; narrow viewport 390 pixels has no page overflow.
+  Desktop title, timeline, parser charts, SIMD table, worker hotspots, ISA comparison,
+  branch density/misses, cache sources, queue pressure, buffer growth, core placement,
+  and range balance inspected visually. Range legends and repeated cache labels were adjusted.
+  All 48 local export/evidence links return HTTP 200. Both parser subsection anchors work.
+  The branch penalty control changes its nominal budget and resets correctly.
+  The report uses embedded plots and data. It has no external runtime dependencies.
+
+Full build, test, profiler, and observer logs:
+  D:/woby/build/beartrap-loading-audit-20261014
+Matching binaries and symbols:
+  D:/woby/build/beartrap-loading-audit-20261014/matching-bin
+Numerical capture records are also in measurements.zip beside this file.

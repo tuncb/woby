@@ -134,3 +134,25 @@ if(BUILD_TESTING)
         "$<TARGET_FILE:woby_obj_profile_sse2>" "$<TARGET_FILE:woby_obj_profile_diagnostic>" "$<TARGET_FILE:woby_obj_profile_uvcheck>" "$<TARGET_FILE:woby_obj_profile_uvptr>")
     set_tests_properties(woby_obj_profile_contract PROPERTIES LABELS "unit;cpu" TIMEOUT 60)
 endif()
+
+add_executable(woby_loading_audit_kernels "${PROJECT_SOURCE_DIR}/experiments/loading-audit/kernels.cpp")
+target_include_directories(woby_loading_audit_kernels PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(woby_loading_audit_kernels PRIVATE woby_core nlohmann_json::nlohmann_json)
+woby_enable_project_warnings(woby_loading_audit_kernels)
+if(BUILD_TESTING)
+    add_test(NAME woby_loading_audit_replay COMMAND "${Python3_EXECUTABLE}"
+        "${PROJECT_SOURCE_DIR}/experiments/loading-audit/tests.py" "$<TARGET_FILE:woby_loading_audit_kernels>")
+    set_tests_properties(woby_loading_audit_replay PROPERTIES LABELS "unit;cpu" TIMEOUT 60)
+    add_test(NAME woby_loading_audit_accounting COMMAND "${Python3_EXECUTABLE}"
+        "${PROJECT_SOURCE_DIR}/experiments/loading-audit/analysis_tests.py")
+    set_tests_properties(woby_loading_audit_accounting PROPERTIES LABELS "unit;cpu" TIMEOUT 60)
+    add_test(NAME woby_loading_audit_provenance COMMAND "${WOBY_UV_EXECUTABLE}" run
+        "${PROJECT_SOURCE_DIR}/experiments/loading-audit/runner_tests.py")
+    set_tests_properties(woby_loading_audit_provenance PROPERTIES LABELS "unit;cpu" TIMEOUT 60)
+    add_test(NAME woby_parser_simd_accounting COMMAND "${WOBY_UV_EXECUTABLE}" run
+        "${PROJECT_SOURCE_DIR}/experiments/loading-audit/parser_simd_tests.py")
+    set_tests_properties(woby_parser_simd_accounting PROPERTIES LABELS "unit;cpu" TIMEOUT 60)
+    add_test(NAME woby_parser_microarchitecture_accounting COMMAND "${WOBY_UV_EXECUTABLE}" run
+        "${PROJECT_SOURCE_DIR}/experiments/loading-audit/micro_tests.py")
+    set_tests_properties(woby_parser_microarchitecture_accounting PROPERTIES LABELS "unit;cpu" TIMEOUT 60)
+endif()
