@@ -256,8 +256,9 @@ typedef struct WobyImportTetrahedron {
 } WobyImportTetrahedron;
 
 /* Groups partition cells, so index_offset/index_count are CELL counts here.
- * Zero groups generates "Tetrahedra". Matching internal faces are removed
- * across all groups. Each quadratic boundary face becomes four triangles.
+ * Zero groups generates "Tetrahedra". Internal faces are removed across groups
+ * only for exactly two faces with known, opposite orientations. Ambiguous faces
+ * and bad cells are kept. Each quadratic boundary face becomes four triangles.
  * Point IDs do not weld cells. Borrowed data lives until release_result. */
 typedef struct WobyImportTetrahedra {
     uint32_t struct_size;

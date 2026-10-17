@@ -11,12 +11,32 @@ constexpr std::array<std::array<uint32_t, 6>, 4> faces{{
 struct BoundaryFace {
     std::array<uint32_t, 6> nodes{};
     uint32_t group = 0, count = 3;
-    bool reverse = false, internal = false, parity = false;
+    size_t incidence = 0;
+    bool reverse = false, oriented = false, parity = false;
 };
-double signedVolume(const Coordinate& a, const Coordinate& b, const Coordinate& c, const Coordinate& d)
+struct FaceIncidence {
+    size_t first = 0, count = 1;
+    bool internal = false;
+};
+double orientationDeterminant(const MeshGeometry& geometry, const TetrahedralCell& cell)
 {
+    const auto& p = geometry.precisePositions;
+    const auto& n = cell.nodes;
     Coordinate u{}, v{}, w{};
-    for (size_t i = 0; i < 3; ++i) { u[i] = b[i]-a[i]; v[i] = c[i]-a[i]; w[i] = d[i]-a[i]; }
+    for (size_t i = 0; i < 3; ++i) {
+        if (cell.nodeCount == 10) {
+            // At the reference center, corner shape derivatives are zero.
+            // Form the quadratic Jacobian columns from edge-node differences
+            // so a large coordinate translation does not cause cancellation.
+            u[i] = (p[n[5]][i]-p[n[6]][i]) + (p[n[8]][i]-p[n[7]][i]);
+            v[i] = (p[n[5]][i]-p[n[4]][i]) + (p[n[9]][i]-p[n[7]][i]);
+            w[i] = (p[n[8]][i]-p[n[4]][i]) + (p[n[9]][i]-p[n[6]][i]);
+        } else {
+            u[i] = p[n[1]][i]-p[n[0]][i];
+            v[i] = p[n[2]][i]-p[n[0]][i];
+            w[i] = p[n[3]][i]-p[n[0]][i];
+        }
+    }
     return (u[1]*v[2]-u[2]*v[1])*w[0] + (u[2]*v[0]-u[0]*v[2])*w[1] + (u[0]*v[1]-u[1]*v[0])*w[2];
 }
 std::array<uint32_t, 6> faceKey(const BoundaryFace& face)
@@ -40,9 +60,10 @@ void appendTetrahedralBoundary(MeshGeometry& geometry, const ModelLoadProgressCa
 {
     AnalysisIndex<uint32_t, 6> keys;
     std::vector<BoundaryFace> boundary;
+    std::vector<FaceIncidence> incidences;
     // Bound allocation and worst-case output before expanding the cells.
     constexpr uint64_t maxBytes = 4ull * 1024 * 1024 * 1024;
-    if (geometry.tetrahedra.size() > maxBytes / (4 * (sizeof(BoundaryFace) + 64))) {
+    if (geometry.tetrahedra.size() > maxBytes / (4 * (sizeof(BoundaryFace) + sizeof(FaceIncidence) + 64))) {
         throw std::runtime_error("Tetrahedral boundary exceeds supported size.");
     }
     for (size_t i = 0; i < geometry.tetrahedra.size(); ++i) {
@@ -51,35 +72,41 @@ void appendTetrahedralBoundary(MeshGeometry& geometry, const ModelLoadProgressCa
         if ((cell.nodeCount != 4 && cell.nodeCount != 10) || cell.groupIndex >= geometry.nodes.size()) {
             throw std::runtime_error("Tetrahedra require 4 or 10 nodes and a valid group.");
         }
+        bool distinct = true;
         for (size_t n = 0; n < cell.nodeCount; ++n) {
             if (cell.nodes[n] >= geometry.precisePositions.size()) { throw std::runtime_error("Tetrahedral node is outside the vertex buffer."); }
             for (size_t p = 0; p < n; ++p) {
-                if (cell.nodes[n] == cell.nodes[p]) { throw std::runtime_error("Tetrahedral nodes must be distinct."); }
+                if (cell.nodes[n] == cell.nodes[p]) { distinct = false; }
             }
             if (!finiteCoordinate(geometry.precisePositions[cell.nodes[n]])) { throw std::runtime_error("Invalid tetrahedral position."); }
         }
-        const auto volume = signedVolume(geometry.precisePositions[cell.nodes[0]], geometry.precisePositions[cell.nodes[1]],
-            geometry.precisePositions[cell.nodes[2]], geometry.precisePositions[cell.nodes[3]]);
-        if (!std::isfinite(volume) || volume == 0) { throw std::runtime_error("Tetrahedral corner volume must be nonzero and finite."); }
+        const auto determinant = orientationDeterminant(geometry, cell);
+        // This sample sets winding. It does not validate the whole cell.
+        // Keep source winding and every face when orientation is unknown.
+        const bool oriented = distinct && std::isfinite(determinant) && determinant != 0;
         for (const auto& local : faces) {
             BoundaryFace face;
-            face.group = cell.groupIndex; face.count = cell.nodeCount == 10 ? 6u : 3u; face.reverse = volume < 0;
+            face.group = cell.groupIndex; face.count = cell.nodeCount == 10 ? 6u : 3u;
+            face.oriented = oriented; face.reverse = oriented && determinant < 0;
             for (size_t n = 0; n < face.count; ++n) { face.nodes[n] = cell.nodes[local[n]]; }
             const auto& n = face.nodes;
             face.parity = ((n[0] > n[1]) ^ (n[0] > n[2]) ^ (n[1] > n[2])) ^ face.reverse;
             const auto id = analysisIndex(keys, faceKey(face));
-            if (id == boundary.size()) { boundary.push_back(face); }
+            face.incidence = id;
+            if (id == incidences.size()) { incidences.push_back({boundary.size(),1,false}); }
             else {
-                auto& previous = boundary[id];
-                if (previous.internal || previous.parity == face.parity) {
-                    throw std::runtime_error("Tetrahedra have duplicate, overlapping or non-manifold faces.");
-                }
-                previous.internal = true;
+                auto& incidence = incidences[id];
+                const auto& first = boundary[incidence.first];
+                ++incidence.count;
+                // Decide after all cells are read. A third incident face must
+                // restore both faces that a valid pair would have removed.
+                incidence.internal = incidence.count == 2 && first.oriented && face.oriented && first.parity != face.parity;
             }
+            boundary.push_back(face);
         }
     }
     std::vector<uint64_t> counts(geometry.nodes.size(), 0);
-    for (const auto& face : boundary) { if (!face.internal) { counts[face.group] += face.count == 6 ? 12u : 3u; } }
+    for (const auto& face : boundary) { if (!incidences[face.incidence].internal) { counts[face.group] += face.count == 6 ? 12u : 3u; } }
     uint64_t total = geometry.indices.size();
     for (size_t i = 0; i < counts.size(); ++i) {
         if (!counts[i]) { continue; }
@@ -97,7 +124,7 @@ void appendTetrahedralBoundary(MeshGeometry& geometry, const ModelLoadProgressCa
     for (size_t i = 0; i < boundary.size(); ++i) {
         if (i % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::triangulating, i, boundary.size()); }
         const auto& face = boundary[i];
-        if (face.internal) { continue; }
+        if (incidences[face.incidence].internal) { continue; }
         const auto emit = [&](size_t a, size_t b, size_t c) {
             if (face.reverse) { std::swap(b,c); }
             auto& offset = next[face.group];

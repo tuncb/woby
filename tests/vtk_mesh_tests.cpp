@@ -69,6 +69,30 @@ TEST_CASE("VTK reader supports legacy and modern ASCII tetrahedral connectivity"
     CHECK(meshGeometry(parse(vtk({{0,1,2,3},{0,2,1,10}},{10,10}))).indices.size() == 18);
 }
 
+TEST_CASE("VTK reader retains duplicate and degenerate tetrahedra for inspection")
+{
+    for (const bool modern : {false,true}) {
+        for (const uint32_t nodeCount : {4u,10u}) {
+            CAPTURE(modern); CAPTURE(nodeCount);
+            const ImportTetrahedralData data;
+            const std::vector<uint32_t> cell(data.cells[0].nodes,data.cells[0].nodes+nodeCount);
+            const uint32_t type = nodeCount == 10 ? 24u : 10u;
+            const auto duplicate = parse(vtk({cell,cell},{type,type},modern));
+            const auto& g = meshGeometry(duplicate);
+            CHECK(g.indices.size() == (nodeCount == 10 ? 96u : 24u));
+            REQUIRE(g.tetrahedra.size() == 2);
+            CHECK(g.tetrahedra[0].nodes == g.tetrahedra[1].nodes);
+
+            auto repeated = cell; repeated[3] = repeated[0];
+            const auto degenerate = parse(vtk({repeated},{type},modern));
+            const auto& d = meshGeometry(degenerate);
+            CHECK(d.indices.size() == (nodeCount == 10 ? 48u : 12u));
+            REQUIRE(d.tetrahedra.size() == 1);
+            CHECK(d.tetrahedra[0].nodes[3] == d.tetrahedra[0].nodes[0]);
+        }
+    }
+}
+
 TEST_CASE("VTK reader supports mixed point line surface and tetrahedral cells")
 {
     for (const bool modern : {false,true}) {

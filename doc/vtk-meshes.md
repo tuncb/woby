@@ -26,7 +26,7 @@ Attribute arrays do not set colors or groups.
 
 Binary VTK, XML `.vtu`, structured datasets, and other cell types are not
 supported. Convert these files to a supported ASCII unstructured grid.
-Unsupported or invalid geometry produces an error. The reader does not
+Unsupported cells or invalid data buffers produce an error. The reader does not
 skip unsupported cells. Dataset field records before the geometry are
 not supported.
 
@@ -45,18 +45,25 @@ The node order matches
 | 8 | Edge 1–3 |
 | 9 | Edge 2–3 |
 
-Woby keeps the source cell connectivity. It removes shared internal faces
-across all cell groups. Faces must use the same vertex indexes and the same
-mid-edge node for each edge. Source point identity metadata does not join
+Woby keeps the source coordinates and cell connectivity. It removes a shared
+internal face across cell groups only when exactly two incident faces have
+known, opposite orientations. Faces must use the same vertex indexes and the
+same mid-edge node for each edge. Source point identity metadata does not join
 cells. Linear and quadratic faces do not match each other.
 
 For display and surface analysis, Woby divides each six-node boundary face
 into four flat triangles. All mid-edge positions affect these triangles.
 This is a fixed approximation of the curved quadratic surface. Woby does
 not evaluate a curved finite element surface or render interior cells.
-Reversed corner order is accepted; Woby sets the triangle order to point
-outwards. Cells must have distinct node indexes and a nonzero corner volume.
-Duplicate cells and faces with more than two incident cells produce an error.
+
+Woby uses the quadratic mapping's Jacobian at the reference-cell center to
+set quadratic-cell winding. Linear cells use the corner determinant. These
+checks set display orientation; they do not validate the entire cell.
+Reversed connectivity is accepted. If the determinant is zero or nonfinite,
+or node indexes repeat, Woby keeps source winding and all affected faces.
+Duplicate cells, conflicting face orientations, and faces with more than two
+incident cells are retained for inspection. Node references must remain in
+range, and coordinates must be finite and within the supported limits.
 
 The sample [quadratic-tetra.vtk](../assets/samples/quadratic-tetra.vtk) contains
 one quadratic tetrahedron with a displaced mid-edge node.

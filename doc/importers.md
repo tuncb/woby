@@ -32,8 +32,10 @@ group rules. Zero groups creates a group named `Tetrahedra`.
 
 Hierarchy group order is triangles, lines, points, tetrahedra, then freeform
 patches. Include generated default groups. Interior cell groups keep their
-identity even when they have no exposed faces. Faces shared across cell
-groups are removed. Hiding a group does not expose internal faces.
+identity even when they have no exposed faces. Shared faces are removed only
+when exactly two incident faces have known, opposite orientations. Duplicate,
+degenerate, and conflicting cells are kept for inspection. Hiding a group
+does not expose internal faces. See [tetrahedral display rules](vtk-meshes.md#quadratic-tetrahedra).
 
 The built-in `.vtk` reader uses this same cell conversion. It does not require
 a plugin or a VTK dependency. See [VTK file support](vtk-meshes.md) for limits.
