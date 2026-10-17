@@ -2,6 +2,11 @@
 
 Notable changes by release tag. Versions with no notable changes are omitted.
 
+## v0.31.0
+
+- Added support for opening files from the clipboard.
+- Fixed quadratic tetrahedron winding and retained bad cells for inspection.
+
 ## v0.30.0
 
 - Added VTK ASCII unstructured grids with linear and quadratic tetrahedra, including importer support.
