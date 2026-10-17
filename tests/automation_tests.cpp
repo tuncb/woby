@@ -1039,6 +1039,8 @@ TEST_CASE("full queues still allow retry recovery and do not reserve rejected ke
     });
     const auto active = waitForCommand(*fixture.server);
     REQUIRE(active);
+    SUBCASE("foreground") {}
+    SUBCASE("background job counts toward capacity") { REQUIRE(woby::deferAutomationCommand(*fixture.server, active->id)); }
     std::vector<std::future<Json>> queued;
     for (size_t i = 1; i < woby::maxAutomationCommands; ++i) {
         queued.push_back(std::async(std::launch::async, [&] { return request(fixture.instance, "objects.list", {{"timeoutSeconds", 4}}); }));
@@ -1066,6 +1068,42 @@ TEST_CASE("full queues still allow retry recovery and do not reserve rejected ke
     CHECK(next->id == active->id + woby::maxAutomationCommands);
     REQUIRE(completeCommand(*fixture.server, next->id, woby::AutomationObjectsResult{}));
     CHECK(accepted.get().contains("result"));
+}
+
+TEST_CASE("background difference commands allow status and cancellation with separate response ownership")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    const auto target = woby::automationObjectId(*fixture.server, 1);
+    const Json params = {{"target", target}, {"requestKey", "check"}, {"timeoutSeconds", 1}};
+    auto pending = std::async(std::launch::async, [&] {
+        return request(fixture.instance, "analysis.difference-check-resolution", params);
+    });
+    const auto job = waitForCommand(*fixture.server);
+    REQUIRE(job);
+    CHECK_FALSE(woby::deferAutomationCommand(*fixture.server, job->id + 1));
+    REQUIRE(woby::deferAutomationCommand(*fixture.server, job->id));
+    CHECK_FALSE(woby::deferAutomationCommand(*fixture.server, job->id));
+    CHECK(request(fixture.instance, "instance.info")["result"]["backgroundCommands"] == 1);
+    CHECK(request(fixture.instance, "command.get", {{"requestKey", "check"}})["result"]["state"] == "running");
+    CHECK(request(fixture.instance, "analysis.difference-check-resolution", params)["error"]["code"] == -32008);
+    CHECK(pending.get()["error"]["data"]["state"] == "running");
+
+    for (const auto *method : {"analysis.difference-get", "analysis.difference-cancel-check"}) {
+        auto response = std::async(std::launch::async, [&] { return request(fixture.instance, method, {{"target", target}}); });
+        const auto command = waitForCommand(*fixture.server);
+        REQUIRE(command);
+        CHECK(command->id != job->id);
+        CHECK_FALSE(completeCommand(*fixture.server, job->id, woby::AutomationObjectsResult{}));
+        REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationControlResult{{{"method", method}}}));
+        CHECK(response.get()["result"]["method"] == method);
+    }
+    REQUIRE(completeCommand(*fixture.server, job->id, woby::AutomationCommandError{"Resolution check canceled"}));
+    CHECK_FALSE(completeCommand(*fixture.server, job->id, woby::AutomationControlResult{}));
+    const auto failure = request(fixture.instance, "analysis.difference-check-resolution", params);
+    CHECK(failure["error"]["message"] == "Resolution check canceled");
+    CHECK(request(fixture.instance, "command.get", {{"requestKey", "check"}})["result"]["state"] == "failed");
+    CHECK(request(fixture.instance, "instance.info")["result"]["backgroundCommands"] == 0);
 }
 
 TEST_CASE("automation validates lifecycle parameters before admitting work")

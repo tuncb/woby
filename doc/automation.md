@@ -16,8 +16,8 @@ For all supported CLI commands, RPC names, parameters, and target scopes, see th
 editing, camera navigation, model/importer management, diagnostics, and pane controls.
 
 Use `woby ctl instances --json` to list live instances. Each result includes `id`, `pid`,
-`url`, `apiVersion`, `ready`, `headless`, `queuedCommands`, and `activeSequence` (a string, or null).
-The queued count excludes the active command. Discovery checks the authenticated endpoint and ignores
+`url`, `apiVersion`, `ready`, `headless`, `queuedCommands`, `backgroundCommands`, and `activeSequence` (a string, or null).
+The queued count excludes the active command and background commands. Discovery checks the authenticated endpoint and ignores
 stale records, including records left by a crashed process. An instance may be listed
 as `ready: false` while startup loads models. Wait until ready before requesting capture.
 
@@ -131,7 +131,9 @@ thread takes them through `takeAutomationCommand` and reports a typed result or 
 through `completeAutomationCommand`. Each command has an internal ID independent of
 the client's JSON-RPC ID; stale or duplicate completions cannot finish another command.
 The runtime retains the active command until started work completes even if the HTTP
-deadline expires. Subsequent commands stay queued until that completion.
+deadline expires. Subsequent commands stay queued until that completion, except
+when the main thread defers an owned difference job. These jobs keep their own
+completion responses while later commands can get status or request cancellation.
 Instance discovery remains a runtime-only query and does not wait for main-thread work.
 
 ### Command ordering and concurrency
@@ -150,11 +152,18 @@ without advancing history. Source restoration failures return `-32004`, consume 
 failed step, and preserve the live scene. Keyed retries replay the original outcome.
 
 Commands execute in FIFO admission order, with at most eight admitted commands total
-(active plus queued). A full queue returns `-32002`. Admission order across concurrent
+(active plus queued plus background). A full queue returns `-32002`. Admission order across concurrent
 connections is defined by the returned sequence, not by client send time or response
 arrival time. Dependent scripts should wait for each response before submitting the
 next command. The runtime leaves HTTP workers available for discovery while scene
 requests wait.
+
+Difference create, rebuild, resolution check, and export commands start in admission
+order, then run in the background. Their CLI calls wait for completion. Other calls
+can get status, cancel work, or change the scene during that wait. A source change,
+new build, cancellation, or scene replacement makes obsolete build/check commands
+fail. Their results cannot replace the current result. Use
+`analysis.difference-cancel-check` to stop a check and keep the base result.
 
 HTTP handlers only validate and enqueue commands. Scene commands, UI input, and load
 commits execute on the main thread. Query results own their data, and object IDs are
@@ -166,11 +175,12 @@ Automation assumes a single coordinating client and no manual changes during a
 workflow. Multiple clients and UI edits can interleave safely, but the application
 does not detect intervening changes or guarantee a consistent scene across separate
 requests. Commands use the state present when they execute. A later query waits for
-earlier admitted commands, but does not wait for unrelated background loads. Separate
+earlier foreground commands, but does not wait for difference jobs or unrelated background loads. Separate
 requests are not an atomic batch.
 
 Timeouts include queue waiting. Expired queued commands are removed without execution;
-started commands retain the execution slot until completion. Later commands retain
+started foreground commands retain the execution slot until completion. Background
+difference jobs retain their admission slot and result ownership. Later commands retain
 their relative order when earlier commands expire or fail. Accepted-command timeouts
 include their `sequence`, `commandId`, and execution `state` in error `data`; sequence
 gaps are expected. Disconnecting a client is not cancellation. Viewer shutdown releases both active and queued clients.

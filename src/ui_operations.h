@@ -381,6 +381,7 @@ void loadSceneAnnotations(UiState& state, const SceneDocument& document);
 
 namespace woby { void requestComparisonIntersections(UiState& state, SceneObjectId id, bool cancel = false); }
 namespace woby { void requestDifferenceMesh(UiState& state, SceneObjectId id, bool cancel = false); }
+namespace woby { void requestDifferenceResolutionCheck(UiState& state, SceneObjectId id, bool cancel = false); }
 namespace woby {
 void requestComparisonDetector(UiState& state, SceneObjectId id, DiagnosticCategory category, bool cancel = false);
 void setComparisonAutomaticUpdate(UiState& state, SceneObjectId id, DiagnosticCategory category, bool automatic);

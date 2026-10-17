@@ -1433,11 +1433,14 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
                 settings.task = AnalysisTask::surfaceComparison;
                 settings.difference.visible = mode == 4;
                 if (mode != 4) { settings.mode = static_cast<ComparisonMode>(mode); }
-                else { settings.difference.created = true; }
                 resetComparisonDiagnosticFocus(state, id);
             }
             if (!both) { ImGui::TextWrapped("Add a second input for surface comparison. Available input geometry remains visible."); }
-            if (both && !settings.difference.visible && ImGui::Button("Create difference mesh")) { requestDifferenceMesh(state, id); return; }
+            if (both && !settings.difference.visible && ImGui::Button("Create difference mesh...")) {
+                settings.difference.visible = true;
+                setComparisonSettings(state, settings, id);
+                return;
+            }
             if (settings.difference.visible) {
                 if (settings != initial) { setComparisonSettings(state, settings, id); }
                 drawDifferenceInspector(state, runtime, id); return;

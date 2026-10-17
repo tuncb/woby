@@ -773,11 +773,11 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
         if (it == runtimes.objects.end()) { ready = false; continue; }
         const auto& runtime = it->second;
         if (comparison.settings.difference.visible) {
+            if (!comparison.settings.difference.created) { continue; }
             if (runtime.difference.phase == "failed" || runtime.difference.phase == "outdated" || runtime.difference.phase == "canceled") {
                 throw std::runtime_error("Difference mesh is " + runtime.difference.phase + ": " + runtime.difference.error);
             }
-            ready = ready && runtime.difference.phase == "ready" && runtime.difference.uploaded
-                && runtime.difference.signature == signature;
+            ready = ready && runtime.difference.uploaded && differenceResultCurrent(runtime.difference, state, comparison.objectId);
             continue;
         }
         if (!runtime.jobs.error.empty() && runtime.jobs.attemptedSignature == signature

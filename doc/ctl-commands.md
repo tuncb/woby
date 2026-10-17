@@ -1092,6 +1092,38 @@ double, fin results for that source are unavailable (`unavailableAreaSources`);
 other topology detectors remain usable.
 
 
+### Difference volumes
+
+Use the same commands for triangle comparisons and parametric-versus-triangle
+comparisons. Parametric inputs use their tessellation. Approximate construction
+accepts defects in models that represent solids, with reasonably consistent face
+orientation. See [Difference mesh](difference-mesh.md) for assumptions and limits.
+
+```text
+woby ctl --instance review analysis difference-create ANALYSIS_ID --method approximate --cell-size 0.1 --json
+woby ctl --instance review analysis difference-rebuild ANALYSIS_ID --cell-size 0.05 --json
+woby ctl --instance review analysis difference-check-resolution ANALYSIS_ID --json
+woby ctl --instance review analysis difference-get ANALYSIS_ID --json
+woby ctl --instance review analysis difference-cancel-check ANALYSIS_ID --json
+```
+
+Create and rebuild accept `--method direct|approximate` and `--cell-size VALUE`.
+`difference-set` accepts these settings without starting work. It also accepts
+`--visible`, `--show-a-only`, `--show-b-only`, `--show-walls`, and `--opacity`.
+`difference-cancel` stops a build and any check. `difference-delete` removes the
+result. `camera frame --object ANALYSIS_ID` frames the comparison.
+
+A resolution check requires a current approximate result. It runs at half the
+cell size and keeps the base result. The returned `difference.resolutionCheck`
+contains the check state, cell sizes, volumes, `totalVolumeChange`, and
+`relativeChangePercent` (null when the base total is zero). This measures sensitivity
+to resolution. It is not an error bound.
+
+Build and check calls wait for their jobs. Use another call to get status or cancel.
+The standard timeout and retry-key options apply. RPC names have the prefix
+`analysis.`, for example `analysis.difference-check-resolution`; their `target`
+is the analysis ID. RPC construction options are `method` and `cellSize`.
+
 ### Coordinate origins
 
 `scene.info.coordinateOrigin` is the double-precision original-coordinate offset

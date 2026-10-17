@@ -731,6 +731,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     case A::performanceBegin: case A::performanceEnd:
     case A::differenceCreate: case A::differenceGet: case A::differenceSet: case A::differenceRebuild:
     case A::differenceCancel: case A::differenceExport: case A::differenceDelete:
+    case A::differenceCheckResolution: case A::differenceCancelCheck:
     case A::annotationList: case A::annotationGet: case A::annotationCreate: case A::annotationSet:
     case A::annotationReshape: case A::annotationMove: case A::annotationDelete:
     case A::comparisonFindings: case A::comparisonExport: case A::comparisonExportStatus: case A::comparisonExportCancel:

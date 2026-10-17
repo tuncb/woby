@@ -5,22 +5,41 @@
 #include "marker_pick.h"
 #include "ui_icon_controls.h"
 #include "ui_operations.h"
-#include "utf8_path.h"
 #include <imgui.h>
-#include <imgui_stdlib.h>
 
 namespace woby
 {
 void drawDifferenceInspector(UiState &state, ComparisonRuntime &runtime, SceneObjectId id)
 {
     auto settings = comparisonSettings(state, id);
-    const auto initial = settings;
+    auto initial = settings;
     auto &d = settings.difference;
     auto &r = runtime.difference;
     ImGui::SeparatorText("Difference mesh");
-    const bool busy = r.phase == "queued" || r.phase == "running";
+    const bool checking = r.resolution.phase == "queued" || r.resolution.phase == "running";
+    const bool busy = r.phase == "queued" || r.phase == "running" || checking;
     ImGui::BeginDisabled(busy);
+    int method = static_cast<int>(d.method);
+    const char *methods[] = {"Direct mesh", "Approximate volume"};
+    if (ImGui::Combo("Method", &method, methods, 2)) { d.method = static_cast<DifferenceMethod>(method); }
+    if (d.method == DifferenceMethod::approximate) {
+        ImGui::InputDouble("Cell size", &d.cellSize, 0, 0, "%.6g");
+        ImGui::TextWrapped("Model units. Smaller cells retain more detail and use more memory.");
+        if (ImGui::TreeNode("Input assumptions")) {
+            ImGui::TextWrapped("Both inputs must represent solids with reasonably consistent triangle orientation. Missing surfaces are inferred. Open sheets need a separate closure rule.");
+            ImGui::TextWrapped("Parametric surfaces use their current tessellation. Smaller cells do not add surface detail.");
+            ImGui::TreePop();
+        }
+    }
+    if (settings != initial) {
+        setComparisonSettings(state, settings, id);
+        settings = comparisonSettings(state, id);
+        initial = settings;
+    }
+    ImGui::BeginDisabled(!enabledComparisonPartCount(state, ComparisonSide::a, id) ||
+                         !enabledComparisonPartCount(state, ComparisonSide::b, id));
     const bool rebuild = ImGui::Button(d.created ? "Rebuild difference mesh" : "Create difference mesh");
+    ImGui::EndDisabled();
     ImGui::EndDisabled();
     if (rebuild) {
         requestDifferenceMesh(state, id);
@@ -38,21 +57,33 @@ void drawDifferenceInspector(UiState &state, ComparisonRuntime &runtime, SceneOb
     if (busy) {
         ImGui::SameLine();
         if (ImGui::Button("Cancel")) {
-            requestDifferenceMesh(state, id, true);
+            if (checking) { requestDifferenceResolutionCheck(state, id, true); }
+            else { requestDifferenceMesh(state, id, true); }
         }
-        ImGui::TextWrapped("Building and validating the difference mesh...");
+        ImGui::TextWrapped("%s", checking ? "Checking volumes at half the cell size..." : "Building the difference mesh...");
     }
-    if (r.phase == "outdated") {
-        ImGui::TextWrapped("Out of date. Inputs changed. Rebuild to see the current difference.");
+    const bool current = differenceResultCurrent(r, state, id);
+    if (r.phase == "outdated" || (r.phase == "ready" && !current)) {
+        ImGui::TextWrapped("Out of date. Inputs or method settings changed. Rebuild to see the current difference.");
     }
     if (r.phase == "canceled") {
         ImGui::TextUnformatted("Difference creation canceled.");
     }
     if (!r.error.empty()) {
         ImGui::TextWrapped("Cannot create difference: %s", r.error.c_str());
+        if (d.method == DifferenceMethod::direct && ImGui::Button("Use approximate volume")) {
+            d.method = DifferenceMethod::approximate;
+            setComparisonSettings(state, settings, id);
+            return;
+        }
     }
-    if (r.phase == "ready" && r.result) {
+    if (current) {
         const auto &v = *r.result;
+        const bool approximate = v.construction.method == DifferenceMethod::approximate;
+        if (approximate) {
+            ImGui::SeparatorText("Approximate result");
+            ImGui::Text("Computed with cell size %.6g", v.construction.cellSize);
+        }
         ImGui::TextWrapped("%s", v.message.c_str());
         const auto visibility = [&](const char *label, bool &value) {
             if (drawVisibilityButton(label, value, label)) {
@@ -68,7 +99,7 @@ void drawDifferenceInspector(UiState &state, ComparisonRuntime &runtime, SceneOb
             visibility("Generated closure walls", d.showWalls);
         }
         ImGui::SliderFloat("Opacity", &d.opacity, .05f, 1, "%.2f");
-        ImGui::SeparatorText("Volume (model units cubed)");
+        ImGui::SeparatorText(approximate ? "Approximate volume (model units cubed)" : "Volume (model units cubed)");
         if (!v.constructed) {
             ImGui::Text("A only: %.9g", v.volumes[0]);
             ImGui::Text("B only: %.9g", v.volumes[1]);
@@ -78,36 +109,29 @@ void drawDifferenceInspector(UiState &state, ComparisonRuntime &runtime, SceneOb
         if (v.constructed) {
             ImGui::Text("Closure triangles: %s", formatCount(v.closureTriangles).c_str());
         }
+        if (approximate) {
+            ImGui::SeparatorText("Resolution check");
+            const auto &resolution = r.resolution;
+            if (resolution.base == r.result && resolution.phase == "ready") {
+                const auto total = v.volumes[0] + v.volumes[1];
+                const auto refined = resolution.volumes[0] + resolution.volumes[1];
+                ImGui::Text("Cell size %.6g: total %.9g", resolution.cellSize, refined);
+                ImGui::Text("A only: %.9g; B only: %.9g", resolution.volumes[0], resolution.volumes[1]);
+                ImGui::Text("Total change: %+.9g", refined - total);
+                if (total > 0) { ImGui::Text("Relative change: %+.3g%%", 100 * (refined - total) / total); }
+                ImGui::TextWrapped("This is a change with resolution, not an error bound.");
+            } else if (resolution.phase == "failed" && resolution.base == r.result) {
+                ImGui::TextWrapped("Resolution check: %s", resolution.error.c_str());
+            } else if (resolution.phase == "canceled") {
+                ImGui::TextUnformatted("Resolution check canceled.");
+            } else if (!checking) { ImGui::TextUnformatted("Resolution check: not run."); }
+            ImGui::BeginDisabled(busy);
+            if (ImGui::Button("Check at half the cell size")) { requestDifferenceResolutionCheck(state, id); }
+            ImGui::EndDisabled();
+        }
         if (ImGui::Button("Frame result")) {
             frameComparison(state, id);
         }
-        ImGui::SameLine();
-        if (ImGui::Button("Export OBJ...")) {
-            ImGui::OpenPopup("difference_export");
-        }
-        ImGui::SetNextWindowPos(ImGui::GetItemRectMin(), ImGuiCond_Appearing);
-        if (ImGui::BeginPopup("difference_export")) {
-            ImGui::TextUnformatted("Absolute OBJ path (new file)");
-            ImGui::InputText("##path", &r.exportPath);
-            if (ImGui::Button("Export")) {
-                try {
-                    requestDifferenceExport(r, pathFromUtf8(r.exportPath));
-                    ImGui::CloseCurrentPopup();
-                } catch (const std::exception &e) {
-                    r.exportError = e.what();
-                }
-            }
-            ImGui::EndPopup();
-        }
-    }
-    if (r.exportState == "running") {
-        ImGui::TextUnformatted("Exporting OBJ...");
-    }
-    if (r.exportState == "complete") {
-        ImGui::TextUnformatted("OBJ export complete.");
-    }
-    if (!r.exportError.empty()) {
-        ImGui::TextWrapped("Export: %s", r.exportError.c_str());
     }
     ImGui::TextWrapped("Uses the full geometry. Heatmap colors and acceptance tolerance do not change this mesh.");
     if (settings != initial) {
@@ -117,7 +141,8 @@ void drawDifferenceInspector(UiState &state, ComparisonRuntime &runtime, SceneOb
 void submitDifferenceMesh(graphics::ViewId view, const UiComparison &comparison, const DifferenceRuntime &r,
                           graphics::ProgramHandle program, graphics::ProgramHandle markerProgram)
 {
-    if (r.phase != "ready" || !r.result || !r.uploaded) {
+    if (r.phase != "ready" || !r.result || !r.uploaded ||
+        !sameDifferenceConstruction(r.result->construction, comparison.settings.difference)) {
         return;
     }
     const auto &s = comparison.settings.difference;
@@ -145,7 +170,8 @@ void submitDifferenceMesh(graphics::ViewId view, const UiComparison &comparison,
 void appendDifferencePickParts(std::vector<ScenePickPart> &parts, const UiComparison &comparison,
                                const DifferenceRuntime &r)
 {
-    if (r.phase != "ready" || !r.result) {
+    if (r.phase != "ready" || !r.result ||
+        !sameDifferenceConstruction(r.result->construction, comparison.settings.difference)) {
         return;
     }
     const auto &s = comparison.settings.difference;

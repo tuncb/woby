@@ -4,9 +4,11 @@
 #include <cmath>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <manifold/manifold.h>
 #include <map>
 #include <numeric>
+#include <numbers>
 #include <random>
 #include <stdexcept>
 #ifdef _WIN32
@@ -46,7 +48,7 @@ double distance(const Point &a, const Point &b)
     }
     return std::sqrt(d);
 }
-Soup read(const Mesh &mesh, const Point &origin, std::stop_token stop)
+Soup read(const Mesh &mesh, const Point &origin, size_t &removedCollapsedTriangles, std::stop_token stop)
 {
     Soup s;
     std::map<Point, size_t> unique;
@@ -56,25 +58,36 @@ Soup read(const Mesh &mesh, const Point &origin, std::stop_token stop)
     }
     for (size_t i = 0; i < g.indices.size(); i += 3) {
         check(stop);
-        Face f;
+        std::array<Point, 3> points;
         for (size_t j = 0; j < 3; ++j) {
-            auto p = meshPosition(mesh, g.indices[i + j]);
+            auto &p = points[j];
+            p = meshPosition(mesh, g.indices[i + j]);
             for (size_t axis = 0; axis < 3; ++axis) {
                 p[axis] += mesh.origin[axis] - origin[axis];
             }
             if (!finiteCoordinate(p)) {
                 throw std::runtime_error("Input contains non-finite coordinates.");
             }
+        }
+        if (exactTriangleCollapsed(points)) {
+            ++removedCollapsedTriangles;
+            continue;
+        }
+        // Omitted faces must not leave isolated points in the working solid.
+        Face f;
+        for (size_t j = 0; j < 3; ++j) {
+            const auto &p = points[j];
             const auto [it, added] = unique.emplace(p, s.points.size());
             if (added) {
                 s.points.push_back(p);
             }
             f[j] = it->second;
         }
-        if (exactTriangleCollapsed({s.points[f[0]], s.points[f[1]], s.points[f[2]]})) {
-            throw std::runtime_error("Input contains collapsed triangles. Remove them before creating a difference.");
-        }
         s.faces.push_back(f);
+    }
+    if (s.faces.empty()) {
+        throw std::runtime_error("No triangles remain after removing " + std::to_string(removedCollapsedTriangles) +
+                                 " exact zero-area triangles.");
     }
     return s;
 }
@@ -206,7 +219,7 @@ Mesh publish(const Soup &s, const Point &origin, const std::string &name, std::s
     publishMeshGeometry(mesh);
     return mesh;
 }
-Soup output(const manifold::Manifold &solidResult)
+Soup output(const manifold::Manifold &solidResult, bool mergeCoincident = true)
 {
     if (solidResult.Status() != manifold::Manifold::Error::NoError) {
         throw std::runtime_error("Solid difference failed. Check the input geometry.");
@@ -215,6 +228,14 @@ Soup output(const manifold::Manifold &solidResult)
     Soup s;
     for (size_t i = 0; i < mesh.vertProperties.size(); i += mesh.numProp) {
         s.points.push_back({mesh.vertProperties[i], mesh.vertProperties[i + 1], mesh.vertProperties[i + 2]});
+    }
+    if (!mergeCoincident) {
+        // Reconstructed components can touch at equal positions while remaining topologically separate.
+        for (size_t i = 0; i < mesh.triVerts.size(); i += 3) {
+            s.faces.push_back({static_cast<size_t>(mesh.triVerts[i]), static_cast<size_t>(mesh.triVerts[i + 1]),
+                               static_cast<size_t>(mesh.triVerts[i + 2])});
+        }
+        return s;
     }
     // Merge property seams before validating/exporting.
     std::map<Point, size_t> unique;
@@ -232,6 +253,187 @@ Soup output(const manifold::Manifold &solidResult)
         s.faces.push_back({map.at(mesh.triVerts[i]), map.at(mesh.triVerts[i + 1]), map.at(mesh.triVerts[i + 2])});
     }
     return s;
+}
+Point subtract(const Point &a, const Point &b)
+{
+    return {a[0] - b[0], a[1] - b[1], a[2] - b[2]};
+}
+double dot(const Point &a, const Point &b)
+{
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+Point cross(const Point &a, const Point &b)
+{
+    return {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
+}
+struct WindingNode {
+    Point center{}, areaVector{};
+    double radius = 0, area = 0;
+    size_t begin = 0, end = 0, left = 0, right = 0;
+};
+struct WindingTree {
+    Soup soup;
+    std::vector<WindingNode> nodes;
+};
+size_t buildWindingNode(WindingTree &tree, size_t begin, size_t end, std::stop_token stop)
+{
+    check(stop);
+    WindingNode node;
+    node.begin = begin;
+    node.end = end;
+    auto low = tree.soup.points[tree.soup.faces[begin][0]], high = low;
+    for (size_t i = begin; i < end; ++i) {
+        check(stop);
+        const auto &f = tree.soup.faces[i];
+        const auto normal = cross(subtract(tree.soup.points[f[1]], tree.soup.points[f[0]]),
+                                  subtract(tree.soup.points[f[2]], tree.soup.points[f[0]]));
+        node.area += .5 * std::sqrt(dot(normal, normal));
+        for (size_t k = 0; k < 3; ++k) {
+            node.areaVector[k] += .5 * normal[k];
+            for (auto index : f) {
+                low[k] = std::min(low[k], tree.soup.points[index][k]);
+                high[k] = std::max(high[k], tree.soup.points[index][k]);
+            }
+        }
+    }
+    for (size_t k = 0; k < 3; ++k) { node.center[k] = .5 * (low[k] + high[k]); }
+    node.radius = .5 * distance(low, high);
+    const auto index = tree.nodes.size();
+    tree.nodes.push_back(node);
+    if (end - begin > 12) {
+        size_t axis = 0;
+        for (size_t k = 1; k < 3; ++k) {
+            if (high[k] - low[k] > high[axis] - low[axis]) { axis = k; }
+        }
+        const auto middle = begin + (end - begin) / 2;
+        const auto centroid = [&](const Face &f) {
+            return tree.soup.points[f[0]][axis] + tree.soup.points[f[1]][axis] + tree.soup.points[f[2]][axis];
+        };
+        std::nth_element(tree.soup.faces.begin() + static_cast<ptrdiff_t>(begin),
+                         tree.soup.faces.begin() + static_cast<ptrdiff_t>(middle),
+                         tree.soup.faces.begin() + static_cast<ptrdiff_t>(end),
+                         [&](const Face &a, const Face &b) { return centroid(a) < centroid(b); });
+        const auto left = buildWindingNode(tree, begin, middle, stop);
+        const auto right = buildWindingNode(tree, middle, end, stop);
+        tree.nodes[index].left = left;
+        tree.nodes[index].right = right;
+    }
+    return index;
+}
+double solidAngle(const Soup &soup, const Face &face, const Point &point)
+{
+    std::array<Point, 3> directions;
+    for (size_t i = 0; i < 3; ++i) {
+        directions[i] = subtract(soup.points[face[i]], point);
+        const auto length = std::sqrt(dot(directions[i], directions[i]));
+        if (length == 0) { return 0; } // The surface has no unique interior at a vertex.
+        for (auto &component : directions[i]) { component /= length; }
+    }
+    const auto &a = directions[0], &b = directions[1], &c = directions[2];
+    const auto numerator = dot(a, cross(b, c));
+    // atan2(0, negative) is pi. Coplanar triangles must not invent an interior for a sheet.
+    if (numerator == 0) { return 0; }
+    return 2 * std::atan2(numerator, 1 + dot(a, b) + dot(b, c) + dot(c, a));
+}
+struct WindingEstimate { double angle = 0, error = 0; };
+WindingEstimate winding(const WindingTree &tree, size_t index, const Point &point, bool exact, std::stop_token stop)
+{
+    check(stop);
+    const auto &node = tree.nodes[index];
+    const auto offset = subtract(node.center, point);
+    const auto d = std::sqrt(dot(offset, offset));
+    if (!exact && node.left && d > 4 * node.radius) {
+        // Integral of n dot r/|r|^3. The derivative norm is at most 2/|r|^3.
+        // Bound the omitted terms so classification can fall back to exact solid angles.
+        const auto separation = d - node.radius;
+        return {dot(node.areaVector, offset) / (d * d * d),
+                2 * node.area * node.radius / (separation * separation * separation)};
+    }
+    if (node.left) {
+        const auto a = winding(tree, node.left, point, exact, stop),
+                   b = winding(tree, node.right, point, exact, stop);
+        return {a.angle + b.angle, a.error + b.error};
+    }
+    WindingEstimate result;
+    for (size_t i = node.begin; i < node.end; ++i) { result.angle += solidAngle(tree.soup, tree.soup.faces[i], point); }
+    return result;
+}
+bool inside(const WindingTree &tree, const Point &point, std::stop_token stop)
+{
+    auto estimate = winding(tree, 0, point, false, stop);
+    // Absolute winding accepts a globally reversed mesh while preserving oriented cavities.
+    // Exclude the ambiguous half-winding of a point exactly on an open sheet.
+    constexpr double threshold = (0.5 + 1e-8) * 4 * std::numbers::pi;
+    if (std::abs(estimate.angle) - estimate.error > threshold) { return true; }
+    if (std::abs(estimate.angle) + estimate.error < threshold) { return false; }
+    estimate = winding(tree, 0, point, true, stop);
+    return std::abs(estimate.angle) > threshold;
+}
+DifferenceMesh approximate(Soup a, Soup b, Point origin, double cellSize, std::stop_token stop)
+{
+    if (!std::isfinite(cellSize) || cellSize <= 0) {
+        throw std::invalid_argument("Approximate volume cell size must be finite and positive.");
+    }
+    auto low = a.points.front(), high = low;
+    for (const auto *s : {&a, &b}) {
+        for (const auto &p : s->points) {
+            for (size_t k = 0; k < 3; ++k) {
+                low[k] = std::min(low[k], p[k]);
+                high[k] = std::max(high[k], p[k]);
+            }
+        }
+    }
+    // Bound the BCC lattice allocation, including the library's power-of-two index padding.
+    // Both inputs use this same box and spacing. Coordinates are near zero in cell units.
+    constexpr double maxGridPoints = 8'000'000;
+    double gridPoints = 2;
+    Point size{};
+    for (size_t k = 0; k < 3; ++k) {
+        size[k] = std::ceil((high[k] - low[k]) / cellSize) + 4;
+        if (!std::isfinite(size[k]) || size[k] > maxGridPoints || cellSize <
+            std::max(std::abs(low[k]), std::abs(high[k])) * std::numeric_limits<double>::epsilon() * 8) {
+            throw std::runtime_error("Cell size is too small for the input extent or coordinate precision. Use larger cells.");
+        }
+        gridPoints *= std::exp2(std::floor(std::log2(size[k] + 3)) + 1);
+        if (gridPoints > maxGridPoints) {
+            throw std::runtime_error("Approximate volume exceeds the grid limit (8 million samples). Use larger cells or smaller input groups.");
+        }
+    }
+    for (auto *s : {&a, &b}) {
+        for (auto &p : s->points) {
+            check(stop);
+            for (size_t k = 0; k < 3; ++k) { p[k] = (p[k] - low[k]) / cellSize + 2; }
+        }
+    }
+    for (size_t k = 0; k < 3; ++k) { origin[k] += low[k] - 2 * cellSize; }
+    const manifold::Box bounds({0, 0, 0}, {size[0], size[1], size[2]});
+    const auto reconstruct = [&](Soup soup, const char *name) {
+        WindingTree tree{std::move(soup), {}};
+        (void)buildWindingNode(tree, 0, tree.soup.faces.size(), stop);
+        // Sequential callbacks keep cancellation exceptions on this worker thread.
+        auto result = manifold::Manifold::LevelSet([&](manifold::vec3 p) {
+            return inside(tree, {p.x, p.y, p.z}, stop) ? 1.0 : -1.0;
+        }, bounds, 1.0, 0, -1, false);
+        check(stop);
+        if (result.Status() != manifold::Manifold::Error::NoError || result.IsEmpty()) {
+            throw std::runtime_error(std::string("Input ") + name +
+                ": No solid volume was found at this cell size. Use smaller cells and check surface orientation. Open sheets need a separate closure rule.");
+        }
+        return result;
+    };
+    const auto sa = reconstruct(std::move(a), "A"), sb = reconstruct(std::move(b), "B");
+    const std::array<manifold::Manifold, 2> differences{sa - sb, sb - sa};
+    DifferenceMesh result;
+    for (size_t i = 0; i < 2; ++i) {
+        check(stop);
+        auto soup = output(differences[i], false);
+        for (auto &p : soup.points) { for (auto &component : p) { component *= cellSize; } }
+        result.volumes[i] = std::abs(differences[i].Volume()) * cellSize * cellSize * cellSize;
+        if (!std::isfinite(result.volumes[i])) { throw std::runtime_error("Approximate volume is outside the supported numeric range."); }
+        result.parts[i] = publish(soup, origin, i == 0 ? "A_only" : "B_only", stop);
+    }
+    result.message = "Approximate volume. Missing surfaces are inferred from triangle orientation. Thin features can be lost. Source meshes are unchanged.";
+    return result;
 }
 std::vector<double> arc(const Soup &s, const std::vector<size_t> &loop)
 {
@@ -343,47 +545,80 @@ DifferenceMesh closeSurfaces(Soup a, Soup b, std::vector<size_t> la, std::vector
 } // namespace
 DifferenceMesh buildDifferenceMesh(const Mesh &first, const Mesh &second, std::stop_token stop)
 {
+    return buildDifferenceMesh(first, second, DifferenceSettings{}, stop);
+}
+bool sameDifferenceConstruction(const DifferenceSettings &a, const DifferenceSettings &b)
+{
+    return a.method == b.method && (a.method == DifferenceMethod::direct || a.cellSize == b.cellSize);
+}
+const char *differenceMethodName(DifferenceMethod method)
+{
+    return method == DifferenceMethod::approximate ? "approximate" : "direct";
+}
+DifferenceMethod parseDifferenceMethod(const std::string &name)
+{
+    if (name == "direct") { return DifferenceMethod::direct; }
+    if (name == "approximate") { return DifferenceMethod::approximate; }
+    throw std::invalid_argument("Difference method must be direct or approximate.");
+}
+DifferenceMesh buildDifferenceMesh(const Mesh &first, const Mesh &second, const DifferenceSettings &settings,
+                                   std::stop_token stop)
+{
+    if (settings.method != DifferenceMethod::direct && settings.method != DifferenceMethod::approximate) {
+        throw std::invalid_argument("Unknown difference method.");
+    }
     const auto origin = first.origin;
     Soup a, b;
     Topology ta, tb;
+    std::array<size_t, 2> removed{};
     try {
-        a = read(first, origin, stop);
-        ta = validate(a, stop);
+        a = read(first, origin, removed[0], stop);
+        if (settings.method == DifferenceMethod::direct) { ta = validate(a, stop); }
     } catch (const std::exception &e) {
         throw std::runtime_error(std::string("Input A: ") + e.what());
     }
     try {
-        b = read(second, origin, stop);
-        tb = validate(b, stop);
+        b = read(second, origin, removed[1], stop);
+        if (settings.method == DifferenceMethod::direct) { tb = validate(b, stop); }
     } catch (const std::exception &e) {
         throw std::runtime_error(std::string("Input B: ") + e.what());
     }
-    if (!ta.loops.empty() || !tb.loops.empty()) {
+    DifferenceMesh result;
+    if (settings.method == DifferenceMethod::approximate) {
+        result = approximate(std::move(a), std::move(b), origin, settings.cellSize, stop);
+    } else if (!ta.loops.empty() || !tb.loops.empty()) {
         if (ta.loops.size() != 1 || tb.loops.size() != 1) {
             throw std::runtime_error(
                 "Automatic closure needs one outer boundary on each input, without holes. Found A: " +
                 std::to_string(ta.loops.size()) + ", B: " + std::to_string(tb.loops.size()) + " loops.");
         }
-        return closeSurfaces(std::move(a), std::move(b), ta.loops[0], tb.loops[0], origin, stop);
-    }
-    check(stop);
-    const auto sa = solid(std::move(a)), sb = solid(std::move(b));
-    DifferenceMesh result;
-    const std::array<manifold::Manifold, 2> differences{sa - sb, sb - sa};
-    for (size_t i = 0; i < 2; ++i) {
+        result = closeSurfaces(std::move(a), std::move(b), ta.loops[0], tb.loops[0], origin, stop);
+    } else {
         check(stop);
-        auto soup = output(differences[i]);
-        if (!soup.faces.empty()) {
-            if (!validate(soup, stop).loops.empty()) {
-                throw std::runtime_error("Boolean output is not closed.");
+        const auto sa = solid(std::move(a)), sb = solid(std::move(b));
+        const std::array<manifold::Manifold, 2> differences{sa - sb, sb - sa};
+        for (size_t i = 0; i < 2; ++i) {
+            check(stop);
+            auto soup = output(differences[i]);
+            if (!soup.faces.empty()) {
+                if (!validate(soup, stop).loops.empty()) {
+                    throw std::runtime_error("Boolean output is not closed.");
+                }
             }
+            result.volumes[i] = std::abs(differences[i].Volume());
+            result.parts[i] = publish(soup, origin, i == 0 ? "A_only" : "B_only", stop);
         }
-        result.volumes[i] = std::abs(differences[i].Volume());
-        result.parts[i] = publish(soup, origin, i == 0 ? "A_only" : "B_only", stop);
+        result.message = result.volumes[0] + result.volumes[1] == 0 ? "No geometric difference."
+                                                                    : "A only: removed from A. B only: added in B.";
     }
     check(stop);
-    result.message = result.volumes[0] + result.volumes[1] == 0 ? "No geometric difference."
-                                                                : "A only: removed from A. B only: added in B.";
+    result.construction.method = settings.method;
+    result.construction.cellSize = settings.cellSize;
+    result.removedCollapsedTriangles = removed;
+    if (removed[0] || removed[1]) {
+        result.message += " Removed exact zero-area input triangles: A: " + std::to_string(removed[0]) +
+                          ", B: " + std::to_string(removed[1]) + ". Source meshes are unchanged.";
+    }
     return result;
 }
 void exportDifferenceMesh(const DifferenceMesh &result, const std::filesystem::path &path, std::stop_token stop)
