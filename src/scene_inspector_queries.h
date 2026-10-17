@@ -2,6 +2,7 @@
 
 #include "scene_queries.h"
 #include "ui_operations.h"
+#include "scene_name_controls.h"
 
 namespace woby {
 
@@ -15,10 +16,13 @@ struct PropertiesKey {
 struct InspectorTargetLabel {
     SceneObjectKind kind{};
     std::string name, fileName, path;
+    SceneObjectId id = 0;
+    std::optional<std::string> originalName = {};
 };
 
 // Owned values only: no pointers into mutable scene vectors survive preparation.
 struct SceneInspectorSnapshot {
+    uint64_t generation = 0;
     std::string selectionId;
     std::vector<InspectorTargetLabel> targets;
     std::array<UiPropertyValue, uiObjectPropertyCount> properties{};
@@ -36,6 +40,7 @@ struct SceneInspectorRuntime {
     const UiState* owner = nullptr;
     std::optional<PropertiesKey> key;
     SceneInspectorSnapshot snapshot;
+    SceneNameEdit nameEdit;
     uint64_t builds = 0, dimensionBuilds = 0;
 };
 
@@ -43,12 +48,15 @@ struct SceneInspectorRuntime {
 void updateSceneInspector(SceneInspectorRuntime& runtime, const UiState& state);
 UiPropertyValue inspectorProperty(const SceneInspectorSnapshot& snapshot, UiObjectProperty property);
 
-enum class InspectorEditKind { property, reset, visibility };
+enum class InspectorEditKind { property, reset, visibility, name, restoreName };
 struct InspectorEdit {
     InspectorEditKind kind = InspectorEditKind::property;
     UiObjectProperty property{};
     float value = 0;
     UiPropertyGroup group{};
+    SceneObjectId objectId = 0;
+    uint64_t generation = 0;
+    std::string name = {};
 };
 void applyInspectorEdits(UiState& state, std::span<const InspectorEdit> edits);
 

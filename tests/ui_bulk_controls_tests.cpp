@@ -1,4 +1,5 @@
 #include "ui_bulk_controls.h"
+#include "scene_name_controls.h"
 
 #include <doctest/doctest.h>
 #include <imgui.h>
@@ -13,6 +14,7 @@ struct SelectionShortcutFixture {
     std::array<woby::UiSelectionRows, 2> rows;
     std::array<ImVec2, 2> positions;
     std::array<int, 2> deletes{};
+    woby::SceneNameEdit nameEdit;
     bool disabled = false, popup = false, showFirst = true;
 
     SelectionShortcutFixture()
@@ -43,7 +45,8 @@ struct SelectionShortcutFixture {
             ImGui::PushID(static_cast<int>(i));
             woby::beginSelectionRows(rows[i], state);
             woby::registerSelectionRow(rows[i], i + 1);
-            ImGui::Button("Row", {300, 30});
+            if (i == 0 && nameEdit.objectId) { woby::drawSceneNameInput("Name", nameEdit, 300); }
+            else { ImGui::Button("Row", {300, 30}); }
             const auto low = ImGui::GetItemRectMin();
             positions[i] = {low.x + 60, low.y + 15};
             if (woby::endSelectionRows(rows[i]).remove) { ++deletes[i]; }
@@ -106,4 +109,18 @@ TEST_CASE("Delete does not repeat while held")
     ImGui::GetIO().AddKeyEvent(ImGuiKey_Delete, true);
     for (int frame = 0; frame < 90; ++frame) { f.frame(); }
     CHECK(f.deletes == std::array<int, 2>{1, 0});
+}
+
+TEST_CASE("Delete edits a model name without removing selected rows")
+{
+    SelectionShortcutFixture f;
+    f.click(f.positions[0]);
+    f.nameEdit.objectId = 1;
+    f.nameEdit.text = f.nameEdit.initialName = f.nameEdit.originalName = "Model";
+    f.nameEdit.focus = true;
+    f.frame(); f.frame();
+    REQUIRE(f.nameEdit.active);
+    f.pressDelete();
+    CHECK(f.nameEdit.text.empty());
+    CHECK(f.deletes == std::array<int, 2>{0, 0});
 }

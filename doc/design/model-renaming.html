@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>woby · Rename models and parts</title>
+<style>
+:root { color-scheme:dark; }
+* { box-sizing:border-box; }
+html, body { margin:0; color:var(--foreground,#e5e7eb); font:14px/1.5 var(--font-sans,system-ui,sans-serif); }
+button, input { font:inherit; }
+button { cursor:pointer; }
+button:disabled { cursor:default; opacity:.38; }
+button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline:2px solid #9ebce0; outline-offset:2px; }
+.lead { margin:0 0 12px; color:var(--muted-foreground,#a9aeb7); }
+.lead strong { color:var(--foreground,#e5e7eb); font-weight:600; }
+.demo { position:relative; padding:16px; border-radius:var(--radius,8px); background:#25292f; color:#e5e7eb; }
+.demo-top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; color:#b8c0ca; font-size:12px; }
+.demo-top b { color:#e5e7eb; font-size:14px; font-weight:600; }
+.panels { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.12fr); gap:12px; }
+.panel { min-width:0; padding:16px; border-radius:var(--radius,8px); background:#32373c; }
+.panel-title { font-size:13px; padding-bottom:11px; margin-bottom:12px; border-bottom:1px solid #4a5057; display:flex; gap:7px; align-items:center; }
+.section-bar { background:#484e55; padding:5px 7px; border:1px solid #555c64; border-radius:2px; font-size:12px; }
+.section-bar span { margin-right:7px; }
+.tree { margin-top:8px; }
+.tree-row { display:flex; align-items:center; gap:4px; margin:5px 0; min-width:0; }
+.tree-row.child { padding-left:17px; }
+.icon { width:17px; height:17px; display:inline-block; vertical-align:middle; flex-shrink:0; fill:none; stroke:currentColor; stroke-width:1.65; stroke-linecap:round; stroke-linejoin:round; }
+.eye { color:#c6cbd1; display:flex; align-items:center; justify-content:center; width:26px; height:30px; flex-shrink:0; }
+.name-wrap { display:flex; min-width:0; width:100%; height:30px; align-items:center; border:1px solid transparent; border-radius:2px; }
+.tree-row.selected .name-wrap { border-color:#c9d2dd; background:#454c54; }
+.name-wrap:hover { background:#3d444c; }
+.disclosure { border:0; color:#cbd0d6; background:transparent; width:23px; height:28px; flex-shrink:0; padding:0; }
+.tree-name { display:block; text-align:left; min-width:0; width:100%; height:100%; color:#e5e7eb; background:transparent; border:0; padding:3px 7px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+.tree-name.inline { background:#22262b; border:1px solid #a5c2e3; }
+.tree-help { color:#b0b7bf; font-size:11px; margin:20px 0 0; }
+.kind { color:#b9c1ca; font-size:12px; margin:0 0 11px; }
+.name-label { display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:5px; }
+.badge { font-size:10px; color:#c7d9ee; border:1px solid #657a91; border-radius:3px; padding:0 5px; }
+.field { display:flex; gap:6px; }
+.field input { min-width:0; width:100%; border:1px solid #5f6874; border-radius:2px; background:#24272d; padding:5px 8px; color:#f1f3f6; font-size:13px; height:33px; }
+.reset { flex-shrink:0; width:33px; height:33px; display:flex; align-items:center; justify-content:center; border:1px solid #616a75; border-radius:3px; background:#454c55; color:#edf2f7; }
+.reset:hover:enabled { background:#566477; }
+.original { color:#c1c9d3; font-size:11px; margin:7px 0 0; min-height:34px; overflow-wrap:anywhere; }
+.original span { color:#f1f3f6; }
+.error { color:#ffbdac; font-size:11px; margin:5px 0 0; }
+[hidden] { display:none !important; }
+.source { border-top:1px solid #4a5057; margin-top:11px; padding-top:10px; color:#b5bdc6; font-size:11px; }
+.source span { display:block; color:#e1e5eb; overflow-wrap:anywhere; }
+.quiet-section { margin-top:10px; padding:5px 7px; border-radius:2px; background:#41474e; font-size:12px; color:#b8c0ca; }
+.status { margin-top:14px; border-top:1px solid #41474f; padding-top:11px; display:flex; align-items:center; gap:10px; min-height:44px; }
+.status-text { font-size:11px; color:#bdc8d5; flex:1; }
+.small-button { padding:3px 8px; border:1px solid #626d7c; background:#39434f; color:#e1e9f3; border-radius:3px; font-size:11px; white-space:nowrap; }
+.try { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:12px 0 0; color:var(--muted-foreground,#a9aeb7); font-size:12px; }
+.try button { background:transparent; border:1px solid var(--border,#42474f); color:var(--foreground,#e5e7eb); border-radius:5px; padding:4px 9px; }
+kbd { font-family:inherit; font-size:.93em; border:1px solid #66707b; border-bottom-width:2px; border-radius:3px; padding:0 4px; white-space:nowrap; }
+.rules { display:grid; grid-template-columns:1fr 1fr; column-gap:28px; row-gap:14px; margin:22px 0 0; }
+.rule { font-size:12px; color:var(--muted-foreground,#a9aeb7); }
+.rule b { display:block; color:var(--foreground,#e5e7eb); font-size:13px; margin-bottom:3px; font-weight:600; }
+.rule p { margin:0; }
+details { margin-top:18px; padding-top:12px; border-top:1px solid var(--border,#42474f); color:var(--muted-foreground,#a9aeb7); font-size:12px; }
+summary { cursor:pointer; color:var(--foreground,#e5e7eb); }
+details ul { padding-left:19px; margin:10px 0 0; }
+details li { margin:6px 0; }
+.menu { position:absolute; z-index:5; width:235px; padding:16px; border:1px solid #6b7685; border-radius:var(--radius,8px); background:#252a31; box-shadow:0 8px 22px #0006; }
+.menu button { display:flex; width:100%; align-items:center; justify-content:space-between; background:transparent; color:#e7edf5; border:0; border-radius:3px; padding:6px; text-align:left; font-size:12px; }
+.menu button:hover:enabled { background:#465568; }
+.menu .menu-original { font-size:11px; color:#b3bfce; border-top:1px solid #4a535f; margin-top:8px; padding:9px 6px 0; overflow-wrap:anywhere; }
+@media(max-width:540px) { .panels { grid-template-columns:1fr; } .rules { grid-template-columns:1fr; gap:13px; } .tree-help { margin-top:12px; } .panel { padding:16px; } }
+</style>
+</head>
+<body>
+<p class="lead"><strong>Rename models and parts in the scene.</strong> Keep each original name available for reset.</p>
+<div class="demo" id="demo">
+  <div class="demo-top"><b>woby <span id="dirty" aria-label="Unsaved changes"></span></b><span>Interactive UX proposal · detail panels</span></div>
+  <div class="panels">
+    <section class="panel" aria-label="Scene controls">
+      <div class="panel-title">Scene controls</div>
+      <div class="section-bar"><span>▾</span>Models (1 file)</div>
+      <div class="tree" id="tree" aria-label="Models and parts"></div>
+      <p class="tree-help">Select a model or part.<br>Right-click → Rename, or press <kbd>F2</kbd>.<br>Double-click a model to expand it.</p>
+    </section>
+    <section class="panel" aria-label="Properties">
+      <div class="panel-title">Properties</div>
+      <p class="kind" id="kind">Part</p>
+      <div class="name-label"><label for="name">Name</label><span class="badge" id="badge">Custom</span></div>
+      <div class="field"><input id="name" autocomplete="off" spellcheck="false" aria-describedby="original error"><button class="reset" id="restore" aria-label="Restore original name"></button></div>
+      <p class="error" id="error" role="alert" hidden>Enter a name, or restore the original name.</p>
+      <p class="original" id="original"></p>
+      <div class="source" id="source"></div>
+      <div class="quiet-section">▸ &nbsp;Transform</div>
+      <div class="quiet-section">▸ &nbsp;Appearance</div>
+    </section>
+  </div>
+  <div class="status"><div class="status-text" id="status" role="status" aria-live="polite">Try renaming “Housing”, then restore its original name.</div><button class="small-button" id="undo" disabled>Undo</button><button class="small-button" id="redo" disabled>Redo</button></div>
+  <div class="menu" id="menu" role="menu" aria-label="Name actions" hidden><button id="menu-rename" role="menuitem">Rename <span>F2</span></button><button id="menu-restore" role="menuitem">Restore original name</button><div class="menu-original" id="menu-original"></div></div>
+</div>
+<div class="try"><span>Try the flow:</span><button id="try-rename">Rename selected row</button><button id="try-menu">Open context menu</button><button id="restart">Reset demo</button></div>
+<div class="rules">
+  <div class="rule"><b>Fast, local editing</b><p>F2 or Rename turns the row label into a text field. The Name field in Properties is also editable. Enter or a click outside applies a valid name. Escape cancels.</p></div>
+  <div class="rule"><b>One clear reset</b><p>The reset arrow and “Restore original name” do the same action. Show the exact original name below the field. Disable reset when that name is in use.</p></div>
+  <div class="rule"><b>Safe to change</b><p>Apply each rename or reset as one Undo step. Save custom names in the .woby scene. Keep the source filename, path, and imported object names intact.</p></div>
+  <div class="rule"><b>Predictable scope</b><p>Change one selected model, imported group, or part. Reset only that item. Keep child names as they are. With multiple items selected, ask the user to select one item.</p></div>
+</div>
+<details><summary>Interaction and implementation details</summary><ul>
+  <li>Keep double-click for model expansion. Use F2 only when the model tree has focus and one item is selected. Do not take this key from another editor.</li>
+  <li>Select the full label when inline editing starts. Keep the eye control and expand arrow separate from the text field. Keep the same tree order, selection, and expansion state after each change.</li>
+  <li>Trim outer spaces. Reject an empty or whitespace-only name. Enter keeps the invalid field open with a message; a click outside cancels the invalid edit. Support Unicode and duplicate names. Use the parent model and source path to identify duplicates. Show long names in full in a tooltip.</li>
+  <li>For a model, the original name is its source filename, including the extension. For imported groups and parts, it is the label supplied on import. Retain the existing fallback label for an unnamed part.</li>
+  <li>A name equal to the original clears the custom name. Rename and reset share the same operation boundary. A no-op does not add an Undo step or mark the scene as changed.</li>
+  <li>Update the tree, Properties, analysis source lists, and annotation target labels together. The object identity stays the same. Existing analysis results remain valid.</li>
+  <li>Store a separate custom-name value in UiState-owned model, group, or part state. Keep imported identity separate. Apply changes through ui_operations; map custom names to .woby save/load and scene history. Old scenes use their original names. Saved views do not restore names.</li>
+  <li>Keep edit buffers, focus, and context-menu position in UI runtime state. Invalidate label-derived caches after a committed name change. Cancel an edit if its object is removed or the scene is replaced.</li>
+  <li>This prototype covers one model and its parts. Imported groups use the same interaction. Multi-selection and scene-file persistence are specified here but are not simulated.</li>
+</ul></details>
+<script>
+const $ = id => document.getElementById(id);
+const svg = paths => '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">'+paths+'</svg>';
+const eye = svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>');
+const resetIcon = svg('<path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/>');
+const seed = [
+  {id:'model',kind:'Model',original:'pump_assembly.obj',custom:'Pump assembly'},
+  {id:'housing',kind:'Part',original:'solid_007',custom:'Housing'},
+  {id:'rotor',kind:'Part',original:'rotor_002',custom:null},
+  {id:'shaft',kind:'Part',original:'shaft_003',custom:null}
+];
+let items = structuredClone(seed), selected = 'housing', expanded = true, inlineId = null;
+let history = [], future = [], committing = false, menuTarget = null;
+const item = id => items.find(x => x.id === id);
+const label = object => object.custom ?? object.original;
+const message = text => { $('status').textContent = text; };
+$('restore').innerHTML = resetIcon;
+function closeMenu() { $('menu').hidden = true; menuTarget = null; }
+function updateHistory() {
+  $('undo').disabled = !history.length; $('redo').disabled = !future.length;
+  $('dirty').textContent = JSON.stringify(items) === JSON.stringify(seed) ? '' : '*';
+}
+function drawTree() {
+  const tree = $('tree'), existing = new Map([...tree.children].map(row=>[row.dataset.id,row])), rows=[];
+  for (const object of items) {
+    if (object.kind === 'Part' && !expanded) continue;
+    const row = document.createElement('div'); row.className = 'tree-row'+(object.kind==='Part'?' child':'')+(selected===object.id?' selected':''); row.dataset.id=object.id;
+    const visible = document.createElement('span'); visible.className='eye'; visible.innerHTML=eye; visible.title='Visible'; row.append(visible);
+    const wrap = document.createElement('div'); wrap.className='name-wrap'; row.append(wrap);
+    if (object.kind==='Model') {
+      const expand=document.createElement('button'); expand.className='disclosure'; expand.textContent=expanded?'▾':'▸'; expand.setAttribute('aria-label',expanded?'Collapse model':'Expand model'); expand.setAttribute('aria-expanded',String(expanded));
+      expand.onclick=()=>{ if(inlineId) finishInline(); expanded=!expanded; drawTree(); }; wrap.append(expand);
+    }
+    if (inlineId===object.id) {
+      const input=document.createElement('input'); input.className='tree-name inline'; input.id='inline-name'; input.value=label(object); input.setAttribute('aria-label','Rename '+object.kind.toLowerCase());
+      input.oninput=()=>{ $('error').hidden=true; input.removeAttribute('aria-invalid'); };
+      input.onkeydown=e=>{ if(e.key==='Enter'){e.preventDefault();finishInline(false);} else if(e.key==='Escape'){ e.preventDefault();inlineId=null;draw();focusRow();message('Rename cancelled.');} };
+      input.onblur=()=>{ if(!committing && inlineId===object.id) finishInline(true); }; wrap.append(input);
+    } else {
+      const button=document.createElement('button'); button.className='tree-name'; button.textContent=label(object); button.setAttribute('aria-pressed',String(selected===object.id));
+      button.title=label(object)+'\nOriginal name: '+object.original+'\nSource: D:\\Models\\pump_assembly.obj';
+      button.onclick=()=>select(object.id);
+      button.ondblclick=()=>{ if(object.kind==='Model'){expanded=!expanded;drawTree();} };
+      wrap.append(button);
+    }
+    row.oncontextmenu=e=>{ e.preventDefault(); select(object.id); openMenu(object.id,e.clientX,e.clientY); };
+    const previous=existing.get(object.id);
+    if(previous && previous.innerHTML===row.innerHTML) { previous.className=row.className; rows.push(previous); }
+    else rows.push(row);
+  }
+  for(const old of [...tree.children]) if(!rows.includes(old)) old.remove();
+  rows.forEach((row,index)=>{if(tree.children[index]!==row) tree.insertBefore(row,tree.children[index]??null);});
+}
+function drawInspector() {
+  const object=item(selected); $('kind').textContent=object.kind;
+  $('name').value=label(object); $('name').setAttribute('aria-invalid','false');
+  $('badge').hidden=object.custom===null; $('restore').disabled=object.custom===null;
+  $('restore').title=object.custom===null?'Original name in use':'Restore original name: '+object.original;
+  $('original').replaceChildren(document.createTextNode('Original name: '));
+  const original=document.createElement('span'); original.textContent=object.original; $('original').append(original);
+  $('error').hidden=true;
+  $('source').replaceChildren(document.createTextNode(object.kind==='Model'?'Source path':'In file'));
+  const source=document.createElement('span'); source.textContent=object.kind==='Model'?'D:\\Models\\pump_assembly.obj':'pump_assembly.obj'; $('source').append(source);
+}
+function draw() { committing=true; drawTree(); drawInspector(); updateHistory(); committing=false; }
+function focusRow() { document.querySelector('[data-id="'+selected+'"] .tree-name')?.focus(); }
+function select(id) {
+  if(inlineId) finishInline(true);
+  if(document.activeElement===$('name')) commitField(true);
+  closeMenu(); selected=id; drawInspector();
+  for(const row of $('tree').children) { row.classList.toggle('selected',row.dataset.id===id); row.querySelector('.tree-name')?.setAttribute('aria-pressed',String(row.dataset.id===id)); }
+}
+function applyName(id, value, restored=false) {
+  const object=item(id), next=value===object.original?null:value, previous=object.custom;
+  if(previous===next) return false;
+  history.push({id,previous,next}); future=[]; object.custom=next;
+  message(restored?'Original name restored to “'+object.original+'”.':'Renamed to “'+label(object)+'”.');
+  return true;
+}
+function valid(value) { return value.trim().length>0; }
+function finishInline(blur=false) {
+  const input=$('inline-name'); if(!input || !inlineId) return;
+  if(!valid(input.value) && !blur) { $('error').hidden=false; input.setAttribute('aria-invalid','true'); return; }
+  if(valid(input.value)) applyName(inlineId,input.value.trim()); else message('Empty name discarded. Previous name kept.');
+  inlineId=null; draw(); if(!blur) focusRow();
+}
+function beginInline() {
+  closeMenu(); if(inlineId) return;
+  if(selected!=='model') expanded=true;
+  inlineId=selected; drawTree(); const input=$('inline-name'); input.focus(); input.select();
+  message('Enter applies the name. Escape cancels.');
+}
+function commitField(blur=false) {
+  const input=$('name');
+  if(!valid(input.value)) {
+    if(!blur) { $('error').hidden=false; input.setAttribute('aria-invalid','true'); return; }
+    drawInspector(); message('Empty name discarded. Previous name kept.'); return;
+  }
+  const changed=applyName(selected,input.value.trim()); drawInspector(); if(changed) drawTree(); updateHistory();
+}
+function restore(id=selected) {
+  closeMenu(); if(inlineId) { inlineId=null; }
+  applyName(id,item(id).original,true); draw();
+}
+function openMenu(id,x,y) {
+  menuTarget=id; const object=item(id), menu=$('menu'); $('menu-restore').disabled=object.custom===null;
+  $('menu-original').textContent='Original: '+object.original; menu.hidden=false;
+  const box=$('demo').getBoundingClientRect();
+  menu.style.left=Math.max(8,Math.min(x-box.left,box.width-menu.offsetWidth-8))+'px';
+  menu.style.top=Math.max(8,Math.min(y-box.top,box.height-menu.offsetHeight-8))+'px';
+  $('menu-rename').focus();
+}
+function undo(redo=false) {
+  if(inlineId) {inlineId=null; draw();}
+  closeMenu(); const from=redo?future:history,to=redo?history:future,change=from.pop(); if(!change) return;
+  item(change.id).custom=redo?change.next:change.previous; to.push(change); draw();
+  message((redo?'Redid':'Undid')+' name change.');
+}
+$('name').onfocus=()=>{ if(inlineId) finishInline(true); };
+$('name').oninput=()=>{ $('error').hidden=true; $('name').setAttribute('aria-invalid','false'); };
+$('name').onblur=()=>{ if(!committing) commitField(true); };
+$('name').onkeydown=e=>{
+  if(e.key==='Enter') { e.preventDefault();commitField(false); }
+  if(e.key==='Escape') { e.preventDefault();drawInspector();$('name').blur();message('Rename cancelled.'); }
+};
+$('restore').onmousedown=e=>e.preventDefault();
+$('restore').onclick=()=>restore();
+$('menu-rename').onclick=()=>{selected=menuTarget;beginInline();};
+$('menu-restore').onclick=()=>restore(menuTarget);
+$('undo').onclick=()=>undo(); $('redo').onclick=()=>undo(true);
+$('try-rename').onclick=beginInline;
+$('try-menu').onclick=()=>{ const row=document.querySelector('[data-id="'+selected+'"]')??$('tree'), rect=row.getBoundingClientRect();openMenu(selected,rect.left+45,rect.bottom+4); };
+$('restart').onclick=()=>{ committing=true;items=structuredClone(seed);selected='housing';expanded=true;inlineId=null;history=[];future=[];closeMenu();draw();message('Try renaming “Housing”, then restore its original name.'); };
+document.addEventListener('pointerdown',e=>{ if(!$('menu').hidden && !$('menu').contains(e.target) && e.target!==$('try-menu')) closeMenu(); });
+document.addEventListener('keydown',e=>{
+  const typing=e.target instanceof HTMLInputElement;
+  if(e.key==='F2' && $('tree').contains(e.target) && !typing) {e.preventDefault();beginInline();}
+  if(e.key==='Escape' && !$('menu').hidden) {closeMenu();focusRow();}
+  if(!typing && (e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z') {e.preventDefault();undo(e.shiftKey);}
+  if(!typing && e.ctrlKey && e.key.toLowerCase()==='y') {e.preventDefault();undo(true);}
+});
+$('menu').addEventListener('keydown',e=>{ if(e.key==='ArrowDown'||e.key==='ArrowUp') {e.preventDefault();const buttons=[...$('menu').querySelectorAll('button:not(:disabled)')],i=buttons.indexOf(document.activeElement);buttons[(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length].focus();} if(e.key==='Tab'){closeMenu();focusRow();} });
+draw();
+</script>
+</body>
+</html>

@@ -163,7 +163,7 @@ Json treeNode(const UiState& state, const UiSceneNode& node, const ObjectIdForma
     std::array<float, 16> local{}, world{};
     bool visible = true;
     float opacity = 1;
-    Json result = {{"id", formatId(node.objectId)}, {"name", node.name}, {"occurrence", path}, {"implicit", implicit}};
+    Json result = {{"id", formatId(node.objectId)}, {"name", sceneNodeDisplayName(state, node)}, {"occurrence", path}, {"implicit", implicit}};
     result["parentId"] = parentId == invalidSceneObjectId ? Json(nullptr) : Json(formatId(parentId));
     if (node.kind == UiSceneNodeKind::folder) {
         result["kind"] = "folder";

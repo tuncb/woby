@@ -53,6 +53,7 @@ struct SceneGroupRecord {
     SceneGroupSettings settings;
     bool lineGroup = false;
     bool pointGroup = false;
+    std::string customName = {};
 
     friend bool operator==(const SceneGroupRecord&, const SceneGroupRecord&) = default;
 };
@@ -64,6 +65,7 @@ struct SceneFileRecord {
     float vertexSizeScale = 1.0f;
     std::vector<SceneGroupRecord> groups;
     std::optional<std::array<double, 3>> coordinateOrigin;
+    std::string customName = {};
 
     friend bool operator==(const SceneFileRecord&, const SceneFileRecord&) = default;
 };
@@ -91,6 +93,7 @@ struct SceneNodeRecord {
     int fileIndex = -1;
     int groupIndex = -1;
     SceneNodeSettings settings;
+    std::string customName = {}; // Folder display override; name remains the source label.
 
     friend bool operator==(const SceneNodeRecord&, const SceneNodeRecord&) = default;
 };

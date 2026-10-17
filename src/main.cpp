@@ -737,6 +737,7 @@ void drawCameraToolbar(woby::UiState& state, const woby::SceneSelectionQueries& 
 void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes,
     const CanvasLayout& layout, woby::SceneInspectorRuntime& inspector)
 {
+    woby::synchronizeSceneNameEdit(state, inspector.nameEdit, !state.propertiesPaneVisible);
     if (!state.propertiesPaneVisible) { return; }
     ImGui::SetNextWindowBgAlpha(1.0f);
     ImGui::SetNextWindowPos(ImVec2(layout.rightEdge, layout.top), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
@@ -745,7 +746,7 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
         ImVec2(std::min(uiSize(300.0f), layout.rightWidth), layout.height - layout.top),
         ImVec2(layout.maxRightWidth, layout.height - layout.top));
     if (ImGui::Begin("##PropertiesPane", nullptr, ImGuiWindowFlags_NoTitleBar
-        | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings)) {
+        | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing)) {
         woby::setPropertiesPaneWidth(state, ImGui::GetWindowSize().x, uiSize(300.0f), layout.maxRightWidth);
         drawPropertiesPaneToggleButton(state);
         ImGui::SameLine();
@@ -846,7 +847,7 @@ void drawSceneTransformMenu(woby::UiState& state, woby::SceneObjectId reference)
 static woby::UiSelectionRows modelSelectionRows;
 
 bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
-    bool treeNode, bool removableFile = false)
+    woby::SceneNameEdit& nameEdit, bool treeNode, bool removableFile = false)
 {
     const auto order = woby::registerSelectionRow(modelSelectionRows, id);
     if (woby::sceneObjectSelected(state, id)) {
@@ -892,6 +893,22 @@ bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     bool removeFile = false;
     if (ImGui::BeginPopupContextItem("scene_item_context")) {
         woby::drawModelBulkMenu(state);
+        ImGui::Separator();
+        const auto object = woby::findSceneObject(state, id);
+        const bool single = state.selectedSceneObjects.size() == 1 && object && object->originalName;
+        if (ImGui::MenuItem("Rename", "F2", false, single)) {
+            woby::beginSceneNameEdit(nameEdit, *object, state.sceneGeneration);
+        }
+        if (!single && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("Select one object to rename.");
+        }
+        if (ImGui::MenuItem("Restore original name", nullptr, false,
+                single && object->name != *object->originalName)) {
+            woby::restoreSceneObjectName(state, id);
+        }
+        if (object && object->originalName && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("Original name: %s", object->originalName->c_str());
+        }
         ImGui::Separator();
         drawSceneTransformMenu(state, id);
         ImGui::Separator();
@@ -949,12 +966,32 @@ bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     return removeFile;
 }
 
+void drawModelNameInput(woby::UiState& state, woby::SceneNameEdit& edit, float width)
+{
+    const auto result = woby::drawSceneNameInput("##model_name", edit, width);
+    woby::drawSceneNameError(edit);
+    if (result == woby::SceneNameInputResult::apply) { woby::renameSceneObject(state, edit.objectId, edit.text); }
+    if (result != woby::SceneNameInputResult::editing) { edit = {}; }
+}
+
+// Keep the tree item (and its stable ID/expand state) while editing only its label.
+void drawTreeNameInput(woby::UiState& state, woby::SceneNameEdit& edit, float rightEdge)
+{
+    const auto low = ImGui::GetItemRectMin();
+    const auto after = ImGui::GetCursorScreenPos();
+    const float left = low.x + ImGui::GetTreeNodeToLabelSpacing();
+    ImGui::SetCursorScreenPos({left, low.y});
+    drawModelNameInput(state, edit, rightEdge - left);
+    const float bottom = ImGui::GetCursorScreenPos().y;
+    ImGui::SetCursorScreenPos({after.x, std::max(after.y, bottom)});
+}
+
 void drawGroupControls(
     woby::UiState& state,
     const woby::MeshNode& node,
     const GpuNodeRange& range,
     LoadedModelFile& file,
-    size_t nodeIndex, const woby::SceneTreeQueries& queries)
+    size_t nodeIndex, const woby::SceneTreeQueries& queries, woby::SceneNameEdit& nameEdit)
 {
     ImGui::PushID(static_cast<int>(nodeIndex));
     auto& settings = file.groupSettings[nodeIndex];
@@ -962,21 +999,29 @@ void drawGroupControls(
         woby::toggleGroupVisible(state, file, settings);
     }
     ImGui::SameLine();
+    if (nameEdit.objectId == settings.objectId) {
+        drawModelNameInput(state, nameEdit, ImGui::GetContentRegionAvail().x);
+        ImGui::PopID();
+        return;
+    }
     const bool memberA = woby::sceneTreeMember(queries, settings.objectId, woby::ComparisonSide::a);
     const bool memberB = woby::sceneTreeMember(queries, settings.objectId, woby::ComparisonSide::b);
     const char* badge = memberA ? (memberB ? "[A B] " : "[A] ") : (memberB ? "[B] " : "");
-    drawClippedTextItem("##name", woby::meshNodeDisplayName(node).c_str(), ImGui::GetContentRegionAvail().x,
+    const auto& name = woby::groupDisplayName(file, nodeIndex);
+    drawClippedTextItem("##name", name.c_str(), ImGui::GetContentRegionAvail().x,
         woby::sceneObjectSelected(state, settings.objectId), badge);
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         if (node.pointIndexCount) {
-            ImGui::SetTooltip("%s\nPoints: %s", woby::meshNodeDisplayName(node).c_str(), woby::formatCount(node.pointIndexCount).c_str());
+            ImGui::SetTooltip("%s\nOriginal name: %s\nPoints: %s\nRename: F2", name.c_str(),
+                woby::meshNodeDisplayName(node).c_str(), woby::formatCount(node.pointIndexCount).c_str());
         } else {
-            ImGui::SetTooltip(node.lineIndexCount ? "%s\nVertices: %s  Line segments: %s" : "%s\nVertices: %s  Triangles: %s",
-                woby::meshNodeDisplayName(node).c_str(), woby::formatCount(range.pointIndexCount).c_str(),
+            ImGui::SetTooltip(node.lineIndexCount ? "%s\nOriginal name: %s\nVertices: %s  Line segments: %s\nRename: F2"
+                : "%s\nOriginal name: %s\nVertices: %s  Triangles: %s\nRename: F2",
+                name.c_str(), woby::meshNodeDisplayName(node).c_str(), woby::formatCount(range.pointIndexCount).c_str(),
                 woby::formatCount(node.lineIndexCount ? node.lineIndexCount / 2u : node.indexCount / 3u).c_str());
         }
     }
-    drawSceneItemInteraction(state, settings.objectId, false);
+    drawSceneItemInteraction(state, settings.objectId, nameEdit, false);
     ImGui::PopID();
 }
 
@@ -985,7 +1030,8 @@ void drawSceneTreeNode(
     std::vector<LoadedModelRuntime>& runtimes,
     woby::UiSceneNode& node,
     std::vector<woby::SceneObjectId>& removeFiles,
-    std::span<const woby::SceneObjectId> revealPath, const woby::SceneTreeQueries& queries)
+    std::span<const woby::SceneObjectId> revealPath, const woby::SceneTreeQueries& queries,
+    woby::SceneNameEdit& nameEdit)
 {
     if (node.kind == woby::UiSceneNodeKind::folder) {
         const size_t groupCount = woby::sceneTreeSummary(queries, node.objectId).parts;
@@ -998,16 +1044,24 @@ void drawSceneTreeNode(
             woby::setSceneNodeSubtreeVisible(state, node, visibleCount != groupCount);
         }
         ImGui::SameLine();
+        const bool editing = nameEdit.objectId == node.objectId;
         const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
             | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
+            | (editing ? ImGuiTreeNodeFlags_AllowOverlap : 0)
             | (woby::sceneObjectSelected(state, node.objectId) ? ImGuiTreeNodeFlags_Selected : 0);
-        if (std::find(revealPath.begin(), revealPath.end(), node.objectId) != revealPath.end()) { ImGui::SetNextItemOpen(true); }
-        const bool folderOpen = ImGui::TreeNodeEx(node.name.c_str(), flags);
-        if (drawSceneItemInteraction(state, node.objectId, true, true)) { removeFiles = woby::selectedRemovalFiles(state); }
+        if (!editing && std::find(revealPath.begin(), revealPath.end(), node.objectId) != revealPath.end()) { ImGui::SetNextItemOpen(true); }
+        const bool folderOpen = ImGui::TreeNodeEx("folder", flags, "%s",
+            editing ? "" : woby::sceneNodeDisplayName(state, node).c_str());
+        if (editing) { drawTreeNameInput(state, nameEdit, ImGui::GetItemRectMax().x); }
+        else {
+            if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s\nOriginal name: %s\nRename: F2",
+                woby::sceneNodeDisplayName(state, node).c_str(), node.name.c_str()); }
+            if (drawSceneItemInteraction(state, node.objectId, nameEdit, true, true)) { removeFiles = woby::selectedRemovalFiles(state); }
+        }
         if (folderOpen) {
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
-                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFiles, revealPath, queries);
+                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFiles, revealPath, queries, nameEdit);
                 ImGui::PopID();
             }
             ImGui::TreePop();
@@ -1040,17 +1094,22 @@ void drawSceneTreeNode(
         labelClipMax.x = ImGui::GetCursorScreenPos().x + analysisControlStartX
             - ImGui::GetCursorPosX() - style.ItemSpacing.x;
         ImGui::PushClipRect(labelClipMin, labelClipMax, true);
+        const bool editing = nameEdit.objectId == node.objectId;
         const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
             | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
+            | (editing ? ImGuiTreeNodeFlags_AllowOverlap : 0)
             | (woby::sceneObjectSelected(state, node.objectId) ? ImGuiTreeNodeFlags_Selected : 0);
-        if (std::find(revealPath.begin(), revealPath.end(), node.objectId) != revealPath.end()) { ImGui::SetNextItemOpen(true); }
-        const bool fileTreeOpen = ImGui::TreeNodeEx("file", flags, "%s", node.name.c_str());
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("%s\nVertices: %s  Triangles: %s", woby::pathToUtf8(file.path).c_str(),
+        if (!editing && std::find(revealPath.begin(), revealPath.end(), node.objectId) != revealPath.end()) { ImGui::SetNextItemOpen(true); }
+        const bool fileTreeOpen = ImGui::TreeNodeEx("file", flags, "%s",
+            editing ? "" : woby::sceneNodeDisplayName(state, node).c_str());
+        if (editing) { drawTreeNameInput(state, nameEdit, labelClipMax.x); }
+        else if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s\n%s\nVertices: %s  Triangles: %s\nRename: F2",
+                woby::sceneNodeDisplayName(state, node).c_str(), woby::pathToUtf8(file.path).c_str(),
                 woby::formatCount(meshGeometry(file.mesh).vertices.size()).c_str(),
                 woby::formatCount(meshGeometry(file.mesh).indices.size() / 3u).c_str());
         }
-        if (drawSceneItemInteraction(state, node.objectId, true, true)) {
+        if (!editing && drawSceneItemInteraction(state, node.objectId, nameEdit, true, true)) {
             removeFiles = woby::selectedRemovalFiles(state);
         }
         ImGui::PopClipRect();
@@ -1068,7 +1127,7 @@ void drawSceneTreeNode(
         if (fileTreeOpen) {
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
-                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFiles, revealPath, queries);
+                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFiles, revealPath, queries, nameEdit);
                 ImGui::PopID();
             }
             ImGui::TreePop();
@@ -1091,7 +1150,7 @@ void drawSceneTreeNode(
         meshGeometry(file.mesh).nodes[node.groupIndex],
         gpuMesh.nodeRanges[node.groupIndex],
         file,
-        node.groupIndex, queries);
+        node.groupIndex, queries, nameEdit);
     if (!revealPath.empty() && revealPath.back() == node.objectId) { ImGui::SetScrollHereY(.5f); }
 }
 
@@ -2241,6 +2300,7 @@ int main(int argc, char** argv)
         woby::PostLoadRuntime postLoading;
         woby::ComparisonRuntimes comparison;
         woby::ComparisonNameEdit comparisonNameEdit;
+        woby::SceneNameEdit modelNameEdit;
         woby::AnnotationNameEdit annotationNameEdit;
         woby::ViewNameEdit viewNameEdit;
         woby::ViewListLayout viewListLayout;
@@ -3266,6 +3326,15 @@ int main(int argc, char** argv)
                     const float contentHeight = std::max(ImGui::GetFrameHeight(),
                         ImGui::GetContentRegionAvail().y - statusHeight - ImGui::GetStyle().ItemSpacing.y);
                     if (ImGui::BeginChild("SceneObjects", {0, contentHeight})) {
+                        woby::synchronizeSceneNameEdit(ui, modelNameEdit);
+                        if (ImGui::IsWindowFocused() && !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive()
+                            && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)
+                            && ui.selectedSceneObjects.size() == 1 && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
+                            if (const auto object = woby::findSceneObject(ui, ui.selectedSceneObjects.front()); object && object->originalName) {
+                                woby::beginSceneNameEdit(modelNameEdit, *object, ui.sceneGeneration);
+                                canvasSelectionPath = woby::sceneSelectionPath(ui, object->id);
+                            }
+                        }
                         const std::string filesPaneTitle = "Models (" + std::to_string(files.size()) + " files)##Files";
                         if (!canvasSelectionPath.empty() && !woby::sceneObjectSelected(ui, canvasSelectionPath.back())) { canvasSelectionPath.clear(); }
                         bool modelsOpen = false;
@@ -3281,7 +3350,7 @@ int main(int argc, char** argv)
                                 woby::setAllModelsVisible(ui, visibleCount != groupCount);
                             }
                             ImGui::TableNextColumn();
-                            if (!canvasSelectionPath.empty()) { ImGui::SetNextItemOpen(true); }
+                            if (!canvasSelectionPath.empty() || modelNameEdit.focus) { ImGui::SetNextItemOpen(true); }
                             modelsOpen = ImGui::CollapsingHeader(filesPaneTitle.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
                             ImGui::EndTable();
                         }
@@ -3291,7 +3360,7 @@ int main(int argc, char** argv)
                             woby::beginSelectionRows(modelSelectionRows, ui);
                             for (size_t nodeIndex = 0; nodeIndex < ui.sceneNodes.size(); ++nodeIndex) {
                                 ImGui::PushID(static_cast<int>(nodeIndex));
-                                drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFiles, canvasSelectionPath, renderScratch.queries.tree);
+                                drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFiles, canvasSelectionPath, renderScratch.queries.tree, modelNameEdit);
                                 ImGui::PopID();
                             }
                             const auto shortcuts = woby::endSelectionRows(modelSelectionRows);
@@ -3301,6 +3370,10 @@ int main(int argc, char** argv)
                                 removeModelFiles(ui, runtimes, removeFiles, annotationPreparation);
                                 setToastMessage(toast, "Removed " + std::to_string(removeFiles.size()) + " files from scene");
                             }
+                        }
+                        else { woby::synchronizeSceneNameEdit(ui, modelNameEdit, true); }
+                        if (modelNameEdit.objectId && !modelNameEdit.focus && modelNameEdit.submittedFrame != ImGui::GetFrameCount()) {
+                            woby::synchronizeSceneNameEdit(ui, modelNameEdit, true);
                         }
                         canvasSelectionPath.clear();
                         woby::drawComparisonObjects(ui, comparisonNameEdit, comparison);
@@ -3361,6 +3434,7 @@ int main(int argc, char** argv)
                     }
                     ImGui::End();
                 }
+                woby::synchronizeSceneNameEdit(ui, modelNameEdit, !ui.viewerPaneVisible);
                 drawPropertiesPane(ui, comparison, panelLayout, inspector);
                 if (requestSettings) {
                     woby::startFileAssociationAction(fileAssociations, {woby::FileAssociationAction::refresh});

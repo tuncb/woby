@@ -247,9 +247,10 @@ void drawGeometry(const SceneInspectorSnapshot& snapshot)
 
 } // namespace
 
-void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vector<InspectorEdit>& edits)
+void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vector<InspectorEdit>& edits,
+    SceneNameEdit& nameEdit)
 {
-    if (snapshot.targets.empty()) { ImGui::TextDisabled("No selection"); return; }
+    if (snapshot.targets.empty()) { nameEdit = {}; ImGui::TextDisabled("No selection"); return; }
     InspectorEditor editor{snapshot, edits};
     ImGui::PushID(snapshot.selectionId.c_str());
     if (snapshot.targets.size() > 1) { ImGui::Text("%zu objects selected", snapshot.targets.size()); }
@@ -265,6 +266,36 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
         }
     }
     if (many) { ImGui::EndChild(); }
+    if (!many && snapshot.targets.front().originalName) {
+        const auto& target = snapshot.targets.front();
+        if (nameEdit.objectId != target.id || nameEdit.generation != snapshot.generation
+            || nameEdit.initialName != target.name) {
+            beginSceneNameEdit(nameEdit, {target.id, target.kind, target.name, {}, 0, target.originalName}, snapshot.generation, false);
+        }
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Name");
+        if (target.name != *target.originalName) { ImGui::SameLine(); ImGui::TextDisabled("Custom"); }
+        const float width = ImGui::GetContentRegionAvail().x - renderModeButtonSize() - ImGui::GetStyle().ItemSpacing.x;
+        const auto result = drawSceneNameInput("##source_name", nameEdit, width);
+        if (result == SceneNameInputResult::apply) {
+            edits.push_back({InspectorEditKind::name, {}, 0, {}, target.id, snapshot.generation, nameEdit.text});
+        }
+        ImGui::SameLine();
+        const std::string hint = "Restore original name: " + *target.originalName;
+        if (drawRenderModeIconButton("restore_name", "\xef\x83\xa2", hint.c_str(), RenderModeState::off,
+                target.name == *target.originalName)) {
+            // Reset replaces any pending field commit as one history action.
+            std::erase_if(edits, [](const auto& edit) { return edit.kind == InspectorEditKind::name; });
+            edits.push_back({InspectorEditKind::restoreName, {}, 0, {}, target.id, snapshot.generation});
+            nameEdit = {};
+        }
+        drawSceneNameError(nameEdit);
+        ImGui::TextWrapped("Original name: %s", target.originalName->c_str());
+        ImGui::Spacing();
+    } else {
+        nameEdit = {};
+        if (many) { ImGui::TextDisabled("Select one object to rename."); }
+    }
     if (!inspectorProperty(editor.snapshot, UiObjectProperty::scale).available) {
         ImGui::TextDisabled("No shared properties");
         ImGui::PopID();
@@ -409,9 +440,10 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
 
 void drawSceneInspector(UiState& state, SceneInspectorRuntime& runtime)
 {
+    synchronizeSceneNameEdit(state, runtime.nameEdit);
     updateSceneInspector(runtime, state);
     std::vector<InspectorEdit> edits;
-    drawSceneInspectorSnapshot(runtime.snapshot, edits);
+    drawSceneInspectorSnapshot(runtime.snapshot, edits, runtime.nameEdit);
     applyInspectorEdits(state, edits);
 }
 

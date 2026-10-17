@@ -1,9 +1,51 @@
 #include "scene_objects.h"
 #include "ui_state.h"
+#include "utf8_path.h"
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace woby {
+std::string normalizedSceneName(std::string_view name)
+{
+    const auto first = name.find_first_not_of(" \t\r\n\f\v");
+    if (first == std::string_view::npos) { return {}; }
+    name = name.substr(first, name.find_last_not_of(" \t\r\n\f\v") - first + 1);
+    if (std::any_of(name.begin(), name.end(), [](unsigned char c) { return c < 32 || c == 127; })) { return {}; }
+    return std::string(name);
+}
+
+std::string sceneCustomName(std::string_view name, std::string_view original)
+{
+    auto normalized = normalizedSceneName(name);
+    return name == original || normalized == original ? std::string{} : normalized;
+}
+
+std::string modelDisplayName(const UiFileState& file)
+{
+    if (!file.customName.empty()) { return file.customName; }
+    const auto filename = pathToUtf8(file.path.filename());
+    return filename.empty() ? pathToUtf8(file.path) : filename;
+}
+
+const std::string& groupDisplayName(const UiFileState& file, size_t groupIndex)
+{
+    const auto& custom = file.groupSettings.at(groupIndex).customName;
+    return custom.empty() ? meshNodeDisplayName(meshGeometry(file.mesh).nodes.at(groupIndex)) : custom;
+}
+
+const std::string& sceneNodeDisplayName(const UiState& state, const UiSceneNode& node)
+{
+    if (node.kind == UiSceneNodeKind::folder) { return node.customName.empty() ? node.name : node.customName; }
+    if (node.fileIndex < state.files.size()) {
+        const auto& file = state.files[node.fileIndex];
+        if (node.kind == UiSceneNodeKind::file && !file.customName.empty()) { return file.customName; }
+        if (node.kind == UiSceneNodeKind::group && node.groupIndex < file.groupSettings.size()
+            && node.groupIndex < meshGeometry(file.mesh).nodes.size()) { return groupDisplayName(file, node.groupIndex); }
+    }
+    return node.name;
+}
+
 namespace {
 
 SceneObjectId allocateObjectId(UiState& state)
@@ -39,7 +81,8 @@ bool visitFolders(const std::vector<UiSceneNode>& nodes, const Visitor& visitor,
     for (const auto& node : nodes) {
         if (node.kind == UiSceneNodeKind::folder && node.objectId != invalidSceneObjectId
             && (filter == invalidSceneObjectId || node.objectId == filter)
-            && visitor(SceneObjectInfo{node.objectId, SceneObjectKind::folder, node.name, {}, invalidSceneObjectId})) {
+            && visitor(SceneObjectInfo{node.objectId, SceneObjectKind::folder,
+                node.customName.empty() ? node.name : node.customName, {}, invalidSceneObjectId, node.name})) {
             return true;
         }
         if (visitFolders(node.children, visitor, filter)) {
@@ -69,14 +112,16 @@ void visitObjects(const UiState& state, const Visitor& visitor, SceneObjectId fi
     }
     for (const auto& file : state.files) {
         if (wanted(file.objectId)) {
-            const auto filename = file.path.filename().u8string();
+            const auto filename = pathToUtf8(file.path.filename());
             if (visitor(SceneObjectInfo{file.objectId, SceneObjectKind::file,
-                    std::string(filename.begin(), filename.end()), file.path, invalidSceneObjectId})) { return; }
+                    modelDisplayName(file), file.path, invalidSceneObjectId,
+                    filename.empty() ? pathToUtf8(file.path) : filename})) { return; }
         }
         for (size_t index = 0; index < file.groupSettings.size() && index < meshGeometry(file.mesh).nodes.size(); ++index) {
             const auto id = file.groupSettings[index].objectId;
             if (wanted(id)
-                && visitor(SceneObjectInfo{id, SceneObjectKind::group, meshNodeDisplayName(meshGeometry(file.mesh).nodes[index]), {}, file.objectId})) {
+                && visitor(SceneObjectInfo{id, SceneObjectKind::group, groupDisplayName(file, index), {}, file.objectId,
+                    meshNodeDisplayName(meshGeometry(file.mesh).nodes[index])})) {
                 return;
             }
         }

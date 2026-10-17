@@ -19,6 +19,7 @@ void updateSceneInspector(SceneInspectorRuntime& runtime, const UiState& state)
         && runtime.key->revision == state.sceneEditRevision && runtime.key->selection == state.selectedSceneObjects
         && runtime.key->postLoadRevision == state.postLoadRevision) { return; }
     SceneInspectorSnapshot next;
+    next.generation = state.sceneGeneration;
     next.properties = selectedObjectProperties(state);
     next.visibility = selectedObjectVisibility(state);
     const auto objects = sceneObjects(state);
@@ -30,9 +31,11 @@ void updateSceneInspector(SceneInspectorRuntime& runtime, const UiState& state)
         if (const auto found = byId.find(id); found != byId.end()) {
             const auto* object = found->second;
             InspectorTargetLabel label{object->kind, object->name, {}, pathToUtf8(object->path)};
+            label.id = object->id;
+            label.originalName = object->originalName;
             if (object->kind == SceneObjectKind::group) {
                 if (const auto parent = byId.find(object->fileId); parent != byId.end()) {
-                    label.fileName = parent->second->name;
+                    label.fileName = pathToUtf8(parent->second->path.filename());
                     label.path = pathToUtf8(parent->second->path);
                 }
             }
@@ -80,6 +83,14 @@ void applyInspectorEdits(UiState& state, std::span<const InspectorEdit> edits)
         case InspectorEditKind::property: setSelectedObjectProperty(state, edit.property, edit.value); break;
         case InspectorEditKind::reset: resetSelectedObjectProperties(state, edit.group); break;
         case InspectorEditKind::visibility: setSelectedObjectsVisible(state, edit.value != 0); break;
+        case InspectorEditKind::name:
+        case InspectorEditKind::restoreName:
+            if (state.sceneGeneration == edit.generation && state.selectedSceneObjects.size() == 1
+                && state.selectedSceneObjects.front() == edit.objectId) {
+                if (edit.kind == InspectorEditKind::name) { renameSceneObject(state, edit.objectId, edit.name); }
+                else { restoreSceneObjectName(state, edit.objectId); }
+            }
+            break;
         }
     }
 }

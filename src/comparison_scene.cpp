@@ -218,7 +218,7 @@ std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonS
         ComparisonTreeNode result;
         result.objectId = source.objectId;
         result.kind = source.kind;
-        result.name = source.name;
+        result.name = sceneNodeDisplayName(state, source);
         if (source.kind == UiSceneNodeKind::group) {
             if (source.fileIndex >= state.files.size()) { return result; }
             const auto& file = state.files[source.fileIndex];
