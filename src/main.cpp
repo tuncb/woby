@@ -33,6 +33,7 @@
 #include "annotation_command.h"
 #include "scene_screenshot.h"
 #include "ui_operations.h"
+#include "ui_bulk_controls.h"
 #include "ui_state.h"
 #include "ui_views.h"
 #include "ui_layout.h"
@@ -842,9 +843,12 @@ void drawSceneTransformMenu(woby::UiState& state, woby::SceneObjectId reference)
     ImGui::EndMenu();
 }
 
+static woby::UiSelectionRows modelSelectionRows;
+
 bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     bool treeNode, bool removableFile = false)
 {
+    const auto order = woby::registerSelectionRow(modelSelectionRows, id);
     if (woby::sceneObjectSelected(state, id)) {
         woby::drawSceneItemOutline();
     }
@@ -858,9 +862,10 @@ bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
         const bool select = !treeNode || !ImGui::IsItemToggledOpen();
         const bool toggle = ImGui::GetIO().KeyCtrl;
-        storage->SetBool(selectionKey, select && !toggle);
-        if (select && toggle) {
-            woby::selectSceneObject(state, id, true);
+        const bool range = ImGui::GetIO().KeyShift;
+        storage->SetBool(selectionKey, select && !toggle && !range);
+        if (select && (toggle || range)) {
+            woby::selectSceneRow(state, id, order, toggle, range);
         }
     }
     const auto dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
@@ -886,6 +891,8 @@ bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     }
     bool removeFile = false;
     if (ImGui::BeginPopupContextItem("scene_item_context")) {
+        woby::drawModelBulkMenu(state);
+        ImGui::Separator();
         drawSceneTransformMenu(state, id);
         ImGui::Separator();
         if (ImGui::BeginMenu("Create analysis", woby::scenePostLoadReady(state) && !woby::comparisonObjectParts(state, state.selectedSceneObjects).empty())) {
@@ -920,8 +927,23 @@ bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
         }
         if (removableFile) {
             ImGui::Separator();
-            removeFile = ImGui::MenuItem("Remove file from scene");
+            struct RemovalMenuCache {
+                const woby::UiState* owner = nullptr;
+                uint64_t generation = 0, revision = 0;
+                std::vector<woby::SceneObjectId> selection, files;
+            };
+            static RemovalMenuCache cache;
+            if (cache.owner != &state || cache.generation != state.sceneGeneration || cache.revision != state.sceneEditRevision
+                || cache.selection != state.selectedSceneObjects) {
+                cache = {&state, state.sceneGeneration, state.sceneEditRevision, state.selectedSceneObjects, woby::selectedRemovalFiles(state)};
+            }
+            const auto& files = cache.files;
+            removeFile = ImGui::MenuItem(woby::bulkMenuLabel("Remove file from scene", "Remove", files.size(), "files from scene").c_str(),
+                nullptr, false, !files.empty());
+            woby::setLastItemTooltip(files.empty() ? "Select only files or folders. Individual parts cannot remove a whole file."
+                : "Remove whole files, including all parts in selected folders. This does not delete files on disk.");
         }
+        if (woby::drawSelectAllMenu()) { woby::selectSceneRows(state, modelSelectionRows.previous); }
         ImGui::EndPopup();
     }
     return removeFile;
@@ -962,7 +984,7 @@ void drawSceneTreeNode(
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes,
     woby::UiSceneNode& node,
-    std::optional<size_t>& removeFileIndex,
+    std::vector<woby::SceneObjectId>& removeFiles,
     std::span<const woby::SceneObjectId> revealPath, const woby::SceneTreeQueries& queries)
 {
     if (node.kind == woby::UiSceneNodeKind::folder) {
@@ -981,11 +1003,11 @@ void drawSceneTreeNode(
             | (woby::sceneObjectSelected(state, node.objectId) ? ImGuiTreeNodeFlags_Selected : 0);
         if (std::find(revealPath.begin(), revealPath.end(), node.objectId) != revealPath.end()) { ImGui::SetNextItemOpen(true); }
         const bool folderOpen = ImGui::TreeNodeEx(node.name.c_str(), flags);
-        drawSceneItemInteraction(state, node.objectId, true);
+        if (drawSceneItemInteraction(state, node.objectId, true, true)) { removeFiles = woby::selectedRemovalFiles(state); }
         if (folderOpen) {
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
-                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex, revealPath, queries);
+                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFiles, revealPath, queries);
                 ImGui::PopID();
             }
             ImGui::TreePop();
@@ -1029,7 +1051,7 @@ void drawSceneTreeNode(
                 woby::formatCount(meshGeometry(file.mesh).indices.size() / 3u).c_str());
         }
         if (drawSceneItemInteraction(state, node.objectId, true, true)) {
-            removeFileIndex = node.fileIndex;
+            removeFiles = woby::selectedRemovalFiles(state);
         }
         ImGui::PopClipRect();
         ImGui::SameLine(analysisControlStartX, 0.0f);
@@ -1046,7 +1068,7 @@ void drawSceneTreeNode(
         if (fileTreeOpen) {
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
-                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex, revealPath, queries);
+                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFiles, revealPath, queries);
                 ImGui::PopID();
             }
             ImGui::TreePop();
@@ -1246,20 +1268,37 @@ void rememberAddedModels(woby::RecentFilesRuntime& recentFiles, const woby::UiSt
     }
 }
 
-void removeModelFile(
+void removeModelFiles(
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes,
+    std::span<const woby::SceneObjectId> files, woby::AnnotationPreparationRuntime& preparation)
+{
+    std::vector<size_t> indices;
+    for (const auto id : files) {
+        const auto found = std::find_if(state.files.begin(), state.files.end(), [&](const auto& file) { return file.objectId == id; });
+        if (found == state.files.end()) { return; }
+        const auto index = static_cast<size_t>(found - state.files.begin());
+        if (index >= runtimes.size()) { return; }
+        indices.push_back(index);
+    }
+    if (indices.empty()) { return; }
+    std::sort(indices.begin(), indices.end(), std::greater<size_t>{});
+    indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+    woby::cancelAnnotationPreparation(preparation);
+    for (const auto index : indices) {
+        woby::graphics::cancelBufferUpload(runtimes[index].featureUpload);
+        destroyGpuMesh(runtimes[index].gpuMesh);
+        runtimes.erase(runtimes.begin() + static_cast<std::ptrdiff_t>(index));
+    }
+    (void)woby::removeFilesFromState(state, files);
+}
+
+void removeModelFile(woby::UiState& state, std::vector<LoadedModelRuntime>& runtimes,
     size_t fileIndex, woby::AnnotationPreparationRuntime& preparation)
 {
-    if (fileIndex >= runtimes.size()) {
-        return;
-    }
-
-    woby::cancelAnnotationPreparation(preparation);
-    woby::graphics::cancelBufferUpload(runtimes[fileIndex].featureUpload);
-    destroyGpuMesh(runtimes[fileIndex].gpuMesh);
-    runtimes.erase(runtimes.begin() + static_cast<std::ptrdiff_t>(fileIndex));
-    (void)woby::removeFileFromState(state, fileIndex);
+    if (fileIndex >= state.files.size()) { return; }
+    const std::array files{state.files[fileIndex].objectId};
+    removeModelFiles(state, runtimes, files, preparation);
 }
 
 void pushDroppedPath(DragDropState& state, const char* data)
@@ -3248,16 +3287,17 @@ int main(int argc, char** argv)
                         }
                         if (modelsOpen) {
                             if (files.empty()) { ImGui::TextDisabled("No models yet."); }
-                            std::optional<size_t> removeFileIndex;
+                            std::vector<woby::SceneObjectId> removeFiles;
+                            woby::beginSelectionRows(modelSelectionRows, ui);
                             for (size_t nodeIndex = 0; nodeIndex < ui.sceneNodes.size(); ++nodeIndex) {
                                 ImGui::PushID(static_cast<int>(nodeIndex));
-                                drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex, canvasSelectionPath, renderScratch.queries.tree);
+                                drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFiles, canvasSelectionPath, renderScratch.queries.tree);
                                 ImGui::PopID();
                             }
-                            if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
-                                const std::string removedName = fileDisplayName(files[removeFileIndex.value()].path);
-                                removeModelFile(ui, runtimes, removeFileIndex.value(), annotationPreparation);
-                                setToastMessage(toast, "Removed " + removedName);
+                            if (woby::endSelectionRows(modelSelectionRows)) { woby::selectSceneRows(ui, modelSelectionRows.current); }
+                            if (!removeFiles.empty()) {
+                                removeModelFiles(ui, runtimes, removeFiles, annotationPreparation);
+                                setToastMessage(toast, "Removed " + std::to_string(removeFiles.size()) + " files from scene");
                             }
                         }
                         canvasSelectionPath.clear();

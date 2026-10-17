@@ -20,6 +20,17 @@ woby is a desktop application for viewing and analyzing 3D geometry.
 
 Recent file history is saved for each user. On Windows, the file is `%LOCALAPPDATA%\woby\recents.json`. On macOS, it is `~/Library/Application Support/woby/woby/recents.json`. On Linux, it is `$XDG_STATE_HOME/woby/recents.json`, with `~/.local/state/woby/recents.json` as the default. History is separate from saved scenes and Undo/Redo. Headless sessions do not update it.
 
+Use Ctrl-click to select multiple rows. Use Shift-click to select a range of
+expanded rows. Right-click keeps the selection and adds the clicked row if
+necessary. The context menu shows how many items an operation affects. Use
+**Select all in this list**, or press Ctrl+A with the pointer over the list.
+
+Bulk menus are available for models, analyses, annotations and cross sections,
+analysis inputs, detector checks, model file removal, and saved Views. Each scene
+edit uses one Undo step. File removal affects the scene; it does not delete files
+on disk. In Views, Ctrl-click and Shift-click select rows without restoring a
+view. A normal click restores the view.
+
 ## Requirements
 
 | GPU and system | Driver version | Source information |

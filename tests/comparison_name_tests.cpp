@@ -28,6 +28,7 @@ struct ComparisonNameFixture {
     ImVec2 row;
     ImVec2 viewRow;
     std::string viewContents;
+    std::string comparisonContents;
     bool showViews = false;
 
     explicit ComparisonNameFixture(bool withViews = false) : showViews(withViews)
@@ -69,7 +70,10 @@ struct ComparisonNameFixture {
                 break;
             }
         }
+        ImGui::LogToBuffer();
         woby::drawComparisonObjects(state, edit);
+        comparisonContents = context->LogBuffer.c_str();
+        ImGui::LogFinish();
         if (const auto* table = ImGui::TableFindByID(ImGui::GetID("analysis_header"))) {
             row = ImVec2(origin.x + 100, table->OuterRect.Max.y + ImGui::GetStyle().ItemSpacing.y
                 + woby::renderModeButtonSize() * 0.5f);
@@ -1011,6 +1015,79 @@ TEST_CASE("analysis rename normalizes empty input and ignores missing objects")
     CHECK(state.sceneEditRevision == revision);
 }
 
+TEST_CASE("analysis bulk menu duplicates all selected rows after Ctrl and Shift clicks")
+{
+    ComparisonNameFixture f;
+    const auto second = woby::createComparison(f.state);
+    const auto third = woby::createComparison(f.state);
+    f.frame(); f.frame();
+    const float stride = woby::renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.y;
+    f.click(f.row);
+    auto& io = ImGui::GetIO();
+    io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+    f.click({f.row.x, f.row.y + 2 * stride});
+    io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{f.id, third});
+    io.AddKeyEvent(ImGuiMod_Shift, true); f.frame();
+    f.click({f.row.x, f.row.y + stride});
+    io.AddKeyEvent(ImGuiMod_Shift, false); f.frame();
+    CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{second, third});
+    f.click(f.row, ImGuiMouseButton_Right); f.frame();
+    CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{second, third, f.id});
+    CHECK(f.comparisonContents.find("Duplicate 3 analyses") != std::string::npos);
+    CHECK(f.comparisonContents.find("Delete 3 analyses") != std::string::npos);
+    REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+    const auto start = f.context->OpenPopupStack.back().Window->DC.CursorStartPos;
+    f.click({start.x + 35, start.y + 3 * ImGui::GetTextLineHeightWithSpacing()
+        + 2 * ImGui::GetStyle().ItemSpacing.y + ImGui::GetTextLineHeight() * .5f});
+    CHECK(f.state.comparisons.size() == 6);
+    CHECK(f.state.selectedSceneObjects.size() == 3);
+    for (auto id : f.state.selectedSceneObjects) { CHECK(id != f.id); CHECK(id != second); CHECK(id != third); }
+}
+
+TEST_CASE("view bulk selection leaves the active view intact and context deletes the selected set")
+{
+    ComparisonNameFixture f(true);
+    const auto first = woby::createView(f.state);
+    woby::setShowGrid(f.state, true);
+    const auto second = woby::createView(f.state);
+    f.frame(); f.frame();
+    const auto revision = f.state.sceneEditRevision;
+    auto& io = ImGui::GetIO();
+    io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+    f.click(f.viewRow);
+    io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    CHECK(f.state.viewSelection.ids == std::vector<woby::ViewId>{second, first});
+    CHECK(f.state.activeViewId == second);
+    CHECK(f.state.showGrid);
+    CHECK(f.state.sceneEditRevision == revision);
+    f.click(f.viewRow, ImGuiMouseButton_Right); f.frame();
+    CHECK(f.viewContents.find("Delete 2 views") != std::string::npos);
+    REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+    const auto start = f.context->OpenPopupStack.back().Window->DC.CursorStartPos;
+    f.click({start.x + 35, start.y + 5 * ImGui::GetTextLineHeightWithSpacing()
+        + 2 * ImGui::GetStyle().ItemSpacing.y + ImGui::GetTextLineHeight() * .5f});
+    CHECK(f.state.views.empty());
+    CHECK(f.state.activeViewId == 0);
+    CHECK(f.state.showGrid);
+}
+
+TEST_CASE("Ctrl A selects only the analysis list under the pointer")
+{
+    ComparisonNameFixture f(true);
+    woby::createView(f.state);
+    woby::createComparison(f.state);
+    woby::createComparison(f.state);
+    f.frame(); f.frame();
+    f.click(f.row);
+    auto& io = ImGui::GetIO();
+    io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+    f.key(ImGuiKey_A);
+    io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    CHECK(f.state.selectedSceneObjects.size() == 3);
+    CHECK(f.state.viewSelection.ids.size() == 1);
+}
+
 TEST_CASE("diagnostics show all checks including zero counts and pending results without filters")
 {
     ComparisonNameFixture f;
@@ -1072,7 +1149,8 @@ TEST_CASE("diagnostics show all checks including zero counts and pending results
 TEST_CASE("diagnostics keep run visibility and settings independent with nearby popups")
 {
     ComparisonNameFixture f;
-    bool hasA = true, hasB = false, finSettings = false, legacy = false;
+    bool hasA = true, hasB = false, finSettings = false, legacy = false, bulk = false;
+    SUBCASE("bulk row requests") { bulk = true; }
     SUBCASE("fin settings") { finSettings = true; }
     SUBCASE("one input A") {}
     SUBCASE("one input B") { hasA = false; hasB = true; }
@@ -1149,6 +1227,29 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
     };
     for (int warmup = 0; warmup < 5; ++warmup) { frame(); }
     REQUIRE(diagnostics);
+    if (bulk) {
+        auto& input = ImGui::GetIO();
+        click(findingLabels[2]); // Holes.
+        input.AddKeyEvent(ImGuiMod_Ctrl, true); frame();
+        click(findingLabels[3]); // Fin candidates.
+        input.AddKeyEvent(ImGuiMod_Ctrl, false); frame();
+        auto* selected = woby::findComparison(f.state, f.id);
+        REQUIRE(selected->detectorSelection.ids.size() == 2);
+        input.AddMousePosEvent(findingLabels[2].x, findingLabels[2].y); frame();
+        input.AddMouseButtonEvent(ImGuiMouseButton_Right, true); frame();
+        input.AddMouseButtonEvent(ImGuiMouseButton_Right, false); frame(); frame();
+        REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+        CHECK(contents.find("2 checks selected") != std::string::npos);
+        CHECK(contents.find("Run selected checks") != std::string::npos);
+        const auto start = f.context->OpenPopupStack.back().Window->DC.CursorStartPos;
+        click({start.x + 35, start.y + ImGui::GetTextLineHeightWithSpacing()
+            + ImGui::GetStyle().ItemSpacing.y + ImGui::GetTextLineHeight() * .5f});
+        CHECK(selected->detectorRequests[static_cast<size_t>(woby::DiagnosticCategory::holes)].revision == 1);
+        CHECK(selected->detectorRequests[static_cast<size_t>(woby::DiagnosticCategory::fins)].revision == 1);
+        CHECK(selected->detectorRequests[0].revision == 0);
+        CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{f.id});
+        return;
+    }
     const auto diagnosticsHeading = contents.find("Diagnostics");
     REQUIRE(diagnosticsHeading != std::string::npos);
     const auto headingRow = contents.substr(diagnosticsHeading,

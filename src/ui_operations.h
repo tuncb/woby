@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <optional>
+#include <span>
 #include <vector>
 
 namespace woby {
@@ -90,6 +91,40 @@ void frameComparisonBounds(UiState& state, const Bounds& bounds);
 // Plain click replaces, Ctrl-click toggles, context click preserves selection and includes the clicked object.
 void selectSceneObject(UiState& state, SceneObjectId id, bool toggle = false, bool contextClick = false);
 void clearSceneSelection(UiState& state);
+
+// Ordered rows are the visible rows in one list. Range selection never changes scene content.
+void selectListItem(std::vector<uint64_t>& selection, uint64_t& anchor, uint64_t id,
+    std::span<const uint64_t> rows, bool toggle = false, bool range = false, bool context = false);
+void selectSceneRow(UiState& state, SceneObjectId id, std::span<const SceneObjectId> rows,
+    bool toggle = false, bool range = false, bool context = false);
+void selectSceneRows(UiState& state, std::span<const SceneObjectId> rows);
+void selectViewRow(UiState& state, ViewId id, std::span<const ViewId> rows,
+    bool toggle = false, bool range = false, bool context = false);
+void selectViewRows(UiState& state, std::span<const ViewId> rows);
+void selectAnalysisInputRow(UiState& state, SceneObjectId analysis, ComparisonSide side, SceneObjectId id,
+    std::span<const SceneObjectId> rows, bool toggle = false, bool range = false, bool context = false);
+void selectAnalysisInputRows(UiState& state, SceneObjectId analysis, ComparisonSide side,
+    std::span<const SceneObjectId> rows);
+void selectDetectorRow(UiState& state, SceneObjectId analysis, DiagnosticCategory category,
+    std::span<const uint64_t> rows, bool toggle = false, bool range = false, bool context = false);
+void selectDetectorRows(UiState& state, SceneObjectId analysis, std::span<const uint64_t> rows);
+
+// Commands reject the whole selection if a target is stale or has an unsupported type.
+bool sceneSelectionHasKind(const UiState& state, SceneObjectKind kind);
+bool setSceneSelectionVisible(UiState& state, bool visible);
+bool duplicateSceneSelection(UiState& state);
+bool deleteSceneSelection(UiState& state);
+bool setSelectedAnnotationStyle(UiState& state, std::optional<bool> locked,
+    std::optional<float> width = {}, std::optional<std::array<float, 4>> color = {});
+bool duplicateSelectedViews(UiState& state);
+bool deleteSelectedViews(UiState& state);
+enum class UiInputAction { enable, disable, isolate, remove };
+bool applySelectedAnalysisInputs(UiState& state, SceneObjectId analysis, ComparisonSide side, UiInputAction action);
+enum class UiDetectorAction { run, cancel, show, hide, automaticOn, automaticOff };
+bool applySelectedDetectors(UiState& state, SceneObjectId analysis, UiDetectorAction action);
+// Folders expand to whole files. Selected parts must be covered by a selected file/folder.
+[[nodiscard]] std::vector<SceneObjectId> selectedRemovalFiles(const UiState& state);
+bool removeFilesFromState(UiState& state, std::span<const SceneObjectId> files);
 
 enum class UiSelectionTransform { alignOrigins, arrangeNearby };
 struct UiSelectionTransformStatus {

@@ -1,4 +1,5 @@
 #include "ui_views.h"
+#include "ui_bulk_controls.h"
 #include "ui_operations.h"
 #include "ui_icon_controls.h"
 
@@ -39,8 +40,8 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
         ImGui::EndTable();
     }
     if (open) {
-        const float rows = static_cast<float>(std::clamp(state.views.size(), size_t{1}, size_t{5}));
-        const float automaticHeight = rows * (button + ImGui::GetStyle().ItemSpacing.y)
+        const float rowCount = static_cast<float>(std::clamp(state.views.size(), size_t{1}, size_t{5}));
+        const float automaticHeight = rowCount * (button + ImGui::GetStyle().ItemSpacing.y)
             + ImGui::GetStyle().WindowPadding.y;
         constexpr float dividerHeight = 8.0f;
         const float minimumHeight = button + ImGui::GetStyle().ItemSpacing.y
@@ -50,6 +51,9 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
         const float height = flowing ? automaticHeight : viewListHeight(layout.preferredHeight, automaticHeight,
             minimumHeight, availableHeight);
         if (ImGui::BeginChild("view_rows", ImVec2(0, height))) {
+            static UiSelectionRows rows;
+            beginSelectionRows(rows, state);
+            bool duplicate = false, remove = false, selectAll = false;
             if (state.views.empty()) { ImGui::TextDisabled("Use + to save the current view."); }
             const auto beginRename = [&](ViewId id) {
                 if (const auto* view = findView(state, id)) {
@@ -60,12 +64,13 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
             };
             if (ImGui::IsWindowFocused() && !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive()
                 && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)
-                && ImGui::IsKeyPressed(ImGuiKey_F2, false)) { beginRename(state.activeViewId); }
+                && state.viewSelection.ids.size() == 1
+                && ImGui::IsKeyPressed(ImGuiKey_F2, false)) { beginRename(state.viewSelection.ids.front()); }
             for (const auto& view : state.views) {
                 const auto id = view.id;
+                const auto order = registerSelectionRow(rows, id);
                 ImGui::PushID(std::to_string(id).c_str());
                 const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - button - spacing);
-                bool changed = false;
                 if (edit.id == id) {
                     const bool focusing = edit.focus;
                     if (focusing) { ImGui::SetKeyboardFocusHere(); edit.focus = false; }
@@ -78,32 +83,41 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
                         edit.id = 0;
                     }
                 } else {
-                    if (drawSceneItemButton((view.name + "###name").c_str(), nameWidth, state.activeViewId == id)) {
-                        applyView(state, id);
+                    if (drawSceneItemButton((view.name + "###name").c_str(), nameWidth, selectionContains(state.viewSelection.ids, id))) {
+                        selectViewRow(state, id, order, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift);
+                        if (!ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift) { applyView(state, id); }
                     }
+                    if (state.activeViewId == id) { drawSceneItemOutline(); }
                     if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Restore this view. Double-click to rename.");
-                        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) { beginRename(id); }
+                        ImGui::SetTooltip("Click to restore. Ctrl-click to select; Shift-click to select a range. Double-click to rename.");
+                        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift) { beginRename(id); }
                     }
+                    if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) { selectViewRow(state, id, order, false, false, true); }
                     if (ImGui::BeginPopupContextItem("view_menu")) {
-                        if (ImGui::MenuItem("Restore view")) { applyView(state, id); }
-                        if (ImGui::MenuItem("Save current state to view")) { updateView(state, id); }
+                        const auto count = state.viewSelection.ids.size();
+                        if (count > 1) { drawBulkMenuHeader(count, "views"); }
+                        if (ImGui::MenuItem("Restore view", nullptr, false, count == 1)) { applyView(state, id); }
+                        if (ImGui::MenuItem("Save current state to view", nullptr, false, count == 1)) { updateView(state, id); }
                         ImGui::Separator();
-                        if (ImGui::MenuItem("Rename", "F2")) { beginRename(id); }
-                        if (ImGui::MenuItem("Duplicate")) { duplicateView(state, id); changed = true; }
-                        if (ImGui::MenuItem("Delete view")) { removeView(state, id); changed = true; }
+                        if (ImGui::MenuItem("Rename", "F2", false, count == 1)) { beginRename(id); }
+                        if (ImGui::MenuItem(bulkMenuLabel("Duplicate", "Duplicate", count, "views").c_str())) { duplicate = true; }
+                        if (ImGui::MenuItem(bulkMenuLabel("Delete view", "Delete", count, "views").c_str())) { remove = true; }
+                        selectAll = drawSelectAllMenu();
                         ImGui::EndPopup();
                     }
                 }
-                if (!changed) {
+                if (!duplicate && !remove) {
                     ImGui::SameLine();
                     if (drawRenderModeIconButton("save", "\xef\x83\x87",
                         "Save current state to this view. Save the .woby file to keep it on disk.",
                         RenderModeState::off, false)) { updateView(state, id); }
                 }
                 ImGui::PopID();
-                if (changed) { break; }
             }
+            selectAll = endSelectionRows(rows) || selectAll;
+            if (selectAll) { selectViewRows(state, rows.current); }
+            if (duplicate) { duplicateSelectedViews(state); }
+            else if (remove) { deleteSelectedViews(state); }
         }
         ImGui::EndChild();
         if (!flowing) {

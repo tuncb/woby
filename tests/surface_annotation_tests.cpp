@@ -1185,6 +1185,30 @@ TEST_CASE("annotation context menu shares Rename Duplicate and Delete actions")
         CHECK(fixture.scene.state.annotations.back().settings.name == "Surface line 1 copy");
     }
 }
+
+TEST_CASE("annotation context deletion applies to every Ctrl selected row")
+{
+    AnnotationUiFixture f;
+    const auto first = f.scene.add();
+    const auto second = f.scene.add();
+    f.showObjects = true;
+    f.frame(); f.frame();
+    const float stride = renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.y;
+    const ImVec2 firstRow{f.objectRow.x, f.objectRow.y - stride};
+    auto& io = ImGui::GetIO();
+    io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+    f.click(firstRow);
+    io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    REQUIRE(f.scene.state.selectedSceneObjects == std::vector<SceneObjectId>{second, first});
+    f.click(firstRow, ImGuiMouseButton_Right); f.frame();
+    CHECK(f.objectContents.find("Delete 2 annotations") != std::string::npos);
+    REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+    const auto start = f.context->OpenPopupStack.back().Window->DC.CursorStartPos;
+    f.click({start.x + 35, start.y + 3 * ImGui::GetTextLineHeightWithSpacing()
+        + ImGui::GetStyle().ItemSpacing.y + ImGui::GetTextLineHeight() * .5f});
+    CHECK(f.scene.state.annotations.empty());
+    CHECK(f.scene.state.selectedSceneObjects.empty());
+}
 TEST_CASE("annotation messages wrap at the top without overlapping the grid readout")
 {
     bool errorMessage = true;

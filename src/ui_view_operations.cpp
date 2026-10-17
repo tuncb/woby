@@ -202,6 +202,7 @@ ViewId createView(UiState& state)
     view.id = allocateViewId(state);
     state.activeViewId = view.id;
     state.views.push_back(std::move(view));
+    state.viewSelection = {{state.activeViewId}, state.activeViewId};
     markSceneDirty(state, SceneChange::none);
     return state.activeViewId;
 }
@@ -248,6 +249,8 @@ void removeView(UiState& state, ViewId id)
     if (!findView(state, id)) { return; }
     std::erase_if(state.views, [id](const auto& view) { return view.id == id; });
     if (state.activeViewId == id) { state.activeViewId = 0; }
+    std::erase(state.viewSelection.ids, id);
+    if (state.viewSelection.anchor == id) { state.viewSelection.anchor = 0; }
     markSceneDirty(state, SceneChange::none);
 }
 
@@ -397,6 +400,7 @@ void loadSceneViews(UiState& state, const SceneDocument& document)
     const auto references = objectReferences(state);
     state.views.clear();
     state.activeViewId = 0;
+    state.viewSelection = {};
     for (const auto& record : document.views) {
         UiView view;
         view.id = allocateViewId(state);

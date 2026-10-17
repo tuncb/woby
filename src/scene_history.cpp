@@ -50,6 +50,8 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     }
     content.comparisons = state.comparisons;
     for (auto& comparison : content.comparisons) {
+        comparison.inputSelection = {};
+        comparison.detectorSelection = {};
         comparison.diagnosticFocus.reset();
         comparison.pendingDiagnosticFocus.reset();
         comparison.uvFindingFocus.reset();
@@ -229,6 +231,19 @@ void refreshSceneHistoryRuntimeState(UiState& prepared, const UiState& current, 
     prepared.propertiesPaneVisible = current.propertiesPaneVisible;
     prepared.propertiesPaneWidth = current.propertiesPaneWidth;
     prepared.activeViewId = findView(prepared, current.activeViewId) ? current.activeViewId : 0;
+    prepared.viewSelection = current.viewSelection;
+    std::erase_if(prepared.viewSelection.ids, [&](auto id) { return !findView(prepared, id); });
+    if (!findView(prepared, prepared.viewSelection.anchor)) { prepared.viewSelection.anchor = 0; }
+    for (auto& item : prepared.comparisons) {
+        if (const auto* live = findComparison(current, item.objectId)) {
+            item.detectorSelection = live->detectorSelection;
+            item.inputSelection = live->inputSelection;
+            for (auto& selection : item.inputSelection) {
+                std::erase_if(selection.ids, [&](auto id) { return !findSceneObject(prepared, id); });
+                if (!findSceneObject(prepared, selection.anchor)) { selection.anchor = 0; }
+            }
+        }
+    }
     prepared.activeComparisonId = findComparison(prepared, current.activeComparisonId)
         ? current.activeComparisonId
         : (prepared.comparisons.empty() ? invalidSceneObjectId : prepared.comparisons.front().objectId);
@@ -236,6 +251,7 @@ void refreshSceneHistoryRuntimeState(UiState& prepared, const UiState& current, 
         prepared.camera = current.camera;
         prepared.cameraInput = current.cameraInput;
         prepared.selectedSceneObjects = current.selectedSceneObjects;
+        prepared.sceneSelectionAnchor = findSceneObject(prepared, current.sceneSelectionAnchor) ? current.sceneSelectionAnchor : 0;
         std::erase_if(prepared.selectedSceneObjects, [&](SceneObjectId id) { return !findSceneObject(prepared, id); });
     }
 }

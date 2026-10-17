@@ -1,6 +1,7 @@
 #include "uv_quality_view.h"
 #include "marker_pick.h"
 #include "comparison_view.h"
+#include "ui_bulk_controls.h"
 #include "comparison_gpu.h"
 #include "difference_runtime.h"
 #include "analysis_presentation.h"
@@ -121,17 +122,25 @@ void comparisonEnabledCheckbox(UiState& state, ComparisonSide side, SceneObjectI
     ImGui::SameLine();
 }
 
-void drawComparisonTreeNode(UiState& state, ComparisonSide side, const ComparisonTreeNode& node, SceneObjectId id)
+void drawComparisonTreeNode(UiState& state, ComparisonSide side, const ComparisonTreeNode& node, SceneObjectId id,
+    UiSelectionRows& rows, bool& selectAll)
 {
     const auto revision = state.sceneEditRevision;
+    const auto order = registerSelectionRow(rows, node.objectId);
+    const auto& selection = findComparison(state, id)->inputSelection[side == ComparisonSide::a ? 0 : 1];
     const auto nodeId = std::to_string(node.objectId);
     ImGui::PushID(nodeId.c_str());
     comparisonEnabledCheckbox(state, side, id, {node.objectId}, node.partCount, node.enabledPartCount);
     const bool leaf = node.children.empty();
     const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding
         | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
+        | (selectionContains(selection.ids, node.objectId) ? ImGuiTreeNodeFlags_Selected : 0)
         | (leaf ? ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen : ImGuiTreeNodeFlags_DefaultOpen);
     const bool open = ImGui::TreeNodeEx("node", flags, "%s", node.name.c_str());
+    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+        selectAnalysisInputRow(state, id, side, node.objectId, order, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift);
+    }
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) { selectAnalysisInputRow(state, id, side, node.objectId, order, false, false, true); }
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
         ImGui::Text("%s parts, %s triangles", formatCount(node.partCount).c_str(), formatCount(node.triangleCount).c_str());
@@ -141,25 +150,30 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
         ImGui::EndTooltip();
     }
     if (ImGui::BeginPopupContextItem("membership")) {
+        const auto count = selection.ids.size();
+        drawBulkMenuHeader(count, "sources");
+        if (ImGui::MenuItem("Enable selected")) { applySelectedAnalysisInputs(state, id, side, UiInputAction::enable); }
+        if (ImGui::MenuItem("Disable selected")) { applySelectedAnalysisInputs(state, id, side, UiInputAction::disable); }
         if (isUvAnalysis(comparisonSettings(state,id).type)) {
-            if (ImGui::MenuItem("Select source patch")) { selectSceneObject(state,node.objectId); }
-            if (ImGui::MenuItem("Isolate patch in analysis")) { isolateUvObjects(state,{node.objectId},id); }
+            if (ImGui::MenuItem("Select source patch", nullptr, false, count == 1)) { selectSceneObject(state,node.objectId); }
+            if (ImGui::MenuItem(count == 1 ? "Isolate patch in analysis" : "Enable only selected")) { applySelectedAnalysisInputs(state, id, side, UiInputAction::isolate); }
             if (ImGui::MenuItem("Show all patches")) { isolateUvObjects(state,{},id); }
         } else {
-            if (ImGui::MenuItem("Enable only this object")) { isolateComparisonObjects(state, {node.objectId}, side, id); }
+            if (ImGui::MenuItem(count == 1 ? "Enable only this object" : "Enable only selected")) { applySelectedAnalysisInputs(state, id, side, UiInputAction::isolate); }
             if (ImGui::MenuItem(isSingleSourceMeshTask(comparisonTask(state, id)) ? "Enable all sources" : "Enable all on this side")) {
                 setComparisonObjectsEnabled(state, {}, side, true, id);
             }
         }
         const bool sources = isUvAnalysis(comparisonSettings(state, id).type) || isSingleSourceMeshTask(comparisonTask(state, id));
         const char* label = sources ? "Remove from sources" : side == ComparisonSide::a ? "Remove from group A" : "Remove from group B";
-        if (ImGui::MenuItem(label)) { setComparisonObjects(state, {node.objectId}, side, false, id); }
+        if (ImGui::MenuItem(bulkMenuLabel(label, "Remove", count, "selected sources").c_str())) { applySelectedAnalysisInputs(state, id, side, UiInputAction::remove); }
+        selectAll = drawSelectAllMenu() || selectAll;
         ImGui::EndPopup();
     }
     if (open && !leaf) {
         for (const auto& child : node.children) {
             if (state.sceneEditRevision != revision) { break; }
-            drawComparisonTreeNode(state, side, child, id);
+            drawComparisonTreeNode(state, side, child, id, rows, selectAll);
         }
         ImGui::TreePop();
     }
@@ -218,10 +232,18 @@ void membershipTree(UiState& state, ComparisonRuntime& runtime, ComparisonSide s
         if (ImGui::SmallButton("Remove missing references")) { removeMissingComparisonParts(state, side, id); }
         setLastItemTooltip("Remove references to parts that are no longer in the scene from this input.");
     }
+    static std::array<UiSelectionRows, 2> selectionRows;
+    auto& rows = selectionRows[sideIndex];
+    if (rows.scope != id) { rows = {}; }
+    beginSelectionRows(rows, state);
+    rows.scope = id;
+    bool selectAll = false;
     for (const auto& root : roots) {
         if (state.sceneEditRevision != revision) { break; }
-        drawComparisonTreeNode(state, side, root, id);
+        drawComparisonTreeNode(state, side, root, id, rows, selectAll);
     }
+    selectAll = endSelectionRows(rows) || selectAll;
+    if (selectAll) { selectAnalysisInputRows(state, id, side, rows.current); }
     ImGui::TreePop();
     ImGui::PopID();
     updateComparisonInspectorCache(runtime.inspector.queries, state, id);
@@ -375,8 +397,12 @@ const char* diagnosticHint(DiagnosticCategory category)
 }
 
 void diagnosticRow(UiState& state, const ComparisonRuntime& runtime,
-    const char* name, DiagnosticCategory category, bool hasA, bool hasB, SceneObjectId id)
+    const char* name, DiagnosticCategory category, bool hasA, bool hasB, SceneObjectId id,
+    UiSelectionRows& rows, bool& selectAll)
 {
+    const auto key = static_cast<uint64_t>(category) + 1;
+    const auto order = registerSelectionRow(rows, key);
+    const auto& selection = findComparison(state, id)->detectorSelection;
     ImGui::PushID(name);
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
@@ -395,9 +421,12 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime,
     const auto position = ImGui::GetCursorScreenPos();
     const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
     const float height = std::max(ImGui::GetFrameHeight(), ImGui::CalcTextSize(name, nullptr, false, width).y);
-    if (ImGui::Selectable("##category", settings.diagnosticCategory == category, 0, {0, height})) {
+    if (ImGui::Selectable("##category", selection.ids.empty() ? settings.diagnosticCategory == category : selectionContains(selection.ids, key), 0, {0, height})) {
+        selectDetectorRow(state, id, category, order, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift);
         settings.diagnosticCategory = category;
+        setComparisonSettings(state, settings, id);
     }
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) { selectDetectorRow(state, id, category, order, false, false, true); }
     ImGui::GetWindowDrawList()->AddText(nullptr, 0, position, ImGui::GetColorU32(ImGuiCol_Text), name, nullptr, width);
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
@@ -405,6 +434,25 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime,
         ImGui::TextUnformatted(diagnosticHint(category));
         ImGui::PopTextWrapPos();
         ImGui::EndTooltip();
+    }
+    if (ImGui::BeginPopupContextItem("detector_selection")) {
+        drawBulkMenuHeader(selection.ids.size(), "checks");
+        bool busy = false;
+        for (auto selected : selection.ids) {
+            const auto status = comparisonDetectorStatus(runtime.results.value, static_cast<DiagnosticCategory>(selected - 1));
+            busy = busy || status.phase == IntersectionPhase::queued || status.phase == IntersectionPhase::running;
+        }
+        if (ImGui::MenuItem("Run selected checks", nullptr, false, (hasA || hasB) && !busy)) { applySelectedDetectors(state, id, UiDetectorAction::run); }
+        setLastItemTooltip(busy ? "Cancel or wait for the selected checks before running them again." : "Run the selected checks on enabled inputs.");
+        if (ImGui::MenuItem("Cancel selected checks", nullptr, false, busy)) { applySelectedDetectors(state, id, UiDetectorAction::cancel); }
+        ImGui::Separator();
+        if (ImGui::MenuItem("\xef\x81\xae Show selected results")) { applySelectedDetectors(state, id, UiDetectorAction::show); }
+        if (ImGui::MenuItem("\xef\x81\xb0 Hide selected results")) { applySelectedDetectors(state, id, UiDetectorAction::hide); }
+        if (ImGui::MenuItem("Automatic update on")) { applySelectedDetectors(state, id, UiDetectorAction::automaticOn); }
+        if (ImGui::MenuItem("Automatic update off")) { applySelectedDetectors(state, id, UiDetectorAction::automaticOff); }
+        selectAll = drawSelectAllMenu() || selectAll;
+        ImGui::EndPopup();
+        settings = comparisonSettings(state, id);
     }
     const bool current = inspectorDetectorReady(runtime, state, id, category);
     if (!hasA && !hasB) { ImGui::TableNextColumn(); ImGui::TextDisabled("--"); }
@@ -861,10 +909,18 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         if (drawVisibilityIconField("all diagnostics", allVisible, visibleCount > 0 && !allVisible)) {
             setComparisonDiagnosticsVisible(state, allVisible, id);
         }
+        static UiSelectionRows selectedRows;
+        ImGui::TableSetColumnIndex(0);
+        if (selectedRows.scope != id) { selectedRows = {}; }
+        beginSelectionRows(selectedRows, state);
+        selectedRows.scope = id;
+        bool selectAll = false;
         for (const auto& row : rows) {
-            diagnosticRow(state, runtime, row.name, row.category, hasA, hasB, id);
+            diagnosticRow(state, runtime, row.name, row.category, hasA, hasB, id, selectedRows, selectAll);
         }
         ImGui::EndTable();
+        selectAll = endSelectionRows(selectedRows) || selectAll;
+        if (selectAll) { selectDetectorRows(state, id, selectedRows.current); }
     }
     ImGui::SeparatorText("Findings");
     const auto selected = comparisonSettings(state, id);
@@ -1862,8 +1918,12 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
     }
     if (!open) { return; }
     if (state.comparisons.empty()) { ImGui::TextDisabled("Select models, then use + to create an analysis."); }
+    static UiSelectionRows rows;
+    beginSelectionRows(rows, state);
+    bool duplicate = false, remove = false, selectAll = false;
     for (const auto& comparison : state.comparisons) {
         const auto id = comparison.objectId;
+        const auto order = registerSelectionRow(rows, id);
         const auto foundRuntime = runtimes.objects.find(id);
         const auto label = std::to_string(id);
         ImGui::PushID(label.c_str());
@@ -1874,7 +1934,6 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
         }
         ImGui::SameLine();
         const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
-        bool changed = false;
         if (edit.objectId == id) {
             const bool focusing = edit.focus;
             if (focusing) { ImGui::SetKeyboardFocusHere(); edit.focus = false; }
@@ -1893,7 +1952,7 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
         } else {
             const bool selected = sceneObjectSelected(state, id);
             if (drawSceneItemButton((comparison.name + "###comparison_row").c_str(), nameWidth, selected)) {
-                selectSceneObject(state, id, ImGui::GetIO().KeyCtrl);
+                selectSceneRow(state, id, order, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift);
             }
             if (selected) { drawSceneItemOutline(); }
             drawComparisonObjectHint(state, comparison, foundRuntime == runtimes.objects.end() ? nullptr : &foundRuntime->second);
@@ -1903,17 +1962,27 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
             }
             if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) { selectSceneObject(state, id, false, true); }
             if (ImGui::BeginPopupContextItem("comparison_object")) {
-                if (ImGui::MenuItem("Properties")) { selectSceneObject(state, id); }
-                if (ImGui::MenuItem("Frame result", nullptr, false, canInspectComparison(state, id))) { frameComparison(state, id); }
+                const auto count = state.selectedSceneObjects.size();
+                const bool supported = sceneSelectionHasKind(state, SceneObjectKind::comparison);
+                if (count > 1) { drawBulkMenuHeader(count); }
+                if (ImGui::MenuItem("Properties", nullptr, false, count == 1)) { selectSceneObject(state, id); }
+                if (count == 1 && ImGui::MenuItem("Frame result", nullptr, false, canInspectComparison(state, id))) { frameComparison(state, id); }
                 ImGui::Separator();
-                if (ImGui::MenuItem("Rename", "F2")) { beginRename(id); }
-                if (ImGui::MenuItem("Duplicate")) { duplicateComparison(state, id); changed = true; }
-                if (ImGui::MenuItem("Delete analysis")) { removeComparison(state, id); changed = true; }
+                if (ImGui::MenuItem("Rename", "F2", false, count == 1)) { beginRename(id); }
+                if (ImGui::MenuItem(bulkMenuLabel("Duplicate", "Duplicate", count, "analyses").c_str(), nullptr, false, supported)) { duplicate = true; }
+                if (ImGui::MenuItem(bulkMenuLabel("Delete analysis", "Delete", count, "analyses").c_str(), nullptr, false, supported)) { remove = true; }
+                if (!supported) { setLastItemTooltip("Select only analyses to duplicate or delete them."); }
+                ImGui::Separator();
+                drawSceneVisibilityMenu(state);
+                selectAll = drawSelectAllMenu();
                 ImGui::EndPopup();
             }
         }
         ImGui::PopID();
-        if (changed) { break; }
     }
+    selectAll = endSelectionRows(rows) || selectAll;
+    if (selectAll) { selectSceneRows(state, rows.current); }
+    if (duplicate) { duplicateSceneSelection(state); }
+    else if (remove) { deleteSceneSelection(state); }
 }
 } // namespace woby

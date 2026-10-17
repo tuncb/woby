@@ -136,7 +136,15 @@ struct UvProbe {
     std::array<double,3> barycentric{1.0/3,1.0/3,1.0/3};
 };
 
+// List selection is session navigation, never saved scene content.
+struct UiListSelection {
+    std::vector<uint64_t> ids;
+    uint64_t anchor = 0;
+};
+
 struct UiComparison {
+    std::array<UiListSelection, 2> inputSelection;
+    UiListSelection detectorSelection; // Category index + 1; zero means no anchor.
     SceneObjectId objectId = invalidSceneObjectId;
     std::string name;
     ComparisonSettings settings;
@@ -240,6 +248,7 @@ struct UiState {
     std::vector<UiView> views;
     // Session identities and history notification; never serialized.
     ViewId nextViewId = 1, activeViewId = 0;
+    UiListSelection viewSelection;
     std::optional<ViewApplication> viewApplication;
     // Application preference, excluded from scene persistence and dirty tracking.
     float uiScale = 1.0f;
@@ -250,6 +259,7 @@ struct UiState {
     SceneObjectId activeComparisonId = invalidSceneObjectId;
     // Transient tree/canvas selection in click order; excluded from scene files and dirty tracking.
     std::vector<SceneObjectId> selectedSceneObjects;
+    SceneObjectId sceneSelectionAnchor = 0;
     bool running = true;
     bool isDirty = false;
     bool showOrigin = false;

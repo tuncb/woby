@@ -33,6 +33,7 @@ void selectSceneObject(UiState& state, SceneObjectId id, bool toggle, bool conte
     if (contextClick && selected) {
         return;
     }
+    if (!contextClick) { state.sceneSelectionAnchor = id; }
     if (contextClick) {
         state.selectedSceneObjects.push_back(id);
     } else if (!toggle) {
@@ -79,6 +80,7 @@ void clearUvProbe(UiState& state, SceneObjectId analysisId)
 void clearSceneSelection(UiState& state)
 {
     state.selectedSceneObjects.clear();
+    state.sceneSelectionAnchor = 0;
     for (auto& comparison : state.comparisons) { comparison.uvProbe.reset(); }
 }
 
@@ -479,12 +481,15 @@ SceneObjectId duplicateComparison(UiState& state, SceneObjectId id)
     const auto* source = findComparison(state, id);
     if (!source) { return invalidSceneObjectId; }
     auto copy = *source;
+    copy.inputSelection = {};
+    copy.detectorSelection = {};
     copy.diagnosticFocus.reset();
     copy.uvProbe.reset();
     copy.pendingDiagnosticFocus.reset();
     copy.uvFindingFocus.reset();
     copy.intersectionRequestRevision = 0; copy.cancelIntersections = false;
     copy.detectorRequests = {};
+    copy.differenceRequest = {};
     copy.objectId = invalidSceneObjectId;
     copy.name += " copy";
     const auto sourceBounds = comparisonDisplayBounds(state, id);
@@ -1131,28 +1136,13 @@ bool validGroupIndex(const UiState& state, size_t fileIndex, size_t groupIndex)
         && groupIndex < state.files[fileIndex].groupSettings.size();
 }
 
-bool pruneRemovedFile(UiSceneNode& node, size_t removedFileIndex)
+bool pruneRemovedFiles(UiSceneNode& node, std::span<const size_t> remap)
 {
-    if ((node.kind == UiSceneNodeKind::file || node.kind == UiSceneNodeKind::group)
-        && node.fileIndex == removedFileIndex) {
-        return false;
+    if (node.kind != UiSceneNodeKind::folder && node.fileIndex < remap.size()) {
+        if (remap[node.fileIndex] == invalidSceneNodeIndex) { return false; }
+        node.fileIndex = remap[node.fileIndex];
     }
-
-    if ((node.kind == UiSceneNodeKind::file || node.kind == UiSceneNodeKind::group)
-        && node.fileIndex != invalidSceneNodeIndex
-        && node.fileIndex > removedFileIndex) {
-        --node.fileIndex;
-    }
-
-    node.children.erase(
-        std::remove_if(
-            node.children.begin(),
-            node.children.end(),
-            [removedFileIndex](UiSceneNode& child) {
-                return !pruneRemovedFile(child, removedFileIndex);
-            }),
-        node.children.end());
-
+    std::erase_if(node.children, [remap](UiSceneNode& child) { return !pruneRemovedFiles(child, remap); });
     return node.kind != UiSceneNodeKind::folder || !node.children.empty();
 }
 
@@ -1890,30 +1880,50 @@ void appendFolderTreeSceneNode(
     notifySceneEdit(state);
 }
 
-bool removeFileFromState(UiState& state, size_t fileIndex)
+static bool removeFileIndices(UiState& state, std::vector<size_t> indices)
 {
-    if (fileIndex >= state.files.size()) {
-        return false;
+    std::vector<bool> removed(state.files.size());
+    for (auto index : indices) { removed[index] = true; }
+    std::vector<size_t> remap(state.files.size(), invalidSceneNodeIndex);
+    size_t next = 0;
+    for (size_t i = 0; i < remap.size(); ++i) { if (!removed[i]) { remap[i] = next++; } }
+    size_t index = 0;
+    std::erase_if(state.files, [&](const auto&) { return removed[index++]; });
+    std::erase_if(state.sceneNodes, [&](UiSceneNode& node) { return !pruneRemovedFiles(node, remap); });
+    for (auto& comparison : state.comparisons) {
+        for (auto& selection : comparison.inputSelection) {
+            std::erase_if(selection.ids, [&](auto id) { return !findSceneObject(state, id); });
+            if (!findSceneObject(state, selection.anchor)) { selection.anchor = 0; }
+        }
     }
-
-    state.files.erase(state.files.begin() + static_cast<std::ptrdiff_t>(fileIndex));
-    state.sceneNodes.erase(
-        std::remove_if(
-            state.sceneNodes.begin(),
-            state.sceneNodes.end(),
-            [fileIndex](UiSceneNode& node) {
-                return !pruneRemovedFile(node, fileIndex);
-            }),
-        state.sceneNodes.end());
     std::erase_if(state.selectedSceneObjects, [&state](SceneObjectId id) {
         return !findSceneObject(state, id).has_value();
     });
+    if (!findSceneObject(state, state.sceneSelectionAnchor)) { state.sceneSelectionAnchor = 0; }
     pruneMissingViewReferences(state);
     validateAnnotationTargets(state);
     recalculateSceneBounds(state);
     frameCameraToScene(state);
     markSceneDirty(state);
     return true;
+}
+
+bool removeFileFromState(UiState& state, size_t fileIndex)
+{
+    return fileIndex < state.files.size() && removeFileIndices(state, {fileIndex});
+}
+
+bool removeFilesFromState(UiState& state, std::span<const SceneObjectId> files)
+{
+    if (files.empty()) { return false; }
+    std::vector<size_t> indices;
+    for (auto id : files) {
+        const auto found = std::find_if(state.files.begin(), state.files.end(),
+            [&](const auto& file) { return id != invalidSceneObjectId && file.objectId == id; });
+        if (found == state.files.end()) { return false; }
+        indices.push_back(static_cast<size_t>(found - state.files.begin()));
+    }
+    return removeFileIndices(state, std::move(indices));
 }
 
 UiState prepareSceneReplacement(const UiState& current,
