@@ -46,7 +46,7 @@ double distance(const Point &a, const Point &b)
     }
     return std::sqrt(d);
 }
-Soup read(const Mesh &mesh, const Point &origin, std::stop_token stop)
+Soup read(const Mesh &mesh, const Point &origin, size_t &removedCollapsedTriangles, std::stop_token stop)
 {
     Soup s;
     std::map<Point, size_t> unique;
@@ -56,25 +56,36 @@ Soup read(const Mesh &mesh, const Point &origin, std::stop_token stop)
     }
     for (size_t i = 0; i < g.indices.size(); i += 3) {
         check(stop);
-        Face f;
+        std::array<Point, 3> points;
         for (size_t j = 0; j < 3; ++j) {
-            auto p = meshPosition(mesh, g.indices[i + j]);
+            auto &p = points[j];
+            p = meshPosition(mesh, g.indices[i + j]);
             for (size_t axis = 0; axis < 3; ++axis) {
                 p[axis] += mesh.origin[axis] - origin[axis];
             }
             if (!finiteCoordinate(p)) {
                 throw std::runtime_error("Input contains non-finite coordinates.");
             }
+        }
+        if (exactTriangleCollapsed(points)) {
+            ++removedCollapsedTriangles;
+            continue;
+        }
+        // Omitted faces must not leave isolated points in the working solid.
+        Face f;
+        for (size_t j = 0; j < 3; ++j) {
+            const auto &p = points[j];
             const auto [it, added] = unique.emplace(p, s.points.size());
             if (added) {
                 s.points.push_back(p);
             }
             f[j] = it->second;
         }
-        if (exactTriangleCollapsed({s.points[f[0]], s.points[f[1]], s.points[f[2]]})) {
-            throw std::runtime_error("Input contains collapsed triangles. Remove them before creating a difference.");
-        }
         s.faces.push_back(f);
+    }
+    if (s.faces.empty()) {
+        throw std::runtime_error("No triangles remain after removing " + std::to_string(removedCollapsedTriangles) +
+                                 " exact zero-area triangles.");
     }
     return s;
 }
@@ -346,44 +357,51 @@ DifferenceMesh buildDifferenceMesh(const Mesh &first, const Mesh &second, std::s
     const auto origin = first.origin;
     Soup a, b;
     Topology ta, tb;
+    std::array<size_t, 2> removed{};
     try {
-        a = read(first, origin, stop);
+        a = read(first, origin, removed[0], stop);
         ta = validate(a, stop);
     } catch (const std::exception &e) {
         throw std::runtime_error(std::string("Input A: ") + e.what());
     }
     try {
-        b = read(second, origin, stop);
+        b = read(second, origin, removed[1], stop);
         tb = validate(b, stop);
     } catch (const std::exception &e) {
         throw std::runtime_error(std::string("Input B: ") + e.what());
     }
+    DifferenceMesh result;
     if (!ta.loops.empty() || !tb.loops.empty()) {
         if (ta.loops.size() != 1 || tb.loops.size() != 1) {
             throw std::runtime_error(
                 "Automatic closure needs one outer boundary on each input, without holes. Found A: " +
                 std::to_string(ta.loops.size()) + ", B: " + std::to_string(tb.loops.size()) + " loops.");
         }
-        return closeSurfaces(std::move(a), std::move(b), ta.loops[0], tb.loops[0], origin, stop);
-    }
-    check(stop);
-    const auto sa = solid(std::move(a)), sb = solid(std::move(b));
-    DifferenceMesh result;
-    const std::array<manifold::Manifold, 2> differences{sa - sb, sb - sa};
-    for (size_t i = 0; i < 2; ++i) {
+        result = closeSurfaces(std::move(a), std::move(b), ta.loops[0], tb.loops[0], origin, stop);
+    } else {
         check(stop);
-        auto soup = output(differences[i]);
-        if (!soup.faces.empty()) {
-            if (!validate(soup, stop).loops.empty()) {
-                throw std::runtime_error("Boolean output is not closed.");
+        const auto sa = solid(std::move(a)), sb = solid(std::move(b));
+        const std::array<manifold::Manifold, 2> differences{sa - sb, sb - sa};
+        for (size_t i = 0; i < 2; ++i) {
+            check(stop);
+            auto soup = output(differences[i]);
+            if (!soup.faces.empty()) {
+                if (!validate(soup, stop).loops.empty()) {
+                    throw std::runtime_error("Boolean output is not closed.");
+                }
             }
+            result.volumes[i] = std::abs(differences[i].Volume());
+            result.parts[i] = publish(soup, origin, i == 0 ? "A_only" : "B_only", stop);
         }
-        result.volumes[i] = std::abs(differences[i].Volume());
-        result.parts[i] = publish(soup, origin, i == 0 ? "A_only" : "B_only", stop);
+        result.message = result.volumes[0] + result.volumes[1] == 0 ? "No geometric difference."
+                                                                    : "A only: removed from A. B only: added in B.";
     }
     check(stop);
-    result.message = result.volumes[0] + result.volumes[1] == 0 ? "No geometric difference."
-                                                                : "A only: removed from A. B only: added in B.";
+    result.removedCollapsedTriangles = removed;
+    if (removed[0] || removed[1]) {
+        result.message += " Removed exact zero-area input triangles: A: " + std::to_string(removed[0]) +
+                          ", B: " + std::to_string(removed[1]) + ". Source meshes are unchanged.";
+    }
     return result;
 }
 void exportDifferenceMesh(const DifferenceMesh &result, const std::filesystem::path &path, std::stop_token stop)

@@ -15,6 +15,8 @@ struct DifferenceMesh {
     std::array<Mesh, 3> parts;
     bool constructed = false;
     std::array<double, 2> volumes{};
+    // Exact zero-area input faces omitted from the calculation, in A/B order.
+    std::array<size_t, 2> removedCollapsedTriangles{};
     size_t closureTriangles = 0;
     std::string message;
 };

@@ -21,9 +21,15 @@ vertex counts. The result is labelled **Constructed gap volume**. The generated
 walls have a separate visibility control and a gold color. These walls are an
 assumption; they are not measured source geometry.
 
+Before validation, the tool removes input triangles with exactly zero area from
+the calculation. The source meshes stay unchanged. The result message gives the
+removed count for A and B when either count is nonzero. Small triangles with
+nonzero area remain. If no triangles remain in an input, creation stops with an
+error that names the input and gives the removed count.
+
 The tool stops and shows a problem for holes, branching boundaries, mixed open
-and closed inputs, ambiguous loop direction, collapsed triangles, inconsistent
-winding, self-intersections, crossing surfaces, and invalid closures. It does not
+and closed inputs, ambiguous loop direction, inconsistent winding,
+self-intersections, crossing surfaces, and invalid closures. It does not
 repair the sources or provide boundary editing. Exact coincident positions are
 joined for topology checks. Nearby positions are not joined by a distance tolerance.
 Overlapping solid components within one input must be resolved before creation.
@@ -63,3 +69,6 @@ standard CLI wait/timeout options. `difference-get` returns a `difference` objec
 text, display settings, volumes, triangle counts, and export status. Volume fields
 are null when the result is unavailable or out of date. A constructed gap has a
 total volume, but no A-only, B-only, or net volume values.
+For a current result, `removedCollapsedTriangles.a` and
+`removedCollapsedTriangles.b` give the counts of exact zero-area input triangles
+removed from the calculation.

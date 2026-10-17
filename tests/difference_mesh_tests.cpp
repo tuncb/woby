@@ -6,6 +6,7 @@
 #include "ui_operations.h"
 #include <doctest/doctest.h>
 #include <fstream>
+#include <limits>
 #include <nlohmann/json.hpp>
 #include <thread>
 
@@ -52,6 +53,24 @@ Mesh sheet(double height, bool extraVertex = false)
     }
     return surface({{0, 0, height}, {1, 0, height}, {1, 1, height}, {0, 1, height}}, {0, 1, 2, 0, 2, 3});
 }
+Mesh withCollapsedTriangles(Mesh mesh)
+{
+    auto &g = editMeshGeometry(mesh);
+    const auto first = static_cast<uint32_t>(g.vertices.size());
+    // Collinear points, coincident positions with distinct indices, and a repeated index.
+    // Remote discarded points must not affect the working mesh or result bounds.
+    for (const Coordinate p : {Coordinate{1000, 1000, 1000}, Coordinate{1001, 1000, 1000},
+                               Coordinate{1002, 1000, 1000}, Coordinate{1000, 1000, 1000}}) {
+        Vertex v;
+        v.position = renderPosition(p);
+        g.vertices.push_back(v);
+        g.precisePositions.push_back(p);
+    }
+    g.indices.insert(g.indices.end(), {first, first + 1, first + 2, first, first + 1, first + 3, 0, 0, 1});
+    g.nodes[0].indexCount = static_cast<uint32_t>(g.indices.size());
+    publishMeshGeometry(mesh);
+    return mesh;
+}
 struct Fixture {
     std::filesystem::path root = std::filesystem::absolute(std::filesystem::temp_directory_path()) /
                                  ("woby-difference-" + automationRandomHex(8));
@@ -68,10 +87,10 @@ struct Fixture {
         std::error_code e;
         std::filesystem::remove_all(root, e);
     }
-    void comparison()
+    void comparison(Mesh a = cube(), Mesh b = cube(.5))
     {
-        state.files.push_back(createUiFileState(root / "a.obj", cube(), 0));
-        state.files.push_back(createUiFileState(root / "b.obj", cube(.5), 1));
+        state.files.push_back(createUiFileState(root / "a.obj", std::move(a), 0));
+        state.files.push_back(createUiFileState(root / "b.obj", std::move(b), 1));
         appendDefaultSceneNodesForFiles(state, 0);
         recalculateSceneBounds(state);
         id = createAnalysisFromObjects(state, AnalysisTask::surfaceComparison,
@@ -108,6 +127,7 @@ TEST_CASE("difference solids compute both directions and preserve small differen
         CHECK(r.volumes[0] == doctest::Approx(.5));
         CHECK(r.volumes[1] == doctest::Approx(.5));
         CHECK_FALSE(r.constructed);
+        CHECK(r.removedCollapsedTriangles == std::array<size_t, 2>{0, 0});
     }
     SUBCASE("identical")
     {
@@ -134,6 +154,15 @@ TEST_CASE("difference solids compute both directions and preserve small differen
         CHECK(r.volumes[0] == doctest::Approx(.000001).epsilon(.0001));
         CHECK(r.volumes[1] == doctest::Approx(.000001).epsilon(.0001));
     }
+    SUBCASE("small nonzero-area input triangles")
+    {
+        const auto r = buildDifferenceMesh(cube(0, 1e-6), cube(2e-6, 1e-6));
+        CHECK(r.removedCollapsedTriangles == std::array<size_t, 2>{0, 0});
+        CHECK(r.volumes[0] > 0);
+        CHECK(r.volumes[1] > 0);
+        CHECK(r.volumes[0] == doctest::Approx(1e-18).epsilon(1e-6));
+        CHECK(r.volumes[1] == doctest::Approx(1e-18).epsilon(1e-6));
+    }
     SUBCASE("global winding reversal")
     {
         auto b = cube(.5);
@@ -154,6 +183,23 @@ TEST_CASE("difference solids compute both directions and preserve small differen
         CHECK(r.parts[0].bounds.max[0] <= 1);
     }
 }
+TEST_CASE("difference removes exact collapsed faces from both solid inputs without changing the sources")
+{
+    const auto a = withCollapsedTriangles(cube());
+    const auto b = withCollapsedTriangles(withCollapsedTriangles(cube(.5)));
+    const auto aIndices = meshGeometry(a).indices, bIndices = meshGeometry(b).indices;
+    const auto aPositions = meshGeometry(a).precisePositions, bPositions = meshGeometry(b).precisePositions;
+    const auto r = buildDifferenceMesh(a, b);
+    CHECK_FALSE(r.constructed);
+    CHECK(r.removedCollapsedTriangles == std::array<size_t, 2>{3, 6});
+    CHECK(r.volumes[0] == doctest::Approx(.5));
+    CHECK(r.volumes[1] == doctest::Approx(.5));
+    CHECK(r.message.find("A: 3, B: 6") != std::string::npos);
+    CHECK(meshGeometry(a).indices == aIndices);
+    CHECK(meshGeometry(b).indices == bIndices);
+    CHECK(meshGeometry(a).precisePositions == aPositions);
+    CHECK(meshGeometry(b).precisePositions == bPositions);
+}
 TEST_CASE("difference closes open surfaces with unequal boundary vertex counts")
 {
     const auto r = buildDifferenceMesh(sheet(0), sheet(.25, true));
@@ -165,6 +211,49 @@ TEST_CASE("difference closes open surfaces with unequal boundary vertex counts")
     CHECK(meshGeometry(r.parts[2]).indices.size() == 27);
     const auto reversed = buildDifferenceMesh(sheet(.25, true), sheet(0));
     CHECK(reversed.volumes[0] == doctest::Approx(.25));
+}
+TEST_CASE("difference cleanup excludes unused points from open surface results")
+{
+    const auto r = buildDifferenceMesh(withCollapsedTriangles(sheet(0)), sheet(.25, true));
+    CHECK(r.constructed);
+    CHECK(r.removedCollapsedTriangles == std::array<size_t, 2>{3, 0});
+    CHECK(r.volumes[0] == doctest::Approx(.25));
+    CHECK(r.closureTriangles == 9);
+    for (const auto part : {0, 2}) {
+        CHECK(r.parts[part].bounds.max == std::array<float, 3>{1, 1, .25f});
+        CHECK(r.parts[part].bounds.min == std::array<float, 3>{0, 0, 0});
+    }
+}
+TEST_CASE("difference runtime accepts a parametric collapsed boundary and reports cleanup counts")
+{
+    Fixture f;
+    const auto parametric = loadObjMeshText(
+        "v 0 0 0\nv 0 0 0\nv 0 1 0\nv 1 1 0\n"
+        "cstype bezier\ndeg 1 1\nsurf 0 1 0 1 1 2 3 4\nparm u 0 1\nparm v 0 1\nend\n");
+    const auto triangular = surface({{0, 0, .25}, {1, 1, .25}, {0, 1, .25}}, {0, 1, 2});
+    const auto sourceIndices = meshGeometry(parametric).indices;
+    REQUIRE(sourceIndices.size() / 3 == 2048);
+    bool reverse = false;
+    SUBCASE("parametric input A") {}
+    SUBCASE("parametric input B") { reverse = true; }
+    f.comparison(reverse ? triangular : parametric, reverse ? parametric : triangular);
+    requestDifferenceMesh(f.state, f.id);
+    f.wait();
+    INFO(f.runtime.error);
+    REQUIRE(f.runtime.phase == "ready");
+    REQUIRE(f.runtime.result);
+    CHECK(f.runtime.result->constructed);
+    CHECK(f.runtime.result->volumes[0] == doctest::Approx(.125));
+    CHECK(meshGeometry(f.runtime.result->parts[0]).indices.size() / 3 == 2017);
+    CHECK(meshGeometry(f.state.files[reverse ? 1 : 0].mesh).indices == sourceIndices);
+    CHECK(f.state.files[reverse ? 1 : 0].mesh.freeform == parametric.freeform);
+    const auto status = differenceStatus(f.runtime, f.state, f.id);
+    CHECK(status["removedCollapsedTriangles"]["a"] == (reverse ? 0 : 32));
+    CHECK(status["removedCollapsedTriangles"]["b"] == (reverse ? 32 : 0));
+    CHECK(f.runtime.result->message.find(reverse ? "A: 0, B: 32" : "A: 32, B: 0") != std::string::npos);
+    selectSceneObject(f.state, f.state.files[0].objectId);
+    setSelectedObjectProperty(f.state, UiObjectProperty::translationX, 2);
+    CHECK_FALSE(differenceStatus(f.runtime, f.state, f.id).contains("removedCollapsedTriangles"));
 }
 TEST_CASE("difference reports invalid geometry and cannot silently close holes")
 {
@@ -185,14 +274,24 @@ TEST_CASE("difference reports invalid geometry and cannot silently close holes")
         CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(sheet(0), tilted), doctest::Contains("self-intersect"),
                              std::runtime_error);
     }
-    SUBCASE("collapsed triangle")
+    SUBCASE("all triangles collapsed in A or B")
     {
-        auto bad = surface({{0, 0, 0}, {1, 0, 0}, {2, 0, 0}}, {0, 1, 2});
-        CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(bad, cube()), doctest::Contains("collapsed"), std::runtime_error);
+        const auto bad = surface({{0, 0, 0}, {1, 0, 0}, {2, 0, 0}}, {0, 1, 2, 0, 0, 1});
+        CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(bad, cube()),
+                             "Input A: No triangles remain after removing 2 exact zero-area triangles.", std::runtime_error);
+        CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(cube(), bad),
+                             "Input B: No triangles remain after removing 2 exact zero-area triangles.", std::runtime_error);
+    }
+    SUBCASE("non-finite coordinates cannot be discarded as collapsed")
+    {
+        auto bad = surface({{0, 0, 0}}, {0, 0, 0});
+        editMeshGeometry(bad).precisePositions[0][0] = std::numeric_limits<double>::infinity();
+        publishMeshGeometry(bad);
+        CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(bad, cube()), doctest::Contains("non-finite"), std::runtime_error);
     }
     SUBCASE("winding")
     {
-        auto bad = cube();
+        auto bad = withCollapsedTriangles(cube());
         auto &g = editMeshGeometry(bad);
         std::swap(g.indices[0], g.indices[1]);
         publishMeshGeometry(bad);

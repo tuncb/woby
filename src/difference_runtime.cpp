@@ -145,6 +145,8 @@ nlohmann::json differenceStatus(const DifferenceRuntime &r, const UiState &state
             result["triangles"].push_back(meshGeometry(m).indices.size() / 3);
         }
         result["closureTriangles"] = v.closureTriangles;
+        result["removedCollapsedTriangles"] = {{"a", v.removedCollapsedTriangles[0]},
+                                                {"b", v.removedCollapsedTriangles[1]}};
     }
     return result;
 }
