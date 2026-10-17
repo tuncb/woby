@@ -5,6 +5,7 @@
 #include "ui_icon_controls.h"
 #include "ui_popup_controls.h"
 #include "ui_views.h"
+#include "scene_history.h"
 #include "uv_quality.h"
 
 #include <doctest/doctest.h>
@@ -257,7 +258,7 @@ TEST_CASE("analysis sidebar lists every task without a filter for more than four
     CHECK_FALSE(woby::comparisonSettings(f.state, hidden).enabled);
 }
 
-TEST_CASE("analysis rows use the full width and delete only through the context menu")
+TEST_CASE("analysis rows use the full width without an inline delete button")
 {
     ComparisonNameFixture f;
     woby::renameComparison(f.state, f.id, std::string(300, 'x'));
@@ -1086,6 +1087,173 @@ TEST_CASE("Ctrl A selects only the analysis list under the pointer")
     io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
     CHECK(f.state.selectedSceneObjects.size() == 3);
     CHECK(f.state.viewSelection.ids.size() == 1);
+}
+
+TEST_CASE("Delete removes single or multiple analyses in one undo step")
+{
+    ComparisonNameFixture f(true);
+    const auto other = woby::createComparison(f.state);
+    const auto view = woby::createView(f.state);
+    f.frame(); f.frame();
+    f.click(f.row);
+    bool bulk = false;
+    SUBCASE("single analysis") {}
+    SUBCASE("multiple analyses") {
+        bulk = true;
+        auto& io = ImGui::GetIO();
+        io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+        f.click({f.row.x, f.row.y + woby::renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.y});
+        io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    }
+    REQUIRE(f.state.selectedSceneObjects.size() == (bulk ? 2 : 1));
+    const auto clean = woby::createSceneDocument(f.state);
+    woby::SceneHistory history;
+    woby::resetSceneHistory(history, f.state);
+    // Hovering another list must not move keyboard focus or delete its selection.
+    ImGui::GetIO().AddMousePosEvent(f.viewRow.x, f.viewRow.y); f.frame();
+    f.key(ImGuiKey_Delete);
+    CHECK(woby::findComparison(f.state, f.id) == nullptr);
+    CHECK((woby::findComparison(f.state, other) == nullptr) == bulk);
+    CHECK(woby::findView(f.state, view));
+    REQUIRE(woby::recordSceneHistory(history, f.state));
+    CHECK(history.snapshots.size() == 2);
+    auto restored = woby::prepareSceneHistoryStep(history, f.state, clean, false);
+    REQUIRE(restored);
+    woby::commitSceneHistoryStep(history, f.state, std::move(*restored), false);
+    CHECK(woby::createSceneDocument(f.state) == clean);
+}
+
+TEST_CASE("Delete removes only the focused view selection")
+{
+    ComparisonNameFixture f(true);
+    const auto first = woby::createView(f.state);
+    const auto second = woby::createView(f.state);
+    f.frame(); f.frame();
+    bool bulk = false;
+    SUBCASE("single view") { f.click(f.viewRow); }
+    SUBCASE("multiple views") {
+        bulk = true;
+        auto& io = ImGui::GetIO();
+        io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+        f.click(f.viewRow);
+        io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    }
+    REQUIRE(f.state.viewSelection.ids.size() == (bulk ? 2 : 1));
+    REQUIRE(woby::sceneObjectSelected(f.state, f.id));
+    ImGui::GetIO().AddMousePosEvent(f.row.x, f.row.y); f.frame();
+    const auto revision = f.state.sceneEditRevision;
+    f.key(ImGuiKey_Delete);
+    CHECK(woby::findView(f.state, first) == nullptr);
+    CHECK((woby::findView(f.state, second) == nullptr) == bulk);
+    CHECK(woby::findComparison(f.state, f.id));
+    CHECK(f.state.sceneEditRevision == revision + 1);
+}
+
+TEST_CASE("Delete preserves rows while renaming or a context menu is open")
+{
+    ComparisonNameFixture f(true);
+    const auto view = woby::createView(f.state);
+    f.frame(); f.frame();
+    SUBCASE("analysis rename edits text") {
+        f.click(f.row); f.key(ImGuiKey_F2);
+        REQUIRE(f.edit.objectId == f.id);
+        f.key(ImGuiKey_Delete);
+        CHECK(f.edit.text.empty());
+    }
+    SUBCASE("view rename edits text") {
+        f.click(f.viewRow); f.key(ImGuiKey_F2);
+        REQUIRE(f.viewEdit.id == view);
+        f.key(ImGuiKey_Delete);
+        CHECK(f.viewEdit.text.empty());
+    }
+    SUBCASE("analysis context menu") {
+        f.click(f.row, ImGuiMouseButton_Right); f.frame();
+        REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+        f.key(ImGuiKey_Delete);
+    }
+    SUBCASE("view context menu") {
+        f.click(f.viewRow, ImGuiMouseButton_Right); f.frame();
+        REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+        f.key(ImGuiKey_Delete);
+    }
+    CHECK(woby::findComparison(f.state, f.id));
+    CHECK(woby::findView(f.state, view));
+}
+
+TEST_CASE("Delete removes selected analysis inputs only from the focused group")
+{
+    ComparisonNameFixture f;
+    const auto root = std::filesystem::temp_directory_path()
+        / ("woby-delete-inputs-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    for (size_t i = 0; i < 2; ++i) {
+        woby::Mesh mesh;
+        editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+        editMeshGeometry(mesh).indices = {0, 1, 2};
+        editMeshGeometry(mesh).nodes.push_back({"surface", 0, 3});
+        mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
+        f.state.files.push_back(woby::createUiFileState(root / (std::to_string(i) + ".obj"), std::move(mesh), i));
+    }
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    for (auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
+        woby::setComparisonObjects(f.state, {f.state.files[0].objectId, f.state.files[1].objectId}, side, true, f.id);
+    }
+    woby::selectSceneObject(f.state, f.id);
+    bool bulk = false;
+    auto side = woby::ComparisonSide::a;
+    SUBCASE("one input from A") {}
+    SUBCASE("all inputs from A") { bulk = true; }
+    SUBCASE("one input from B") { side = woby::ComparisonSide::b; }
+    SUBCASE("all inputs from B") { side = woby::ComparisonSide::b; bulk = true; }
+    woby::ComparisonRuntimes runtimes;
+    ImGuiWindow* properties = nullptr;
+    ImGuiID locate = 0;
+    const auto frame = [&] {
+        auto& io = ImGui::GetIO();
+        io.DisplaySize = {1000, 1400};
+        ImGui::NewFrame();
+        if (locate) {
+            ImGui::FocusWindow(properties);
+            ImGui::SetNavID(locate, ImGuiNavLayer_Main, properties->NavRootFocusScopeId, {});
+        }
+        ImGui::SetNextWindowPos({20, 20}); ImGui::SetNextWindowSize({900, 1300});
+        ImGui::Begin("Delete inputs");
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        ImGui::End(); ImGui::EndFrame();
+        for (auto* window : f.context->Windows) {
+            if (std::string(window->Name).find("comparison_properties") != std::string::npos) { properties = window; }
+        }
+    };
+    frame(); frame();
+    REQUIRE(properties);
+    for (const char* label : {"Group A", "Group B"}) {
+        properties->StateStorage.SetInt(ImHashStr("root", 0, ImHashStr(label, 0, properties->ID)), 1);
+    }
+    frame(); frame();
+    const auto groupId = ImHashStr("root", 0, ImHashStr(side == woby::ComparisonSide::a ? "Group A" : "Group B", 0, properties->ID));
+    locate = ImHashStr("node", 0, ImHashStr(std::to_string(f.state.files[0].objectId).c_str(), 0, groupId));
+    frame();
+    REQUIRE(f.context->NavIdIsAlive);
+    const auto row = properties->NavRectRel[ImGuiNavLayer_Main].GetCenter();
+    auto& io = ImGui::GetIO();
+    io.AddMousePosEvent(properties->Pos.x + row.x, properties->Pos.y + row.y);
+    locate = 0;
+    frame(); io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
+    const auto sideIndex = side == woby::ComparisonSide::a ? 0 : 1;
+    REQUIRE(woby::findComparison(f.state, f.id)->inputSelection[sideIndex].ids.size() == 1);
+    if (bulk) {
+        io.AddKeyEvent(ImGuiMod_Ctrl, true); frame();
+        io.AddKeyEvent(ImGuiKey_A, true); frame();
+        io.AddKeyEvent(ImGuiKey_A, false); io.AddKeyEvent(ImGuiMod_Ctrl, false); frame();
+    }
+    io.AddKeyEvent(ImGuiKey_Delete, true); frame();
+    io.AddKeyEvent(ImGuiKey_Delete, false); frame();
+    const auto* analysis = woby::findComparison(f.state, f.id);
+    REQUIRE(analysis);
+    CHECK((side == woby::ComparisonSide::a ? analysis->a : analysis->b).size() == (bulk ? 0 : 1));
+    CHECK((side == woby::ComparisonSide::a ? analysis->b : analysis->a).size() == 2);
+    CHECK(f.state.files.size() == 2);
+    CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{f.id});
 }
 
 TEST_CASE("diagnostics show all checks including zero counts and pending results without filters")

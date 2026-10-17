@@ -166,7 +166,7 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
         }
         const bool sources = isUvAnalysis(comparisonSettings(state, id).type) || isSingleSourceMeshTask(comparisonTask(state, id));
         const char* label = sources ? "Remove from sources" : side == ComparisonSide::a ? "Remove from group A" : "Remove from group B";
-        if (ImGui::MenuItem(bulkMenuLabel(label, "Remove", count, "selected sources").c_str())) { applySelectedAnalysisInputs(state, id, side, UiInputAction::remove); }
+        if (ImGui::MenuItem(bulkMenuLabel(label, "Remove", count, "selected sources").c_str(), "Del")) { applySelectedAnalysisInputs(state, id, side, UiInputAction::remove); }
         selectAll = drawSelectAllMenu() || selectAll;
         ImGui::EndPopup();
     }
@@ -242,8 +242,10 @@ void membershipTree(UiState& state, ComparisonRuntime& runtime, ComparisonSide s
         if (state.sceneEditRevision != revision) { break; }
         drawComparisonTreeNode(state, side, root, id, rows, selectAll);
     }
-    selectAll = endSelectionRows(rows) || selectAll;
+    const auto shortcuts = endSelectionRows(rows);
+    selectAll = shortcuts.selectAll || selectAll;
     if (selectAll) { selectAnalysisInputRows(state, id, side, rows.current); }
+    if (shortcuts.remove) { applySelectedAnalysisInputs(state, id, side, UiInputAction::remove); }
     ImGui::TreePop();
     ImGui::PopID();
     updateComparisonInspectorCache(runtime.inspector.queries, state, id);
@@ -919,7 +921,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
             diagnosticRow(state, runtime, row.name, row.category, hasA, hasB, id, selectedRows, selectAll);
         }
         ImGui::EndTable();
-        selectAll = endSelectionRows(selectedRows) || selectAll;
+        selectAll = endSelectionRows(selectedRows).selectAll || selectAll;
         if (selectAll) { selectDetectorRows(state, id, selectedRows.current); }
     }
     ImGui::SeparatorText("Findings");
@@ -1970,7 +1972,7 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
                 ImGui::Separator();
                 if (ImGui::MenuItem("Rename", "F2", false, count == 1)) { beginRename(id); }
                 if (ImGui::MenuItem(bulkMenuLabel("Duplicate", "Duplicate", count, "analyses").c_str(), nullptr, false, supported)) { duplicate = true; }
-                if (ImGui::MenuItem(bulkMenuLabel("Delete analysis", "Delete", count, "analyses").c_str(), nullptr, false, supported)) { remove = true; }
+                if (ImGui::MenuItem(bulkMenuLabel("Delete analysis", "Delete", count, "analyses").c_str(), "Del", false, supported)) { remove = true; }
                 if (!supported) { setLastItemTooltip("Select only analyses to duplicate or delete them."); }
                 ImGui::Separator();
                 drawSceneVisibilityMenu(state);
@@ -1980,7 +1982,9 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
         }
         ImGui::PopID();
     }
-    selectAll = endSelectionRows(rows) || selectAll;
+    const auto shortcuts = endSelectionRows(rows);
+    selectAll = shortcuts.selectAll || selectAll;
+    remove = remove || (shortcuts.remove && sceneSelectionHasKind(state, SceneObjectKind::comparison));
     if (selectAll) { selectSceneRows(state, rows.current); }
     if (duplicate) { duplicateSceneSelection(state); }
     else if (remove) { deleteSceneSelection(state); }

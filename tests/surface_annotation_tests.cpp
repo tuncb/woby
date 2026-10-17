@@ -1209,6 +1209,63 @@ TEST_CASE("annotation context deletion applies to every Ctrl selected row")
     CHECK(f.scene.state.annotations.empty());
     CHECK(f.scene.state.selectedSceneObjects.empty());
 }
+TEST_CASE("Delete removes single or multiple annotation rows and preserves the model")
+{
+    AnnotationUiFixture f;
+    const auto first = f.scene.add();
+    const auto second = f.scene.add();
+    f.showObjects = true;
+    f.frame(); f.frame();
+    const float stride = renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.y;
+    f.click({f.objectRow.x, f.objectRow.y - stride});
+    bool bulk = false;
+    SUBCASE("single annotation") {}
+    SUBCASE("multiple annotations") {
+        bulk = true;
+        auto& io = ImGui::GetIO();
+        io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+        f.click(f.objectRow);
+        io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    }
+    REQUIRE(f.scene.state.selectedSceneObjects.size() == (bulk ? 2 : 1));
+    const auto revision = f.scene.state.sceneEditRevision;
+    f.key(ImGuiKey_Delete);
+    CHECK(findAnnotation(f.scene.state, first) == nullptr);
+    CHECK((findAnnotation(f.scene.state, second) == nullptr) == bulk);
+    CHECK(f.scene.state.files.size() == 1);
+    CHECK(f.scene.state.sceneEditRevision == revision + 1);
+}
+
+TEST_CASE("Delete edits an annotation name without removing the annotation")
+{
+    AnnotationUiFixture f;
+    const auto id = f.scene.add();
+    f.showObjects = true; f.frame(); f.frame();
+    f.click(f.objectRow); f.key(ImGuiKey_F2);
+    REQUIRE(f.nameEdit.objectId == id);
+    f.key(ImGuiKey_Delete);
+    CHECK(f.nameEdit.text.empty());
+    CHECK(findAnnotation(f.scene.state, id));
+}
+
+TEST_CASE("Delete removes a cross section together with a selected surface annotation")
+{
+    AnnotationUiFixture f;
+    const auto annotation = f.scene.add();
+    const auto section = createCrossSection(f.scene.state, {}, {f.scene.target()});
+    REQUIRE(section != invalidSceneObjectId);
+    f.showObjects = true; f.frame(); f.frame();
+    auto& io = ImGui::GetIO();
+    io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+    f.click({f.objectRow.x, f.objectRow.y - renderModeButtonSize() - ImGui::GetStyle().ItemSpacing.y});
+    io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    REQUIRE(f.scene.state.selectedSceneObjects.size() == 2);
+    f.key(ImGuiKey_Delete);
+    CHECK(findAnnotation(f.scene.state, annotation) == nullptr);
+    CHECK(findAnnotation(f.scene.state, section) == nullptr);
+    CHECK(f.scene.state.files.size() == 1);
+}
+
 TEST_CASE("annotation messages wrap at the top without overlapping the grid readout")
 {
     bool errorMessage = true;

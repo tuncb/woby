@@ -939,7 +939,7 @@ bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
             }
             const auto& files = cache.files;
             removeFile = ImGui::MenuItem(woby::bulkMenuLabel("Remove file from scene", "Remove", files.size(), "files from scene").c_str(),
-                nullptr, false, !files.empty());
+                "Del", false, !files.empty());
             woby::setLastItemTooltip(files.empty() ? "Select only files or folders. Individual parts cannot remove a whole file."
                 : "Remove whole files, including all parts in selected folders. This does not delete files on disk.");
         }
@@ -3294,7 +3294,9 @@ int main(int argc, char** argv)
                                 drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFiles, canvasSelectionPath, renderScratch.queries.tree);
                                 ImGui::PopID();
                             }
-                            if (woby::endSelectionRows(modelSelectionRows)) { woby::selectSceneRows(ui, modelSelectionRows.current); }
+                            const auto shortcuts = woby::endSelectionRows(modelSelectionRows);
+                            if (shortcuts.selectAll) { woby::selectSceneRows(ui, modelSelectionRows.current); }
+                            if (shortcuts.remove) { removeFiles = woby::selectedRemovalFiles(ui); }
                             if (!removeFiles.empty()) {
                                 removeModelFiles(ui, runtimes, removeFiles, annotationPreparation);
                                 setToastMessage(toast, "Removed " + std::to_string(removeFiles.size()) + " files from scene");

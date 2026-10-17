@@ -15,8 +15,13 @@ struct UiSelectionRows {
 };
 void beginSelectionRows(UiSelectionRows& rows, const UiState& state);
 std::span<const uint64_t> registerSelectionRow(UiSelectionRows& rows, uint64_t id);
-// Returns true for Ctrl+A while the pointer is over this list and no editor is active.
-bool endSelectionRows(UiSelectionRows& rows);
+struct UiSelectionShortcuts {
+    bool selectAll = false;
+    bool remove = false;
+};
+// Ctrl+A targets the list under the pointer. Delete targets the last clicked list.
+// Editors, popups, disabled controls, and unfocused windows block these shortcuts.
+UiSelectionShortcuts endSelectionRows(UiSelectionRows& rows);
 bool selectionContains(std::span<const uint64_t> selection, uint64_t id);
 std::string bulkMenuLabel(const char* single, const char* verb, size_t count, const char* plural);
 void drawBulkMenuHeader(size_t count, const char* noun = "items");

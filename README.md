@@ -24,6 +24,9 @@ Use Ctrl-click to select multiple rows. Use Shift-click to select a range of
 expanded rows. Right-click keeps the selection and adds the clicked row if
 necessary. The context menu shows how many items an operation affects. Use
 **Select all in this list**, or press Ctrl+A with the pointer over the list.
+Press Delete to apply the Delete or Remove action to the selected rows in the
+last clicked list. This works with one or more selected rows. Delete does not
+remove items while you edit text or use a dialog or context menu.
 
 Bulk menus are available for models, analyses, annotations and cross sections,
 analysis inputs, detector checks, model file removal, and saved Views. Each scene

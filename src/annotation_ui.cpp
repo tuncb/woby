@@ -185,7 +185,7 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
                 if (count > 1) { drawBulkMenuHeader(count); }
                 if (ImGui::MenuItem("Rename", "F2", false, count == 1)) { beginRename(id); }
                 if (ImGui::MenuItem(bulkMenuLabel("Duplicate", "Duplicate", count, "annotations").c_str(), nullptr, false, supported)) { duplicate = true; }
-                if (ImGui::MenuItem(bulkMenuLabel("Delete annotation", "Delete", count, "annotations").c_str(), nullptr, false, supported)) { remove = true; }
+                if (ImGui::MenuItem(bulkMenuLabel("Delete annotation", "Delete", count, "annotations").c_str(), "Del", false, supported)) { remove = true; }
                 if (!supported) { setLastItemTooltip("Select only annotations or cross sections to duplicate or delete them."); }
                 ImGui::Separator();
                 drawSceneVisibilityMenu(state);
@@ -196,7 +196,9 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
         }
         ImGui::PopID();
     }
-    selectAll = endSelectionRows(rows) || selectAll;
+    const auto shortcuts = endSelectionRows(rows);
+    selectAll = shortcuts.selectAll || selectAll;
+    remove = remove || (shortcuts.remove && sceneSelectionHasKind(state, SceneObjectKind::annotation));
     if (selectAll) { selectSceneRows(state, rows.current); }
     if (remove) { deleteSceneSelection(state); }
     else if (duplicate) { duplicateSceneSelection(state); }

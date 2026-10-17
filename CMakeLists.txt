@@ -648,6 +648,7 @@ if(BUILD_TESTING)
         tests/scene_file_edge_tests.cpp
         tests/ui_operations_tests.cpp
         tests/ui_bulk_operations_tests.cpp
+        tests/ui_bulk_controls_tests.cpp
         tests/ui_transform_operations_tests.cpp
         tests/ui_view_tests.cpp
         tests/uv_grid_tests.cpp

@@ -101,7 +101,7 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
                         ImGui::Separator();
                         if (ImGui::MenuItem("Rename", "F2", false, count == 1)) { beginRename(id); }
                         if (ImGui::MenuItem(bulkMenuLabel("Duplicate", "Duplicate", count, "views").c_str())) { duplicate = true; }
-                        if (ImGui::MenuItem(bulkMenuLabel("Delete view", "Delete", count, "views").c_str())) { remove = true; }
+                        if (ImGui::MenuItem(bulkMenuLabel("Delete view", "Delete", count, "views").c_str(), "Del")) { remove = true; }
                         selectAll = drawSelectAllMenu();
                         ImGui::EndPopup();
                     }
@@ -114,7 +114,9 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
                 }
                 ImGui::PopID();
             }
-            selectAll = endSelectionRows(rows) || selectAll;
+            const auto shortcuts = endSelectionRows(rows);
+            selectAll = shortcuts.selectAll || selectAll;
+            remove = shortcuts.remove || remove;
             if (selectAll) { selectViewRows(state, rows.current); }
             if (duplicate) { duplicateSelectedViews(state); }
             else if (remove) { deleteSelectedViews(state); }

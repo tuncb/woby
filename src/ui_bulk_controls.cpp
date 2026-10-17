@@ -3,11 +3,18 @@
 #include "scene_inspector_queries.h"
 
 #include <algorithm>
+#include <imgui_internal.h>
 
 namespace woby {
+namespace {
+const ImGuiID selectionFocusKey = ImHashStr("woby_selection_focus");
+}
+
 void beginSelectionRows(UiSelectionRows& rows, const UiState& state)
 {
     if (rows.owner != &state || rows.generation != state.sceneGeneration || rows.lastFrame != ImGui::GetFrameCount() - 1) {
+        auto* storage = ImGui::GetStateStorage();
+        if (storage->GetVoidPtr(selectionFocusKey) == &rows) { storage->SetVoidPtr(selectionFocusKey, nullptr); }
         rows = {};
         rows.owner = &state;
         rows.generation = state.sceneGeneration;
@@ -24,15 +31,31 @@ std::span<const uint64_t> registerSelectionRow(UiSelectionRows& rows, uint64_t i
         : std::span<const uint64_t>(rows.current);
 }
 
-bool endSelectionRows(UiSelectionRows& rows)
+UiSelectionShortcuts endSelectionRows(UiSelectionRows& rows)
 {
     const auto high = ImVec2(rows.top.x + ImGui::GetContentRegionAvail().x, ImGui::GetCursorScreenPos().y);
     const auto& io = ImGui::GetIO();
-    const bool all = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)
-        && ImGui::IsMouseHoveringRect(rows.top, high) && !io.WantTextInput && !ImGui::IsAnyItemActive()
-        && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId) && io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_A, false);
+    const bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)
+        && ImGui::IsMouseHoveringRect(rows.top, high);
+    const bool available = !io.WantTextInput && !ImGui::IsAnyItemActive()
+        && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel)
+        && !(ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled);
+    UiSelectionShortcuts shortcuts;
+    shortcuts.selectAll = available && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)
+        && hovered && io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_A, false);
+    auto* storage = ImGui::GetStateStorage();
+    // Use window-owned adapter state so lists in the same pane cannot both delete.
+    // Moving the pointer does not change the target; clicking another list does.
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+        if (hovered) { storage->SetVoidPtr(selectionFocusKey, &rows); }
+        else if (storage->GetVoidPtr(selectionFocusKey) == &rows) { storage->SetVoidPtr(selectionFocusKey, nullptr); }
+    }
+    if (shortcuts.selectAll) { storage->SetVoidPtr(selectionFocusKey, &rows); }
+    shortcuts.remove = available && ImGui::IsWindowFocused() && storage->GetVoidPtr(selectionFocusKey) == &rows
+        && !rows.current.empty() && !io.KeyCtrl && !io.KeyShift && !io.KeyAlt && !io.KeySuper
+        && ImGui::IsKeyPressed(ImGuiKey_Delete, false);
     rows.previous = rows.current;
-    return all;
+    return shortcuts;
 }
 
 bool selectionContains(std::span<const uint64_t> selection, uint64_t id)
