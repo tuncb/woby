@@ -2,6 +2,14 @@
 
 Notable changes by release tag. Versions with no notable changes are omitted.
 
+## v0.32.0
+
+- Added approximate difference volumes with resolution checks and CLI controls.
+- Added configurable placement for surface comparisons.
+- Added bulk selection and context operations, plus Delete shortcuts for selected rows.
+- Added undoable renaming for scene models and parts.
+- Added automation controls for the new scene operations.
+
 ## v0.31.0
 
 - Added support for opening files from the clipboard.
