@@ -25,6 +25,7 @@ void createFile(const std::filesystem::path& path) { std::ofstream(path) << "fix
 struct DialogUi {
     ImGuiContext* previous = ImGui::GetCurrentContext();
     ImGuiContext* context = ImGui::CreateContext();
+    std::optional<std::string> clipboard;
     DialogUi()
     {
         auto& io = ImGui::GetIO();
@@ -35,11 +36,110 @@ struct DialogUi {
         int width = 0;
         int height = 0;
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+        auto& platform = ImGui::GetPlatformIO();
+        platform.Platform_ClipboardUserData = this;
+        platform.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* {
+            const auto& text = static_cast<DialogUi*>(ImGui::GetPlatformIO().Platform_ClipboardUserData)->clipboard;
+            return text ? text->c_str() : nullptr;
+        };
     }
     ~DialogUi() { ImGui::DestroyContext(context); ImGui::SetCurrentContext(previous); }
 };
 
 } // namespace
+
+TEST_CASE("clipboard model paths use the existing add model workflow")
+{
+    PathFixtures fixture;
+    DialogUi ui;
+    for (const char* extension : {".OBJ", ".VTK"}) {
+        const auto file = fixture.root / woby::pathFromUtf8("caf\xc3\xa9 \xe6\xa8\xa1\xe5\x9e\x8b model" + std::string(extension));
+        createFile(file);
+        for (const std::string quote : {"", "\"", "'"}) {
+            woby::ModelFileDialogState models;
+            woby::SceneFileDialogState scene;
+            ui.clipboard = " \t" + quote + woby::pathToUtf8(file) + quote + "\r\n";
+            woby::openFileFromClipboard(models, scene);
+            CHECK(woby::takePendingModelPaths(models) == std::vector<std::filesystem::path>{file});
+            CHECK(woby::takePendingModelPaths(models).empty());
+            CHECK_FALSE(woby::takePendingOpenScenePath(scene));
+            CHECK_FALSE(woby::modelFileDialogIsOpen(models));
+            CHECK_FALSE(woby::sceneFileDialogIsOpen(scene));
+            uint64_t version = 0;
+            CHECK(woby::modelFileDialogStatus(models, version).empty());
+        }
+    }
+}
+
+TEST_CASE("clipboard scene paths use the existing open scene workflow")
+{
+    PathFixtures fixture;
+    DialogUi ui;
+    woby::ModelFileDialogState models;
+    woby::SceneFileDialogState scene;
+    const auto file = fixture.root / woby::pathFromUtf8("caf\xc3\xa9 scene.WoBy");
+    createFile(file);
+    ui.clipboard = "\"" + woby::pathToUtf8(file) + "\"";
+    woby::openFileFromClipboard(models, scene);
+    CHECK(woby::takePendingModelPaths(models).empty());
+    CHECK(woby::takePendingOpenScenePath(scene) == file);
+    CHECK_FALSE(woby::takePendingOpenScenePath(scene));
+    CHECK_FALSE(woby::modelFileDialogIsOpen(models));
+    CHECK_FALSE(woby::sceneFileDialogIsOpen(scene));
+    uint64_t version = 0;
+    CHECK(woby::modelFileDialogStatus(models, version).empty());
+}
+
+TEST_CASE("invalid clipboard paths report an error without queuing files")
+{
+    PathFixtures fixture;
+    DialogUi ui;
+    woby::ModelFileDialogState models;
+    woby::SceneFileDialogState scene;
+    const auto file = fixture.root / "model.obj";
+    const auto sceneFile = fixture.root / "scene.woby";
+    const auto unsupported = fixture.root / "unsupported.txt";
+    createFile(file);
+    createFile(sceneFile);
+    createFile(unsupported);
+    SUBCASE("no clipboard text") { ui.clipboard.reset(); }
+    SUBCASE("empty") { ui.clipboard = ""; }
+    SUBCASE("whitespace") { ui.clipboard = " \r\n\t"; }
+    SUBCASE("missing file") { ui.clipboard = woby::pathToUtf8(fixture.root / "missing.obj"); }
+    SUBCASE("folder") { ui.clipboard = woby::pathToUtf8(fixture.root); }
+    SUBCASE("unsupported file") { ui.clipboard = woby::pathToUtf8(unsupported); }
+    SUBCASE("multiple paths") { ui.clipboard = woby::pathToUtf8(file) + "\n" + woby::pathToUtf8(sceneFile); }
+    SUBCASE("missing path after valid path") { ui.clipboard = woby::pathToUtf8(file) + "\n" + woby::pathToUtf8(fixture.root / "missing.obj"); }
+    woby::openFileFromClipboard(models, scene);
+    CHECK(woby::takePendingModelPaths(models).empty());
+    CHECK_FALSE(woby::takePendingOpenScenePath(scene));
+    CHECK_FALSE(woby::modelFileDialogIsOpen(models));
+    CHECK_FALSE(woby::sceneFileDialogIsOpen(scene));
+    uint64_t version = 0;
+    CHECK(woby::modelFileDialogStatus(models, version).starts_with("From clipboard failed: "));
+}
+
+TEST_CASE("clipboard paths must be absolute even when a relative file exists")
+{
+    PathFixtures fixture;
+    DialogUi ui;
+    woby::ModelFileDialogState models;
+    woby::SceneFileDialogState scene;
+    const auto file = fixture.root / "model.obj";
+    createFile(file);
+    struct RestoreDirectory {
+        std::filesystem::path path = std::filesystem::current_path();
+        ~RestoreDirectory() { std::filesystem::current_path(path); }
+    } restore;
+    std::filesystem::current_path(fixture.root);
+    ui.clipboard = woby::pathToUtf8(file.lexically_relative(fixture.root));
+    woby::openFileFromClipboard(models, scene);
+    CHECK(woby::takePendingModelPaths(models).empty());
+    CHECK_FALSE(woby::takePendingOpenScenePath(scene));
+    uint64_t version = 0;
+    CHECK(woby::modelFileDialogStatus(models, version)
+        == "From clipboard failed: Paste an absolute path, starting from the filesystem root.");
+}
 
 TEST_CASE("manual paths accept quoted UTF-8 filenames and multiple models without splitting spaces")
 {

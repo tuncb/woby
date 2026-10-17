@@ -1464,6 +1464,7 @@ TEST_CASE("main menu commands respect busy captures and history availability")
             {"File", "Save as...", Command::saveSceneAs, false},
             {"File", "Add models...", Command::addModels, false},
             {"File", "Add model folder...", Command::addModelFolder, false},
+            {"File", "From clipboard", Command::fromClipboard, false},
             {"File", "Export PNG...", Command::exportPng, true},
             {"File", "Exit", Command::exit, true},
             {"Edit", "Undo", Command::undo, true},

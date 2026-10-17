@@ -3030,6 +3030,9 @@ int main(int argc, char** argv)
                 case woby::MainMenuCommand::saveSceneAs: documentCommand(woby::SceneAction::saveAs); break;
                 case woby::MainMenuCommand::addModels: showModelFileDialog(window.get(), modelFileDialogState); break;
                 case woby::MainMenuCommand::addModelFolder: showModelFolderTreeDialog(window.get(), modelFileDialogState); break;
+                case woby::MainMenuCommand::fromClipboard:
+                    openFileFromClipboard(modelFileDialogState, sceneFileDialogState);
+                    break;
                 case woby::MainMenuCommand::openRecentScene:
                     woby::cancelAnnotationPointer(annotationInteraction);
                     if (annotationCommand) { woby::cancelAnnotationWork(annotationCommand->work); }

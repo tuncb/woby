@@ -8,7 +8,7 @@ struct UiState;
 struct AnnotationInteraction;
 
 enum class MainMenuCommand {
-    none, newScene, openScene, saveScene, saveSceneAs, addModels, addModelFolder,
+    none, newScene, openScene, saveScene, saveSceneAs, addModels, addModelFolder, fromClipboard,
     exportPng, exit, undo, redo, settings, checkUpdates,
     openRecentScene, addRecentModel, removeRecentScene, removeRecentModel, clearRecentFiles
 };

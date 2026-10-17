@@ -54,6 +54,7 @@ MainMenuResult drawMainMenu(UiState& state, AnnotationInteraction& annotation,
         ImGui::Separator();
         command("Add models...", nullptr, MainMenuCommand::addModels, ready);
         command("Add model folder...", nullptr, MainMenuCommand::addModelFolder, ready);
+        command("From clipboard", nullptr, MainMenuCommand::fromClipboard, ready);
         recentMenu("Recent models", RecentFileKind::model);
         command("Clear recent history", nullptr, MainMenuCommand::clearRecentFiles, ready && !recentFiles.entries.empty());
         ImGui::Separator();

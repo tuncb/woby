@@ -50,6 +50,7 @@ struct SceneScreenshotDialogState {
 
 void showModelFileDialog(SDL_Window* window, ModelFileDialogState& state);
 void showModelFolderTreeDialog(SDL_Window* window, ModelFileDialogState& state);
+void openFileFromClipboard(ModelFileDialogState& models, SceneFileDialogState& scene);
 [[nodiscard]] std::vector<std::filesystem::path> takePendingModelPaths(ModelFileDialogState& state);
 [[nodiscard]] std::vector<std::filesystem::path> takePendingModelFolderTreeRoots(
     ModelFileDialogState& state);

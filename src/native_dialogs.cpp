@@ -1,4 +1,5 @@
 #include "native_dialogs.h"
+#include "file_discovery.h"
 #include "utf8_path.h"
 #include "importer_host.h"
 
@@ -190,6 +191,30 @@ void SDLCALL saveSceneScreenshotDialogCallback(void* userdata, const char* const
 }
 
 } // namespace
+
+void openFileFromClipboard(ModelFileDialogState& models, SceneFileDialogState& scene)
+{
+    // Use the manual selection rules for one absolute, optionally quoted file path.
+    ManualPathDialog selection;
+    selection.kind = ManualPathKind::openScene;
+    if (const char* text = ImGui::GetClipboardText()) { selection.input = text; }
+    const auto paths = submitManualPathDialog(selection);
+    if (!paths) {
+        setModelFileDialogStatus(models, "From clipboard failed: " + selection.error);
+        return;
+    }
+
+    const auto& path = paths->front();
+    if (isWobyPath(path)) {
+        std::lock_guard<std::mutex> lock(scene.mutex);
+        scene.pendingOpenPath = path;
+    } else if (isModelPath(path)) {
+        std::lock_guard<std::mutex> lock(models.mutex);
+        models.pendingPaths.push_back(path);
+    } else {
+        setModelFileDialogStatus(models, "From clipboard failed: The file type is not supported: " + pathToUtf8(path));
+    }
+}
 
 void showModelFileDialog(SDL_Window* window, ModelFileDialogState& state)
 {
