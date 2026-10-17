@@ -3,6 +3,7 @@
 #include "uv_quality.h"
 #include "analysis_results.h"
 #include "comparison_scene.h"
+#include "comparison_placement.h"
 #include "ui_operations.h"
 #include "utf8_path.h"
 
@@ -97,6 +98,7 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"uvView", settings.uvView == UvView::layout ? "layout" : "surface"},
                 {"uvGrid", settings.uvGrid.enabled}, {"uvDensityU", settings.uvGrid.densityU}, {"uvDensityV", settings.uvGrid.densityV},
                 {"mode", mode}, {"distanceOnA", settings.distanceOnOriginal}, {"tolerance", settings.tolerance},
+                {"alignment", settings.alignOrigins ? "origins" : "scene"}, {"lockPlacement", settings.lockPlacement},
                 {"colorRange", settings.colorRange}, {"colorMinimum", settings.colorMinimum},
                 {"colorRangeMode", comparisonColorRangeKeys[static_cast<size_t>(settings.colorRangeMode)]}, {"showEdges", settings.showEdges},
                 {"nonManifoldVertices", settings.topologyInspection.nonManifoldVertices},
@@ -360,6 +362,8 @@ Json controlObjectDetails(const UiState& state, SceneObjectId id, const ObjectId
             };
             result["a"] = inputs(comparison->a);
             result["b"] = inputs(comparison->b);
+            result["settings"]["originA"] = findSceneObject(state, comparison->origins[0]) ? Json(formatId(comparison->origins[0])) : Json(nullptr);
+            result["settings"]["originB"] = findSceneObject(state, comparison->origins[1]) ? Json(formatId(comparison->origins[1])) : Json(nullptr);
         }
     }
     result["occurrences"] = Json::array();
@@ -399,6 +403,35 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             }
         }
         auto id = command.objectId;
+        if (command.alignment && *command.alignment != "scene" && *command.alignment != "origins") {
+            throw std::invalid_argument("alignment must be scene or origins.");
+        }
+        const bool placementOptions = command.alignment || command.lockPlacement || command.originA || command.originB;
+        if (placementOptions && ((command.action == A::comparisonCreate && (command.type == "uv" || command.type == "uv_quality"))
+            || (command.action != A::comparisonCreate && isUvAnalysis(comparisonSettings(state, id).type)))) {
+            throw std::invalid_argument("Placement options require a surface comparison.");
+        }
+        for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
+            const auto& supplied = side == ComparisonSide::a ? command.originA : command.originB;
+            if (!supplied) { continue; }
+            const auto originId = side == ComparisonSide::a ? command.originAId : command.originBId;
+            if (command.action == A::comparisonCreate) {
+                const auto members = comparisonObjectParts(state, {side == ComparisonSide::a ? command.aId : command.bId});
+                const auto candidates = comparisonObjectParts(state, {originId});
+                if (std::none_of(candidates.begin(), candidates.end(), [&](auto part) {
+                    return std::binary_search(members.begin(), members.end(), part);
+                })) { throw std::invalid_argument("Origin must belong to the selected input."); }
+            } else {
+                const auto* comparison = findComparison(state, id);
+                if (!comparisonOriginCandidate(state, *comparison, side, originId)) {
+                    throw std::invalid_argument("Origin must belong to the selected input.");
+                }
+                if (comparison->settings.lockPlacement && command.lockPlacement.value_or(true)
+                    && comparison->origins[side == ComparisonSide::a ? 0 : 1] != originId) {
+                    throw std::invalid_argument("Unlock placement before changing its origin.");
+                }
+            }
+        }
         if (command.action != A::comparisonCreate && isUvAnalysis(comparisonSettings(state, id).type)
             && (command.action == A::comparisonRun || command.action == A::comparisonCancel
                 || command.action == A::comparisonSwap || command.side == "b")) {
@@ -420,9 +453,19 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         if (command.action == A::comparisonCreate) {
             id = createComparison(state, command.type == "surface_comparison" ? AnalysisType::surfaceComparison
                 : command.type == "uv_quality" ? AnalysisType::uvQuality : command.type == "uv" ? AnalysisType::uv : AnalysisType::mesh);
+            auto placementSettings = comparisonSettings(state, id);
+            if (command.alignment) { placementSettings.alignOrigins = *command.alignment == "origins"; }
+            if (command.lockPlacement) { placementSettings.lockPlacement = *command.lockPlacement; }
+            if (command.distanceOnA) { placementSettings.distanceOnOriginal = *command.distanceOnA; }
+            auto unlocked = placementSettings;
+            unlocked.lockPlacement = false;
+            setComparisonSettings(state, unlocked, id);
             if (command.name) { renameComparison(state, id, *command.name); }
             if (command.a) { setComparisonObjects(state, {command.aId}, ComparisonSide::a, true, id); }
             if (command.b) { setComparisonObjects(state, {command.bId}, ComparisonSide::b, true, id); }
+            if (command.originA) { setComparisonOrigin(state, id, ComparisonSide::a, command.originAId); }
+            if (command.originB) { setComparisonOrigin(state, id, ComparisonSide::b, command.originBId); }
+            setComparisonSettings(state, placementSettings, id);
         } else if (command.action == A::comparisonDelete) {
             removeComparison(state, id);
             updateSceneDirty(state, cleanDocument);
@@ -502,6 +545,8 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.qualityMinimumSize) { settings.quality.minimumSize = *command.qualityMinimumSize; }
             if (command.qualityMaximumSize) { settings.quality.maximumSize = *command.qualityMaximumSize; }
             if (command.distanceOnA) { settings.distanceOnOriginal = *command.distanceOnA; }
+            if (command.alignment) { settings.alignOrigins = *command.alignment == "origins"; }
+            if (command.lockPlacement) { settings.lockPlacement = *command.lockPlacement; }
             if (command.tolerance) { settings.tolerance = *command.tolerance; }
             if (command.colorRange) { settings.colorRange = *command.colorRange; settings.colorRangeMode = ComparisonColorRange::custom; }
             if (command.colorMinimum) { settings.colorMinimum = *command.colorMinimum; settings.colorRangeMode = ComparisonColorRange::custom; }
@@ -511,6 +556,14 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.topologyMode) { settings.topologyMode = parseTopologyMode(*command.topologyMode); }
             if (command.showWinding) { settings.showWinding = *command.showWinding; }
             if (command.showNonManifold) { settings.showNonManifold = *command.showNonManifold; }
+            // Origin edits precede a new lock, so a combined command captures the requested frame.
+            if ((command.originA || command.originB) && (!comparisonSettings(state, id).lockPlacement || !settings.lockPlacement)) {
+                auto unlocked = settings;
+                unlocked.lockPlacement = false;
+                setComparisonSettings(state, unlocked, id);
+                if (command.originA) { setComparisonOrigin(state, id, ComparisonSide::a, command.originAId); }
+                if (command.originB) { setComparisonOrigin(state, id, ComparisonSide::b, command.originBId); }
+            }
             setComparisonSettings(state, settings, id);
             if (command.name) { renameComparison(state, id, *command.name); }
         } else if (command.action == A::comparisonSwap) {

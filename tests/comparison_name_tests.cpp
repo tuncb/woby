@@ -514,7 +514,7 @@ TEST_CASE("analysis inspectors keep measurements separate from diagnostic findin
         CHECK(contents.find("Value") != std::string::npos);
         CHECK(findComparison(f.state, f.id)->b.empty());
     }
-    CHECK(contents.find("Placement") != std::string::npos);
+    CHECK(contents.find("Result display") != std::string::npos);
     CHECK(contents.find("Result position") == std::string::npos);
 }
 
@@ -652,7 +652,7 @@ TEST_CASE("analysis properties distinguish queued calculating failed and inactiv
         ImGui::End();
         ImGui::EndFrame();
     }
-    CHECK(contents.find("Placement") != std::string::npos);
+    CHECK(contents.find("Result display") != std::string::npos);
     CHECK(contents.find("Frame result") == std::string::npos);
     CHECK(contents.find("Result ready") == std::string::npos);
     for (const auto* label : {"Queued...", "Calculating analysis...", "Analysis failed"}) {

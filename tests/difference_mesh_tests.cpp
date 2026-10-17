@@ -68,7 +68,7 @@ struct Fixture {
         std::error_code e;
         std::filesystem::remove_all(root, e);
     }
-    void comparison()
+    void comparison(bool scenePlacement = true)
     {
         state.files.push_back(createUiFileState(root / "a.obj", cube(), 0));
         state.files.push_back(createUiFileState(root / "b.obj", cube(.5), 1));
@@ -76,6 +76,13 @@ struct Fixture {
         recalculateSceneBounds(state);
         id = createAnalysisFromObjects(state, AnalysisTask::surfaceComparison,
                                        {state.files[0].objectId, state.files[1].objectId});
+        if (scenePlacement) {
+            // These tests measure the intentional offset between the two cubes.
+            auto settings = comparisonSettings(state, id);
+            settings.lockPlacement = false;
+            settings.alignOrigins = false;
+            setComparisonSettings(state, settings, id);
+        }
     }
     void wait()
     {
@@ -319,6 +326,34 @@ TEST_CASE("difference screenshot readiness rejects source changes before the run
     CHECK(comparisonsReadyForScreenshot(f.state, runtimes));
     selectSceneObject(f.state, f.state.files[1].objectId);
     setSelectedObjectProperty(f.state, UiObjectProperty::translationX, 2);
+    CHECK_FALSE(comparisonsReadyForScreenshot(f.state, runtimes));
+    destroyComparisonRuntimes(runtimes);
+}
+
+TEST_CASE("locked difference results remain current when source models move")
+{
+    Fixture f;
+    f.comparison(false);
+    REQUIRE(comparisonSettings(f.state, f.id).alignOrigins);
+    REQUIRE(comparisonSettings(f.state, f.id).lockPlacement);
+    requestDifferenceMesh(f.state, f.id);
+    f.wait();
+    REQUIRE(f.runtime.phase == "ready");
+    CHECK(differenceStatus(f.runtime, f.state, f.id)["totalVolume"] == 0);
+    const auto signature = comparisonGeometrySignature(f.state, f.id);
+    selectSceneObject(f.state, f.state.files[1].objectId);
+    setSelectedObjectProperty(f.state, UiObjectProperty::translationX, 20);
+    setSelectedObjectProperty(f.state, UiObjectProperty::rotationZ, 35);
+    CHECK(comparisonGeometrySignature(f.state, f.id) == signature);
+    CHECK(differenceStatus(f.runtime, f.state, f.id)["state"] == "ready");
+    ComparisonRuntimes runtimes;
+    runtimes.objects[f.id].difference = std::move(f.runtime);
+    runtimes.objects[f.id].difference.uploaded = true;
+    CHECK(comparisonsReadyForScreenshot(f.state, runtimes));
+    auto settings = comparisonSettings(f.state, f.id);
+    settings.lockPlacement = false;
+    settings.alignOrigins = false;
+    setComparisonSettings(f.state, settings, f.id);
     CHECK_FALSE(comparisonsReadyForScreenshot(f.state, runtimes));
     destroyComparisonRuntimes(runtimes);
 }

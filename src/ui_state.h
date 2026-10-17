@@ -110,6 +110,7 @@ struct UiComparisonPart {
     // Retained when a source is removed, so missing inputs remain repairable.
     std::string name;
     bool enabled = true;
+    std::optional<SceneComparisonPartRecord::Placement> placement;
     friend bool operator==(const UiComparisonPart&, const UiComparisonPart&) = default;
 };
 
@@ -140,9 +141,10 @@ struct UiComparison {
     SceneObjectId objectId = invalidSceneObjectId;
     std::string name;
     ComparisonSettings settings;
-    // Presentation only: source measurements always use source world transforms.
+    // Presentation only: independent from the analysis placement.
     std::array<float, 3> translation{};
     std::vector<UiComparisonPart> a, b;
+    std::array<SceneObjectId, 2> origins{};
     std::optional<DiagnosticFocus> diagnosticFocus;
     std::optional<UvProbe> uvProbe; // Transient inspection selection, excluded from scene/history.
     // View selection waiting for matching detector results; never drawn directly.

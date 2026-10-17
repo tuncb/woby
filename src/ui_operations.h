@@ -83,6 +83,7 @@ void setAllComparisonsVisible(UiState& state, bool visible);
 // Batch the existing saved visibility flags; hiding also clears highlighted findings.
 void setComparisonDiagnosticsVisible(UiState& state, bool visible, SceneObjectId id = invalidSceneObjectId);
 void setPropertiesPaneVisible(UiState& state, bool visible);
+bool setComparisonOrigin(UiState& state, SceneObjectId id, ComparisonSide side, SceneObjectId origin);
 void setPropertiesPaneWidth(UiState& state, float value, float minWidth, float maxWidth);
 void setScreenshotSettings(UiState& state, ScreenshotSettings settings);
 void frameComparisonBounds(UiState& state, const Bounds& bounds);

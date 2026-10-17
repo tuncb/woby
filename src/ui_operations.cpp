@@ -1,4 +1,5 @@
 #include "ui_operations.h"
+#include "comparison_placement.h"
 #include "analysis_presentation.h"
 #include "comparison_scene.h"
 #include "mesh_comparison.h"
@@ -349,6 +350,8 @@ SceneObjectId createComparison(UiState& state, AnalysisType type)
     }));
     comparison.settings.enabled = true;
     comparison.settings.type = type;
+    comparison.settings.alignOrigins = type == AnalysisType::surfaceComparison;
+    comparison.settings.lockPlacement = type == AnalysisType::surfaceComparison;
     if (isUvAnalysis(type)) { comparison.settings.showEdges = true; }
     if (type == AnalysisType::uvQuality) { comparison.settings.uvView = UvView::surface; comparison.settings.showEdges = false; }
     comparison.settings = normalizedComparisonSettings(comparison.settings);
@@ -945,6 +948,11 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
         settings = normalizedComparisonSettings(settings);
         const auto before = comparison->settings;
         if (settings == before) { return; }
+        if (before.lockPlacement && settings.lockPlacement && before.alignOrigins != settings.alignOrigins
+            && (std::any_of(comparison->a.begin(), comparison->a.end(), [](const auto& part) { return part.placement.has_value(); })
+                || std::any_of(comparison->b.begin(), comparison->b.end(), [](const auto& part) { return part.placement.has_value(); }))) {
+            throw std::invalid_argument("Unlock placement before changing alignment.");
+        }
         // Detector readiness/scheduling reads settings live. Only these inputs
         // change source resolution or the geometry/preparation signatures.
         const auto uvInputs = [](const ComparisonSettings& value) {
@@ -953,6 +961,8 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
                 value.uvNearCollapse, value.uvRangeEnabled, value.uvRangeMinimum, value.uvRangeMaximum);
         };
         const bool inputsChanged = before.type != settings.type || before.task != settings.task
+            || before.alignOrigins != settings.alignOrigins || before.lockPlacement != settings.lockPlacement
+            || (settings.alignOrigins && !settings.lockPlacement && before.distanceOnOriginal != settings.distanceOnOriginal)
             || before.analysisMode != settings.analysisMode
             || ((isUvAnalysis(before.type) || isUvAnalysis(settings.type)) && uvInputs(before) != uvInputs(settings));
         const bool wasEnabled = comparison->settings.enabled;
@@ -967,6 +977,10 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
         }
         comparison->settings = settings;
         normalizeAnalysisSources(state, comparison->objectId);
+        if (before.alignOrigins != settings.alignOrigins || before.lockPlacement != settings.lockPlacement
+            || before.type != settings.type || before.task != settings.task) {
+            synchronizeComparisonPlacement(state, *comparison);
+        }
         if (comparison->settings.enabled && !wasEnabled) { setPropertiesPaneVisible(state, true); }
         recalculateSceneBounds(state);
         if (!settings.enabled) {
@@ -980,6 +994,19 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
 void setPropertiesPaneVisible(UiState& state, bool visible)
 {
     state.propertiesPaneVisible = visible;
+}
+
+bool setComparisonOrigin(UiState& state, SceneObjectId id, ComparisonSide side, SceneObjectId origin)
+{
+    auto* comparison = findComparison(state, id);
+    if (!comparison || comparison->settings.lockPlacement
+        || !comparisonOriginCandidate(state, *comparison, side, origin)) { return false; }
+    auto& selected = comparison->origins[side == ComparisonSide::a ? 0 : 1];
+    if (selected == origin) { return true; }
+    selected = origin;
+    recalculateSceneBounds(state);
+    markSceneDirty(state, SceneChange::analysis);
+    return true;
 }
 
 bool setModelAnalysisMode(UiState& state, SceneObjectId id, AnalysisMode mode)
@@ -1016,6 +1043,9 @@ void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& obje
     if (isUvAnalysis(comparison->settings.type) && side == ComparisonSide::b) { return; }
     if (isSingleSourceMeshTask(comparison->settings.task)) { side = ComparisonSide::a; }
     auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+    auto& origin = comparison->origins[side == ComparisonSide::a ? 0 : 1];
+    const bool selectOrigin = member && members.empty() && (comparison->settings.type == AnalysisType::surfaceComparison
+        || comparison->settings.alignOrigins || comparison->settings.lockPlacement);
     if (member) {
         const auto existing = comparisonMemberIds(state, side, comparison->objectId, false);
         const auto objectsByOrder = sceneObjects(state);
@@ -1034,8 +1064,14 @@ void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& obje
             return std::binary_search(parts.begin(), parts.end(), entry.objectId);
         });
     }
+    if (selectOrigin) {
+        for (const auto object : objects) {
+            if (comparisonOriginCandidate(state, *comparison, side, object)) { origin = object; break; }
+        }
+    }
     if (member) { setPropertiesPaneVisible(state, true); }
     normalizeAnalysisSources(state, comparison->objectId);
+    synchronizeComparisonPlacement(state, *comparison);
     recalculateSceneBounds(state);
     markSceneDirty(state, SceneChange::analysis);
 }
@@ -1051,6 +1087,7 @@ void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObje
                 && comparisonObjectParts(state, {part.objectId}).empty();
         });
         normalizeAnalysisSources(state, comparison->objectId);
+        synchronizeComparisonPlacement(state, *comparison);
         recalculateSceneBounds(state);
         markSceneDirty(state, SceneChange::analysis);
     }
@@ -1062,6 +1099,7 @@ void clearComparisonGroup(UiState& state, ComparisonSide side, SceneObjectId id)
         if (isSingleSourceMeshTask(comparison->settings.task)) { side = ComparisonSide::a; }
         (side == ComparisonSide::a ? comparison->a : comparison->b).clear();
         normalizeAnalysisSources(state, comparison->objectId);
+        synchronizeComparisonPlacement(state, *comparison);
         recalculateSceneBounds(state);
         markSceneDirty(state, SceneChange::analysis);
     }
@@ -1072,6 +1110,7 @@ void swapComparisonGroups(UiState& state, SceneObjectId id)
     if (auto* comparison = findComparison(state, id)) {
         if (isUvAnalysis(comparison->settings.type) || isSingleSourceMeshTask(comparison->settings.task)) { return; }
         std::swap(comparison->a, comparison->b);
+        std::swap(comparison->origins[0], comparison->origins[1]);
         normalizeAnalysisSources(state, comparison->objectId);
         recalculateSceneBounds(state);
         markSceneDirty(state, SceneChange::analysis);
@@ -1910,6 +1949,7 @@ bool removeFileFromState(UiState& state, size_t fileIndex)
     });
     pruneMissingViewReferences(state);
     validateAnnotationTargets(state);
+    for (auto& comparison : state.comparisons) { synchronizeComparisonPlacement(state, comparison); }
     recalculateSceneBounds(state);
     frameCameraToScene(state);
     markSceneDirty(state);
@@ -1957,6 +1997,10 @@ UiState prepareSceneReplacement(const UiState& current,
             std::vector<UiComparisonPart> result;
             for (const auto& reference : references) {
                 UiComparisonPart part{invalidSceneObjectId, reference.name, reference.enabled};
+                if (reference.placement) {
+                    if (!validComparisonPlacement(*reference.placement)) { throw std::invalid_argument("Invalid analysis placement."); }
+                    part.placement = reference.placement;
+                }
                 if (reference.fileIndex >= 0 && static_cast<size_t>(reference.fileIndex) < prepared.files.size()
                     && reference.groupIndex >= 0) {
                     const auto f = static_cast<size_t>(reference.fileIndex);
@@ -1975,6 +2019,8 @@ UiState prepareSceneReplacement(const UiState& current,
         };
         comparison.a = loadParts(record.a);
         comparison.b = loadParts(record.b);
+        for (size_t side = 0; side < 2; ++side) { comparison.origins[side] = comparisonOriginObject(prepared, record.origins[side]); }
+        synchronizeComparisonPlacement(prepared, comparison);
         prepared.comparisons.push_back(std::move(comparison));
     }
     assignSceneObjectIds(prepared);

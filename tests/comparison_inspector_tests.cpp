@@ -338,6 +338,30 @@ TEST_CASE("distance inspector applies maximum percentages without numeric range 
     CHECK(f.frame(true).find("100.00% of surface area within tolerance") != std::string::npos);
 }
 
+TEST_CASE("surface placement controls are visible in all views without changing state on draw")
+{
+    InspectorFixture f;
+    f.id = createComparison(f.state, AnalysisType::surfaceComparison);
+    setComparisonObjects(f.state, {f.state.files[0].objectId}, ComparisonSide::a, true, f.id);
+    setComparisonObjects(f.state, {f.state.files[0].objectId}, ComparisonSide::b, true, f.id);
+    selectSceneObject(f.state, f.id);
+    for (const auto mode : {ComparisonMode::distance, ComparisonMode::original, ComparisonMode::overlay}) {
+        auto settings = comparisonSettings(f.state, f.id);
+        settings.mode = mode;
+        setComparisonSettings(f.state, settings, f.id);
+        const auto document = createSceneDocument(f.state);
+        f.frame(); f.frame();
+        const auto contents = f.frame(true);
+        CHECK(contents.find("Align origins") != std::string::npos);
+        CHECK(contents.find("Lock placement") != std::string::npos);
+        CHECK(contents.find("Result display") != std::string::npos);
+        CHECK(contents.find("Display offset only") == std::string::npos);
+        CHECK(createSceneDocument(f.state) == document);
+        CHECK(comparisonSettings(f.state, f.id).alignOrigins);
+        CHECK(comparisonSettings(f.state, f.id).lockPlacement);
+    }
+}
+
 void checkTree(const std::vector<ComparisonTreeNode>& actual, const std::vector<ComparisonTreeNode>& expected) {
     REQUIRE(actual.size() == expected.size());
     for (size_t i = 0; i < actual.size(); ++i) {

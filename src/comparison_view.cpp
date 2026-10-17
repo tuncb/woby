@@ -1,6 +1,7 @@
 #include "uv_quality_view.h"
 #include "marker_pick.h"
 #include "comparison_view.h"
+#include "comparison_placement.h"
 #include "comparison_gpu.h"
 #include "difference_runtime.h"
 #include "analysis_presentation.h"
@@ -121,7 +122,7 @@ void comparisonEnabledCheckbox(UiState& state, ComparisonSide side, SceneObjectI
     ImGui::SameLine();
 }
 
-void drawComparisonTreeNode(UiState& state, ComparisonSide side, const ComparisonTreeNode& node, SceneObjectId id)
+void drawComparisonTreeNode(UiState& state, ComparisonSide side, const ComparisonTreeNode& node, SceneObjectId id, bool originChoice)
 {
     const auto revision = state.sceneEditRevision;
     const auto nodeId = std::to_string(node.objectId);
@@ -131,7 +132,11 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
     const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding
         | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
         | (leaf ? ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen : ImGuiTreeNodeFlags_DefaultOpen);
-    const bool open = ImGui::TreeNodeEx("node", flags, "%s", node.name.c_str());
+    const auto* comparison = findComparison(state, id);
+    const auto origin = comparison->origins[side == ComparisonSide::a ? 0 : 1];
+    const bool showOrigin = originChoice && comparison->settings.alignOrigins;
+    const bool open = ImGui::TreeNodeEx("node", flags, "%s%s", node.name.c_str(),
+        showOrigin && origin == node.objectId ? "  (Origin)" : "");
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
         ImGui::Text("%s parts, %s triangles", formatCount(node.partCount).c_str(), formatCount(node.triangleCount).c_str());
@@ -141,6 +146,14 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
         ImGui::EndTooltip();
     }
     if (ImGui::BeginPopupContextItem("membership")) {
+        if (originChoice) {
+            if (ImGui::MenuItem("Use as origin", nullptr, origin == node.objectId,
+                    comparison->settings.alignOrigins && !comparison->settings.lockPlacement
+                    && comparisonOriginCandidate(state, *comparison, side, node.objectId))) {
+                setComparisonOrigin(state, id, side, node.objectId);
+            }
+            ImGui::Separator();
+        }
         if (isUvAnalysis(comparisonSettings(state,id).type)) {
             if (ImGui::MenuItem("Select source patch")) { selectSceneObject(state,node.objectId); }
             if (ImGui::MenuItem("Isolate patch in analysis")) { isolateUvObjects(state,{node.objectId},id); }
@@ -159,7 +172,7 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
     if (open && !leaf) {
         for (const auto& child : node.children) {
             if (state.sceneEditRevision != revision) { break; }
-            drawComparisonTreeNode(state, side, child, id);
+            drawComparisonTreeNode(state, side, child, id, originChoice);
         }
         ImGui::TreePop();
     }
@@ -218,9 +231,17 @@ void membershipTree(UiState& state, ComparisonRuntime& runtime, ComparisonSide s
         if (ImGui::SmallButton("Remove missing references")) { removeMissingComparisonParts(state, side, id); }
         setLastItemTooltip("Remove references to parts that are no longer in the scene from this input.");
     }
+    // Parts can be moved outside their file node in the scene tree.
+    const auto partIds = comparisonMemberIds(state, side, id, false);
+    const auto models = std::count_if(state.files.begin(), state.files.end(), [&](const auto& file) {
+        return std::any_of(file.groupSettings.begin(), file.groupSettings.end(), [&](const auto& group) {
+            return std::binary_search(partIds.begin(), partIds.end(), group.objectId);
+        });
+    });
+    const bool originChoice = models > 1 && comparisonTask(state, id) == AnalysisTask::surfaceComparison;
     for (const auto& root : roots) {
         if (state.sceneEditRevision != revision) { break; }
-        drawComparisonTreeNode(state, side, root, id);
+        drawComparisonTreeNode(state, side, root, id, originChoice);
     }
     ImGui::TreePop();
     ImGui::PopID();
@@ -1215,18 +1236,6 @@ void drawDistanceInspector(UiState& state, ComparisonRuntime& runtime, SceneObje
 {
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
-    ImGui::SeparatorText("Measurement");
-    if (ImGui::BeginTable("distance_measurement", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings)) {
-        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch, .42f);
-        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, .58f);
-        comparisonFieldLabel("Measurement direction");
-        if (ImGui::RadioButton("A -> B", settings.distanceOnOriginal)) { settings.distanceOnOriginal = true; }
-        setLastItemTooltip("Measure distances on A to reference surface B.");
-        ImGui::SameLine();
-        if (ImGui::RadioButton("B -> A", !settings.distanceOnOriginal)) { settings.distanceOnOriginal = false; }
-        setLastItemTooltip("Measure distances on B to reference surface A.");
-        ImGui::EndTable();
-    }
     settings = normalizedComparisonSettings(settings);
     const auto& surface = settings.distanceOnOriginal ? runtime.results.value.original : runtime.results.value.repaired;
     ImGui::SeparatorText("Distance heatmap");
@@ -1336,6 +1345,25 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     }
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
+    if (task == AnalysisTask::surfaceComparison) {
+        ImGui::SeparatorText("Measurement");
+        if (ImGui::BeginTable("distance_measurement", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings)) {
+            ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch, .42f);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, .58f);
+            comparisonFieldLabel("Measurement direction");
+            if (ImGui::RadioButton("A -> B", settings.distanceOnOriginal)) { settings.distanceOnOriginal = true; }
+            setLastItemTooltip("Measure distances on A to reference surface B.");
+            ImGui::SameLine();
+            if (ImGui::RadioButton("B -> A", !settings.distanceOnOriginal)) { settings.distanceOnOriginal = false; }
+            setLastItemTooltip("Measure distances on B to reference surface A.");
+            ImGui::EndTable();
+        }
+        ImGui::BeginDisabled(settings.lockPlacement);
+        ImGui::Checkbox("Align origins", &settings.alignOrigins);
+        ImGui::EndDisabled();
+        ImGui::Checkbox("Lock placement", &settings.lockPlacement);
+        if (settings != initial) { setComparisonSettings(state, settings, id); return; }
+    }
     const bool valid = (runtime.inspector.queries.signature != 0);
     {
         if (task == AnalysisTask::surfaceComparison) {
@@ -1427,9 +1455,8 @@ void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes)
     if (ImGui::BeginChild("comparison_properties")) {
         drawComparisonContents(state, runtimes.objects[id], id);
         ImGui::Separator();
-        if (ImGui::CollapsingHeader("Placement")) {
+        if (ImGui::CollapsingHeader("Result display")) {
             auto translation = findComparison(state, id)->translation;
-            ImGui::TextWrapped("Display offset only; source measurements stay unchanged.");
             ImGui::SetNextItemWidth(-1);
             if (ImGui::DragFloat3("Result position", translation.data(), .1f)) {
                 setComparisonTranslation(state, id, translation);

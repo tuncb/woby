@@ -100,7 +100,18 @@ struct SceneComparisonPartRecord {
     int groupIndex = -1;
     std::string name;
     bool enabled = true;
+    struct Placement {
+        std::array<double, 16> parent{}, model{};
+        std::array<double, 3> sourceOrigin{}, sceneOrigin{};
+        friend bool operator==(const Placement&, const Placement&) = default;
+    };
+    std::optional<Placement> placement;
     friend bool operator==(const SceneComparisonPartRecord&, const SceneComparisonPartRecord&) = default;
+};
+
+struct SceneComparisonOriginRecord {
+    int nodeIndex = -1, fileIndex = -1, groupIndex = -1;
+    friend bool operator==(const SceneComparisonOriginRecord&, const SceneComparisonOriginRecord&) = default;
 };
 
 struct SceneComparisonRecord {
@@ -110,6 +121,7 @@ struct SceneComparisonRecord {
     // after source geometry is loaded; an explicit zero is an intentional overlay.
     std::optional<std::array<float, 3>> translation;
     std::vector<SceneComparisonPartRecord> a, b;
+    std::array<SceneComparisonOriginRecord, 2> origins;
     friend bool operator==(const SceneComparisonRecord&, const SceneComparisonRecord&) = default;
 };
 
