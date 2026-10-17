@@ -124,6 +124,20 @@ def test_triangle_and_seam_geometry():
                 checks.assertIn("uv_validation_cache", [row["name"] for row in cached["events"]])
 
 
+def test_concurrent_profile_events():
+    if not PREPARATION:
+        return
+    checks = unittest.TestCase()
+    report = json.loads(subprocess.check_output([str(PREPARATION), "--test-concurrent-events"], text=True))
+    checks.assertEqual(len(report["events"]), 4 * 16 * 2)
+    for worker in range(4):
+        events = [event for event in report["events"] if event["data"]["worker"] == worker]
+        checks.assertEqual(sum(event["name"] == "inner" for event in events), 16)
+        checks.assertEqual(sum(event["name"] == f"outer-{worker}" for event in events), 16)
+        for event in events:
+            checks.assertEqual(event["parent"], f"outer-{worker}" if event["name"] == "inner" else "idle")
+
+
 def test_point_preparation_identity():
     if not PREPARATION:
         return
@@ -156,5 +170,6 @@ def test_point_preparation_identity():
 
 if __name__ == "__main__":
     result = unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite([
-        unittest.FunctionTestCase(test_triangle_and_seam_geometry), unittest.FunctionTestCase(test_point_preparation_identity)]))
+        unittest.FunctionTestCase(test_triangle_and_seam_geometry), unittest.FunctionTestCase(test_concurrent_profile_events),
+        unittest.FunctionTestCase(test_point_preparation_identity)]))
     sys.exit(not result.wasSuccessful())

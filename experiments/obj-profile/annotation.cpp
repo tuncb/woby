@@ -4,11 +4,38 @@
 #include "surface_annotation.h"
 #include "point_cloud.h"
 #include "profile.h"
+#include <barrier>
 #include <bit>
 #include <iostream>
 #include <stdexcept>
+#include <thread>
 
 namespace {
+int concurrentEvents()
+{
+    constexpr size_t workers = 4, rounds = 16;
+    std::barrier ready(static_cast<std::ptrdiff_t>(workers));
+    std::vector<std::jthread> threads;
+    for (size_t index = 0; index < workers; ++index) {
+        threads.emplace_back([&, index] {
+            const auto name = "outer-" + std::to_string(index);
+            for (size_t round = 0; round < rounds; ++round) {
+                ready.arrive_and_wait();
+                const auto outer = obj_profile::begin(name.c_str());
+                ready.arrive_and_wait();
+                const auto inner = obj_profile::begin("inner");
+                ready.arrive_and_wait();
+                obj_profile::end(inner, {{"worker", index}});
+                ready.arrive_and_wait();
+                obj_profile::end(outer, {{"worker", index}});
+            }
+        });
+    }
+    for (auto& thread : threads) { thread.join(); }
+    std::cout << obj_profile::result().dump() << '\n';
+    return 0;
+}
+
 struct Digest { uint64_t value = 14695981039346656037ull; };
 void add(Digest& digest, uint64_t value)
 {
@@ -124,6 +151,7 @@ int run(const std::filesystem::path& path, size_t rounds, std::wstring_view mode
 int wmain(int argc, wchar_t** argv)
 {
     try {
+        if (argc == 2 && std::wstring_view(argv[1]) == L"--test-concurrent-events") { return concurrentEvents(); }
         if (argc < 2 || argc > 4) { throw std::invalid_argument("Usage: woby_annotation_benchmark OBJ [rounds] [annotation|post-load|points|membership]"); }
         const auto rounds = argc > 2 ? std::stoull(argv[2]) : 3;
         if (!rounds || rounds > 20) { throw std::invalid_argument("Rounds must be between 1 and 20"); }

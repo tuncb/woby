@@ -29,8 +29,9 @@ namespace {
 const auto epoch = Clock::now();
 std::vector<std::string> names{"idle"};
 Json events = Json::array(), workers = Json::array();
-std::mutex workerMutex;
+std::mutex eventMutex, workerMutex;
 std::atomic<unsigned> active = 0;
+thread_local unsigned currentPhase = 0;
 struct Observation { unsigned phase; double time; Counters counts; };
 struct Address { unsigned phase; uint64_t ip; uint64_t count; };
 std::vector<Observation> observations;
@@ -95,10 +96,16 @@ void traceEnd(uint64_t id) {
 #endif
 }
 Phase begin(const char* name) {
-    const auto found = std::find(names.begin(), names.end(), name);
-    unsigned id = static_cast<unsigned>(found - names.begin());
-    if (found == names.end()) { names.emplace_back(name); }
-    Phase result{name, {}, {}, active.exchange(id)};
+    unsigned id = 0;
+    {
+        std::lock_guard lock(eventMutex);
+        const auto found = std::find(names.begin(), names.end(), name);
+        id = static_cast<unsigned>(found - names.begin());
+        if (found == names.end()) { names.emplace_back(name); }
+    }
+    Phase result{name, {}, {}, currentPhase};
+    currentPhase = id;
+    active.store(id);
     result.trace = traceBegin(name);
     result.before = counters();
     result.start = Clock::now();
@@ -108,10 +115,12 @@ void end(const Phase& phase, Json data) {
     const auto finish = Clock::now();
     traceEnd(phase.trace);
     const auto after = counters();
+    currentPhase = phase.previous;
     active.store(phase.previous);
     const auto& before = phase.before;
     const auto elapsed = ms(phase.start, finish);
     const double cpuMs = static_cast<double>(after.user + after.kernel - before.user - before.kernel) / 10000.0;
+    std::lock_guard lock(eventMutex);
     events.push_back({{"name", phase.name}, {"parent", names[phase.previous]},
         {"start_ms", ms(epoch, phase.start)}, {"end_ms", ms(epoch, finish)}, {"wall_ms", elapsed},
         {"cpu_ms", cpuMs}, {"user_ms", static_cast<double>(after.user - before.user) / 10000.0},
@@ -134,7 +143,10 @@ void worker(double elapsedMs, double ioMs, uint64_t beforeCpu) {
     workers.push_back({{"thread_id", GetCurrentThreadId()}, {"wall_ms", elapsedMs}, {"io_submit_wait_ms", ioMs}, {"cpu_ms", cpuMs},
         {"start_ms", finishMs - elapsedMs}, {"end_ms", finishMs}});
 }
-Json result() { return {{"events", events}, {"parser_workers", workers}}; }
+Json result() {
+    std::scoped_lock lock(eventMutex, workerMutex);
+    return {{"events", events}, {"parser_workers", workers}};
+}
 Json clockOrigin() {
     LARGE_INTEGER frequency{}; QueryPerformanceFrequency(&frequency);
     return {{"steady_epoch_nanoseconds", std::chrono::duration_cast<std::chrono::nanoseconds>(epoch.time_since_epoch()).count()},
@@ -233,6 +245,7 @@ void startSampling(bool instructions) {
 }
 Json stopSampling() {
     sampler.request_stop(); sampler.join();
+    std::lock_guard lock(eventMutex);
     Json samples = Json::array(), ips = Json::array();
     for (const auto& sample : observations) {
         samples.push_back({{"phase", names[sample.phase]}, {"time_ms", sample.time},
