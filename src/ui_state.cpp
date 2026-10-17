@@ -1,4 +1,5 @@
 #include "ui_state.h"
+#include "comparison_placement.h"
 #include "simd_bounds.h"
 #include "surface_annotation.h"
 #include "ui_operations.h"
@@ -847,6 +848,7 @@ SceneDocument createSceneDocument(const UiState& state)
         record.name = comparison.name;
         record.settings = comparison.settings;
         record.translation = comparison.translation;
+        for (size_t side = 0; side < 2; ++side) { record.origins[side] = comparisonOriginReference(state, comparison.origins[side]); }
         const auto saveParts = [&](const std::vector<UiComparisonPart>& members) {
             std::vector<SceneComparisonPartRecord> result;
             result.reserve(members.size());
@@ -854,6 +856,7 @@ SceneDocument createSceneDocument(const UiState& state)
                 SceneComparisonPartRecord reference;
                 reference.name = part.name;
                 reference.enabled = part.enabled;
+                reference.placement = part.placement;
                 if (const auto location = partLocations.find(part.objectId); location != partLocations.end()) {
                     reference.fileIndex = location->second.first;
                     reference.groupIndex = location->second.second;

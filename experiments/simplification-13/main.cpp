@@ -93,7 +93,7 @@ Mesh world(const Mesh& mesh,const std::vector<Instance>& instances) {
         file.groupSettings.resize(meshGeometry(mesh).nodes.size());
         snapshot.files.push_back(std::move(file));
         for(size_t j=0;j<meshGeometry(mesh).nodes.size();++j) {
-            if(meshGeometry(mesh).nodes[j].indexCount) { snapshot.parts[0].push_back({i,j,instances[i].model}); }
+            if(meshGeometry(mesh).nodes[j].indexCount) { snapshot.parts[0].push_back({i,j,instances[i].model,instances[i].model}); }
         }
     }
     return comparisonWorldMesh(snapshot,ComparisonSide::a);

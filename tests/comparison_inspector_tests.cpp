@@ -213,8 +213,12 @@ struct InspectorFixture {
             window->StateStorage.SetBool(ImHashStr("root", 0, sourcesId), true);
         }
     }
-    std::string frame(bool log = false) {
+    std::string frame(bool log = false, ImGuiWindow* focus = nullptr, ImGuiID locate = 0) {
         ImGui::NewFrame();
+        if (focus && locate) {
+            ImGui::FocusWindow(focus);
+            ImGui::SetNavID(locate, ImGuiNavLayer_Main, focus->NavRootFocusScopeId, {});
+        }
         ImGui::SetNextWindowSize({420, 1500});
         ImGui::Begin("Properties probe");
         if (log) { ImGui::LogToBuffer(); }
@@ -336,6 +340,89 @@ TEST_CASE("distance inspector applies maximum percentages without numeric range 
     CHECK(comparisonSettings(f.state, f.id).colorMinimum == settings.colorMinimum);
     CHECK(comparisonSettings(f.state, f.id).colorRange == settings.colorRange);
     CHECK(f.frame(true).find("100.00% of surface area within tolerance") != std::string::npos);
+}
+
+TEST_CASE("surface placement controls are visible in all views without changing state on draw")
+{
+    InspectorFixture f;
+    f.id = createComparison(f.state, AnalysisType::surfaceComparison);
+    setComparisonObjects(f.state, {f.state.files[0].objectId}, ComparisonSide::a, true, f.id);
+    setComparisonObjects(f.state, {f.state.files[0].objectId}, ComparisonSide::b, true, f.id);
+    selectSceneObject(f.state, f.id);
+    for (const auto mode : {ComparisonMode::distance, ComparisonMode::original, ComparisonMode::overlay}) {
+        auto settings = comparisonSettings(f.state, f.id);
+        settings.mode = mode;
+        setComparisonSettings(f.state, settings, f.id);
+        const auto document = createSceneDocument(f.state);
+        f.frame(); f.frame();
+        const auto contents = f.frame(true);
+        CHECK(contents.find("Align origins") != std::string::npos);
+        CHECK(contents.find("Lock placement") != std::string::npos);
+        CHECK(contents.find("Result display") != std::string::npos);
+        CHECK(contents.find("Display offset only") == std::string::npos);
+        CHECK(createSceneDocument(f.state) == document);
+        CHECK(comparisonSettings(f.state, f.id).alignOrigins);
+        CHECK(comparisonSettings(f.state, f.id).lockPlacement);
+    }
+}
+
+TEST_CASE("input context menu retains bulk actions and selects one unlocked origin")
+{
+    InspectorFixture f;
+    f.state.files.push_back(createUiFileState(f.root / "second.obj", f.state.files[0].mesh, 1));
+    appendDefaultSceneNodesForFiles(f.state, 1);
+    const auto first = f.state.files[0].objectId;
+    const auto second = f.state.files[1].objectId;
+    f.id = createComparison(f.state, AnalysisType::surfaceComparison);
+    setComparisonObjects(f.state, {first, second}, ComparisonSide::a, true, f.id);
+    setComparisonObjects(f.state, {first}, ComparisonSide::b, true, f.id);
+    bool locked = false, multiple = false;
+    SUBCASE("one unlocked model") {}
+    SUBCASE("locked placement") { locked = true; }
+    SUBCASE("multiple selected models") { multiple = true; }
+    auto settings = comparisonSettings(f.state, f.id);
+    settings.lockPlacement = locked;
+    setComparisonSettings(f.state, settings, f.id);
+    selectSceneObject(f.state, f.id);
+    f.frame(); f.frame();
+    ImGuiWindow* properties = nullptr;
+    for (auto* window : f.context->Windows) {
+        if (std::string_view(window->Name).find("comparison_properties") != std::string_view::npos) { properties = window; }
+    }
+    REQUIRE(properties);
+    const auto groupId = ImHashStr("root", 0, ImHashStr("Group A", 0, properties->ID));
+    properties->StateStorage.SetInt(groupId, 1);
+    f.frame(); f.frame();
+    const auto rowId = ImHashStr("node", 0, ImHashStr(std::to_string(second).c_str(), 0, groupId));
+    f.frame(false, properties, rowId);
+    REQUIRE(f.context->NavIdIsAlive);
+    const auto row = properties->NavRectRel[ImGuiNavLayer_Main].GetCenter();
+    if (multiple) { selectAnalysisInputRows(f.state, f.id, ComparisonSide::a, std::array{first, second}); }
+    auto& io = ImGui::GetIO();
+    io.AddMousePosEvent(properties->Pos.x + row.x, properties->Pos.y + row.y);
+    f.frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Right, true); f.frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Right, false); f.frame(); f.frame();
+    REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+    auto* popup = f.context->OpenPopupStack.back().Window;
+    REQUIRE(popup);
+    const auto contents = f.frame(true);
+    CHECK(contents.find("Enable selected") != std::string::npos);
+    CHECK(contents.find("Disable selected") != std::string::npos);
+    CHECK(contents.find("Use as origin") != std::string::npos);
+    // Locate the menu item through ImGui so the test does not depend on row heights.
+    f.frame(false, popup, popup->GetID("Use as origin"));
+    REQUIRE(f.context->NavIdIsAlive);
+    const auto action = popup->NavRectRel[ImGuiNavLayer_Main].GetCenter();
+    io.AddMousePosEvent(popup->Pos.x + action.x, popup->Pos.y + action.y);
+    f.frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); f.frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); f.frame();
+    const auto* comparison = findComparison(f.state, f.id);
+    CHECK(comparison->origins[0] == (!locked && !multiple ? second : first));
+    CHECK(comparison->inputSelection[0].ids.size() == (multiple ? 2 : 1));
+    CHECK(f.state.selectedSceneObjects == std::vector<SceneObjectId>{f.id});
+    CHECK(comparison->a.size() == 4);
 }
 
 void checkTree(const std::vector<ComparisonTreeNode>& actual, const std::vector<ComparisonTreeNode>& expected) {

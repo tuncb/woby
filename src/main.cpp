@@ -3587,7 +3587,7 @@ int main(int argc, char** argv)
                                 || modalDialogOpen || modelFileDialogIsOpen(modelFileDialogState)
                                 || sceneFileDialogIsOpen(sceneFileDialogState) || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState)
                                 || (historyOperation && (ImGui::IsAnyItemActive() || ImGui::GetIO().WantTextInput));
-                            for (const auto id : {payload.objectId, payload.aId, payload.bId, payload.memberId}) {
+                            for (const auto id : {payload.objectId, payload.aId, payload.bId, payload.memberId, payload.originAId, payload.originBId}) {
                                 if (id != woby::invalidSceneObjectId && !woby::findSceneObject(ui, id)) {
                                     woby::completeAutomationCommand(*automation, command->id,
                                         woby::AutomationCommandError{"Unknown or stale object ID.", -32005});

@@ -33,6 +33,7 @@ ComparisonInputSnapshot snapshot(Mesh mesh)
         ComparisonInputPart part;
         part.groupIndex = i;
         coordinateIdentity(part.parent.data());
+        groupTransformMatrix(file.groupSettings[i], part.model.data());
         result.parts[0].push_back(part);
     }
     result.files.push_back(std::move(file));

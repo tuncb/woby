@@ -320,7 +320,11 @@ void applyView(UiState& state, ViewId id)
             item.settings = normalizedAnnotationSettings(std::move(style));
         }
         if (auto* comparison = findComparison(state, object.objectId)) {
-            comparison->settings = normalizedComparisonSettings(object.settings.comparison);
+            auto comparisonSettings = normalizedComparisonSettings(object.settings.comparison);
+            // Views restore presentation, never replace captured analysis placement.
+            comparisonSettings.alignOrigins = comparison->settings.alignOrigins;
+            comparisonSettings.lockPlacement = comparison->settings.lockPlacement;
+            comparison->settings = comparisonSettings;
             comparison->translation = settings.translation;
         }
     }

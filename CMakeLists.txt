@@ -134,6 +134,7 @@ add_library(woby_core STATIC
     src/uv_quality.cpp
     src/uv_overlap.cpp
     src/comparison_scene.cpp
+    src/comparison_placement.cpp
     src/ui_views.cpp
     src/analysis_presentation.cpp
     src/comparison_runtime.cpp
@@ -605,6 +606,7 @@ if(BUILD_TESTING)
         tests/mesh_degenerates_tests.cpp
         tests/mesh_duplicates_tests.cpp
         tests/mesh_comparison_tests.cpp
+        tests/comparison_placement_tests.cpp
         tests/keyboard_input_tests.cpp
         tests/comparison_name_tests.cpp
         tests/comparison_inspector_tests.cpp

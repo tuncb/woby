@@ -496,6 +496,14 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
 {
     if (key == "name") { record.name = parseTomlString(value);
     } else if (key == "translation") { record.translation = parseTomlFloat3(value);
+    } else if (key == "analysis_align_origins") { record.settings.alignOrigins = parseTomlBool(value);
+    } else if (key == "analysis_lock_placement") { record.settings.lockPlacement = parseTomlBool(value);
+    } else if (key == "origin_a_node") { record.origins[0].nodeIndex = parseTomlInteger(value);
+    } else if (key == "origin_a_file") { record.origins[0].fileIndex = parseTomlInteger(value);
+    } else if (key == "origin_a_group") { record.origins[0].groupIndex = parseTomlInteger(value);
+    } else if (key == "origin_b_node") { record.origins[1].nodeIndex = parseTomlInteger(value);
+    } else if (key == "origin_b_file") { record.origins[1].fileIndex = parseTomlInteger(value);
+    } else if (key == "origin_b_group") { record.origins[1].groupIndex = parseTomlInteger(value);
     } else if (key == "analysis_enabled") {
         record.settings.enabled = parseTomlBool(value);
     } else if (key == "analysis_task") {
@@ -650,6 +658,8 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
 void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& settings)
 {
     const auto comparison = normalizedComparisonSettings(settings);
+    stream << "analysis_align_origins = " << (comparison.alignOrigins ? "true" : "false") << "\n";
+    stream << "analysis_lock_placement = " << (comparison.lockPlacement ? "true" : "false") << "\n";
     const char* mode = "distance";
     switch (comparison.mode) {
     case ComparisonMode::distance: break;
@@ -1102,6 +1112,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 else if (key == "file_index") { part.fileIndex = parseTomlInteger(value); }
                 else if (key == "group_index") { part.groupIndex = parseTomlInteger(value); }
                 else if (key == "enabled") { part.enabled = parseTomlBool(value); }
+
                 else if (key == "side") {
                     const auto side = parseTomlString(value);
                     if (side == "a") { part.side = ComparisonSide::a; }
@@ -1154,6 +1165,15 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 else if (key == "group_index") { part.groupIndex = parseTomlInteger(value); }
                 else if (key == "name") { part.name = parseTomlString(value); }
                 else if (key == "enabled") { part.enabled = parseTomlBool(value); }
+                else if (key == "placement") {
+                    const auto values = parseTomlFloatArray<double>(value);
+                    if (values.size() != 38) { throw std::runtime_error("Analysis placement needs 38 values."); }
+                    auto& placement = part.placement.emplace();
+                    std::copy_n(values.begin(), 16, placement.parent.begin());
+                    std::copy_n(values.begin() + 16, 16, placement.model.begin());
+                    std::copy_n(values.begin() + 32, 3, placement.sourceOrigin.begin());
+                    std::copy_n(values.begin() + 35, 3, placement.sceneOrigin.begin());
+                }
             } else if (section == Section::file) {
                 assignSceneFileValue(document.files.back(), key, value);
             } else if (section == Section::group) {
@@ -1433,6 +1453,13 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             stream << "translation = "; writeTomlFloat3(stream, *record.translation); stream << "\n";
         }
         writeComparisonSettings(stream, record.settings);
+        for (size_t side = 0; side < 2; ++side) {
+            const auto prefix = side == 0 ? "origin_a_" : "origin_b_";
+            const auto& origin = record.origins[side];
+            stream << prefix << "node = " << origin.nodeIndex << "\n";
+            stream << prefix << "file = " << origin.fileIndex << "\n";
+            stream << prefix << "group = " << origin.groupIndex << "\n";
+        }
 
         for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
             for (const auto& part : side == ComparisonSide::a ? record.a : record.b) {
@@ -1441,6 +1468,20 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
                 stream << "group_index = " << part.groupIndex << "\n";
                 stream << "name = \"" << escapeTomlString(part.name) << "\"\n";
                 stream << "enabled = " << (part.enabled ? "true" : "false") << "\n";
+                if (part.placement) {
+                    stream << "placement = [";
+                    bool first = true;
+                    const auto write = [&](const auto& values) {
+                        for (double value : values) {
+                            if (!first) { stream << ", "; }
+                            first = false;
+                            writeTomlFloat(stream, value);
+                        }
+                    };
+                    write(part.placement->parent); write(part.placement->model);
+                    write(part.placement->sourceOrigin); write(part.placement->sceneOrigin);
+                    stream << "]\n";
+                }
             }
         }
     }

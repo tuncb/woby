@@ -190,6 +190,34 @@ Manual run/cancel requests do not change these saved preferences.
 | `analysis results ANALYSIS_ID` | `analysis.results` | Wait for fresh diagnostics and, with two inputs, both directed distance summaries. Works for hidden analyses and in every display mode. |
 | `analysis focus ANALYSIS_ID --side a\|b --detector KEY --index N` | `analysis.focus` | Focus and frame the one-based finding index on the selected side. Returns the selected `index`, full `count`, and camera state. Requires a visible analysis and current detector results. |
 
+Surface placement options are available on `analysis create` and `analysis set`:
+
+| CLI option | RPC field | Behavior |
+| --- | --- | --- |
+| `--alignment scene\|origins` | `alignment` | Use scene placement, or align input origins for analysis only. |
+| `--lock-placement BOOL` | `lockPlacement` | Capture analysis placements when enabled. Source moves and rotations then leave measurements unchanged. |
+| `--origin-a OBJECT_ID` / `--origin-b OBJECT_ID` | `originA` / `originB` | Select the origin from a member model, folder, or part on that side. |
+| `--distance-on-a BOOL` | `distanceOnA` | `true` measures A to B; `false` measures B to A. While unlocked, origin alignment uses the destination as its reference. |
+
+New `surface_comparison` analyses use `alignment: "origins"` and
+`lockPlacement: true`. Old scene files keep their saved scene placement.
+A folder input uses the folder origin. Other inputs use the first added model.
+All models on a side receive one translation, so their arrangement is retained.
+Source geometry changes still update the analysis.
+
+Unlock before changing alignment or origins. Disable the lock and enable it
+again to capture current placements. Setting `true` again keeps the existing
+capture. Direction changes while locked keep the captured placements.
+Scene files and undo history retain the origin choices and captured transforms.
+The GUI provides the same origin action in the input tree's right-click menu,
+**Use as origin**. The result display position remains separate.
+
+```powershell
+woby.exe ctl --instance review analysis create --type surface_comparison --a A_ID --b B_ID
+woby.exe ctl --instance review analysis set ANALYSIS_ID --lock-placement false
+woby.exe ctl --instance review analysis set ANALYSIS_ID --origin-a MODEL_ID --lock-placement true
+```
+
 `analysis focus` accepts every detector key in `analysis.results`, including
 holes and fins. The index is one-based and follows the order of each detector's
 `findings` array. It can select findings beyond the first 100 returned by

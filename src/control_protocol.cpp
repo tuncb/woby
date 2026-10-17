@@ -86,10 +86,10 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::performanceBegin, "performance.begin", "performance begin", {}, {}, {}, false, true},
         {ControlAction::performanceEnd, "performance.end", "performance end", {}, {}, {}, false, true},
         {ControlAction::pane, "pane.set", "pane set", {}, {"visible", "width", "propertiesVisible"}, {}, true, true},
-        {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"type", "name", "a", "b"}, {}, false, true},
+        {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"type", "name", "a", "b", "alignment", "lockPlacement", "originA", "originB", "distanceOnA"}, {}, false, true},
         {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
-            {"uvThresholdEnabled", "uvOverlapEnabled", "uvRangeEnabled", "uvThreshold", "uvNearCollapse", "uvRangeMinimum", "uvRangeMaximum", "uvOverlapScope", "uvSeparated", "uvLinkedSelection", "uvMetric", "uvNormalization", "uvView", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "colorMinimum", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "analysisMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
+            {"uvThresholdEnabled", "uvOverlapEnabled", "uvRangeEnabled", "uvThreshold", "uvNearCollapse", "uvRangeMinimum", "uvRangeMaximum", "uvOverlapScope", "uvSeparated", "uvLinkedSelection", "uvMetric", "uvNormalization", "uvView", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "alignment", "lockPlacement", "originA", "originB", "distanceOnA", "tolerance", "colorRange", "colorMinimum", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "analysisMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
         {ControlAction::comparisonAdd, "analysis.add", "analysis add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "analysis.remove", "analysis remove", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonEnable, "analysis.enable", "analysis enable", "target", {"side", "enabled", "object", "isolate"}, {"side", "enabled"}, false, true},
@@ -135,11 +135,12 @@ bool booleanOption(const std::string& name)
     if (name == "uvThresholdEnabled" || name == "uvOverlapEnabled" || name == "uvRangeEnabled" || name == "uvSeparated" || name == "uvLinkedSelection" || name == "isolate" || name == "uvGrid" || name == "lineDepthTest") { return true; }
     return name == "autoUpdateBoundaries" || name == "autoUpdateNonManifold" || name == "autoUpdateWinding" || name == "autoUpdateSelfIntersections" || name == "selfIntersections" || name == "showSelfIntersections" || name == "nonManifoldVertices" || name == "showNonManifoldVertices" || name == "fins" || name == "showFins" || name == "holes" || name == "showHoles" || name == "degenerateTriangles" || name == "showDegenerateTriangles" || name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles"
         || name == "adaptivePoints" || name == "xray" || name == "locked" || name == "enabled" || name == "visible" || name == "propertiesVisible" || name == "solid" || name == "triangles" || name == "vertices"
-        || name == "tree" || name == "remember" || name == "distanceOnA" || name == "automaticNearPlane"
+        || name == "tree" || name == "remember" || name == "distanceOnA" || name == "lockPlacement" || name == "automaticNearPlane"
         || name == "showEdges" || name == "showBoundaries" || name == "showNonManifold" || name == "showWinding" || name == "qualityOnA" || name == "qualityMinimumEnabled" || name == "qualityMaximumEnabled";
 }
 bool stringOption(const std::string& name)
 {
+    if (name == "alignment" || name == "originA" || name == "originB") { return true; }
     if (name == "sectionUpAxis") { return true; }
     return name == "analysisMode" || name == "uvOverlapScope" || name == "uvColor" || name == "uvMetric" || name == "uvNormalization" || name == "type" || name == "uvView" || name == "path" || name == "collection" || name == "revision" || name == "detector" || name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "topologyMode" || name == "qualityMetric";
 }
@@ -202,6 +203,9 @@ std::string cliOption(const std::string& name)
     if (name == "fovDegrees") { return "--fov-degrees"; }
     if (name == "nearPlane") { return "--near-plane"; }
     if (name == "automaticNearPlane") { return "--automatic-near-plane"; }
+    if (name == "lockPlacement") { return "--lock-placement"; }
+    if (name == "originA") { return "--origin-a"; }
+    if (name == "originB") { return "--origin-b"; }
     if (name == "distanceOnA") { return "--distance-on-a"; }
     if (name == "colorRange") { return "--color-range"; }
     if (name == "colorMinimum") { return "--color-minimum"; }
@@ -349,6 +353,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     BOOL_FIELD(duplicatePoints) BOOL_FIELD(duplicateTriangles) BOOL_FIELD(showDuplicatePoints) BOOL_FIELD(showDuplicateTriangles)
     BOOL_FIELD(locked) BOOL_FIELD(propertiesVisible) BOOL_FIELD(automaticNearPlane)
     BOOL_FIELD(qualityOnA) BOOL_FIELD(qualityMinimumEnabled) BOOL_FIELD(qualityMaximumEnabled)
+    BOOL_FIELD(lockPlacement)
     BOOL_FIELD(distanceOnA) BOOL_FIELD(showEdges) BOOL_FIELD(showBoundaries) BOOL_FIELD(showNonManifold) BOOL_FIELD(showWinding) BOOL_FIELD(enabled)
 #undef BOOL_FIELD
 #define NUMBER_FIELD(field) if (params.contains(#field)) { command.field = number(params[#field]); }
@@ -385,12 +390,16 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         command.cameraTarget = params["target"].get<std::array<float, 3>>();
     }
 #define STRING_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::string>(); }
+    STRING_FIELD(alignment) STRING_FIELD(originA) STRING_FIELD(originB)
     STRING_FIELD(sectionUpAxis)
     STRING_FIELD(analysisMode) STRING_FIELD(detector) STRING_FIELD(qualityMetric) STRING_FIELD(topologyMode) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
     STRING_FIELD(shape) STRING_FIELD(comments) STRING_FIELD(collection) STRING_FIELD(revision)
     STRING_FIELD(uvOverlapScope)
     STRING_FIELD(uvColor) STRING_FIELD(uvMetric) STRING_FIELD(uvNormalization) STRING_FIELD(type) STRING_FIELD(uvView)
 #undef STRING_FIELD
+    if (command.alignment && *command.alignment != "scene" && *command.alignment != "origins") {
+        throw std::invalid_argument("alignment must be scene or origins.");
+    }
     if (command.type && *command.type != "mesh" && *command.type != "surface_comparison" && *command.type != "uv" && *command.type != "uv_quality") { throw std::invalid_argument("type must be mesh, surface_comparison, uv or uv_quality."); }
     if (command.uvColor && *command.uvColor != "grid" && *command.uvColor != "u" && *command.uvColor != "v") { throw std::invalid_argument("uvColor must be grid, u or v."); }
     if (command.uvMetric) { (void)parseUvQualityMetric(*command.uvMetric); }
@@ -527,6 +536,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(right) FIELD(up) FIELD(forward) FIELD(factor)
     FIELD(eye) FIELD(distance) FIELD(fovDegrees) FIELD(nearPlane) FIELD(automaticNearPlane)
     FIELD(offset) FIELD(limit) FIELD(collection) FIELD(revision) FIELD(intersectionPairLimit) FIELD(intersectionCandidateLimit)
+    FIELD(alignment) FIELD(lockPlacement) FIELD(originA) FIELD(originB)
     FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object) FIELD(index)
     FIELD(nonManifoldVertices) FIELD(showNonManifoldVertices) FIELD(holes) FIELD(showHoles) FIELD(holeSizeRatioTolerance) FIELD(fins) FIELD(showFins) FIELD(finMaxAreaRatio)
     FIELD(autoUpdateBoundaries) FIELD(autoUpdateNonManifold) FIELD(autoUpdateWinding)

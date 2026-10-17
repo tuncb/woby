@@ -190,6 +190,7 @@ int main(int argc, char** argv)
             file.groupSettings[i].objectId = i + 1;
             ComparisonInputPart source{0, i, {}};
             coordinateIdentity(source.parent.data());
+            groupTransformMatrix(file.groupSettings[i], source.model.data());
             snapshot.parts[0].push_back(source);
             ScenePickPart part;
             part.mesh = &file.mesh; part.indexOffset = node.indexOffset; part.indexCount = node.indexCount;

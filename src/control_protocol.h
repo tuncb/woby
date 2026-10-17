@@ -54,7 +54,9 @@ struct ControlOperation {
     std::optional<std::array<float, 3>> cameraTarget, eye;
     std::optional<float> distance, fovDegrees, nearPlane;
     std::optional<bool> automaticNearPlane;
-    std::optional<std::string> name, mode, side, a, b, object;
+    std::optional<std::string> name, mode, side, a, b, object, alignment, originA, originB;
+    std::optional<bool> lockPlacement;
+    SceneObjectId originAId = invalidSceneObjectId, originBId = invalidSceneObjectId;
     SceneObjectId aId = invalidSceneObjectId, bId = invalidSceneObjectId, memberId = invalidSceneObjectId;
     std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold, showWinding, enabled;
     std::optional<float> tolerance, colorRange, colorMinimum;

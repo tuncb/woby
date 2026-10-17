@@ -75,7 +75,7 @@ const ComparisonInspectorCache& updateComparisonInspectorCache(ComparisonInspect
 
 struct ComparisonInputPart {
     size_t fileIndex = 0, groupIndex = 0;
-    CoordinateMatrix parent{};
+    CoordinateMatrix parent{}, model{};
 };
 
 // Owns only participating files. Workers never borrow the live scene's vectors.
