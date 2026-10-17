@@ -89,9 +89,12 @@ struct AutomationSceneResult {
 using AutomationCommandResult = std::variant<AutomationScreenshotResult, AutomationObjectsResult, AutomationObjectResult, AutomationSceneResult, AutomationCommandError, AutomationControlResult>;
 
 // Main thread only, after UI/state updates and before rendering. Starts the oldest
-// queued command whose deadline has not expired. Only one
-// command executes at a time, until completion even after an HTTP timeout.
+// queued command whose deadline has not expired. Commands run in order unless
+// the main thread explicitly defers an owned background job.
 [[nodiscard]] std::optional<AutomationCommand> takeAutomationCommand(AutomationRuntime& runtime);
+// Keep the caller waiting for completion, but let the queue accept status,
+// cancellation, and other commands. The owner must reject obsolete job results.
+bool deferAutomationCommand(AutomationRuntime& runtime, AutomationCommandId id);
 // Returns false for an unknown, unstarted, or completed command ID, or a result
 // whose type does not match the command.
 bool completeAutomationCommand(

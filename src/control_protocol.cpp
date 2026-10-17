@@ -18,11 +18,13 @@ using Json = nlohmann::json;
 const std::vector<ControlMethod>& controlMethods()
 {
     static const std::vector<ControlMethod> methods = {
-        {ControlAction::differenceCreate, "analysis.difference-create", "analysis difference-create", "target", {}, {}, false, true},
-        {ControlAction::differenceRebuild, "analysis.difference-rebuild", "analysis difference-rebuild", "target", {}, {}, false, true},
+        {ControlAction::differenceCreate, "analysis.difference-create", "analysis difference-create", "target", {"method", "cellSize"}, {}, false, true},
+        {ControlAction::differenceRebuild, "analysis.difference-rebuild", "analysis difference-rebuild", "target", {"method", "cellSize"}, {}, false, true},
         {ControlAction::differenceGet, "analysis.difference-get", "analysis difference-get", "target", {}, {}},
-        {ControlAction::differenceSet, "analysis.difference-set", "analysis difference-set", "target", {"visible", "showAOnly", "showBOnly", "showWalls", "opacity"}, {}, true, true},
+        {ControlAction::differenceSet, "analysis.difference-set", "analysis difference-set", "target", {"visible", "showAOnly", "showBOnly", "showWalls", "opacity", "method", "cellSize"}, {}, true, true},
         {ControlAction::differenceCancel, "analysis.difference-cancel", "analysis difference-cancel", "target", {}, {}, false, true},
+        {ControlAction::differenceCheckResolution, "analysis.difference-check-resolution", "analysis difference-check-resolution", "target", {}, {}, false, true},
+        {ControlAction::differenceCancelCheck, "analysis.difference-cancel-check", "analysis difference-cancel-check", "target", {}, {}, false, true},
         {ControlAction::differenceDelete, "analysis.difference-delete", "analysis difference-delete", "target", {}, {}, false, true},
         {ControlAction::differenceExport, "analysis.difference-export", "analysis difference-export", "target", {"path"}, {"path"}, false, true},
         {ControlAction::annotationList, "annotation.list", "annotation list", {}, {}, {}},
@@ -140,6 +142,7 @@ bool booleanOption(const std::string& name)
 }
 bool stringOption(const std::string& name)
 {
+    if (name == "method") { return true; }
     if (name == "sectionUpAxis") { return true; }
     return name == "analysisMode" || name == "uvOverlapScope" || name == "uvColor" || name == "uvMetric" || name == "uvNormalization" || name == "type" || name == "uvView" || name == "path" || name == "collection" || name == "revision" || name == "detector" || name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "topologyMode" || name == "qualityMetric";
 }
@@ -156,6 +159,7 @@ bool vectorOption(const std::string& name)
 }
 std::string cliOption(const std::string& name)
 {
+    if (name == "cellSize") { return "--cell-size"; }
     if (name == "showAOnly") { return "--show-a-only"; }
     if (name == "showBOnly") { return "--show-b-only"; }
     if (name == "showWalls") { return "--show-walls"; }
@@ -365,6 +369,12 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     NUMBER_FIELD(needleThresholdRatio) NUMBER_FIELD(capMinAngleDegrees)
     NUMBER_FIELD(tolerance) NUMBER_FIELD(colorRange) NUMBER_FIELD(colorMinimum)
 #undef NUMBER_FIELD
+    if (params.contains("cellSize")) {
+        command.cellSize = params["cellSize"].get<double>();
+        if (!std::isfinite(*command.cellSize) || *command.cellSize <= 0) {
+            throw std::invalid_argument("cellSize must be finite and positive.");
+        }
+    }
 #define VECTOR_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::array<float, 3>>(); }
     VECTOR_FIELD(planeStart) VECTOR_FIELD(planeEnd)
     VECTOR_FIELD(translation) VECTOR_FIELD(rotationDegrees) VECTOR_FIELD(rgb) VECTOR_FIELD(eye)
@@ -385,12 +395,16 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         command.cameraTarget = params["target"].get<std::array<float, 3>>();
     }
 #define STRING_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::string>(); }
+    STRING_FIELD(method)
     STRING_FIELD(sectionUpAxis)
     STRING_FIELD(analysisMode) STRING_FIELD(detector) STRING_FIELD(qualityMetric) STRING_FIELD(topologyMode) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
     STRING_FIELD(shape) STRING_FIELD(comments) STRING_FIELD(collection) STRING_FIELD(revision)
     STRING_FIELD(uvOverlapScope)
     STRING_FIELD(uvColor) STRING_FIELD(uvMetric) STRING_FIELD(uvNormalization) STRING_FIELD(type) STRING_FIELD(uvView)
 #undef STRING_FIELD
+    if (command.method && *command.method != "direct" && *command.method != "approximate") {
+        throw std::invalid_argument("method must be direct or approximate.");
+    }
     if (command.type && *command.type != "mesh" && *command.type != "surface_comparison" && *command.type != "uv" && *command.type != "uv_quality") { throw std::invalid_argument("type must be mesh, surface_comparison, uv or uv_quality."); }
     if (command.uvColor && *command.uvColor != "grid" && *command.uvColor != "u" && *command.uvColor != "v") { throw std::invalid_argument("uvColor must be grid, u or v."); }
     if (command.uvMetric) { (void)parseUvQualityMetric(*command.uvMetric); }
@@ -517,6 +531,7 @@ Json controlOperationParams(const ControlOperation& command)
     if (command.action == ControlAction::importersAdd || command.action == ControlAction::importersScan) { result["remember"] = command.remember; }
 #define FIELD(field) if (command.field) { result[#field] = *command.field; }
     FIELD(showAOnly) FIELD(showBOnly) FIELD(showWalls)
+    FIELD(method) FIELD(cellSize)
     FIELD(planeStart) FIELD(planeEnd) FIELD(sectionUpAxis) FIELD(lift) FIELD(showPlane) FIELD(showConnections) FIELD(showDifferences) FIELD(faceOn) FIELD(sourceIndex) FIELD(sourceVisible) FIELD(referenceIndex) FIELD(comparedIndex)
     FIELD(analysisMode) FIELD(visible) FIELD(propertiesVisible) FIELD(solid) FIELD(xray) FIELD(adaptivePoints) FIELD(triangles) FIELD(vertices) FIELD(translation) FIELD(rotationDegrees) FIELD(rgb) FIELD(barycentric)
     FIELD(lineWidth) FIELD(lineDepthTest) FIELD(uvGrid) FIELD(uvDensityU) FIELD(uvDensityV)
@@ -560,6 +575,8 @@ Json controlCapabilities()
     return {{"analysisResults", {{"defaultListingLimit", 100}, {"pageLimit", {1, 100}}, {"offsetBase", 0}, {"collectionIndexBase", 0}, {"defaultCollection", "/findings"}, {"intersectionPairLimitDefault", 10000}, {"intersectionCandidateLimitDefault", 1000000}, {"intersectionBudgetRange", {0, 2147483647}}, {"zeroBudgetMeansUnlimited", true}, {"exportOverwrites", false}, {"concurrentExports", 1}}}, {"apiVersion", 1}, {"methods", methods}, {"objectKinds", {"folder", "file", "group", "analysis", "annotation"}},
         {"analysisTransformFields", {"translation"}},
         {"differenceMeshes", {{"targets", {"analysis"}}, {"inputTypes", {"closed_solids", "single_boundary_surfaces"}},
+            {"methods", {"direct", "approximate"}}, {"approximateInputType", "oriented_solid_surfaces_with_defects"},
+            {"cellSizeUnits", "model_units"}, {"resolutionCheck", {{"cellSizeFactor", .5}, {"replacesResult", false}, {"cancelable", true}}},
             {"exportFormat", "obj"}, {"exportOverwrites", false}, {"volumeUnits", "model_units_cubed"},
             {"buildOnSceneLoad", true}, {"boundaryEditing", false}}},
         {"annotations", {{"shapes", {"line", "rectangle", "section"}},

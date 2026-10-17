@@ -5,6 +5,7 @@ namespace woby
 {
 void updateDifferenceRuntime(DifferenceRuntime &runtime, const UiState &state, SceneObjectId id, uint64_t signature);
 void destroyDifferenceRuntime(DifferenceRuntime &runtime);
+[[nodiscard]] bool differenceResultCurrent(const DifferenceRuntime &runtime, const UiState &state, SceneObjectId id);
 void uploadDifferenceMesh(DifferenceRuntime &runtime);
 void requestDifferenceExport(DifferenceRuntime &runtime, const std::filesystem::path &path);
 struct ControlOperation;

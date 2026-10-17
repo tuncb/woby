@@ -49,6 +49,7 @@ struct AutomationRuntime {
     std::string commandIdPrefix;
     std::deque<std::shared_ptr<AutomationRequest>> pending;
     std::shared_ptr<AutomationRequest> request;
+    std::map<AutomationCommandId, std::shared_ptr<AutomationRequest>> deferred;
     std::deque<std::shared_ptr<AutomationRequest>> history;
     size_t historyBytes = 0;
     // Never forget used keys within a session, even after their result is evicted.
@@ -76,7 +77,8 @@ Json instanceInfo(AutomationRuntime& runtime)
     return {{"id", instance.id}, {"pid", instance.pid}, {"apiVersion", 1},
         {"url", "http://127.0.0.1:" + std::to_string(instance.port) + "/rpc"},
         {"ready", runtime.ready.load()}, {"headless", runtime.headless}, {"queuedCommands", runtime.pending.size()},
-        {"activeSequence", runtime.request ? Json(std::to_string(runtime.request->command.id)) : Json(nullptr)}};
+        {"activeSequence", runtime.request ? Json(std::to_string(runtime.request->command.id)) : Json(nullptr)},
+        {"backgroundCommands", runtime.deferred.size()}};
 }
 
 struct AutomationCommandMessages {
@@ -258,6 +260,7 @@ std::shared_ptr<AutomationRequest> findRequest(const AutomationRuntime& runtime,
     if (runtime.request && runtime.request->command.id == id) {
         return runtime.request;
     }
+    if (const auto it = runtime.deferred.find(id); it != runtime.deferred.end()) { return it->second; }
     for (const auto& request : runtime.pending) {
         if (request->command.id == id) {
             return request;
@@ -429,7 +432,7 @@ Json submitAutomationCommand(
     if (runtime.stopping || !runtime.ready.load()) {
         return rpcError(id, -32001, "Instance is not ready.");
     }
-    if (runtime.pending.size() + (runtime.request ? 1u : 0u) >= maxAutomationCommands) {
+    if (runtime.pending.size() + runtime.deferred.size() + (runtime.request ? 1u : 0u) >= maxAutomationCommands) {
         return rpcError(id, -32002, "Automation command queue is full.");
     }
     if (runtime.nextCommandId == 0) {
@@ -829,19 +832,31 @@ std::optional<AutomationCommand> takeAutomationCommand(AutomationRuntime& runtim
     return {};
 }
 
+bool deferAutomationCommand(AutomationRuntime& runtime, AutomationCommandId id)
+{
+    std::lock_guard lock(runtime.mutex);
+    if (runtime.stopping || !runtime.request || runtime.request->command.id != id) { return false; }
+    runtime.deferred.emplace(id, runtime.request);
+    runtime.request.reset();
+    runtime.changed.notify_all();
+    return true;
+}
+
 bool completeAutomationCommand(AutomationRuntime& runtime, AutomationCommandId id,
     const AutomationCommandResult& result)
 {
     std::lock_guard lock(runtime.mutex);
-    if (runtime.stopping || !runtime.request || !runtime.request->started || runtime.request->command.id != id) {
+    const auto request = findRequest(runtime, id);
+    if (runtime.stopping || !request || !request->started || request->finished) {
         return false;
     }
     if (!std::holds_alternative<AutomationCommandError>(result)
-        && !std::visit([&](const auto& command) { return resultMatches(command, result); }, runtime.request->command.payload)) {
+        && !std::visit([&](const auto& command) { return resultMatches(command, result); }, request->command.payload)) {
         return false;
     }
-    finishRequest(runtime, runtime.request, completedResponse(runtime, runtime.request->command, result));
-    runtime.request.reset();
+    finishRequest(runtime, request, completedResponse(runtime, request->command, result));
+    if (runtime.request == request) { runtime.request.reset(); }
+    runtime.deferred.erase(id);
     if (const auto* scene = std::get_if<AutomationSceneResult>(&result); scene && scene->quitAccepted) {
         runtime.stopping = true;
         runtime.ready.store(false);
@@ -1235,14 +1250,24 @@ void printCommandLineHelp()
         "Unlock a section before changing its plane. Use set, not the surface move/reshape commands.\n"
         "\nDifference meshes (mesh comparisons):\n"
         "analysis difference-create/rebuild ANALYSIS_ID builds A-only and B-only solids.\n"
-        "Open surfaces use automatic closure only for one simple boundary on each input.\n"
-        "Holes, ambiguous boundaries and invalid closures stop creation with an error.\n"
+        "  --method direct|approximate selects construction; --cell-size VALUE sets model units.\n"
+        "Direct is the default. Open surfaces need one simple boundary on each input.\n"
+        "Approximate estimates solids with holes or non-manifold faces on a shared grid.\n"
+        "  It needs reasonably consistent orientation; thin features can be lost.\n"
+        "  Parametric inputs use their tessellation. Smaller cells cost more time and memory.\n"
         "analysis difference-get reports state, problems and volume in model units cubed.\n"
-        "analysis difference-set controls --visible, --show-a-only, --show-b-only,\n"
+        "analysis difference-set controls --method, --cell-size, --visible, --show-a-only, --show-b-only,\n"
         "  --show-walls (true|false) and --opacity (0.05-1). Display does not change measurements.\n"
+        "  Construction changes require difference-rebuild. Settings can be set before creation.\n"
+        "analysis difference-check-resolution ANALYSIS_ID checks at half the cell size.\n"
+        "  It requires a current approximate result and does not replace it.\n"
+        "  resolutionCheck reports volumes, totalVolumeChange and relativeChangePercent.\n"
+        "  This is a resolution sensitivity check, not an error bound.\n"
+        "analysis difference-cancel-check ANALYSIS_ID stops only the resolution check.\n"
         "analysis difference-cancel stops publication; difference-delete removes the result.\n"
         "analysis difference-export ANALYSIS_ID --path PATH exports all parts to a new OBJ.\n"
-        "Create/rebuild/export complete only after the background job finishes (--wait).\n"
+        "Create/rebuild/check/export complete after the background job finishes (--wait).\n"
+        "Use another CLI call to get status or cancel while a difference command waits.\n"
         "Source edits mark the result out of date. Scene load rebuilds saved differences.\n"
         "\nSaving and capture:\n"
         "scene open/new and quit default to --on-dirty error. --save-path requires\n"
