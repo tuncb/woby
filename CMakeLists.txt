@@ -190,6 +190,7 @@ add_library(woby_core STATIC
     src/scene_inspector_queries.cpp
     src/scene_queries.cpp
     src/scene_inspector.cpp
+    src/scene_name_controls.cpp
     src/scene_inspector.h
     src/ui_icon_controls.cpp
     src/ui_icon_controls.h
@@ -245,6 +246,7 @@ add_library(woby_core STATIC
     src/ui_operations.cpp
     src/ui_view_operations.cpp
     src/ui_property_operations.cpp
+    src/ui_name_operations.cpp
     src/ui_transform_operations.cpp
     src/ui_operations.h
     src/ui_state.cpp
@@ -644,6 +646,7 @@ if(BUILD_TESTING)
         tests/freeform_trim_tests.cpp
         tests/scene_file_edge_tests.cpp
         tests/ui_operations_tests.cpp
+        tests/ui_name_tests.cpp
         tests/ui_transform_operations_tests.cpp
         tests/ui_view_tests.cpp
         tests/uv_grid_tests.cpp

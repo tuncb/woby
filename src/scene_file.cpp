@@ -367,6 +367,8 @@ void assignSceneFileValue(SceneFileRecord& record, const std::string& key, std::
 {
     if (key == "path") {
         record.path = woby::pathFromUtf8(parseTomlString(value));
+    } else if (key == "custom_name") {
+        record.customName = parseTomlString(value);
     } else if (key == "coordinate_origin") {
         const auto origin = parseTomlFloatArray<double>(value);
         if (origin.size() != 3) { throw std::runtime_error("Expected 3 mesh origin coordinates."); }
@@ -395,6 +397,8 @@ void assignSceneGroupValue(SceneGroupRecord& record, const std::string& key, std
 {
     if (key == "name") {
         record.name = parseTomlString(value);
+    } else if (key == "custom_name") {
+        record.customName = parseTomlString(value);
     } else if (key == "primitive") {
         const auto primitive = parseTomlString(value);
         if (primitive != "triangles" && primitive != "lines" && primitive != "points") { throw std::runtime_error("Invalid group primitive."); }
@@ -451,6 +455,8 @@ void assignSceneNodeValue(SceneNodeRecord& record, const std::string& key, std::
         record.kind = parseSceneNodeKind(value);
     } else if (key == "name") {
         record.name = parseTomlString(value);
+    } else if (key == "custom_name") {
+        record.customName = parseTomlString(value);
     } else if (key == "parent") {
         record.parentIndex = parseTomlInteger(value);
     } else if (key == "file_index") {
@@ -957,7 +963,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21 && version != 22 && version != 23 && version != 24) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21 && version != 22 && version != 23 && version != 24 && version != 25) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "coordinate_origin") {
@@ -1281,7 +1287,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 24\n";
+    stream << "version = 25\n";
     if (document.coordinateOrigin) {
         for (double v : *document.coordinateOrigin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite scene origin."); } }
         stream << "coordinate_origin = "; writeTomlFloat3(stream, *document.coordinateOrigin); stream << '\n';
@@ -1307,6 +1313,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         const auto encodedPath = storedModelPath.generic_u8string();
         const std::string pathText(reinterpret_cast<const char*>(encodedPath.data()), encodedPath.size());
         stream << "path = \"" << escapeTomlString(pathText) << "\"\n";
+        if (!file.customName.empty()) { stream << "custom_name = \"" << escapeTomlString(file.customName) << "\"\n"; }
         if (!file.importerId.empty()) {
             stream << "importer_id = \"" << escapeTomlString(file.importerId) << "\"\n";
         }
@@ -1335,6 +1342,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         for (const auto& group : file.groups) {
             stream << "\n[[files.groups]]\n";
             stream << "name = \"" << escapeTomlString(group.name) << "\"\n";
+            if (!group.customName.empty()) { stream << "custom_name = \"" << escapeTomlString(group.customName) << "\"\n"; }
             stream << "primitive = \"" << (group.pointGroup ? "points" : group.lineGroup ? "lines" : "triangles") << "\"\n";
             writeAppearance(stream, group.settings);
         }
@@ -1344,6 +1352,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "\n[[nodes]]\n";
         stream << "kind = \"" << sceneNodeKindName(node.kind) << "\"\n";
         stream << "name = \"" << escapeTomlString(node.name) << "\"\n";
+        if (!node.customName.empty()) { stream << "custom_name = \"" << escapeTomlString(node.customName) << "\"\n"; }
         stream << "parent = " << node.parentIndex << "\n";
         stream << "file_index = " << node.fileIndex << "\n";
         stream << "group_index = " << node.groupIndex << "\n";

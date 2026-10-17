@@ -408,6 +408,7 @@ void appendSceneNodeRecord(
     SceneNodeRecord record;
     record.kind = sceneNodeKind(node.kind);
     record.name = node.name;
+    if (node.kind == UiSceneNodeKind::folder) { record.customName = node.customName; }
     record.parentIndex = parentIndex;
     record.fileIndex = node.fileIndex == invalidSceneNodeIndex ? -1 : static_cast<int>(node.fileIndex);
     record.groupIndex = node.groupIndex == invalidSceneNodeIndex ? -1 : static_cast<int>(node.groupIndex);
@@ -880,6 +881,7 @@ SceneDocument createSceneDocument(const UiState& state)
     for (const auto& file : state.files) {
         SceneFileRecord fileRecord;
         fileRecord.path = file.path;
+        fileRecord.customName = file.customName;
         fileRecord.coordinateOrigin = file.mesh.origin;
         fileRecord.importerId = file.importerId;
         fileRecord.settings = sceneFileSettings(file.fileSettings);
@@ -890,6 +892,7 @@ SceneDocument createSceneDocument(const UiState& state)
         for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
             SceneGroupRecord groupRecord;
             groupRecord.name = meshGeometry(file.mesh).nodes[groupIndex].name;
+            groupRecord.customName = file.groupSettings[groupIndex].customName;
             groupRecord.lineGroup = meshGeometry(file.mesh).nodes[groupIndex].lineIndexCount != 0;
             groupRecord.pointGroup = meshGeometry(file.mesh).nodes[groupIndex].pointIndexCount != 0;
             groupRecord.settings = sceneGroupSettings(file.groupSettings[groupIndex]);
@@ -914,6 +917,8 @@ SceneDocument createSceneDocument(const UiState& state)
 
 void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
 {
+    const auto filename = pathToUtf8(file.path.filename());
+    file.customName = sceneCustomName(record.customName, filename.empty() ? pathToUtf8(file.path) : filename);
     if (record.coordinateOrigin && file.mesh.origin != *record.coordinateOrigin) {
         rebaseMesh(file.mesh, *record.coordinateOrigin);
         publishMeshGeometry(file.mesh);
@@ -945,9 +950,12 @@ void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
         maxRotationDegrees);
     file.vertexSizeScale = clampFinite(record.vertexSizeScale, minVertexSizeScale, maxVertexSizeScale, 1.0f);
 
-    const size_t groupCount = std::min(file.groupSettings.size(), record.groups.size());
+    for (auto& group : file.groupSettings) { group.customName.clear(); }
+    const size_t groupCount = std::min({file.groupSettings.size(), record.groups.size(), meshGeometry(file.mesh).nodes.size()});
     for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
         auto& group = file.groupSettings[groupIndex];
+        group.customName = sceneCustomName(record.groups[groupIndex].customName,
+            meshNodeDisplayName(meshGeometry(file.mesh).nodes[groupIndex]));
         const auto& recordGroup = record.groups[groupIndex].settings;
         group.uvGrid = normalizedUvGrid(recordGroup.uvGrid);
         group.lines = normalizedLineStyle(recordGroup.lines);
@@ -1016,6 +1024,7 @@ void applySceneNodeRecords(UiState& state, const std::vector<SceneNodeRecord>& r
         UiSceneNode node;
         node.kind = uiSceneNodeKind(record.kind);
         node.name = record.name;
+        if (node.kind == UiSceneNodeKind::folder) { node.customName = sceneCustomName(record.customName, node.name); }
         node.settings = uiSceneNodeSettings(record.settings);
         node.fileIndex = record.fileIndex < 0
             ? invalidSceneNodeIndex

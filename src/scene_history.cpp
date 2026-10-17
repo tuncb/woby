@@ -60,6 +60,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     for (const auto& file : state.files) {
         UiFileState metadata;
         metadata.path = file.path;
+        metadata.customName = file.customName;
         metadata.mesh.origin = file.mesh.origin;
         metadata.importerId = file.importerId;
         metadata.groupSettings = file.groupSettings;

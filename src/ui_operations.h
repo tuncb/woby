@@ -91,6 +91,10 @@ void frameComparisonBounds(UiState& state, const Bounds& bounds);
 void selectSceneObject(UiState& state, SceneObjectId id, bool toggle = false, bool contextClick = false);
 void clearSceneSelection(UiState& state);
 
+// Source objects only. Preserve imported identity; notify labels/history once on change.
+bool renameSceneObject(UiState& state, SceneObjectId id, std::string_view name);
+bool restoreSceneObjectName(UiState& state, SceneObjectId id);
+
 enum class UiSelectionTransform { alignOrigins, arrangeNearby };
 struct UiSelectionTransformStatus {
     const char* alignOriginsIssue = nullptr;

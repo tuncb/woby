@@ -29,6 +29,7 @@ inline constexpr float defaultDisplayBoundsMin = -10.0f;
 inline constexpr float defaultDisplayBoundsMax = 10.0f;
 
 struct UiGroupState {
+    std::string customName = {}; // Empty uses the imported display name.
     LineStyle lines;
     UvGridSettings uvGrid;
     bool visible = true;
@@ -73,6 +74,7 @@ struct UiFileState {
     SceneObjectId objectId = invalidSceneObjectId;
     PostLoadPhase postLoadPhase = PostLoadPhase::ready;
     std::string postLoadError; // Transient; excluded from scene files and undo settings.
+    std::string customName = {}; // Empty uses the source filename; never changes the path.
 };
 
 [[nodiscard]] inline bool postLoadReady(const UiFileState& file) { return file.postLoadPhase == PostLoadPhase::ready; }
@@ -103,6 +105,7 @@ struct UiSceneNode {
     std::vector<UiSceneNode> children;
     // Folder identity, or the referenced file/group's canonical identity.
     SceneObjectId objectId = invalidSceneObjectId;
+    std::string customName = {}; // Folders only. name retains the original label.
 };
 
 struct UiComparisonPart {
