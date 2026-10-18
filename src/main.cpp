@@ -3697,6 +3697,15 @@ int main(int argc, char** argv)
                             } else if (payload.action == A::comparisonResults || payload.action == A::comparisonExport) {
                                 const auto* source = woby::findComparison(ui, payload.objectId);
                                 if (!source) { throw std::invalid_argument("analysis.results requires an analysis ID."); }
+                                if (source->settings.type == woby::AnalysisType::differenceMesh) {
+                                    if (payload.action == A::comparisonExport) {
+                                        throw std::invalid_argument("Use analysis difference-export for a Difference mesh analysis.");
+                                    }
+                                    result = {{"target", payload.target}, {"difference", woby::differenceStatus(
+                                        comparison.objects[payload.objectId].difference, ui, payload.objectId)}};
+                                    woby::completeAutomationCommand(*automation, command->id, woby::AutomationControlResult{std::move(result)});
+                                    return;
+                                }
                                 if (!woby::canInspectComparison(ui, payload.objectId)) {
                                     throw std::invalid_argument("Analysis needs at least one populated input and no missing references.");
                                 }

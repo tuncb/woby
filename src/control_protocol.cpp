@@ -406,7 +406,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     if (command.alignment && *command.alignment != "scene" && *command.alignment != "origins") {
         throw std::invalid_argument("alignment must be scene or origins.");
     }
-    if (command.type && *command.type != "mesh" && *command.type != "surface_comparison" && *command.type != "uv" && *command.type != "uv_quality") { throw std::invalid_argument("type must be mesh, surface_comparison, uv or uv_quality."); }
+    if (command.type && *command.type != "mesh" && *command.type != "surface_comparison" && *command.type != "difference_mesh" && *command.type != "uv" && *command.type != "uv_quality") { throw std::invalid_argument("type must be mesh, surface_comparison, difference_mesh, uv or uv_quality."); }
     if (command.uvColor && *command.uvColor != "grid" && *command.uvColor != "u" && *command.uvColor != "v") { throw std::invalid_argument("uvColor must be grid, u or v."); }
     if (command.uvMetric) { (void)parseUvQualityMetric(*command.uvMetric); }
     if (command.uvOverlapScope && *command.uvOverlapScope != "per_patch" && *command.uvOverlapScope != "selected_patches") { throw std::invalid_argument("uvOverlapScope must be per_patch or selected_patches."); }
@@ -520,7 +520,7 @@ std::string controlMethodUsage(const ControlMethod& method)
         result += cliOption(name);
         if (name != "tree" && name != "remember") {
             result += booleanOption(name) ? " true|false" : name == "rgb" ? " R G B" : vectorOption(name) ? (vectorSize(name) == 2 ? " U V" : " X Y Z")
-                : name == "sectionUpAxis" ? " y|z" : name == "type" ? " mesh|surface_comparison|uv|uv_quality" : name == "uvColor" ? " grid|u|v" : name == "uvMetric" ? " angle|area|orientation|anisotropy|min_stretch|overlap" : name == "uvNormalization" ? " per_patch|absolute" : name == "uvView" ? " layout|surface" : name == "shape" ? " line|rectangle|section|text" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
+                : name == "sectionUpAxis" ? " y|z" : name == "type" ? " mesh|surface_comparison|difference_mesh|uv|uv_quality" : name == "uvColor" ? " grid|u|v" : name == "uvMetric" ? " angle|area|orientation|anisotropy|min_stretch|overlap" : name == "uvNormalization" ? " per_patch|absolute" : name == "uvView" ? " layout|surface" : name == "shape" ? " line|rectangle|section|text" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
                 : name == "path" ? " PATH" : name == "collection" ? " ARRAY_PATH" : name == "index" ? " POSITIVE_INTEGER"
                 : name == "a" || name == "b" || name == "object" ? " OBJECT_ID" : stringOption(name) ? " TEXT" : " N";
         }
@@ -588,7 +588,7 @@ Json controlCapabilities()
     }
     return {{"analysisResults", {{"defaultListingLimit", 100}, {"pageLimit", {1, 100}}, {"offsetBase", 0}, {"collectionIndexBase", 0}, {"defaultCollection", "/findings"}, {"intersectionPairLimitDefault", 10000}, {"intersectionCandidateLimitDefault", 1000000}, {"intersectionBudgetRange", {0, 2147483647}}, {"zeroBudgetMeansUnlimited", true}, {"exportOverwrites", false}, {"concurrentExports", 1}}}, {"apiVersion", 1}, {"methods", methods}, {"objectKinds", {"folder", "file", "group", "analysis", "annotation"}},
         {"analysisTransformFields", {"translation"}},
-        {"differenceMeshes", {{"targets", {"analysis"}}, {"inputTypes", {"closed_solids"}},
+        {"differenceMeshes", {{"targets", {"difference_mesh"}}, {"inputTypes", {"closed_solids"}},
             {"kind", "approximate_mesh"}, {"exactIntersectionChecks", false},
             {"exportFormat", "obj"}, {"exportOverwrites", false}, {"volumeUnits", "model_units_cubed"},
             {"buildOnSceneLoad", true}}},

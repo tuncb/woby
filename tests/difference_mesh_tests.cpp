@@ -4,6 +4,8 @@
 #include "difference_runtime.h"
 #include "obj_mesh.h"
 #include "ui_operations.h"
+#include "analysis_presentation.h"
+#include "scene_history.h"
 #include <doctest/doctest.h>
 #include <cmath>
 #include <fstream>
@@ -144,7 +146,7 @@ struct Fixture {
         state.files.push_back(createUiFileState(root / "b.obj", std::move(b), 1));
         appendDefaultSceneNodesForFiles(state, 0);
         recalculateSceneBounds(state);
-        id = createAnalysisFromObjects(state, AnalysisTask::surfaceComparison,
+        id = createAnalysisFromObjects(state, AnalysisTask::differenceMesh,
                                        {state.files[0].objectId, state.files[1].objectId});
         if (scenePlacement) {
             // These tests measure the intentional offset between the two cubes.
@@ -619,4 +621,110 @@ TEST_CASE("duplicated comparisons retain difference settings without copying req
     CHECK(copy->settings.difference == comparisonSettings(f.state, f.id).difference);
     CHECK(copy->differenceRequest.revision == 0);
     CHECK(findComparison(f.state, f.id)->differenceRequest.revision > 0);
+}
+
+TEST_CASE("difference mesh is a separate analysis with its own input membership")
+{
+    Fixture f;
+    f.comparison();
+    const auto settings = comparisonSettings(f.state, f.id);
+    CHECK(settings.type == AnalysisType::differenceMesh);
+    CHECK(comparisonTask(f.state, f.id) == AnalysisTask::differenceMesh);
+    CHECK(std::string(analysisTypeKey(settings.type)) == "difference_mesh");
+    CHECK(settings.difference.created);
+    CHECK(requestedComparisonStages(settings, true, true) == 0);
+    CHECK(comparisonPartCount(f.state, ComparisonSide::a, f.id) == 1);
+    CHECK(comparisonPartCount(f.state, ComparisonSide::b, f.id) == 1);
+    const auto other = createAnalysisFromObjects(f.state, AnalysisTask::surfaceComparison,
+        {f.state.files[0].objectId, f.state.files[1].objectId});
+    REQUIRE(other != f.id);
+    const auto original = *findComparison(f.state, other);
+    CHECK_THROWS_AS(requestDifferenceMesh(f.state, other), std::invalid_argument);
+    auto command = cli({"analysis", "difference-create", "object"});
+    command.objectId = other;
+    CHECK_THROWS_AS((void)controlDifference(f.state, f.runtime, command), std::invalid_argument);
+    CHECK_THROWS_AS(requestComparisonDetector(f.state, f.id, DiagnosticCategory::boundary), std::invalid_argument);
+    setAnalysisTask(f.state, f.id, AnalysisTask::meshChecks);
+    CHECK(comparisonSettings(f.state, f.id).type == AnalysisType::differenceMesh);
+    setAnalysisTask(f.state, other, AnalysisTask::differenceMesh);
+    CHECK(comparisonSettings(f.state, other).type == AnalysisType::surfaceComparison);
+    clearComparisonGroup(f.state, ComparisonSide::b, f.id);
+    CHECK(comparisonPartCount(f.state, ComparisonSide::b, other) == 1);
+    CHECK(comparisonSettings(f.state, other) == original.settings);
+    CHECK(findComparison(f.state, other)->differenceRequest.revision == 0);
+    CHECK_FALSE(comparisonSettings(f.state, other).difference.created);
+}
+
+TEST_CASE("difference runtime builds without comparison preparation detectors or heatmaps")
+{
+    Fixture f;
+    f.comparison();
+    ComparisonRuntimes runtimes;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    do {
+        updateComparisonRuntimes(runtimes, f.state);
+        const auto &r = runtimes.objects.at(f.id);
+        CHECK_FALSE(r.jobs.preparationWorker.valid());
+        CHECK_FALSE(r.jobs.worker.valid());
+        CHECK_FALSE(r.jobs.intersection.worker.valid());
+        CHECK_FALSE(r.sources.prepared);
+        CHECK(r.results.cache.completed == 0);
+        if (r.difference.phase != "running" && r.difference.phase != "queued") { break; }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    } while (std::chrono::steady_clock::now() < deadline);
+    const auto &r = runtimes.objects.at(f.id).difference;
+    CHECK(r.phase == "ready");
+    CHECK(differenceResultCurrent(r, f.state, f.id));
+    destroyComparisonRuntimes(runtimes);
+}
+
+TEST_CASE("difference visibility uses the analysis eye and preserves the result")
+{
+    Fixture f;
+    f.comparison();
+    f.wait();
+    REQUIRE(differenceResultCurrent(f.runtime, f.state, f.id));
+    const auto result = f.runtime.result;
+    auto command = cli({"analysis", "difference-set", "object", "--visible", "false"});
+    command.objectId = f.id;
+    const auto status = controlDifference(f.state, f.runtime, command)["difference"];
+    CHECK_FALSE(comparisonSettings(f.state, f.id).enabled);
+    CHECK(status["settings"]["visible"] == false);
+    CHECK(status["current"] == true);
+    auto settings = comparisonSettings(f.state, f.id);
+    settings.enabled = true;
+    setComparisonSettings(f.state, settings, f.id);
+    f.wait();
+    CHECK(f.runtime.result == result);
+    CHECK(differenceStatus(f.runtime, f.state, f.id)["settings"]["visible"] == true);
+}
+
+TEST_CASE("restoring a cleared difference through a view or undo starts a fresh build")
+{
+    Fixture f;
+    f.comparison();
+    f.wait();
+    REQUIRE(differenceResultCurrent(f.runtime, f.state, f.id));
+    const auto view = createView(f.state);
+    const auto before = createSceneDocument(f.state);
+    SceneHistory history;
+    resetSceneHistory(history, f.state);
+    auto command = cli({"analysis", "difference-delete", "object"});
+    command.objectId = f.id;
+    (void)controlDifference(f.state, f.runtime, command);
+    REQUIRE(f.runtime.phase == "not_created");
+    REQUIRE(findComparison(f.state, f.id)->differenceRequest.cancel);
+    SUBCASE("saved view") { applyView(f.state, view); }
+    SUBCASE("undo") {
+        REQUIRE(recordSceneHistory(history, f.state));
+        auto undo = prepareSceneHistoryStep(history, f.state, before, false);
+        REQUIRE(undo);
+        commitSceneHistoryStep(history, f.state, std::move(*undo), false);
+    }
+    REQUIRE(comparisonSettings(f.state, f.id).difference.created);
+    CHECK_FALSE(findComparison(f.state, f.id)->differenceRequest.cancel);
+    f.wait();
+    CHECK(differenceResultCurrent(f.runtime, f.state, f.id));
+    REQUIRE(f.runtime.result);
+    CHECK(f.runtime.result->volumes == std::array<double, 2>{.5, .5});
 }

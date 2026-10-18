@@ -324,6 +324,11 @@ void applyView(UiState& state, ViewId id)
             // Views restore presentation, never replace captured analysis placement.
             comparisonSettings.alignOrigins = comparison->settings.alignOrigins;
             comparisonSettings.lockPlacement = comparison->settings.lockPlacement;
+            if (comparisonSettings.type == AnalysisType::differenceMesh
+                && comparisonSettings.difference.created != comparison->settings.difference.created) {
+                ++comparison->differenceRequest.revision;
+                comparison->differenceRequest.cancel = !comparisonSettings.difference.created;
+            }
             comparison->settings = comparisonSettings;
             comparison->translation = settings.translation;
         }

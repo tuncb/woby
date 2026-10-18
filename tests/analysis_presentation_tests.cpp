@@ -376,3 +376,87 @@ TEST_CASE("limited intersections and unavailable fin measurements cannot look cl
     surface.topology.unavailableFinAreaSources = 1;
     CHECK(diagnosticSummary(surface, DiagnosticCategory::fins, IntersectionPhase::complete, true).state == AnalysisResultState::partial);
 }
+
+TEST_CASE("difference analysis creation handles empty inputs and rejects ambiguous selection")
+{
+    AnalysisFixture f;
+    const auto empty = createAnalysisFromObjects(f.state, AnalysisTask::differenceMesh, {});
+    REQUIRE(empty != invalidSceneObjectId);
+    CHECK(comparisonSettings(f.state, empty).type == AnalysisType::differenceMesh);
+    CHECK(comparisonTask(f.state, empty) == AnalysisTask::differenceMesh);
+    CHECK_FALSE(comparisonSettings(f.state, empty).difference.created);
+    CHECK_THROWS_AS(requestDifferenceMesh(f.state, empty), std::invalid_argument);
+    const auto single = createAnalysisFromObjects(f.state, AnalysisTask::differenceMesh, {f.state.files[0].objectId});
+    CHECK(comparisonPartCount(f.state, ComparisonSide::a, single) == 1);
+    CHECK(comparisonPartCount(f.state, ComparisonSide::b, single) == 0);
+    CHECK_FALSE(comparisonSettings(f.state, single).difference.created);
+    const auto count = f.state.comparisons.size();
+    CHECK(createAnalysisFromObjects(f.state, AnalysisTask::differenceMesh,
+        {f.state.files[0].objectId, f.state.files[1].objectId, f.state.files[2].objectId}) == invalidSceneObjectId);
+    CHECK(f.state.comparisons.size() == count);
+}
+
+TEST_CASE("difference type input placement and display survive scene and saved view round trips")
+{
+    AnalysisFixture f;
+    const auto id = createAnalysisFromObjects(f.state, AnalysisTask::differenceMesh,
+        {f.state.files[0].objectId, f.state.files[1].objectId});
+    auto settings = comparisonSettings(f.state, id);
+    CHECK(settings.alignOrigins);
+    CHECK(settings.lockPlacement);
+    settings.difference.showA = false;
+    settings.difference.opacity = .3f;
+    settings.enabled = false;
+    setComparisonSettings(f.state, settings, id);
+    createView(f.state);
+    const auto path = f.root / "difference.woby";
+    writeSceneDocument(path, createSceneDocument(f.state));
+    const auto loaded = readSceneDocument(path);
+    REQUIRE(loaded.comparisons.size() == 1);
+    CHECK(loaded.comparisons[0].settings == settings);
+    REQUIRE(loaded.views.size() == 1);
+    bool found = false;
+    for (const auto &object : loaded.views[0].objects) {
+        if (object.settings.comparison.type == AnalysisType::differenceMesh) {
+            found = true;
+            CHECK(object.settings.comparison.difference == settings.difference);
+            CHECK_FALSE(object.settings.comparison.enabled);
+        }
+    }
+    CHECK(found);
+    const auto restored = prepareSceneReplacement(f.state, f.state.files, loaded);
+    REQUIRE(restored.comparisons.size() == 1);
+    const auto &analysis = restored.comparisons[0];
+    CHECK(analysis.settings.type == AnalysisType::differenceMesh);
+    CHECK(analysis.a.size() == 1);
+    CHECK(analysis.b.size() == 1);
+    CHECK(analysis.a[0].placement.has_value());
+    CHECK(analysis.b[0].placement.has_value());
+}
+
+TEST_CASE("difference analysis deletion undo and redo preserve the independent analysis")
+{
+    AnalysisFixture f;
+    const auto sources = std::vector<SceneObjectId>{f.state.files[0].objectId, f.state.files[1].objectId};
+    const auto surface = createAnalysisFromObjects(f.state, AnalysisTask::surfaceComparison, sources);
+    const auto difference = createAnalysisFromObjects(f.state, AnalysisTask::differenceMesh, sources);
+    const auto before = createSceneDocument(f.state);
+    SceneHistory history;
+    resetSceneHistory(history, f.state);
+    removeComparison(f.state, difference);
+    REQUIRE(recordSceneHistory(history, f.state));
+    CHECK(findComparison(f.state, surface));
+    CHECK_FALSE(findComparison(f.state, difference));
+    auto undo = prepareSceneHistoryStep(history, f.state, before, false);
+    REQUIRE(undo);
+    commitSceneHistoryStep(history, f.state, std::move(*undo), false);
+    CHECK(createSceneDocument(f.state).comparisons == before.comparisons);
+    REQUIRE(findComparison(f.state, difference));
+    CHECK(comparisonSettings(f.state, difference).type == AnalysisType::differenceMesh);
+    CHECK(comparisonSettings(f.state, surface).type == AnalysisType::surfaceComparison);
+    auto redo = prepareSceneHistoryStep(history, f.state, before, true);
+    REQUIRE(redo);
+    commitSceneHistoryStep(history, f.state, std::move(*redo), true);
+    CHECK_FALSE(findComparison(f.state, difference));
+    CHECK(findComparison(f.state, surface));
+}

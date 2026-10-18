@@ -11,7 +11,7 @@ namespace woby
 bool differenceResultCurrent(const DifferenceRuntime &r, const UiState &state, SceneObjectId id)
 {
     const auto *item = findComparison(state, id);
-    return item && item->settings.difference.created && r.phase == "ready" && r.result &&
+    return item && item->settings.type == AnalysisType::differenceMesh && item->settings.difference.created && r.phase == "ready" && r.result &&
            r.signature == comparisonGeometrySignature(state, id) &&
            r.workerRequest == item->differenceRequest.revision;
 }
@@ -38,8 +38,9 @@ void updateDifferenceRuntime(DifferenceRuntime &r, const UiState &state, SceneOb
         r.exportError = r.exportWorker.get();
         r.exportState = r.exportError.empty() ? "complete" : "failed";
     }
+    const bool created = item->settings.type == AnalysisType::differenceMesh && item->settings.difference.created;
     const auto request = item->differenceRequest;
-    if (!item->settings.difference.created) {
+    if (!created) {
         r.stop.request_stop();
         r.phase = "not_created";
         r.initialized = false;
@@ -54,14 +55,14 @@ void updateDifferenceRuntime(DifferenceRuntime &r, const UiState &state, SceneOb
     if (changed) {
         r.stop.request_stop();
         r.consumedRequest = request.revision;
-        r.phase = !item->settings.difference.created ? "not_created" : request.cancel ? "canceled" : "queued";
+        r.phase = !created ? "not_created" : request.cancel ? "canceled" : "queued";
         r.error.clear();
     }
-    if (item->settings.difference.created && !r.initialized) {
+    if (created && !r.initialized) {
         r.initialized = true;
         r.phase = request.cancel ? "canceled" : "queued";
     }
-    if (r.worker.valid() && (r.workerSignature != signature || !item->settings.difference.created)) {
+    if (r.worker.valid() && (r.workerSignature != signature || !created)) {
         r.stop.request_stop();
         if (r.phase == "running") {
             r.phase = "outdated";
@@ -69,7 +70,7 @@ void updateDifferenceRuntime(DifferenceRuntime &r, const UiState &state, SceneOb
     }
     if (r.worker.valid() && r.worker.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
         const bool current = !r.stop.stop_requested() && signature == r.workerSignature &&
-                             r.workerRequest == request.revision && item->settings.difference.created;
+                             r.workerRequest == request.revision && created;
         try {
             auto result = r.worker.get();
             if (current) {
@@ -119,8 +120,8 @@ nlohmann::json differenceStatus(const DifferenceRuntime &r, const UiState &state
 {
     using Json = nlohmann::json;
     const auto *item = findComparison(state, id);
-    if (!item) {
-        throw std::invalid_argument("Difference mesh requires an analysis ID.");
+    if (!item || item->settings.type != AnalysisType::differenceMesh) {
+        throw std::invalid_argument("Difference mesh requires a difference_mesh analysis ID.");
     }
     const bool current = differenceResultCurrent(r, state, id);
     const auto &s = item->settings.difference;
@@ -129,7 +130,7 @@ nlohmann::json differenceStatus(const DifferenceRuntime &r, const UiState &state
                    {"current", current},
                    {"settings",
                     {{"created", s.created},
-                     {"visible", s.visible},
+                     {"visible", item->settings.enabled},
                      {"showAOnly", s.showA},
                      {"showBOnly", s.showB},
                      {"opacity", s.opacity}}},
@@ -193,8 +194,8 @@ nlohmann::json controlDifference(UiState &state, DifferenceRuntime &r, const Con
     using A = ControlAction;
     const auto id = command.objectId;
     const auto *item = findComparison(state, id);
-    if (!item || isUvAnalysis(item->settings.type)) {
-        throw std::invalid_argument("Difference mesh requires a mesh comparison ID.");
+    if (!item || item->settings.type != AnalysisType::differenceMesh) {
+        throw std::invalid_argument("Difference mesh requires a difference_mesh analysis ID.");
     }
     auto settings = item->settings;
     auto &d = settings.difference;
@@ -208,7 +209,7 @@ nlohmann::json controlDifference(UiState &state, DifferenceRuntime &r, const Con
         setComparisonSettings(state, settings, id);
     } else if (command.action == A::differenceSet) {
         if (command.visible) {
-            d.visible = *command.visible;
+            settings.enabled = *command.visible;
         }
         if (command.showAOnly) {
             d.showA = *command.showAOnly;

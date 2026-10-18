@@ -20,7 +20,7 @@ void drawDifferenceInspector(UiState &state, ComparisonRuntime &runtime, SceneOb
     ImGui::BeginDisabled(busy);
     ImGui::BeginDisabled(!enabledComparisonPartCount(state, ComparisonSide::a, id) ||
                          !enabledComparisonPartCount(state, ComparisonSide::b, id));
-    const bool rebuild = ImGui::Button(d.created ? "Rebuild difference mesh" : "Create difference mesh");
+    const bool rebuild = ImGui::Button(d.created ? "Rebuild difference mesh" : "Build difference mesh");
     ImGui::EndDisabled();
     ImGui::EndDisabled();
     if (rebuild) {
@@ -29,7 +29,7 @@ void drawDifferenceInspector(UiState &state, ComparisonRuntime &runtime, SceneOb
     }
     if (d.created && !busy) {
         ImGui::SameLine();
-        if (ImGui::Button("Remove")) {
+        if (ImGui::Button("Clear result")) {
             requestDifferenceMesh(state, id, true);
             settings.difference = {};
             setComparisonSettings(state, settings, id);
@@ -76,7 +76,7 @@ void drawDifferenceInspector(UiState &state, ComparisonRuntime &runtime, SceneOb
             frameComparison(state, id);
         }
     }
-    ImGui::TextWrapped("Uses the full geometry. Heatmap colors and acceptance tolerance do not change this mesh.");
+    ImGui::TextWrapped("Compares the full geometry of inputs A and B.");
     if (settings != initial) {
         setComparisonSettings(state, settings, id);
     }

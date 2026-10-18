@@ -341,7 +341,7 @@ TEST_CASE("file analysis menus preserve selection until a task is chosen and use
     };
     frame(); frame();
     REQUIRE(f.context->OpenPopupStack.Size == 1);
-    for (const char* label : {"Mesh checks", "Mesh quality", "Surface comparison", "UV inspection"}) {
+    for (const char* label : {"Mesh checks", "Mesh quality", "Surface comparison", "Difference mesh", "UV inspection"}) {
         CHECK(contents.find(label) != std::string::npos);
     }
     CHECK(f.state.selectedSceneObjects == selection);
@@ -355,7 +355,8 @@ TEST_CASE("file analysis menus preserve selection until a task is chosen and use
     SUBCASE("mesh checks") {}
     SUBCASE("mesh quality") { menuIndex = 1; }
     SUBCASE("comparison ignores unrelated multi-selection") { menuIndex = 2; }
-    SUBCASE("UV inspection") { menuIndex = 3; }
+    SUBCASE("difference mesh") { menuIndex = 3; }
+    SUBCASE("UV inspection") { menuIndex = 4; }
     auto& io = ImGui::GetIO();
     if (menuIndex < 0) {
         io.AddMousePosEvent(480, 360); frame();
@@ -376,7 +377,9 @@ TEST_CASE("file analysis menus preserve selection until a task is chosen and use
     io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
     REQUIRE(f.state.comparisons.size() == before.comparisons.size() + 1);
     const auto& created = f.state.comparisons.back();
-    CHECK(created.settings.task == static_cast<woby::AnalysisTask>(menuIndex + 1));
+    const std::array tasks{woby::AnalysisTask::meshChecks, woby::AnalysisTask::meshQuality,
+        woby::AnalysisTask::surfaceComparison, woby::AnalysisTask::differenceMesh, woby::AnalysisTask::uvInspection};
+    CHECK(created.settings.task == tasks.at(static_cast<size_t>(menuIndex)));
     CHECK(woby::comparisonContains(f.state, f.state.files[1].groupSettings[0].objectId,
         woby::ComparisonSide::a, created.objectId));
     CHECK_FALSE(woby::comparisonContains(f.state, f.state.files[0].groupSettings[0].objectId,
@@ -1889,4 +1892,45 @@ TEST_CASE("fin findings use table columns and continuous one based indices on pa
     CHECK(contents.find("101 faces; area") != std::string::npos);
     CHECK(contents.find("Triangle 1, part") == std::string::npos);
     CHECK(contents.find("Showing first 100 faces.") == std::string::npos);
+}
+
+TEST_CASE("difference analysis inspector shows inputs placement and build controls without comparison tools")
+{
+    ComparisonNameFixture f;
+    const auto id = woby::createComparison(f.state, woby::AnalysisType::differenceMesh);
+    woby::Mesh mesh;
+    auto &g = woby::editMeshGeometry(mesh);
+    g.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    g.indices = {0, 1, 2};
+    g.nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(g.vertices);
+    f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
+        woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, side, true, id);
+    }
+    woby::ComparisonRuntimes runtimes;
+    const auto before = woby::createSceneDocument(f.state);
+    std::string contents;
+    for (int frame = 0; frame < 2; ++frame) {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowSize({650, 1500});
+        ImGui::Begin("Difference inspector");
+        ImGui::LogToBuffer(0);
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        contents = f.context->LogBuffer.c_str();
+        ImGui::LogFinish();
+        ImGui::End();
+        ImGui::EndFrame();
+    }
+    INFO(contents);
+    for (const char *label : {"Difference mesh", "Group A", "Group B", "Placement",
+             "Align input B origin to A", "Lock placement", "Build difference mesh"}) {
+        CHECK(contents.find(label) != std::string::npos);
+    }
+    for (const char *label : {"Diagnostics", "Measurement direction", "Mean distance", "Size limits", "Distance heatmap", "Queued..."}) {
+        CHECK(contents.find(label) == std::string::npos);
+    }
+    CHECK(woby::createSceneDocument(f.state) == before);
+    CHECK_FALSE(woby::comparisonSettings(f.state, id).difference.created);
 }

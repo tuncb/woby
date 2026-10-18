@@ -15,6 +15,26 @@ Direct mesh also rejects the three unit pairs tested here.
 The requested result must include changes to internal geological boundaries.
 Increasing the grid limit alone will not meet that requirement.
 
+## Separate analysis type
+
+Difference mesh is now an independent analysis type (`difference_mesh`) in the
+Create analysis menu. It owns its A/B inputs, placement, build state, and display
+settings. Surface comparison no longer exposes a Difference mesh view. The new
+runtime does not start heatmap, source-preparation, or detector jobs. Analysis
+visibility controls its result directly.
+
+The prepared `test-unit-approximate.woby` now contains nine Difference mesh
+analyses. All nine geometric matches built successfully through the CLI, with
+the same volumes as the earlier calculation. Only Rowan is saved as built and
+visible. The original `test.woby` hash is unchanged.
+
+The final Release build passed without warnings. All 91 default CTest entries
+and the separate CLI integration test passed. Tests include creation menus,
+inspector controls, independent membership, visibility, scene and view
+persistence, undo/redo, restoration after clearing a result, and runtime isolation.
+A final load and Rowan render also passed. Evidence is in
+[`difference-analysis`](benchmarks/gm-difference-20261018/difference-analysis).
+
 ## Single-method verification
 
 The Release build passed without compiler warnings after removal of the other

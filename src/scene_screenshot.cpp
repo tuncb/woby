@@ -284,7 +284,8 @@ void submitSceneScreenshotCapture(
             const auto a = comparisonInputSummary(ui, ComparisonSide::a, item.objectId);
             const auto b = comparisonInputSummary(ui, ComparisonSide::b, item.objectId);
             const auto settings = effectiveComparisonSettings(ui, item.objectId);
-            if (settings.difference.visible) {
+            if (settings.type == AnalysisType::differenceMesh) {
+                if (!settings.difference.created) { line(item.name + ": Difference mesh not built."); continue; }
                 const auto& result = *comparison->objects.at(item.objectId).difference.result;
                 if (options.comparisonName) { line(item.name); }
                 if (options.sources) { line("A: " + a.sourceNames); line("B: " + b.sourceNames); }
@@ -296,7 +297,7 @@ void submitSceneScreenshotCapture(
                     line(std::string("Orange: B only") + (settings.difference.showB ? "" : " (hidden)") + ": " + measurementNumber(result.volumes[1]));
                     line("Total changed: " + measurementNumber(result.volumes[0] + result.volumes[1]));
                     line("Net change: " + measurementNumber(result.volumes[1] - result.volumes[0]));
-                    line("Full geometry; heatmap color limits and acceptance tolerance do not change the volume.");
+                    line("Compares the full geometry of inputs A and B.");
                 }
                 continue;
             }

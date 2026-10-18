@@ -6,7 +6,7 @@
 namespace woby
 {
 struct DifferenceSettings {
-    bool created = false, visible = false, showA = true, showB = true;
+    bool created = false, showA = true, showB = true;
     float opacity = .85f;
     friend bool operator==(const DifferenceSettings &, const DifferenceSettings &) = default;
 };

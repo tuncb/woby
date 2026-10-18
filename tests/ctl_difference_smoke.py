@@ -62,7 +62,7 @@ def main():
                 a = ctl("model", "add", closed)["addedIds"][0]
                 b = ctl("model", "add", closed_b)["addedIds"][0]
                 ctl("transform", "set", b, "--translation", ".000001", "0", "0")
-                analysis = ctl("analysis", "create", "--a", a, "--b", b,
+                analysis = ctl("analysis", "create", "--type", "difference_mesh", "--a", a, "--b", b,
                                "--alignment", "scene", "--lock-placement", "false")["target"]
 
                 def difference(action, *args, **kwargs):
@@ -75,13 +75,21 @@ def main():
                 difference("cancel-check", success=False, parse_error=True)
                 difference("set", "--show-walls", "false", success=False, parse_error=True)
 
+                details = ctl("object", analysis)["object"]
+                assert details["settings"]["type"] == "difference_mesh", details
+                ctl("analysis", "set", analysis, "--mode", "distance", success=False)
+                ctl("analysis", "run", analysis, "--detector", "boundary_edges", success=False)
                 result = difference("create", "--wait")["difference"]
                 assert result["current"] and result["kind"] == "approximate_mesh", result
                 assert abs(result["volumeA"] - 1e-6) < 1e-9 and abs(result["volumeB"] - 1e-6) < 1e-9, result
                 assert len(result["triangles"]) == 2, result
                 for key in ("method", "cellSize", "showWalls", "closureTriangles", "resolutionCheck"):
                     assert key not in result and key not in result["settings"], result
-                difference("set", "--show-a-only", "false", "--opacity", ".4")
+                assert ctl("analysis", "results", analysis)["difference"]["current"]
+                difference("set", "--visible", "false", "--show-a-only", "false", "--opacity", ".4")
+                assert not ctl("object", analysis)["object"]["settings"]["visible"]
+                ctl("visibility", "set", analysis, "--visible", "true")
+                assert difference("get")["difference"]["settings"]["visible"]
                 displayed = difference("get")["difference"]
                 assert displayed["current"] and displayed["volumeA"] == result["volumeA"], displayed
                 exported = root / "difference.obj"
@@ -101,7 +109,8 @@ def main():
                 saved = root / "saved.woby"
                 ctl("scene", "save-as", saved)
                 saved_text = saved.read_text(encoding="utf-8")
-                for key in ("difference_method", "difference_cell_size", "difference_show_walls"):
+                assert 'analysis_type = "difference_mesh"' in saved_text
+                for key in ("difference_method", "difference_cell_size", "difference_show_walls", "difference_visible"):
                     assert key not in saved_text, key
                 ctl("scene", "open", saved)
                 analysis = next(item["id"] for item in ctl("objects")["objects"] if item["kind"] == "analysis")
@@ -118,12 +127,18 @@ def main():
                 assert difference("get")["difference"]["state"] == "not_created"
                 print("Thin change, display, export, stale result, reload, cancellation, and deletion passed.", flush=True)
 
+                # Surface comparison remains a separate analysis and rejects difference commands.
+                surface = ctl("analysis", "create", "--type", "surface_comparison")["target"]
+                ctl("analysis", "difference-create", surface, success=False)
+                ctl("analysis", "difference-get", surface, success=False)
+                ctl("analysis", "delete", surface)
+
                 # Open topology fails with an input-specific error; sources stay unchanged.
                 objects = ctl("objects")["objects"]
                 a = next(item["id"] for item in objects if item["kind"] == "file")
                 bad = ctl("model", "add", defective)["addedIds"][0]
                 before = defective.read_bytes()
-                analysis = ctl("analysis", "create", "--a", a, "--b", bad,
+                analysis = ctl("analysis", "create", "--type", "difference_mesh", "--a", a, "--b", bad,
                                "--alignment", "scene", "--lock-placement", "false")["target"]
                 failure = difference("create", success=False)
                 assert "Input B:" in failure["error"] and "closed solids" in failure["error"], failure

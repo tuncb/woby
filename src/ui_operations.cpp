@@ -345,15 +345,15 @@ SceneObjectId createComparison(UiState& state, AnalysisType type)
     UiComparison comparison;
     size_t number = 1;
     do {
-        comparison.name = std::string(type == AnalysisType::surfaceComparison ? "Surface comparison "
+        comparison.name = std::string(type == AnalysisType::differenceMesh ? "Difference mesh " : type == AnalysisType::surfaceComparison ? "Surface comparison "
             : type == AnalysisType::uvQuality ? "UV quality " : isUvAnalysis(type) ? "UV analysis " : "Analysis ") + std::to_string(number++);
     } while (std::any_of(state.comparisons.begin(), state.comparisons.end(), [&](const UiComparison& other) {
         return other.name == comparison.name;
     }));
     comparison.settings.enabled = true;
     comparison.settings.type = type;
-    comparison.settings.alignOrigins = type == AnalysisType::surfaceComparison;
-    comparison.settings.lockPlacement = type == AnalysisType::surfaceComparison;
+    comparison.settings.alignOrigins = type == AnalysisType::surfaceComparison || type == AnalysisType::differenceMesh;
+    comparison.settings.lockPlacement = type == AnalysisType::surfaceComparison || type == AnalysisType::differenceMesh;
     if (isUvAnalysis(type)) { comparison.settings.showEdges = true; }
     if (type == AnalysisType::uvQuality) { comparison.settings.uvView = UvView::surface; comparison.settings.showEdges = false; }
     comparison.settings = normalizedComparisonSettings(comparison.settings);
@@ -436,6 +436,8 @@ void setAnalysisTask(UiState& state, SceneObjectId id, AnalysisTask task)
 {
     const auto* comparison = findComparison(state, id);
     if (!comparison) { return; }
+    // Separate analysis types require a new object so their inputs and results stay independent.
+    if ((comparison->settings.type == AnalysisType::differenceMesh) != (task == AnalysisTask::differenceMesh)) { return; }
     // Changing mesh/UV domains uses a new analysis so no input is silently discarded.
     if (isUvAnalysis(comparison->settings.type) != (task == AnalysisTask::uvInspection)) { return; }
     const auto settings = settingsForAnalysisTask(comparison->settings, task);
@@ -452,19 +454,21 @@ SceneObjectId createAnalysisFromSelection(UiState& state, AnalysisTask task)
 SceneObjectId createAnalysisFromObjects(UiState& state, AnalysisTask task, const std::vector<SceneObjectId>& objects)
 {
     if (!scenePostLoadReady(state)) { return invalidSceneObjectId; }
-    if (task < AnalysisTask::meshChecks || task > AnalysisTask::uvInspection) { return invalidSceneObjectId; }
+    if (task < AnalysisTask::meshChecks || task > AnalysisTask::differenceMesh) { return invalidSceneObjectId; }
     std::vector<SceneObjectId> sources;
     for (const auto id : objects) {
         if (!comparisonObjectParts(state, {id}).empty()) { sources.push_back(id); }
     }
-    if (task == AnalysisTask::surfaceComparison && sources.size() > 2) { return invalidSceneObjectId; }
+    if (isTwoInputAnalysisTask(task) && sources.size() > 2) { return invalidSceneObjectId; }
     const auto id = createComparison(state, task == AnalysisTask::uvInspection ? AnalysisType::uv
+        : task == AnalysisTask::differenceMesh ? AnalysisType::differenceMesh
         : task == AnalysisTask::surfaceComparison ? AnalysisType::surfaceComparison : AnalysisType::mesh);
-    if (task == AnalysisTask::surfaceComparison) {
+    if (isTwoInputAnalysisTask(task)) {
         if (!sources.empty()) { setComparisonObjects(state, {sources[0]}, ComparisonSide::a, true, id); }
         if (sources.size() == 2) { setComparisonObjects(state, {sources[1]}, ComparisonSide::b, true, id); }
     } else { setComparisonObjects(state, sources, ComparisonSide::a, true, id); }
     setAnalysisTask(state, id, task);
+    if (task == AnalysisTask::differenceMesh && sources.size() == 2) { requestDifferenceMesh(state, id); }
     std::string base = analysisTaskLabel(task);
     if (!sources.empty()) {
         if (const auto source = findSceneObject(state, sources[0])) { base += " - " + source->name; }
@@ -885,12 +889,12 @@ void requestComparisonIntersections(UiState& state, SceneObjectId id, bool cance
 void requestDifferenceMesh(UiState& state, SceneObjectId id, bool cancel)
 {
     auto* item = findComparison(state, id);
-    if (!item || isUvAnalysis(item->settings.type)) { throw std::invalid_argument("Difference mesh requires a mesh comparison."); }
+    if (!item || item->settings.type != AnalysisType::differenceMesh) { throw std::invalid_argument("Difference mesh requires a difference_mesh analysis."); }
     if (!cancel && (!enabledComparisonPartCount(state, ComparisonSide::a, id) || !enabledComparisonPartCount(state, ComparisonSide::b, id))) {
         throw std::invalid_argument("Difference mesh needs populated inputs A and B.");
     }
     if (!cancel) {
-        auto settings = item->settings; settings.difference.created = true; settings.difference.visible = true; settings.enabled = true;
+        auto settings = item->settings; settings.difference.created = true; settings.enabled = true;
         setComparisonSettings(state, settings, id);
     }
     item = findComparison(state, id); ++item->differenceRequest.revision; item->differenceRequest.cancel = cancel;
@@ -898,6 +902,9 @@ void requestDifferenceMesh(UiState& state, SceneObjectId id, bool cancel)
 
 void requestComparisonDetector(UiState& state, SceneObjectId id, DiagnosticCategory category, bool cancel)
 {
+    if (comparisonSettings(state, id).type == AnalysisType::differenceMesh) {
+        throw std::invalid_argument("Difference mesh analyses do not have mesh detectors.");
+    }
     if (category == DiagnosticCategory::selfIntersections) { requestComparisonIntersections(state, id, cancel); return; }
     const auto index = static_cast<size_t>(category);
     if (index >= backgroundDetectorCount) { return; }
@@ -1049,7 +1056,7 @@ void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& obje
     if (isSingleSourceMeshTask(comparison->settings.task)) { side = ComparisonSide::a; }
     auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
     auto& origin = comparison->origins[side == ComparisonSide::a ? 0 : 1];
-    const bool selectOrigin = member && members.empty() && (comparison->settings.type == AnalysisType::surfaceComparison
+    const bool selectOrigin = member && members.empty() && (isTwoInputAnalysisTask(comparisonTask(state, id))
         || comparison->settings.alignOrigins || comparison->settings.lockPlacement);
     if (member) {
         const auto existing = comparisonMemberIds(state, side, comparison->objectId, false);

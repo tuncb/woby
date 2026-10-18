@@ -723,9 +723,12 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
             active += item.second.jobs.worker.valid(); active += item.second.jobs.intersection.worker.valid();
         }
         updateComparisonInspectorCache(runtime.inspector.queries, state, comparison.objectId);
-        updateComparisonRuntime(runtime, state, comparison.objectId, active < 2 && scenePostLoadReady(state));
         updateDifferenceRuntime(runtime.difference, state, comparison.objectId, runtime.inspector.queries.signature);
-        if (graphics::isValid(runtimes.program)) { uploadDifferenceMesh(runtime.difference); }
+        if (comparison.settings.type == AnalysisType::differenceMesh) {
+            if (graphics::isValid(runtimes.program)) { uploadDifferenceMesh(runtime.difference); }
+            continue;
+        }
+        updateComparisonRuntime(runtime, state, comparison.objectId, active < 2 && scenePostLoadReady(state));
         if (comparison.settings.colorRangeMode != ComparisonColorRange::custom
             && comparisonStagesReady(runtime, comparison.settings, runtime.inspector.queries.signature, comparisonDistance)) {
             const auto& surface = comparison.settings.distanceOnOriginal ? runtime.results.value.original : runtime.results.value.repaired;
@@ -772,7 +775,7 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
         const auto it = runtimes.objects.find(comparison.objectId);
         if (it == runtimes.objects.end()) { ready = false; continue; }
         const auto& runtime = it->second;
-        if (comparison.settings.difference.visible) {
+        if (comparison.settings.type == AnalysisType::differenceMesh) {
             if (!comparison.settings.difference.created) { continue; }
             if (runtime.difference.phase == "failed" || runtime.difference.phase == "outdated" || runtime.difference.phase == "canceled") {
                 throw std::runtime_error("Difference mesh is " + runtime.difference.phase + ": " + runtime.difference.error);

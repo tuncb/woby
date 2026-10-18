@@ -52,6 +52,8 @@ size_t inspectorEnabledPartCount(const ComparisonRuntime& runtime, const UiState
 
 ComparisonActivity comparisonActivity(const UiState& state, const ComparisonRuntime& runtime, SceneObjectId id)
 {
+    // Difference analyses display their own worker state and build controls.
+    if (comparisonSettings(state, id).type == AnalysisType::differenceMesh) { return ComparisonActivity::idle; }
     const auto& queries = runtime.inspector.queries;
     const auto signature = queries.signature;
     const bool both = queries.inputs[0].summary.enabledPartCount && queries.inputs[1].summary.enabledPartCount;
@@ -252,7 +254,7 @@ void membershipTree(UiState& state, ComparisonRuntime& runtime, ComparisonSide s
             return std::binary_search(partIds.begin(), partIds.end(), group.objectId);
         });
     });
-    const bool originChoice = models > 1 && comparisonTask(state, id) == AnalysisTask::surfaceComparison;
+    const bool originChoice = models > 1 && isTwoInputAnalysisTask(comparisonTask(state, id));
     static std::array<UiSelectionRows, 2> selectionRows;
     auto& rows = selectionRows[sideIndex];
     if (rows.scope != id) { rows = {}; }
@@ -1391,18 +1393,29 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         drawUvInspector(state, runtime, id);
         return;
     }
-    if (task == AnalysisTask::surfaceComparison) { membershipTree(state, runtime, ComparisonSide::b, id); }
+    if (isTwoInputAnalysisTask(task)) { membershipTree(state, runtime, ComparisonSide::b, id); }
     const bool hasA = inspectorEnabledPartCount(runtime, state, ComparisonSide::a, id) != 0;
     const bool hasB = inspectorEnabledPartCount(runtime, state, ComparisonSide::b, id) != 0;
     const bool both = hasA && hasB;
     const bool resultReady = inspectorStagesReady(runtime, state, id, comparisonDistance);
     ImGui::Separator();
-    if (task == AnalysisTask::surfaceComparison && both) {
+    if (isTwoInputAnalysisTask(task) && both) {
         if (ImGui::Button("Swap inputs A / B")) { swapComparisonGroups(state, id); return; }
         setLastItemTooltip("Exchange inputs A and B while keeping the measurement direction.");
     }
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
+    if (task == AnalysisTask::differenceMesh) {
+        ImGui::SeparatorText("Placement");
+        ImGui::BeginDisabled(settings.lockPlacement);
+        ImGui::Checkbox("Align input B origin to A", &settings.alignOrigins);
+        ImGui::EndDisabled();
+        ImGui::Checkbox("Lock placement", &settings.lockPlacement);
+        if (settings != initial) { setComparisonSettings(state, settings, id); return; }
+        if (!both) { ImGui::TextWrapped("Add closed solids to inputs A and B to build a difference mesh."); }
+        drawDifferenceInspector(state, runtime, id);
+        return;
+    }
     if (task == AnalysisTask::surfaceComparison) {
         ImGui::SeparatorText("Measurement");
         if (ImGui::BeginTable("distance_measurement", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings)) {
@@ -1426,25 +1439,15 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     {
         if (task == AnalysisTask::surfaceComparison) {
             ImGui::SeparatorText("View");
-            const char* modes[] = {"Distance heatmap", "Input A", "Input B", "Overlay", "Difference mesh"};
-            int mode = settings.difference.visible ? 4 : settings.mode == ComparisonMode::surfaceQuality ? 0 : static_cast<int>(settings.mode);
+            const char* modes[] = {"Distance heatmap", "Input A", "Input B", "Overlay"};
+            int mode = settings.mode == ComparisonMode::surfaceQuality ? 0 : static_cast<int>(settings.mode);
             ImGui::SetNextItemWidth(-1);
-            if (ImGui::Combo("##comparison_mode", &mode, modes, 5)) {
+            if (ImGui::Combo("##comparison_mode", &mode, modes, 4)) {
                 settings.task = AnalysisTask::surfaceComparison;
-                settings.difference.visible = mode == 4;
-                if (mode != 4) { settings.mode = static_cast<ComparisonMode>(mode); }
+                settings.mode = static_cast<ComparisonMode>(mode);
                 resetComparisonDiagnosticFocus(state, id);
             }
             if (!both) { ImGui::TextWrapped("Add a second input for surface comparison. Available input geometry remains visible."); }
-            if (both && !settings.difference.visible && ImGui::Button("Create difference mesh...")) {
-                settings.difference.visible = true;
-                setComparisonSettings(state, settings, id);
-                return;
-            }
-            if (settings.difference.visible) {
-                if (settings != initial) { setComparisonSettings(state, settings, id); }
-                drawDifferenceInspector(state, runtime, id); return;
-            }
         }
         if (both && settings.mode == ComparisonMode::distance)
         {
@@ -1657,7 +1660,8 @@ void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const U
     for (const auto& comparison : state.comparisons) {
         if (!comparison.settings.enabled) { continue; }
         const auto it = runtimes.objects.find(comparison.objectId);
-        if (it != runtimes.objects.end() && comparison.settings.difference.visible) {
+        if (comparison.settings.type == AnalysisType::differenceMesh) {
+            if (it == runtimes.objects.end() || !differenceResultCurrent(it->second.difference, state, comparison.objectId)) { continue; }
             const auto first = parts.size();
             appendDifferencePickParts(parts, comparison, it->second.difference);
             for (size_t i = first; i < parts.size(); ++i) { parts[i].selected = sceneObjectSelected(state, comparison.objectId); }
@@ -1680,7 +1684,8 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
     for (const auto& comparison : state.comparisons) {
         if (!comparison.settings.enabled) { continue; }
         const auto it = runtimes.objects.find(comparison.objectId);
-        if (it != runtimes.objects.end() && comparison.settings.difference.visible) {
+        if (comparison.settings.type == AnalysisType::differenceMesh) {
+            if (it == runtimes.objects.end() || !differenceResultCurrent(it->second.difference, state, comparison.objectId)) { continue; }
             submitDifferenceMesh(view, comparison, it->second.difference, runtimes.program, markerProgram); continue;
         }
         if (it != runtimes.objects.end() && comparisonStagesReady(it->second, state, comparison.objectId, comparisonSource, true)) {
@@ -1825,9 +1830,9 @@ void drawAnalysisCreationMenu(UiState& state)
 void drawAnalysisCreationMenu(UiState& state, const std::vector<SceneObjectId>& sources)
 {
     for (const auto task : {AnalysisTask::meshChecks, AnalysisTask::meshQuality,
-            AnalysisTask::surfaceComparison, AnalysisTask::uvInspection}) {
-        const bool allowed = scenePostLoadReady(state) && (task != AnalysisTask::surfaceComparison || sources.size() <= 2);
-        const char* label = task == AnalysisTask::surfaceComparison ? "Surface comparison" : analysisTaskLabel(task);
+            AnalysisTask::surfaceComparison, AnalysisTask::differenceMesh, AnalysisTask::uvInspection}) {
+        const bool allowed = scenePostLoadReady(state) && (!isTwoInputAnalysisTask(task) || sources.size() <= 2);
+        const char* label = analysisTaskLabel(task);
         if (ImGui::MenuItem(label, nullptr, false, allowed)) { createAnalysisFromObjects(state, task, sources); }
         if (!allowed) { setLastItemTooltip(scenePostLoadReady(state) ? "Select up to two sources, in A then B order." : "Available after model preparation."); }
     }
@@ -1850,8 +1855,14 @@ static void drawComparisonObjectHint(const UiState& state, const UiComparison& c
     const char* status = "Updating...";
     if (currentInputs) {
         if (!hasA && !hasB) { status = "Needs inputs"; }
-        else if (task == AnalysisTask::surfaceComparison && !(hasA && hasB)) { status = "Needs second input"; }
+        else if (isTwoInputAnalysisTask(task) && !(hasA && hasB)) { status = "Needs second input"; }
         else if (!canInspectComparison(state, id)) { status = "Missing source"; }
+        else if (task == AnalysisTask::differenceMesh) {
+            const auto& phase = runtime->difference.phase;
+            status = phase == "not_created" ? "Not built" : phase == "queued" ? "Queued"
+                : phase == "running" ? "Running" : phase == "failed" ? "Failed"
+                : phase == "canceled" ? "Canceled" : differenceResultCurrent(runtime->difference, state, id) ? "Ready" : "Outdated";
+        }
         else if (!runtime->jobs.error.empty()) { status = "Failed"; }
         else if (runtime->jobs.preparationWorker.valid() || runtime->jobs.worker.valid() || runtime->jobs.intersection.worker.valid()) { status = "Running"; }
         else if (!runtime->gpu.ready) { status = settings.enabled ? "Queued" : "Not run"; }
