@@ -74,10 +74,10 @@ std::array<float, 3> sectionNormal(const CrossSectionSettings& s)
     const auto d = sectionDirection(s);
     return s.upAxis == SceneUpAxis::z ? std::array<float, 3>{-d[1], d[0], 0} : std::array<float, 3>{d[2], 0, -d[0]};
 }
-std::array<float, 2> sectionCoordinates(const CrossSectionSettings& s, const std::array<float, 3>& p)
+std::array<double, 2> sectionCoordinates(const CrossSectionSettings& s, const Coordinate& p)
 {
     const auto d = sectionDirection(s);
-    float x = 0;
+    double x = 0;
     for (size_t k = 0; k < 3; ++k) {
         x += (p[k] - s.a[k]) * d[k];
     }
@@ -156,7 +156,7 @@ CrossSectionResult cutCrossSection(const CrossSectionSettings& input, std::span<
     const auto s = normalizedCrossSectionSettings(input, sources.size());
     const auto n = sectionNormal(s);
     CrossSectionResult result;
-    using Key = std::array<float, 6>;
+    using Key = std::array<double, 6>;
     for (auto id : sources) {
         CrossSectionContour contour;
         contour.source = id;
@@ -168,9 +168,12 @@ CrossSectionResult cutCrossSection(const CrossSectionSettings& input, std::span<
             continue;
         }
         const auto& mesh = meshGeometry(*part->mesh);
+        CoordinateMatrix model;
+        if (part->coordinateModel) { model = *part->coordinateModel; }
+        else { std::copy(part->model.begin(), part->model.end(), model.begin()); }
         std::set<Key> edges;
         std::map<Key, size_t> coplanar;
-        const auto key = [](std::array<float, 3> a, std::array<float, 3> b) {
+        const auto key = [](Coordinate a, Coordinate b) {
             if (b < a) {
                 std::swap(a, b);
             }
@@ -181,7 +184,7 @@ CrossSectionResult cutCrossSection(const CrossSectionSettings& input, std::span<
             if ((i & 1023u) == 0 && stop.stop_requested()) {
                 return {};
             }
-            std::array<std::array<float, 3>, 3> p{};
+            std::array<Coordinate, 3> p{};
             std::array<double, 3> d{};
             bool valid = true;
             for (size_t j = 0; j < 3; ++j) {
@@ -190,8 +193,7 @@ CrossSectionResult cutCrossSection(const CrossSectionSettings& input, std::span<
                     valid = false;
                     break;
                 }
-                const auto& v = mesh.vertices[index].position;
-                const auto w = annotationTransform(part->model, {v[0], v[1], v[2], 1});
+                const auto w = transformCoordinate(model.data(), meshPosition(*part->mesh,index));
                 for (size_t k = 0; k < 3; ++k) {
                     p[j][k] = w[k];
                     valid = valid && std::isfinite(w[k]);
@@ -221,7 +223,7 @@ CrossSectionResult cutCrossSection(const CrossSectionSettings& input, std::span<
                 }
                 continue;
             }
-            std::vector<std::array<float, 3>> hits;
+            std::vector<Coordinate> hits;
             for (size_t j = 0; j < 3; ++j) {
                 const size_t k = (j + 1) % 3;
                 if (d[j] == 0) {
@@ -229,9 +231,9 @@ CrossSectionResult cutCrossSection(const CrossSectionSettings& input, std::span<
                 }
                 if ((d[j] < 0 && d[k] > 0) || (d[j] > 0 && d[k] < 0)) {
                     const double t = d[j] / (d[j] - d[k]);
-                    std::array<float, 3> v{};
+                    Coordinate v{};
                     for (size_t c = 0; c < 3; ++c) {
-                        v[c] = static_cast<float>(p[j][c] + t * (double(p[k][c]) - p[j][c]));
+                        v[c] = p[j][c] + t * (p[k][c] - p[j][c]);
                     }
                     hits.push_back(v);
                 }
@@ -248,8 +250,8 @@ CrossSectionResult cutCrossSection(const CrossSectionSettings& input, std::span<
         for (const auto& e : edges) {
             contour.lines.push_back({{e[0], e[1], e[2]}, {e[3], e[4], e[5]}});
         }
-        contour.minimum.fill(std::numeric_limits<float>::max());
-        contour.maximum.fill(-std::numeric_limits<float>::max());
+        contour.minimum.fill(std::numeric_limits<double>::max());
+        contour.maximum.fill(-std::numeric_limits<double>::max());
         for (const auto& line : contour.lines) {
             for (const auto p : {line.a, line.b}) {
                 const auto xy = sectionCoordinates(s, p);
@@ -273,7 +275,7 @@ CrossSectionResult cutCrossSection(const CrossSectionSettings& input, std::span<
                             return {};
                         }
                         double nearest = std::numeric_limits<double>::infinity();
-                        std::array<float, 3> hit{};
+                        Coordinate hit{};
                         for (const auto& line : *pair.second) {
                             double dot = 0, length = 0;
                             for (size_t k = 0; k < 3; ++k) {
@@ -283,9 +285,9 @@ CrossSectionResult cutCrossSection(const CrossSectionSettings& input, std::span<
                             }
                             const double t = length > 0 ? std::clamp(dot / length, 0.0, 1.0) : 0;
                             double distance = 0;
-                            std::array<float, 3> q{};
+                            Coordinate q{};
                             for (size_t k = 0; k < 3; ++k) {
-                                q[k] = static_cast<float>(line.a[k] + t * (double(line.b[k]) - line.a[k]));
+                                q[k] = line.a[k] + t * (line.b[k] - line.a[k]);
                                 distance += std::pow(double(p[k]) - q[k], 2);
                             }
                             if (distance < nearest) {
@@ -295,7 +297,7 @@ CrossSectionResult cutCrossSection(const CrossSectionSettings& input, std::span<
                         }
                         if (!result.largestGap || nearest > result.gap * result.gap) {
                             result.gap = std::sqrt(nearest);
-                            result.largestGap = DiagnosticEdge{p, hit};
+                            result.largestGap = CrossSectionEdge{p, hit};
                         }
                     }
                 }

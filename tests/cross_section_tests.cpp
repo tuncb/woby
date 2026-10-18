@@ -249,9 +249,9 @@ TEST_CASE("cross section cuts every source in one plane and measures a symmetric
 TEST_CASE("cross section respects model transforms and distinguishes missing sources")
 {
     Fixture f;
+    f.state.files[1].fileSettings.translation[2] = 2;
     auto parts = scenePickParts(f.state);
     const auto ids = f.sources();
-    parts[1].model[14] += 2;
     auto result = cutCrossSection(f.settings(), ids, parts);
     CHECK(result.gap == doctest::Approx(2.25));
     parts.pop_back();
@@ -259,6 +259,70 @@ TEST_CASE("cross section respects model transforms and distinguishes missing sou
     REQUIRE(result.contours.size() == 2);
     CHECK(result.contours[1].missing);
     CHECK_FALSE(result.largestGap);
+}
+TEST_CASE("cross sections retain small contours and gaps after nested transforms and large translations")
+{
+    Fixture f;
+    for (auto& file : f.state.files) {
+        auto& group = file.groupSettings[0];
+        group.center = {.2f,.4f,0}; group.rotationDegrees = {0,0,37}; group.scale = 2;
+        file.fileSettings.center = {.3f,-.2f,0}; file.fileSettings.rotationDegrees = {0,0,-19}; file.fileSettings.scale = .5f;
+    }
+    f.state.sceneNodes.clear();
+    appendFolderTreeSceneNode(f.state,f.root,0,f.state.files.size());
+    auto& folder = f.state.sceneNodes.front().settings;
+    folder.center = {.1f,.2f,0}; folder.rotationDegrees = {0,0,24}; folder.scale = 3;
+    const auto baseline = cutCrossSection(f.settings(),f.sources(),scenePickParts(f.state));
+    REQUIRE(baseline.largestGap);
+    CHECK(baseline.gap == doctest::Approx(.75));
+    folder.translation = {1e8f,0,1e8f};
+    auto settings = f.settings();
+    settings.a = {99999984,0,0}; settings.b = {100000016,0,0};
+    const auto moved = cutCrossSection(settings,f.sources(),scenePickParts(f.state));
+    REQUIRE(moved.largestGap);
+    CHECK(moved.gap == doctest::Approx(baseline.gap));
+    const auto id = createCrossSection(f.state,settings,f.sources());
+    SceneQueryRuntime runtime;
+    const auto published = waitResult(runtime,f.state,id);
+    REQUIRE(published);
+    CHECK(published->gap == doctest::Approx(moved.gap));
+    REQUIRE(published->contours.size() == moved.contours.size());
+    CHECK(published->contours[0].minimum == moved.contours[0].minimum);
+    CHECK(published->contours[0].maximum == moved.contours[0].maximum);
+    REQUIRE(moved.contours.size() == baseline.contours.size());
+    for (size_t i = 0; i < moved.contours.size(); ++i) {
+        const auto& before = baseline.contours[i]; const auto& after = moved.contours[i];
+        REQUIRE_FALSE(before.lines.empty());
+        REQUIRE(after.lines.size() == before.lines.size());
+        CHECK(after.maximum[0]-after.minimum[0] == doctest::Approx(before.maximum[0]-before.minimum[0]));
+        CHECK(after.minimum[1]-1e8 == doctest::Approx(before.minimum[1]).epsilon(1e-6));
+        for (size_t j = 0; j < before.lines.size(); ++j) {
+            for (size_t axis = 0; axis < 3; ++axis) {
+                const double shift = axis == 1 ? 0 : 1e8;
+                CHECK(after.lines[j].a[axis]-shift == doctest::Approx(before.lines[j].a[axis]).epsilon(1e-6));
+                CHECK(after.lines[j].b[axis]-shift == doctest::Approx(before.lines[j].b[axis]).epsilon(1e-6));
+            }
+        }
+    }
+}
+TEST_CASE("cross sections retain precise source vertices when render vertices coincide")
+{
+    auto mesh = sheet(0);
+    auto& geometry = editMeshGeometry(mesh);
+    for (auto& vertex : geometry.vertices) {
+        geometry.precisePositions.push_back({1e8+vertex.position[0],vertex.position[1],vertex.position[2]});
+        vertex.position = renderPosition(geometry.precisePositions.back());
+    }
+    publishMeshGeometry(mesh);
+    ScenePickPart part;
+    part.mesh = &mesh; part.objectId = 1; part.indexCount = 6; part.model = identityMatrix();
+    CrossSectionSettings settings; settings.a = {-2,0,0}; settings.b = {2,0,0};
+    SUBCASE("transverse cut") {}
+    SUBCASE("coplanar boundary") { settings.upAxis = SceneUpAxis::y; }
+    const auto result = cutCrossSection(settings,std::array<SceneObjectId,1>{1},std::span(&part,1));
+    REQUIRE(result.contours.size() == 1);
+    CHECK(result.contours[0].lines.size() == (settings.upAxis == SceneUpAxis::y ? 4u : 2u));
+    CHECK(result.contours[0].maximum[0]-result.contours[0].minimum[0] == doctest::Approx(2));
 }
 TEST_CASE("cross section keeps coplanar boundaries and removes internal triangle diagonals")
 {
