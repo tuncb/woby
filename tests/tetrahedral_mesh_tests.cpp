@@ -2,6 +2,8 @@
 #include "importer_host.h"
 #include "automation_registry.h"
 #include "background_load.h"
+#include "comparison_scene.h"
+#include "scene_pick.h"
 #include "scene_history.h"
 #include "ui_operations.h"
 #include "tetrahedral_mesh.h"
@@ -9,6 +11,7 @@
 #include <algorithm>
 #include <fstream>
 #include <limits>
+#include <map>
 #include <set>
 
 namespace {
@@ -133,6 +136,7 @@ TEST_CASE("Quadratic tetrahedra use curved geometry for the issue 119 boundary")
 TEST_CASE("Quadratic tetrahedra retain internal face removal with negative or zero corner volume")
 {
     ImportTetrahedralData data;
+    data.tetrahedra.group_count = 0;
     SUBCASE("negative corner volume") { data.vertices[3].position[2] = -1; }
     SUBCASE("zero corner volume") { data.vertices[3].position[2] = 0; }
     const auto mesh = copy(data);
@@ -143,6 +147,7 @@ TEST_CASE("Quadratic tetrahedra retain internal face removal with negative or ze
 TEST_CASE("Tetrahedral imports keep every face when orientation is unknown")
 {
     ImportTetrahedralData data;
+    data.tetrahedra.group_count = 0;
     SUBCASE("zero quadratic center Jacobian with positive corner volume") {
         for (size_t i = 4; i < 10; ++i) { data.vertices[i].position[2] = 0; }
     }
@@ -249,14 +254,14 @@ TEST_CASE("Linear tetrahedra retain corner-based outward winding")
     }
 }
 
-TEST_CASE("Tetrahedral meshes remove matching internal faces across groups")
+TEST_CASE("Tetrahedral meshes keep complete boundaries for independently transformed groups")
 {
     ImportTetrahedralData data;
     SUBCASE("quadratic cells") {}
     SUBCASE("linear cells") { for (auto& cell : data.cells) { cell.node_count = 4; } }
     const auto mesh = copy(data,true);
     const auto& g = meshGeometry(mesh);
-    const uint32_t count = data.cells[0].node_count == 10 ? 36u : 9u;
+    const uint32_t count = data.cells[0].node_count == 10 ? 48u : 12u;
     REQUIRE(g.nodes.size() == 2);
     CHECK(g.indices.size() == 2*count);
     CHECK(g.nodes[0].indexOffset == 0); CHECK(g.nodes[0].indexCount == count);
@@ -264,11 +269,47 @@ TEST_CASE("Tetrahedral meshes remove matching internal faces across groups")
     CHECK(g.nodes[0].defaultColor == std::array<float,4>{1,0,0,.5f}); CHECK_FALSE(g.nodes[1].defaultVisible);
     CHECK(g.nodes[0].displayName == "Upper cell"); CHECK(g.hierarchy.size() == 3);
     CHECK(g.tetrahedra[0].groupIndex == 0); CHECK(g.tetrahedra[1].groupIndex == 1);
+
+    for (const auto& node : g.nodes) {
+        std::map<std::array<uint32_t,2>,size_t> edges;
+        for (size_t i = node.indexOffset; i < node.indexOffset+node.indexCount; i += 3) {
+            for (size_t k = 0; k < 3; ++k) {
+                std::array<uint32_t,2> edge{g.indices[i+k],g.indices[i+(k+1)%3]};
+                std::sort(edge.begin(),edge.end()); ++edges[edge];
+            }
+        }
+        for (const auto& entry : edges) { CHECK(entry.second == 2); }
+    }
+    Fixture fixture;
+    woby::UiState state;
+    state.files.push_back(woby::createUiFileState(fixture.file(),mesh,0));
+    woby::appendDefaultSceneNodesForFiles(state,0);
+    auto& group = state.files[0].groupSettings[0];
+    group.translation = {4,5,6}; group.rotationDegrees = {17,34,61}; group.scale = 2; group.center = {.2f,.3f,.4f};
+    const auto parts = woby::scenePickParts(state);
+    REQUIRE(parts.size() == 1); // The neighboring group is hidden.
+    CHECK(parts[0].indexCount == count);
+    const auto analysis = woby::createComparison(state);
+    woby::setComparisonObjects(state,{group.objectId},woby::ComparisonSide::a,true,analysis);
+    const auto world = woby::comparisonWorldMesh(state,woby::ComparisonSide::a,analysis);
+    CHECK(meshGeometry(world).indices.size() == count);
+}
+
+TEST_CASE("Tetrahedral meshes remove matching internal faces within one group")
+{
+    ImportTetrahedralData data;
+    data.tetrahedra.group_count = 0;
+    SUBCASE("quadratic cells") {}
+    SUBCASE("linear cells") { for (auto& cell : data.cells) { cell.node_count = 4; } }
+    const auto mesh = copy(data);
+    REQUIRE(meshGeometry(mesh).nodes.size() == 1);
+    CHECK(meshGeometry(mesh).indices.size() == (data.cells[0].node_count == 10 ? 72u : 18u));
 }
 
 TEST_CASE("Tetrahedral faces match edge associations and shared vertex indexes")
 {
     ImportTetrahedralData data;
+    data.tetrahedra.group_count = 0;
     SUBCASE("different mid-edge IDs") { data.cells[1].nodes[6] = 13; data.cells[1].nodes[9] = 4; }
     SUBCASE("different edge association with the same IDs") { std::swap(data.cells[1].nodes[4],data.cells[1].nodes[5]); }
     SUBCASE("mixed linear and quadratic faces") { data.cells[1].node_count = 4; }
@@ -307,8 +348,8 @@ TEST_CASE("Tetrahedral imports combine ordinary primitives with cell groups")
     const auto mesh = woby::copyImportedMesh(data.result,nullptr,&lines,nullptr,&points,nullptr,{},false,&data.tetrahedra);
     const auto& g = meshGeometry(mesh);
     REQUIRE(g.nodes.size() == 5);
-    CHECK(g.nodes[3].indexOffset == 3); CHECK(g.nodes[4].indexOffset == 39);
-    CHECK(g.indices.size() == 75); CHECK(g.lineIndices.size() == 2); CHECK(g.pointIndices.size() == 1);
+    CHECK(g.nodes[3].indexOffset == 3); CHECK(g.nodes[4].indexOffset == 51);
+    CHECK(g.indices.size() == 99); CHECK(g.lineIndices.size() == 2); CHECK(g.pointIndices.size() == 1);
     CHECK(g.tetrahedra[0].groupIndex == 3);
 }
 
@@ -317,19 +358,19 @@ TEST_CASE("Tetrahedral importer extension owns cells and releases failed and can
     Fixture fixture; woby::loadImporter(WOBY_TEST_TETRAHEDRAL_IMPORTER);
     const auto load = [&](const std::string& name) { return woby::importModel(fixture.file(name),{},{}); };
     const auto mesh = load("mesh").mesh;
-    CHECK(meshGeometry(mesh).indices.size() == 72); CHECK(meshGeometry(mesh).tetrahedra.size() == 2);
-    CHECK(meshGeometry(load("linear").mesh).indices.size() == 18);
+    CHECK(meshGeometry(mesh).indices.size() == 96); CHECK(meshGeometry(mesh).tetrahedra.size() == 2);
+    CHECK(meshGeometry(load("linear").mesh).indices.size() == 24);
     CHECK(meshGeometry(load("absent").mesh).indices.size() == 3);
     CHECK(meshGeometry(load("absent").mesh).tetrahedra.empty());
-    for (const auto* name : {"invalid","failure"}) { CHECK_THROWS_AS((void)load(name),std::runtime_error); CHECK(meshGeometry(load("mesh").mesh).indices.size() == 72); }
+    for (const auto* name : {"invalid","failure"}) { CHECK_THROWS_AS((void)load(name),std::runtime_error); CHECK(meshGeometry(load("mesh").mesh).indices.size() == 96); }
     bool canceled = false;
     woby::ImportCallbacks callbacks; callbacks.progress = [&](float) { canceled = true; }; callbacks.canceled = [&] { return canceled; };
     CHECK(woby::importModel(fixture.file(),{},callbacks).canceled);
-    CHECK(meshGeometry(load("mesh").mesh).indices.size() == 72);
+    CHECK(meshGeometry(load("mesh").mesh).indices.size() == 96);
     callbacks = {}; callbacks.canceled = [&] { return canceled; };
     callbacks.stageProgress = [&](const auto&) { canceled = true; }; canceled = false;
     CHECK(woby::importModel(fixture.file(),{},callbacks).canceled);
-    CHECK(meshGeometry(load("mesh").mesh).indices.size() == 72);
+    CHECK(meshGeometry(load("mesh").mesh).indices.size() == 96);
     woby::unloadImporters(); CHECK(meshGeometry(mesh).tetrahedra[1].nodes[3] == 10);
 }
 
@@ -350,7 +391,7 @@ TEST_CASE("Tetrahedral importer scene reload preserves hierarchy and cell group 
     CHECK(woby::createSceneDocument(restored) == document);
 }
 
-TEST_CASE("Interior tetrahedral groups retain their identity with no exposed faces")
+TEST_CASE("Interior tetrahedral groups retain their boundary when enclosed by another group")
 {
     ImportTetrahedralData data;
     data.vertices[11].position[0] = 0; data.vertices[11].position[1] = -1; data.vertices[11].position[2] = 0;
@@ -361,8 +402,8 @@ TEST_CASE("Interior tetrahedral groups retain their identity with no exposed fac
     data.tetrahedra.cells = cells; data.tetrahedra.cell_count = 5; data.tetrahedra.groups = groups;
     const auto mesh = copy(data);
     REQUIRE(meshGeometry(mesh).nodes.size() == 2);
-    CHECK(meshGeometry(mesh).nodes[0].name == "inside"); CHECK(meshGeometry(mesh).nodes[0].indexCount == 0);
-    CHECK(meshGeometry(mesh).nodes[1].indexCount == 36);
+    CHECK(meshGeometry(mesh).nodes[0].name == "inside"); CHECK(meshGeometry(mesh).nodes[0].indexCount == 12);
+    CHECK(meshGeometry(mesh).nodes[1].indexCount == 48);
     Fixture fixture;
     const auto state = woby::createUiFileState(fixture.root / "interior.wtet",mesh,0);
     CHECK(state.groupSettings.size() == 2);

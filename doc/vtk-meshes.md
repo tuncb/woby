@@ -46,10 +46,15 @@ The node order matches
 | 9 | Edge 2–3 |
 
 Woby keeps the source coordinates and cell connectivity. It removes a shared
-internal face across cell groups only when exactly two incident faces have
+internal face within a cell group only when exactly two incident faces have
 known, opposite orientations. Faces must use the same vertex indexes and the
 same mid-edge node for each edge. Source point identity metadata does not join
 cells. Linear and quadratic faces do not match each other.
+
+Each cell group keeps its complete boundary. Shared faces between groups stay
+in the mesh so that a group stays closed when a neighboring group moves or is
+hidden. For topology checks on one volume, select that group. A check on several
+touching groups includes their coincident interface faces.
 
 For display and surface analysis, Woby divides each six-node boundary face
 into four flat triangles. All mid-edge positions affect these triangles.

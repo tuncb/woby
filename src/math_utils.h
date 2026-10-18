@@ -35,6 +35,7 @@ void translationMatrix(float* result, float x, float y, float z);
 void rotateZMatrix(float* result, float angleRadians);
 void transformMatrix(float* result, float sx, float sy, float sz,
     float ax, float ay, float az, float tx, float ty, float tz);
+// Apply first, then second (column-vector product second * first).
 [[nodiscard]] Mat4 multiplyMatrices(const Mat4& first, const Mat4& second);
 void multiplyMatrices(float* result, const float* first, const float* second);
 void inverseMatrix(float* result, const float* matrix);

@@ -19,7 +19,7 @@ PickMatrix identity()
 }
 PickMatrix compose(const PickMatrix& parent, const PickMatrix& child)
 {
-    // Compose a child transform in its parent's coordinates.
+    // Apply the first transform, then the second transform.
     return woby::multiplyMatrices(parent, child);
 }
 template<typename Scalar>
@@ -84,11 +84,11 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
     part.pointIndexOffset = node.pointIndexOffset;
     part.pointIndexCount = node.pointIndexCount;
     part.lineWidth = node.lineIndexCount ? group.lines.width : 0;
-    part.model = compose(parent, local);
+    part.model = compose(local, parent);
     CoordinateMatrix preciseLocal;
     groupTransformMatrix(group, preciseLocal.data());
     part.coordinateModel.emplace();
-    coordinateMultiply(part.coordinateModel->data(), coordinateParent.data(), preciseLocal.data());
+    coordinateMultiply(part.coordinateModel->data(), preciseLocal.data(), coordinateParent.data());
     if (group.localBoundsValid) { part.bounds = group.localBounds; }
     part.solid = node.indexCount && group.showSolidMesh;
     part.edges = node.lineIndexCount || (node.indexCount && group.showTriangles);
@@ -127,8 +127,8 @@ void appendNode(std::vector<ScenePickPart>& parts, const UiState& state, const U
         fileTransformMatrix(file.fileSettings, local.data());
         fileTransformMatrix(file.fileSettings, preciseLocal.data());
     }
-    const auto model = compose(parent, local);
-    coordinateMultiply(preciseWorld.data(), coordinateParent.data(), preciseLocal.data());
+    const auto model = compose(local, parent);
+    coordinateMultiply(preciseWorld.data(), preciseLocal.data(), coordinateParent.data());
     if (node.kind == UiSceneNodeKind::file && node.children.empty()) {
         for (size_t i = 0; i < state.files[node.fileIndex].groupSettings.size(); ++i) {
             appendGroup(parts, state, node.fileIndex, i, model, preciseWorld, opacity, nodeSelected, includeHidden);

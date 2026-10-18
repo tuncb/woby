@@ -39,7 +39,7 @@ void drawProfile(const CrossSectionSettings& s, const CrossSectionResult& result
     auto* draw = ImGui::GetWindowDrawList();
     const ImVec2 high{low.x + size.x, low.y + size.y};
     draw->AddRectFilled(low, high, ImGui::GetColorU32(ImGuiCol_FrameBg));
-    std::array<float, 2> min{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()},
+    std::array<double, 2> min{std::numeric_limits<double>::max(), std::numeric_limits<double>::max()},
         max{-min[0], -min[1]};
     bool any = false;
     for (size_t i = 0; i < result.contours.size(); ++i) {
@@ -57,12 +57,12 @@ void drawProfile(const CrossSectionSettings& s, const CrossSectionResult& result
         draw->AddText({low.x + 10, low.y + 10}, ImGui::GetColorU32(ImGuiCol_Text), "No visible cut contours");
         return;
     }
-    const float scale = std::min((size.x - uiSize(36)) / std::max(max[0] - min[0], 1e-6f),
-                                 (size.y - uiSize(65)) / std::max(max[1] - min[1], 1e-6f));
+    const double scale = std::min((size.x - uiSize(36)) / std::max(max[0] - min[0], 1e-6),
+                                  (size.y - uiSize(65)) / std::max(max[1] - min[1], 1e-6));
     const auto map = [&](const auto& p) {
         const auto xy = sectionCoordinates(s, p);
-        return ImVec2{low.x + size.x * .5f + (xy[0] - (min[0] + max[0]) * .5f) * scale,
-                      low.y + size.y * .5f - (xy[1] - (min[1] + max[1]) * .5f) * scale};
+        return ImVec2{low.x + size.x * .5f + static_cast<float>((xy[0] - (min[0] + max[0]) * .5) * scale),
+                      low.y + size.y * .5f - static_cast<float>((xy[1] - (min[1] + max[1]) * .5) * scale)};
     };
     draw->PushClipRect(low, high, true);
     for (size_t i = 0; i < result.contours.size(); ++i) {

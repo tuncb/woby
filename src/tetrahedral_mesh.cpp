@@ -39,9 +39,10 @@ double orientationDeterminant(const MeshGeometry& geometry, const TetrahedralCel
     }
     return (u[1]*v[2]-u[2]*v[1])*w[0] + (u[2]*v[0]-u[0]*v[2])*w[1] + (u[0]*v[1]-u[1]*v[0])*w[2];
 }
-std::array<uint32_t, 6> faceKey(const BoundaryFace& face)
+std::array<uint32_t, 7> faceKey(const BoundaryFace& face)
 {
-    std::array<uint32_t, 6> key{face.nodes[0],face.nodes[1],face.nodes[2],UINT32_MAX,UINT32_MAX,UINT32_MAX};
+    // Parts can move or hide independently. Keep a closed boundary for each part.
+    std::array<uint32_t, 7> key{face.nodes[0],face.nodes[1],face.nodes[2],UINT32_MAX,UINT32_MAX,UINT32_MAX,face.group};
     std::sort(key.begin(), key.begin()+3);
     if (face.count == 6) {
         // Associate each mid-edge node with its sorted corner pair.
@@ -58,7 +59,7 @@ std::array<uint32_t, 6> faceKey(const BoundaryFace& face)
 
 void appendTetrahedralBoundary(MeshGeometry& geometry, const ModelLoadProgressCallback& progress)
 {
-    AnalysisIndex<uint32_t, 6> keys;
+    AnalysisIndex<uint32_t, 7> keys;
     std::vector<BoundaryFace> boundary;
     std::vector<FaceIncidence> incidences;
     // Bound allocation and worst-case output before expanding the cells.

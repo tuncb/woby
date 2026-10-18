@@ -43,7 +43,7 @@ std::vector<TransformObject> transformObjects(const UiState& state)
         object.id = id; object.parent = parent; object.local = local;
         object.translation = settings.translation;
         if (parent == noParent) { object.world = local; }
-        else { coordinateMultiply(object.world.data(), objects[parent].world.data(), local.data()); }
+        else { coordinateMultiply(object.world.data(), local.data(), objects[parent].world.data()); }
         object.pivot = transformCoordinate(object.world.data(),
             {settings.center[0], settings.center[1], settings.center[2]});
         objects.push_back(object);
@@ -162,6 +162,20 @@ TransformSelection transformSelection(const UiState& state, SceneObjectId refere
 struct TranslationEdit { SceneObjectId id; std::array<float, 3> value; };
 struct TransformPlan { std::vector<TranslationEdit> edits; const char* issue = nullptr; };
 
+bool localDisplacement(const CoordinateMatrix& parent, const Coordinate& world, Coordinate& local)
+{
+    const Coordinate a{parent[0],parent[1],parent[2]}, b{parent[4],parent[5],parent[6]}, c{parent[8],parent[9],parent[10]};
+    const auto cross = [](const Coordinate& u, const Coordinate& v) {
+        return Coordinate{u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]};
+    };
+    const auto dot = [](const Coordinate& u, const Coordinate& v) { return u[0]*v[0]+u[1]*v[1]+u[2]*v[2]; };
+    const auto bc = cross(b,c);
+    const double determinant = dot(a,bc);
+    if (!std::isfinite(determinant) || determinant == 0) { return false; }
+    local = {dot(world,bc)/determinant, dot(world,cross(c,a))/determinant, dot(world,cross(a,b))/determinant};
+    return finiteCoordinate(local);
+}
+
 TransformPlan transformPlan(const TransformSelection& selection, UiSelectionTransform action)
 {
     TransformPlan plan;
@@ -190,7 +204,6 @@ TransformPlan transformPlan(const TransformSelection& selection, UiSelectionTran
     }
     const double gap = size > 0 ? size * .05 : 1.0;
     double right = reference.hasBounds ? reference.bounds[1][0] : 0;
-    std::vector<Coordinate> shifts(objects.size());
     for (const size_t index : selection.selected) {
         if (index == selection.reference) { continue; }
         const auto& object = objects[index];
@@ -206,12 +219,14 @@ TransformPlan transformPlan(const TransformSelection& selection, UiSelectionTran
             coordinate = std::max({coordinate, std::abs(object.pivot[k]), std::abs(reference.pivot[k]), std::abs(delta[k])});
             if (object.hasBounds) { objectSize = std::max(objectSize, object.bounds[1][k] - object.bounds[0][k]); }
         }
-        for (size_t child = index; child < object.end; ++child) {
-            for (const float value : objects[child].translation) {
-                const float next = std::nextafter(value, std::numeric_limits<float>::infinity());
-                const double step = std::isfinite(next) ? double(next) - value : double(value) * std::numeric_limits<float>::epsilon();
-                translationStep = std::max(translationStep, step);
-            }
+        CoordinateMatrix parent;
+        coordinateIdentity(parent.data());
+        if (object.parent != noParent) { parent = objects[object.parent].world; }
+        for (size_t axis = 0; axis < 3; ++axis) {
+            const float value = object.translation[axis];
+            const float next = std::nextafter(value, std::numeric_limits<float>::infinity());
+            const double step = std::isfinite(next) ? double(next) - value : double(value) * std::numeric_limits<float>::epsilon();
+            translationStep += step * std::hypot(parent[axis*4],parent[axis*4+1],parent[axis*4+2]);
         }
         // A large peer must not turn a smaller object's move into a no-op. Base
         // repeat detection on stored translation precision, not the largest box.
@@ -219,26 +234,26 @@ TransformPlan transformPlan(const TransformSelection& selection, UiSelectionTran
         const double unchanged = std::max(translationStep * 2, roundoff);
         const double tolerance = std::max(objectSize * 2e-6, roundoff);
         if (std::all_of(delta.begin(), delta.end(), [&](double v) { return std::abs(v) <= unchanged; })) { continue; }
-        for (size_t child = index; child < object.end; ++child) {
-            const auto& entry = objects[child];
-            const Coordinate inherited = child == index ? Coordinate{} : shifts[entry.parent];
-            std::array<float, 3> value;
-            for (size_t k = 0; k < 3; ++k) {
-                // The renderer composes local * parent. Correct each descendant
-                // so its world displacement stays equal to the container's move.
-                const double carried = entry.local[k] * inherited[0] + entry.local[k+4] * inherited[1] + entry.local[k+8] * inherited[2];
-                const double next = entry.translation[k] + delta[k] - carried;
-                if (!std::isfinite(next) || std::abs(next) > std::numeric_limits<float>::max()) {
-                    plan.issue = "This move exceeds the supported translation range."; return plan;
-                }
-                value[k] = static_cast<float>(next);
-                shifts[child][k] = carried + (double(value[k]) - entry.translation[k]);
-                if (std::abs(shifts[child][k] - delta[k]) > tolerance) {
-                    plan.issue = "This move exceeds the supported translation precision."; return plan;
-                }
+        Coordinate local;
+        if (!localDisplacement(parent, delta, local)) { plan.issue = "This selection contains an invalid parent transform."; return plan; }
+        std::array<float, 3> value;
+        Coordinate applied{};
+        for (size_t k = 0; k < 3; ++k) {
+            const double next = object.translation[k] + local[k];
+            if (!std::isfinite(next) || std::abs(next) > std::numeric_limits<float>::max()) {
+                plan.issue = "This move exceeds the supported translation range."; return plan;
             }
-            if (value != entry.translation) { plan.edits.push_back({entry.id, value}); }
+            value[k] = static_cast<float>(next);
+            applied[k] = double(value[k]) - object.translation[k];
         }
+        for (size_t k = 0; k < 3; ++k) {
+            const double shift = parent[k]*applied[0]+parent[k+4]*applied[1]+parent[k+8]*applied[2];
+            if (std::abs(shift - delta[k]) > tolerance) {
+                plan.issue = "This move exceeds the supported translation precision."; return plan;
+            }
+        }
+        // Descendants inherit the move; their local settings stay unchanged.
+        if (value != object.translation) { plan.edits.push_back({object.id, value}); }
     }
     if (plan.edits.empty()) {
         plan.issue = action == UiSelectionTransform::alignOrigins

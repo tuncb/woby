@@ -271,6 +271,7 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
     // polygon/line/point prefix and use the part color for generated samples.
     if (!meshGeometry(mesh).vertexColors.empty()) { editMeshGeometry(mesh).vertexColors.resize(vertexCount, 0); }
     auto& positions = editSourcePositions(*source);
+    if (!source->firstGeneratedPosition) { source->firstGeneratedPosition = positions.size(); }
     positions.reserve(sourceCount);
     if (!source->indicesPending) { source->indices.reserve(sourceIndexCount); }
     editMeshGeometry(mesh).indices.reserve(triangleCount); editMeshGeometry(mesh).lineIndices.reserve(lineCount); editMeshGeometry(mesh).nodes.reserve(nodeCount);

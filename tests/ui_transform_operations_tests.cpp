@@ -2,6 +2,8 @@
 #include "automation_registry.h"
 #include "scene_history.h"
 #include "scene_pick.h"
+#include "scene_queries.h"
+#include "comparison_scene.h"
 
 #include <doctest/doctest.h>
 
@@ -127,6 +129,74 @@ void checkRigidMove(const WorldPoints& before, const WorldPoints& after, size_t 
 
 } // namespace
 
+TEST_CASE("part file and folder transforms rotate and scale about their stored pivot")
+{
+    const auto checkPivot = [&](auto settings, const auto& matrixFor) {
+        settings.center = {10, 20, 30};
+        settings.translation = {3, 4, 5};
+        for (const float scale : {.25f, 1.f, 2.f}) {
+            settings.scale = scale;
+            for (const auto rotation : {std::array<float,3>{}, std::array<float,3>{0,0,90},
+                                       std::array<float,3>{17,-31,48}}) {
+                settings.rotationDegrees = rotation;
+                woby::CoordinateMatrix matrix;
+                matrixFor(settings, matrix.data());
+                checkCoordinate(woby::transformCoordinate(matrix.data(), {10,20,30}), {13,24,35});
+                // Changing the pivot preserves the linear rotation and scale.
+                auto zero = settings; zero.center = {}; zero.translation = {};
+                woby::CoordinateMatrix linear;
+                matrixFor(zero, linear.data());
+                auto expected = woby::transformCoordinate(linear.data(), {1,2,3});
+                for (size_t k = 0; k < 3; ++k) { expected[k] += settings.center[k] + settings.translation[k]; }
+                checkCoordinate(woby::transformCoordinate(matrix.data(), {11,22,33}), expected);
+            }
+        }
+    };
+    checkPivot(woby::UiGroupState{}, [](const auto& s, double* m) { woby::groupTransformMatrix(s,m); });
+    checkPivot(woby::UiFileSettings{}, [](const auto& s, double* m) { woby::fileTransformMatrix(s,m); });
+    checkPivot(woby::UiSceneNodeSettings{}, [](const auto& s, double* m) { woby::sceneNodeTransformMatrix(s,m); });
+}
+
+TEST_CASE("nested transforms apply part then file then folder in rendering queries and analyses")
+{
+    TransformFixture f;
+    auto& state = f.state;
+    auto& file = state.files[0];
+    file.fileSettings.center = {3,2,1};
+    file.fileSettings.rotationDegrees = {23,41,-67};
+    file.fileSettings.scale = 2;
+    auto& group = file.groupSettings[0];
+    group.center = {1,2,3}; group.translation = {2,-3,5};
+    group.rotationDegrees = {-37,9,13}; group.scale = .25f;
+    woby::UiSceneNode folder;
+    folder.kind = woby::UiSceneNodeKind::folder;
+    folder.settings.center = {-4,3,1}; folder.settings.translation = {8,1,-4};
+    folder.settings.rotationDegrees = {45,3,17}; folder.settings.scale = 3;
+    folder.children = {state.sceneNodes[0]}; state.sceneNodes[0] = folder;
+    woby::assignSceneObjectIds(state);
+    woby::recalculateSceneBounds(state);
+    woby::CoordinateMatrix parent, model, local;
+    woby::sceneNodeTransformMatrix(folder.settings,parent.data());
+    woby::fileTransformMatrix(file.fileSettings,model.data());
+    woby::groupTransformMatrix(group,local.data());
+    const auto& node = woby::meshGeometry(file.mesh).nodes[0];
+    const auto p = woby::meshPosition(file.mesh,woby::meshGeometry(file.mesh).indices[node.indexOffset]);
+    const auto expected = woby::transformCoordinate(parent.data(),
+        woby::transformCoordinate(model.data(),woby::transformCoordinate(local.data(),p)));
+    const auto direct = woby::scenePickParts(state,true);
+    checkCoordinate(renderedPoint(direct[0],p),expected);
+    woby::SceneQueryRuntime queries;
+    std::vector<woby::ScenePickPart> cached;
+    woby::resolveSceneParts(queries,state,cached,true);
+    checkCoordinate(renderedPoint(cached[0],p),expected);
+    REQUIRE(cached[0].coordinateModel);
+    checkCoordinate(woby::transformCoordinate(cached[0].coordinateModel->data(),p),expected);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state,{group.objectId},woby::ComparisonSide::a,true,id);
+    const auto world = woby::comparisonWorldMesh(state,woby::ComparisonSide::a,id);
+    checkCoordinate(woby::meshPosition(world,0),expected);
+}
+
 TEST_CASE("selection transforms align current file pivots and leave the reference and other objects fixed")
 {
     TransformFixture f;
@@ -227,6 +297,7 @@ TEST_CASE("selection transforms move folder geometry rigidly through nested chil
     state.files[0].groupSettings[0].rotationDegrees = {80, 15, -20};
     state.files[0].groupSettings[1].scale = .3f;
     const auto points = renderedPoints(state);
+    const auto before = woby::createSceneDocument(state);
     const auto& settings = state.sceneNodes[0].settings;
     woby::CoordinateMatrix matrix;
     woby::sceneNodeTransformMatrix(settings, matrix.data());
@@ -236,6 +307,7 @@ TEST_CASE("selection transforms move folder geometry rigidly through nested chil
     REQUIRE(woby::transformSelectedObjects(state, state.files[1].objectId, woby::UiSelectionTransform::alignOrigins));
     checkRigidMove(points, renderedPoints(state), 0, {reference[0] - pivot[0], reference[1] - pivot[1], reference[2] - pivot[2]});
     checkRigidMove(points, renderedPoints(state), 1, {});
+    CHECK(woby::createSceneDocument(state).files == before.files);
 }
 
 TEST_CASE("selection transforms arrange hidden rotated geometry with gaps in scene tree order")

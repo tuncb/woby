@@ -1590,6 +1590,50 @@ TEST_CASE("annotation line length follows folds and remains available when hidde
     CHECK(*annotationLength(*item, scenePickParts(fixture.state, true)) == doctest::Approx(expected));
     CHECK_FALSE(annotationLength(*item, {}));
 }
+TEST_CASE("single-part annotation measurements follow nested scale rotation and pivot edits")
+{
+    Fixture fixture(true);
+    auto shape = AnnotationShape::line;
+    SUBCASE("line") {}
+    SUBCASE("rectangle") { shape = AnnotationShape::rectangle; }
+    const auto id = fixture.add(shape);
+    const auto* item = findAnnotation(fixture.state, id);
+    SceneQueryRuntime queries;
+    const auto before = updateAnnotationInspectorQuery(queries, fixture.state, *item);
+    auto& file = fixture.state.files[0];
+    auto& group = file.groupSettings[0];
+    group.center = {.3f,.2f,.1f}; group.rotationDegrees = {17,31,42};
+    file.fileSettings.center = {2,3,4}; file.fileSettings.rotationDegrees = {12,26,71};
+    fixture.state.selectedSceneObjects = {group.objectId};
+    setSelectedObjectProperty(fixture.state,UiObjectProperty::scale,3);
+    fixture.state.selectedSceneObjects = {file.objectId};
+    setSelectedObjectProperty(fixture.state,UiObjectProperty::scale,2);
+    setSelectedObjectProperty(fixture.state,UiObjectProperty::translationX,1e8f);
+    UiSceneNode folder;
+    folder.kind = UiSceneNodeKind::folder; folder.settings.scale = .5f;
+    folder.settings.center = {3,2,1}; folder.settings.rotationDegrees = {8,22,63};
+    folder.children = std::move(fixture.state.sceneNodes);
+    fixture.state.sceneNodes = {folder};
+    notifySceneEdit(fixture.state,SceneChange::geometry);
+    const auto after = updateAnnotationInspectorQuery(queries, fixture.state, *item);
+    CHECK(after.builds > before.builds);
+    CHECK(after.vertices == before.vertices); // The source-coordinate readout stays local.
+    if (shape == AnnotationShape::line) {
+        REQUIRE(after.length); REQUIRE(after.straightLength);
+        CHECK(*after.length == doctest::Approx(*before.length * 3));
+        CHECK(*after.straightLength == doctest::Approx(*before.straightLength * 3));
+        auto grouped = *item; grouped.targetIds = {item->targetId};
+        const auto length = annotationLength(grouped,scenePickParts(fixture.state,true));
+        REQUIRE(length);
+        CHECK(*length == doctest::Approx(*after.length));
+    } else {
+        REQUIRE(after.area);
+        CHECK(*after.area == doctest::Approx(*before.area * 9));
+    }
+    setFileVisible(file,false); notifySceneEdit(fixture.state,SceneChange::visibility);
+    const auto hidden = updateAnnotationInspectorQuery(queries,fixture.state,*item);
+    CHECK(hidden.length == after.length); CHECK(hidden.straightLength == after.straightLength); CHECK(hidden.area == after.area);
+}
 TEST_CASE("annotation area uses four corners in three dimensions")
 {
     std::array<Coordinate, 4> corners{{{0,0,0}, {3,0,0}, {3,0,4}, {0,0,4}}};

@@ -76,6 +76,9 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
             continue;
         }
         const auto& data = *source.data;
+        if (data.firstGeneratedPosition && *data.firstGeneratedPosition > sourcePositions(data).size()) {
+            throw std::invalid_argument("Invalid generated source point range.");
+        }
         if (!data.originalPointIds.empty() && data.originalPointIds.size() != sourcePositions(data).size()) {
             throw std::invalid_argument("Invalid source point ID count.");
         }
@@ -138,10 +141,18 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
             AnalysisIndex<double, 3> groups;
             reserveAnalysisIndex(groups, sourcePositions(data).size());
             std::vector<size_t> heads, next(sourcePositions(data).size(), noOccurrence);
+            size_t firstGroup = 0;
             for (size_t id = 0; id < pointParts.heads.size(); ++id) {
                 canceled(stop);
+                if (data.firstGeneratedPosition == id) {
+                    // Start a separate domain without changing source IDs or
+                    // increasing the index size for ordinary triangle meshes.
+                    groups.keys.clear();
+                    std::fill(groups.buckets.begin(), groups.buckets.end(), noOccurrence);
+                    firstGroup = heads.size();
+                }
                 if (pointParts.heads[id] == noOccurrence) { continue; }
-                const auto group = analysisIndex(groups, sourcePositions(data)[id]);
+                const auto group = firstGroup + analysisIndex(groups, sourcePositions(data)[id]);
                 if (group == heads.size()) { heads.push_back(noOccurrence); }
                 next[id] = heads[group]; heads[group] = id;
             }
@@ -149,7 +160,7 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
             for (size_t group = 0; group < heads.size(); ++group) {
                 canceled(stop);
                 if (next[heads[group]] == noOccurrence) { continue; }
-                const auto& position = groups.keys[group];
+                const auto& position = sourcePositions(data)[heads[group]];
                 std::vector<size_t> members;
                 for (size_t id = heads[group]; id != noOccurrence; id = next[id]) { canceled(stop); members.push_back(id); }
                 std::reverse(members.begin(), members.end());

@@ -55,6 +55,7 @@ std::optional<PostLoadData> preparePostLoadData(const Mesh& mesh, const std::fun
             source->provenance = mesh.sourceData->provenance;
             source->positions = mesh.sourceData->positions;
             source->originalPointIds = mesh.sourceData->originalPointIds;
+            source->firstGeneratedPosition = mesh.sourceData->firstGeneratedPosition;
             auto indices = mapSourceTriangleIndices(mesh, stop);
             if (!indices) { throw PreparationCanceled{}; }
             source->indices = std::move(*indices);

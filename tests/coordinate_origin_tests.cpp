@@ -278,8 +278,8 @@ TEST_CASE("vertex readouts preserve large imported coordinates through nested tr
     woby::fileTransformMatrix(file.fileSettings,fileModel.data());
     woby::groupTransformMatrix(group,groupModel.data());
     // Apply each matrix separately, in the renderer's composition order.
-    const auto expected = transformed ? woby::originalPosition(woby::transformCoordinate(groupModel.data(),
-        woby::transformCoordinate(fileModel.data(),woby::transformCoordinate(folderModel.data(),p))),*state.coordinateOrigin) : original;
+    const auto expected = transformed ? woby::originalPosition(woby::transformCoordinate(folderModel.data(),
+        woby::transformCoordinate(fileModel.data(),woby::transformCoordinate(groupModel.data(),p))),*state.coordinateOrigin) : original;
     std::vector<woby::LoadedModelRuntime> runtimes(2);
     runtimes[1].gpuMesh.nodeRanges.resize(1);
     runtimes[1].gpuMesh.nodeRanges[0].pointIndexCount = 1;

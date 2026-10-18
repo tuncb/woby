@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -24,6 +25,9 @@ struct SourceMeshData {
     // Optional importer identities, one per point. Only duplicate-point counting
     // uses these; connectivity and reported vertex indices remain unchanged.
     std::vector<uint64_t> originalPointIds;
+    // Freeform samples follow authored positions. Compare duplicates within
+    // each domain; a sample at an authored control is not a repeated point.
+    std::optional<size_t> firstGeneratedPosition;
 };
 
 // Published coordinates have a separate owner so render snapshots need not retain

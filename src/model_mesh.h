@@ -94,6 +94,7 @@ struct MeshAnnotationCache {
 using Coordinate = std::array<double, 3>;
 using CoordinateMatrix = std::array<double, 16>;
 void coordinateIdentity(double* result);
+// Apply a, then b (column-vector product b * a).
 void coordinateMultiply(double* result, const double* a, const double* b);
 [[nodiscard]] Coordinate transformCoordinate(const double* matrix, const Coordinate& point);
 

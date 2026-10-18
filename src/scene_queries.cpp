@@ -92,11 +92,11 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
             part.pointIndexOffset = node.pointIndexOffset; part.pointIndexCount = node.pointIndexCount;
             PickMatrix local;
             groupTransformMatrix(settings, local.data());
-            woby::multiplyMatrices(part.model.data(), parent.data(), local.data());
+            woby::multiplyMatrices(part.model.data(), local.data(), parent.data());
             CoordinateMatrix preciseLocal;
             groupTransformMatrix(settings, preciseLocal.data());
             part.coordinateModel.emplace();
-            coordinateMultiply(part.coordinateModel->data(), coordinateParent.data(), preciseLocal.data());
+            coordinateMultiply(part.coordinateModel->data(), preciseLocal.data(), coordinateParent.data());
             if (settings.localBoundsValid) { part.bounds = settings.localBounds; }
             part.solid = node.indexCount && settings.showSolidMesh;
             part.edges = node.lineIndexCount || (node.indexCount && settings.showTriangles);
@@ -124,8 +124,8 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
                     fileTransformMatrix(file.fileSettings, preciseLocal.data());
                     opacity *= file.fileSettings.opacity; visible = visible && file.fileSettings.visible;
                 }
-                woby::multiplyMatrices(model.data(), parent.data(), local.data());
-                coordinateMultiply(preciseWorld.data(), coordinateParent.data(), preciseLocal.data());
+                woby::multiplyMatrices(model.data(), local.data(), parent.data());
+                coordinateMultiply(preciseWorld.data(), preciseLocal.data(), coordinateParent.data());
                 if (node.kind == UiSceneNodeKind::file && node.children.empty()) {
                     for (size_t g = 0; g < state.files[node.fileIndex].groupSettings.size(); ++g) { group(node.fileIndex, g, model, preciseWorld, opacity, visible); }
                 } else { for (const auto& child : node.children) { self(self, child, model, preciseWorld, opacity, visible); } }
@@ -219,29 +219,32 @@ void updateSceneAnnotationQueries(SceneQueryRuntime& runtime, const UiState& sta
                     addBatch(sectionGuides(s), item.settings.color);
                     if (const auto result = crossSectionResult(runtime, item.objectId)) {
                         const size_t up = s.upAxis == SceneUpAxis::z ? 2 : 1;
-                        std::array<float,2> lo{std::numeric_limits<float>::max(),std::numeric_limits<float>::max()}, hi{-lo[0],-lo[1]};
+                        std::array<double,2> lo{std::numeric_limits<double>::max(),std::numeric_limits<double>::max()}, hi{-lo[0],-lo[1]};
                         for (const auto& contour : result->contours) { for (const auto& line : contour.lines) { for (const auto p : {line.a,line.b}) {
                             const auto xy = sectionCoordinates(s,p);
                             for (size_t k=0;k<2;++k) { lo[k]=std::min(lo[k],xy[k]); hi[k]=std::max(hi[k],xy[k]); }
                         } } }
                         if (s.showPlane && lo[0] <= hi[0]) {
                             const auto direction = sectionDirection(s);
-                            const float pad = std::max((hi[0]-lo[0])*.025f,.001f);
-                            for (const auto xy : {std::array<float,2>{lo[0]-pad,lo[1]-pad}, {hi[0]+pad,lo[1]-pad}, {hi[0]+pad,hi[1]+pad}, {lo[0]-pad,hi[1]+pad}}) {
-                                auto p=s.a; for(size_t k=0;k<3;++k) { p[k]+=direction[k]*xy[0]; } p[up]=xy[1]+s.lift; entry.sheet.push_back(p);
+                            const double pad = std::max((hi[0]-lo[0])*.025,.001);
+                            for (const auto xy : {std::array<double,2>{lo[0]-pad,lo[1]-pad}, {hi[0]+pad,lo[1]-pad}, {hi[0]+pad,hi[1]+pad}, {lo[0]-pad,hi[1]+pad}}) {
+                                Coordinate p{}; for(size_t k=0;k<3;++k) { p[k]=s.a[k]+direction[k]*xy[0]; } p[up]=xy[1]+s.lift; entry.sheet.push_back(renderPosition(p));
                             }
                         }
                         for (size_t i = 0; i < result->contours.size(); ++i) {
                             if (!s.sourceVisible[i]) { continue; }
-                            auto lines = result->contours[i].lines;
-                            const auto cut = lines;
-                            for (auto& line : lines) { line.a[up] += s.lift; line.b[up] += s.lift; }
-                            lines.insert(lines.end(), cut.begin(), cut.end());
+                            std::vector<DiagnosticEdge> lines;
+                            lines.reserve(result->contours[i].lines.size()*2);
+                            for (auto line : result->contours[i].lines) {
+                                lines.push_back({renderPosition(line.a),renderPosition(line.b)});
+                                line.a[up] += s.lift; line.b[up] += s.lift;
+                                lines.push_back({renderPosition(line.a),renderPosition(line.b)});
+                            }
                             addBatch(std::move(lines), sectionSourceColor(i));
                         }
                         if (s.showDifferences && result->largestGap && s.sourceVisible[static_cast<size_t>(s.reference)] && s.sourceVisible[static_cast<size_t>(s.compared)]) {
                             auto line = *result->largestGap; line.a[up] += s.lift; line.b[up] += s.lift;
-                            addBatch({line}, {1,1,1,1});
+                            addBatch({{renderPosition(line.a),renderPosition(line.b)}}, {1,1,1,1});
                         }
                     }
                 }
@@ -274,9 +277,26 @@ const AnnotationInspectorQuery& updateAnnotationInspectorQuery(SceneQueryRuntime
     const auto positions = annotationVertices(state, item);
     cache.vertices = annotationOriginalVertices(state, item, positions);
     if (positions.empty()) { return cache; }
-    // Measure in the recentered frame, before adding a possibly distant origin.
+    std::vector<ScenePickPart> parts;
+    resolveSceneParts(runtime, state, parts, true);
+    const auto* source = item.targetIds.empty() ? annotationSourcePart(item, parts, 0) : nullptr;
+    if (item.targetIds.empty() && !source) { return cache; }
+    // Single-part controls use local coordinates. Measure their transformed
+    // offsets; a common translation cannot change length or area.
     std::vector<Coordinate> vertices;
-    for (const auto& p : positions) { vertices.push_back({p[0], p[1], p[2]}); }
+    for (const auto& p : positions) {
+        Coordinate value{p[0],p[1],p[2]};
+        if (source) {
+            value = {};
+            for (size_t row = 0; row < 3; ++row) {
+                for (size_t axis = 0; axis < 3; ++axis) {
+                    const size_t index = axis * 4 + row;
+                    value[row] += (source->coordinateModel ? (*source->coordinateModel)[index] : double(source->model[index])) * p[axis];
+                }
+            }
+        }
+        vertices.push_back(value);
+    }
     if (item.geometry->shape == AnnotationShape::rectangle) { cache.area = annotationArea(vertices); }
     else {
         if (vertices.size() == 2) {
@@ -284,8 +304,6 @@ const AnnotationInspectorQuery& updateAnnotationInspectorQuery(SceneQueryRuntime
             const double length = std::hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
             if (std::isfinite(length)) { cache.straightLength = length; }
         }
-        std::vector<ScenePickPart> parts;
-        resolveSceneParts(runtime, state, parts, true);
         cache.length = annotationLength(item, parts);
     }
     return cache;
