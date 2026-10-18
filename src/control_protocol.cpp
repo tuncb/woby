@@ -31,10 +31,10 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::annotationGet, "annotation.get", "annotation get", "target", {}, {}},
         {ControlAction::annotationCreate, "annotation.create", "annotation create", "target",
             {"shape", "start", "end", "aspect", "name", "comments", "visible", "locked", "rgb", "opacity", "width",
-             "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceVisible", "referenceIndex", "comparedIndex"}, {"shape"}, false, true},
+             "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceVisible", "referenceIndex", "comparedIndex", "text", "position", "size", "faceCamera", "rotationDegrees"}, {"shape"}, false, true},
         {ControlAction::annotationSet, "annotation.set", "annotation set", "target",
             {"name", "comments", "visible", "locked", "rgb", "opacity", "width",
-             "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceVisible", "referenceIndex", "comparedIndex"}, {}, true, true},
+             "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceVisible", "referenceIndex", "comparedIndex", "text", "position", "size", "faceCamera", "rotationDegrees"}, {}, true, true},
         {ControlAction::annotationReshape, "annotation.reshape", "annotation reshape", "target", {"start", "end"}, {}, true, true},
         {ControlAction::annotationMove, "annotation.move", "annotation move", "target", {"delta"}, {"delta"}, false, true},
         {ControlAction::annotationDelete, "annotation.delete", "annotation delete", "target", {}, {}, false, true},
@@ -132,6 +132,7 @@ const ControlMethod& controlMethod(ControlAction action)
 namespace {
 bool booleanOption(const std::string& name)
 {
+    if (name == "faceCamera") { return true; }
     if (name == "showAOnly" || name == "showBOnly" || name == "showWalls") { return true; }
     if (name == "showPlane" || name == "showConnections" || name == "showDifferences" || name == "faceOn" || name == "sourceVisible") { return true; }
     if (name == "uvThresholdEnabled" || name == "uvOverlapEnabled" || name == "uvRangeEnabled" || name == "uvSeparated" || name == "uvLinkedSelection" || name == "isolate" || name == "uvGrid" || name == "lineDepthTest") { return true; }
@@ -143,7 +144,7 @@ bool booleanOption(const std::string& name)
 bool stringOption(const std::string& name)
 {
     if (name == "alignment" || name == "originA" || name == "originB") { return true; }
-    if (name == "method") { return true; }
+    if (name == "method" || name == "text") { return true; }
     if (name == "sectionUpAxis") { return true; }
     return name == "analysisMode" || name == "uvOverlapScope" || name == "uvColor" || name == "uvMetric" || name == "uvNormalization" || name == "type" || name == "uvView" || name == "path" || name == "collection" || name == "revision" || name == "detector" || name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "topologyMode" || name == "qualityMetric";
 }
@@ -155,11 +156,12 @@ bool integerOption(const std::string& name)
 size_t vectorSize(const std::string& name) { return name == "start" || name == "end" || name == "delta" ? 2u : 3u; }
 bool vectorOption(const std::string& name)
 {
-    if (name == "planeStart" || name == "planeEnd") { return true; }
+    if (name == "planeStart" || name == "planeEnd" || name == "position") { return true; }
     return name == "barycentric" || name == "start" || name == "end" || name == "delta" || name == "translation" || name == "rotationDegrees" || name == "rgb" || name == "eye" || name == "target";
 }
 std::string cliOption(const std::string& name)
 {
+    if (name == "faceCamera") { return "--face-camera"; }
     if (name == "cellSize") { return "--cell-size"; }
     if (name == "showAOnly") { return "--show-a-only"; }
     if (name == "showBOnly") { return "--show-b-only"; }
@@ -296,7 +298,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         }
         command.target = params["target"].get<std::string>();
         const bool sceneAllowed = method.action == ControlAction::visibility || method.action == ControlAction::render
-            || method.action == ControlAction::vertexSize || (method.action == ControlAction::annotationCreate && params.value("shape", "") == "section");
+            || method.action == ControlAction::vertexSize || (method.action == ControlAction::annotationCreate && (params.value("shape", "") == "section" || params.value("shape", "") == "text"));
         if (command.target == "scene" && !sceneAllowed) { throw std::invalid_argument("This command requires an object ID."); }
     }
     if (params.contains("path")) {
@@ -333,10 +335,10 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         if (!params.contains(name)) { continue; }
         const auto& value = params[name];
         if (booleanOption(name) && !value.is_boolean()) { throw std::invalid_argument(name + " must be a boolean."); }
-        if (stringOption(name) && (!value.is_string() || (name != "comments" && value.get_ref<const std::string&>().empty())
-            || value.get_ref<const std::string&>().size() > ((name == "comments" || name == "path") ? 8192u : 511u)
+        if (stringOption(name) && (!value.is_string() || (name != "comments" && name != "text" && value.get_ref<const std::string&>().empty())
+            || value.get_ref<const std::string&>().size() > ((name == "comments" || name == "text" || name == "path") ? 8192u : 511u)
             || value.get_ref<const std::string&>().find('\0') != std::string::npos)) {
-            throw std::invalid_argument(name + (name == "comments" ? " must be a string of at most 8192 bytes without NUL characters."
+            throw std::invalid_argument(name + ((name == "comments" || name == "text") ? " must be a string of at most 8192 bytes without NUL characters."
                 : " must be a nonempty string of at most 511 bytes without NUL characters."));
         }
         if (vectorOption(name)) {
@@ -345,6 +347,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         }
     }
 #define BOOL_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<bool>(); }
+    BOOL_FIELD(faceCamera)
     BOOL_FIELD(showAOnly) BOOL_FIELD(showBOnly) BOOL_FIELD(showWalls)
     BOOL_FIELD(showPlane) BOOL_FIELD(showConnections) BOOL_FIELD(showDifferences) BOOL_FIELD(faceOn) BOOL_FIELD(sourceVisible)
     BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(xray) BOOL_FIELD(adaptivePoints) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
@@ -361,6 +364,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     BOOL_FIELD(distanceOnA) BOOL_FIELD(showEdges) BOOL_FIELD(showBoundaries) BOOL_FIELD(showNonManifold) BOOL_FIELD(showWinding) BOOL_FIELD(enabled)
 #undef BOOL_FIELD
 #define NUMBER_FIELD(field) if (params.contains(#field)) { command.field = number(params[#field]); }
+    NUMBER_FIELD(size)
     NUMBER_FIELD(lift)
     NUMBER_FIELD(scale) NUMBER_FIELD(value) NUMBER_FIELD(pixels) NUMBER_FIELD(width)
     NUMBER_FIELD(uvThreshold) NUMBER_FIELD(uvNearCollapse) NUMBER_FIELD(uvRangeMinimum) NUMBER_FIELD(uvRangeMaximum)
@@ -381,6 +385,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         }
     }
 #define VECTOR_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::array<float, 3>>(); }
+    VECTOR_FIELD(position)
     VECTOR_FIELD(planeStart) VECTOR_FIELD(planeEnd)
     VECTOR_FIELD(translation) VECTOR_FIELD(rotationDegrees) VECTOR_FIELD(rgb) VECTOR_FIELD(eye)
 #undef VECTOR_FIELD
@@ -401,6 +406,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     }
 #define STRING_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::string>(); }
     STRING_FIELD(alignment) STRING_FIELD(originA) STRING_FIELD(originB)
+    STRING_FIELD(text)
     STRING_FIELD(method)
     STRING_FIELD(sectionUpAxis)
     STRING_FIELD(analysisMode) STRING_FIELD(detector) STRING_FIELD(qualityMetric) STRING_FIELD(topologyMode) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
@@ -424,11 +430,23 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     if (command.isolate.value_or(false) && (!command.object || command.enabled != true)) { throw std::invalid_argument("isolate requires --object and --enabled true."); }
     if (command.uvView && *command.uvView != "layout" && *command.uvView != "surface") { throw std::invalid_argument("uvView must be layout or surface."); }
     if ((command.type == "uv" || command.type == "uv_quality") && command.b) { throw std::invalid_argument("UV analysis uses one source input: --a."); }
-    if (command.shape && *command.shape != "line" && *command.shape != "rectangle" && *command.shape != "section") { throw std::invalid_argument("shape must be line, rectangle, or section."); }
+    if (command.shape && *command.shape != "line" && *command.shape != "rectangle" && *command.shape != "section" && *command.shape != "text") { throw std::invalid_argument("shape must be line, rectangle, section, or text."); }
     if (command.sectionUpAxis && *command.sectionUpAxis != "y" && *command.sectionUpAxis != "z") { throw std::invalid_argument("sectionUpAxis must be y or z."); }
     if (command.lift && *command.lift < 0) { throw std::invalid_argument("lift must be nonnegative."); }
+    if (command.size && (*command.size < 1e-6f || *command.size > 1e6f)) { throw std::invalid_argument("Text size must be between 0.000001 and 1000000 scene units."); }
+    if (method.action == ControlAction::annotationCreate && command.shape != "text"
+        && (command.text || command.position || command.size || command.faceCamera || command.rotationDegrees)) {
+        throw std::invalid_argument("Text options require a text annotation.");
+    }
     if (method.action == ControlAction::annotationCreate) {
-        if (command.shape == "section") {
+        if (command.shape == "text") {
+            if (command.target != "scene" || !command.text || !command.position) {
+                throw std::invalid_argument("Text creation requires target scene, text, and position in world coordinates.");
+            }
+            for (const auto* key : {"start", "end", "aspect", "width", "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceVisible", "referenceIndex", "comparedIndex"}) {
+                if (params.contains(key)) { throw std::invalid_argument(std::string(key) + " does not apply to text."); }
+            }
+        } else if (command.shape == "section") {
             if (!command.planeStart || !command.planeEnd) { throw std::invalid_argument("A section requires planeStart and planeEnd in world coordinates."); }
             if (command.start || command.end || command.aspect || command.rgb) { throw std::invalid_argument("Sections use planeStart/planeEnd and per-source colors, without start/end/aspect/rgb."); }
         } else {
@@ -516,7 +534,7 @@ std::string controlMethodUsage(const ControlMethod& method)
         result += cliOption(name);
         if (name != "tree" && name != "remember") {
             result += booleanOption(name) ? " true|false" : name == "rgb" ? " R G B" : vectorOption(name) ? (vectorSize(name) == 2 ? " U V" : " X Y Z")
-                : name == "sectionUpAxis" ? " y|z" : name == "type" ? " mesh|surface_comparison|uv|uv_quality" : name == "uvColor" ? " grid|u|v" : name == "uvMetric" ? " angle|area|orientation|anisotropy|min_stretch|overlap" : name == "uvNormalization" ? " per_patch|absolute" : name == "uvView" ? " layout|surface" : name == "shape" ? " line|rectangle|section" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
+                : name == "sectionUpAxis" ? " y|z" : name == "type" ? " mesh|surface_comparison|uv|uv_quality" : name == "uvColor" ? " grid|u|v" : name == "uvMetric" ? " angle|area|orientation|anisotropy|min_stretch|overlap" : name == "uvNormalization" ? " per_patch|absolute" : name == "uvView" ? " layout|surface" : name == "shape" ? " line|rectangle|section|text" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
                 : name == "path" ? " PATH" : name == "collection" ? " ARRAY_PATH" : name == "index" ? " POSITIVE_INTEGER"
                 : name == "a" || name == "b" || name == "object" ? " OBJECT_ID" : stringOption(name) ? " TEXT" : " N";
         }
@@ -539,6 +557,7 @@ Json controlOperationParams(const ControlOperation& command)
     if (command.action == ControlAction::folderAdd) { result["tree"] = command.tree; }
     if (command.action == ControlAction::importersAdd || command.action == ControlAction::importersScan) { result["remember"] = command.remember; }
 #define FIELD(field) if (command.field) { result[#field] = *command.field; }
+    FIELD(text) FIELD(position) FIELD(size) FIELD(faceCamera)
     FIELD(showAOnly) FIELD(showBOnly) FIELD(showWalls)
     FIELD(method) FIELD(cellSize)
     FIELD(planeStart) FIELD(planeEnd) FIELD(sectionUpAxis) FIELD(lift) FIELD(showPlane) FIELD(showConnections) FIELD(showDifferences) FIELD(faceOn) FIELD(sourceIndex) FIELD(sourceVisible) FIELD(referenceIndex) FIELD(comparedIndex)
@@ -589,8 +608,9 @@ Json controlCapabilities()
             {"cellSizeUnits", "model_units"}, {"resolutionCheck", {{"cellSizeFactor", .5}, {"replacesResult", false}, {"cancelable", true}}},
             {"exportFormat", "obj"}, {"exportOverwrites", false}, {"volumeUnits", "model_units_cubed"},
             {"buildOnSceneLoad", true}, {"boundaryEditing", false}}},
-        {"annotations", {{"shapes", {"line", "rectangle", "section"}},
-            {"createRequiredByShape", {{"line", {"start", "end"}}, {"rectangle", {"start", "end"}}, {"section", {"planeStart", "planeEnd"}}}},
+        {"annotations", {{"shapes", {"line", "rectangle", "section", "text"}},
+            {"createRequiredByShape", {{"line", {"start", "end"}}, {"rectangle", {"start", "end"}}, {"section", {"planeStart", "planeEnd"}}, {"text", {"text", "position"}}}},
+            {"textTargets", {"scene"}}, {"textSizeUnits", "scene_units"}, {"textCoordinateSpace", "world"}, {"textFaceCameraDefault", true},
             {"sectionTargets", {"scene", "folder", "file", "group"}}, {"sectionIndexBase", 0}, {"sectionCoordinateSpace", "world"}}},
         {"cameraPersistent", false}, {"screenshot", {{"width", 1920}, {"height", 1800}, {"overwrite", true}}},
         {"scopes", {{"visibility.set", {"scene", "folder", "file", "group", "analysis", "annotation"}},

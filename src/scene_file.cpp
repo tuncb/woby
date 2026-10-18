@@ -977,7 +977,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21 && version != 22 && version != 23 && version != 24 && version != 25) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21 && version != 22 && version != 23 && version != 24 && version != 25 && version != 26) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "coordinate_origin") {
@@ -1038,8 +1038,17 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     const auto shape = parseTomlString(value);
                     if (shape == "line") { annotationDrafts.back().shape = AnnotationShape::line; }
                     else if (shape == "rectangle") { annotationDrafts.back().shape = AnnotationShape::rectangle; }
+                    else if (shape == "text") { if (!item.text) { item.text.emplace(); } }
                     else if (shape == "section") { if (!item.section) { item.section.emplace(); } }
                     else { throw std::runtime_error("Unknown annotation shape."); }
+                } else if (key.starts_with("text_")) {
+                    if (!item.text) { item.text.emplace(); }
+                    auto& t = *item.text;
+                    if (key == "text_content") { t.text = parseTomlString(value); }
+                    else if (key == "text_position") { t.position = parseTomlFloat3(value); }
+                    else if (key == "text_rotation") { t.rotationDegrees = parseTomlFloat3(value); }
+                    else if (key == "text_size") { t.size = parseTomlFloat(value); }
+                    else if (key == "text_face_camera") { t.faceCamera = parseTomlBool(value); }
                 } else if (key.starts_with("section_")) {
                     if (!item.section) { item.section.emplace(); }
                     auto& s = *item.section;
@@ -1236,11 +1245,13 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
 
     for (size_t i = 0; i < document.annotations.size(); ++i) {
         auto& item = document.annotations[i];
-        if (item.section) { item.section = normalizedCrossSectionSettings(*item.section, item.targets.size()); }
+        if (item.text && item.section) { throw std::runtime_error("An annotation cannot be both text and a section."); }
+        if (item.text) { item.text = normalizedTextAnnotationSettings(*item.text); }
+        else if (item.section) { item.section = normalizedCrossSectionSettings(*item.section, item.targets.size()); }
         else { validateAnnotationGeometry(annotationDrafts[i]); }
-        item.geometry = item.section ? AnnotationGeometryOwner{} : shareAnnotationGeometry(std::move(annotationDrafts[i]));
+        item.geometry = (item.section || item.text) ? AnnotationGeometryOwner{} : shareAnnotationGeometry(std::move(annotationDrafts[i]));
         item.settings = normalizedAnnotationSettings(std::move(item.settings));
-        if (!item.section && item.targets.size() != item.geometry->sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
+        if (!item.section && !item.text && item.targets.size() != item.geometry->sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
         for (const auto& target : item.targets) {
             if (target.fileIndex == -1 && target.groupIndex == -1) { continue; }
             if (target.fileIndex < 0 || static_cast<size_t>(target.fileIndex) >= document.files.size()
@@ -1311,7 +1322,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 25\n";
+    stream << "version = 26\n";
     if (document.coordinateOrigin) {
         for (double v : *document.coordinateOrigin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite scene origin."); } }
         stream << "coordinate_origin = "; writeTomlFloat3(stream, *document.coordinateOrigin); stream << '\n';
@@ -1395,7 +1406,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "\n";
     }
     for (const auto& item : document.annotations) {
-        if (!item.section) { validateAnnotationGeometry(*item.geometry); }
+        if (!item.section && !item.text) { validateAnnotationGeometry(*item.geometry); }
         stream << "\n[[annotations]]\n";
         stream << "name = \"" << escapeTomlString(item.settings.name) << "\"\n";
         stream << "note = \"" << escapeTomlString(item.settings.note) << "\"\n";
@@ -1405,6 +1416,15 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "locked = " << (item.settings.locked ? "true" : "false") << "\n";
         stream << "width = "; writeTomlFloat(stream, item.settings.width); stream << "\n";
         stream << "color = "; writeTomlFloat4(stream, item.settings.color); stream << "\n";
+        if (item.text) {
+            const auto t = normalizedTextAnnotationSettings(*item.text);
+            stream << "shape = \"text\"\ntext_content = \"" << escapeTomlString(t.text) << "\"\ntext_position = ";
+            writeTomlFloat3(stream, t.position);
+            stream << "\ntext_rotation = "; writeTomlFloat3(stream, t.rotationDegrees);
+            stream << "\ntext_size = "; writeTomlFloat(stream, t.size);
+            stream << "\ntext_face_camera = " << (t.faceCamera ? "true" : "false") << "\n";
+            continue;
+        }
         if (item.section) {
             const auto s = normalizedCrossSectionSettings(*item.section, item.targets.size());
             stream << "shape = \"section\"\nsection_a = "; writeTomlFloat3(stream, s.a);

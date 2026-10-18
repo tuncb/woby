@@ -1,5 +1,6 @@
 #include "scene_screenshot.h"
 #include "annotation_ui.h"
+#include "text_annotation_ui.h"
 #include "cross_section_runtime.h"
 #include "scene_scale_overlay.h"
 #include "comparison_view.h"
@@ -328,6 +329,12 @@ void submitSceneScreenshotCapture(
             sceneWidth, screenshot.height, homogeneousDepth, 1);
         drawSceneScaleOverlay(annotationDraw, ui, dimensions, pickView, {0, 0}, 1, 20);
     }
+    const bool sceneText = !options.resultsOnly && std::any_of(ui.annotations.begin(), ui.annotations.end(),
+        [](const auto& item) { return item.text && item.settings.visible; });
+    if (sceneText) {
+        const auto textView = scenePickView(camera, ui.upAxis, sceneBounds, sceneWidth, screenshot.height, homogeneousDepth, 1);
+        drawTextAnnotations(annotationDraw, ui, textView, {0, 0}, 1, screenshot.textDrawCache);
+    }
     annotationDraw.PopTexture();
     annotationDraw.PopClipRect();
 
@@ -376,7 +383,7 @@ void submitSceneScreenshotCapture(
         submitSceneAnnotations(screenshotHelperView, ui,
             helperLayout, annotationProgram, screenshot.renderScratch);
     }
-    if (annotations || scaleOverlay) {
+    if (annotations || scaleOverlay || sceneText) {
         // Export runs before ImGui::Render/EndFrame refreshes PlatformIO.Textures.
         // Annotation text can grow the font atlas during this frame, so use the
         // textures actually referenced by this draw list, including new atlases.

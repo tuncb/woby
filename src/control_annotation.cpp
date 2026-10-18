@@ -51,6 +51,13 @@ bool annotationControlReady(const UiState& state, ControlAction action)
 Json controlAnnotationDetails(const UiState& state, const UiAnnotation& item)
 {
     const auto& settings = item.settings;
+    if (item.text) {
+        const auto& t = *item.text;
+        return {{"shape", "text"}, {"settings", {{"name", settings.name}, {"comments", settings.note}, {"visible", settings.visible},
+            {"locked", settings.locked}, {"color", settings.color}}}, {"text", t.text}, {"position", t.position},
+            {"size", t.size}, {"faceCamera", t.faceCamera}, {"rotationDegrees", t.rotationDegrees}, {"controlSpace", "world"},
+            {"targetValid", true}, {"targetPending", false}, {"effectiveVisible", settings.visible && settings.color[3] > 0 && !t.text.empty()}};
+    }
     const auto parts = scenePickParts(state);
     if (item.section) {
         const auto& s = *item.section;
@@ -78,7 +85,9 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
     const ControlOperation& command, const ObjectIdFormatter& formatId, const AnnotationCommandResult* computed)
 {
     using A = ControlAction;
-    if (!annotationControlReady(state, command.action)) {
+    const auto* existing = findAnnotation(state, command.objectId);
+    const bool textCommand = (command.action == A::annotationCreate && command.shape == "text") || (existing && existing->text);
+    if (!textCommand && !annotationControlReady(state, command.action)) {
         throw std::runtime_error("Annotation actions are disabled while annotation data is being prepared. Retry when annotationReady is true.");
     }
     const auto objectInfo = [&](SceneObjectId id) {
@@ -92,7 +101,17 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
         return {{"annotations", std::move(items)}};
     }
     auto id = command.objectId;
-    if (command.action == A::annotationCreate && command.shape == "section") {
+    if (command.action == A::annotationCreate && command.shape == "text") {
+        TextAnnotationSettings t;
+        t.text = *command.text; t.position = *command.position;
+        if (command.size) { t.size = *command.size; }
+        if (command.faceCamera) { t.faceCamera = *command.faceCamera; }
+        if (command.rotationDegrees) { t.rotationDegrees = *command.rotationDegrees; }
+        const auto selection = state.selectedSceneObjects;
+        id = createTextAnnotation(state, std::move(t));
+        clearSceneSelection(state);
+        for (const auto selected : selection) { selectSceneObject(state, selected, true); }
+    } else if (command.action == A::annotationCreate && command.shape == "section") {
         std::vector<SceneObjectId> sources;
         if (command.target == "scene") {
             for (const auto& part : scenePickParts(state)) {
@@ -139,6 +158,7 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
             return {{"removed", formatId(id)}, {"dirty", state.isDirty}};
         }
         if (command.action == A::annotationMove || command.action == A::annotationReshape) {
+            if (item->text) { throw std::invalid_argument("Use annotation set --position X Y Z to move text."); }
             if (item->section) { throw std::invalid_argument("Use annotation set --plane-start/--plane-end to change a cross section."); }
             if (item->settings.locked || !item->targetValid) { throw std::invalid_argument("The annotation is locked or its source is unavailable."); }
             const auto parts = scenePickParts(state);
@@ -158,6 +178,22 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
             throw std::invalid_argument("Use annotation get, set, reshape, move, or delete for annotation objects.");
         }
     }
+    if (command.action == A::annotationSet && (command.text || command.position || command.size || command.faceCamera || command.rotationDegrees)) {
+        const auto* item = findAnnotation(state, id);
+        if (!item->text) { throw std::invalid_argument("Text options require a text annotation."); }
+        if (hasSectionOptions(command) || command.width) { throw std::invalid_argument("Section and line width options do not apply to text."); }
+        auto t = *item->text;
+        if (command.text) { t.text = *command.text; }
+        if (command.position) { t.position = *command.position; }
+        if (command.size) { t.size = *command.size; }
+        if (command.faceCamera) { t.faceCamera = *command.faceCamera; }
+        if (command.rotationDegrees) { t.rotationDegrees = *command.rotationDegrees; }
+        if (item->settings.locked && (t.position != item->text->position || t.rotationDegrees != item->text->rotationDegrees)) {
+            throw std::invalid_argument("Unlock the text before changing its position or rotation.");
+        }
+        setTextAnnotationSettings(state, id, std::move(t));
+    }
+    if (findAnnotation(state, id)->text && command.width) { throw std::invalid_argument("Use --size to change text size."); }
     if (command.action == A::annotationSet && hasSectionOptions(command)) {
         const auto* item = findAnnotation(state, id);
         if (!item->section) { throw std::invalid_argument("Section options require a cross-section annotation."); }

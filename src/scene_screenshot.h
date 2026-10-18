@@ -3,6 +3,7 @@
 #include "camera.h"
 #include "scene_renderer.h"
 #include "ui_state.h"
+#include "text_annotation_ui.h"
 
 #include "graphics.h"
 
@@ -17,6 +18,7 @@ namespace woby {
 struct ComparisonRuntimes;
 
 struct SceneScreenshotRuntime {
+    TextAnnotationDrawCache textDrawCache;
     SceneRenderScratch renderScratch;
     ScreenshotSettings options;
     uint16_t width = 0;

@@ -1456,6 +1456,7 @@ std::vector<std::array<float, 3>> annotationControlPositions(const Mesh& mesh, s
 std::vector<std::array<float, 3>> annotationControlWorldPositions(const UiAnnotation& item,
     std::span<const ScenePickPart> parts)
 {
+    if (item.text) { return {item.text->position}; }
     if (item.section) {
         auto lifted = item.section->a;
         for (size_t k = 0; k < 3; ++k) { lifted[k] = (item.section->a[k] + item.section->b[k]) * .5f; }

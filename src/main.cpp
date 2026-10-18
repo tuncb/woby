@@ -128,6 +128,8 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xf00d,
     0xf030,
     0xf030,
+    0xf031,
+    0xf031,
     0xf065,
     0xf065,
     0xf192,
@@ -2565,7 +2567,7 @@ int main(int argc, char** argv)
                     && !modelFileDialogIsOpen(modelFileDialogState) && !sceneFileDialogIsOpen(sceneFileDialogState)
                     && !sceneScreenshotDialogIsOpen(sceneScreenshotDialogState) && !ImGui::GetIO().WantCaptureMouse;
                 if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE
-                    && (annotationInteraction.tool || annotationInteraction.sectionTool || annotationInteraction.dragging)) {
+                    && (annotationInteraction.tool || annotationInteraction.sectionTool || annotationInteraction.textTool || annotationInteraction.dragging)) {
                     woby::cancelAnnotationPointer(annotationInteraction);
                     annotationEscapeConsumed = true;
                     scenePointer = {};
@@ -3613,14 +3615,17 @@ int main(int argc, char** argv)
                                     woby::AutomationCommandError{"Model data is being prepared. Retry when postLoadReady is true.", -32014});
                                 return;
                             }
-                            if (!woby::annotationControlReady(ui, payload.action)) {
+                            const auto* targetAnnotation = woby::findAnnotation(ui, payload.objectId);
+                            const bool textCommand = (payload.action == A::annotationCreate && payload.shape == "text")
+                                || (targetAnnotation && targetAnnotation->text);
+                            if (!textCommand && !woby::annotationControlReady(ui, payload.action)) {
                                 woby::completeAutomationCommand(*automation, command->id,
                                     woby::AutomationCommandError{annotationPreparation.error.empty()
                                         ? "Annotation actions are disabled while annotation data is being prepared. Retry when annotationReady is true."
                                         : "Annotation preparation failed: " + annotationPreparation.error, -32014});
                                 return;
                             }
-                            if ((payload.action == A::annotationCreate && payload.shape != "section") || payload.action == A::annotationMove || payload.action == A::annotationReshape) {
+                            if (!textCommand && ((payload.action == A::annotationCreate && payload.shape != "section") || payload.action == A::annotationMove || payload.action == A::annotationReshape)) {
                                 auto next = woby::prepareAnnotationCommand(ui, payload);
                                 if (annotationCommand) {
                                     woby::cancelAnnotationWork(annotationCommand->work);
@@ -3941,7 +3946,7 @@ int main(int argc, char** argv)
                     && !keyboardIo.WantCaptureKeyboard && !keyboardIo.WantTextInput
                     && !ImGui::IsAnyItemActive()
                     && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
-                if (sceneKeyboardAvailable && !annotationEscapeConsumed && !annotationInteraction.dragging && !annotationInteraction.tool && !annotationInteraction.sectionTool) {
+                if (sceneKeyboardAvailable && !annotationEscapeConsumed && !annotationInteraction.dragging && !annotationInteraction.tool && !annotationInteraction.sectionTool && !annotationInteraction.textTool) {
                     if (!keyboardIo.KeyCtrl && !keyboardIo.KeyAlt && !keyboardIo.KeySuper) {
                         if (!popupWasOpen && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
                             woby::clearSceneSelection(ui);

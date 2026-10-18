@@ -20,7 +20,7 @@ AnnotationCommand prepareAnnotationCommand(const UiState& state, const ControlOp
     AnnotationShape shape;
     std::array<float, 2> start{}, end{};
     if (creating) {
-        if (operation.shape == "section") { throw std::invalid_argument("Cross sections do not use surface projection commands."); }
+        if (operation.shape == "section" || operation.shape == "text") { throw std::invalid_argument("Cross sections do not use surface projection commands."); }
         const auto target = findSceneObject(state, operation.objectId);
         if (!target || target->kind != SceneObjectKind::group) { throw std::invalid_argument("Annotation creation requires a model group ID."); }
         view = scenePickView(state.camera, state.upAxis, state.sceneBounds, 1000, 1000, true, 1);
@@ -35,6 +35,7 @@ AnnotationCommand prepareAnnotationCommand(const UiState& state, const ControlOp
             throw std::invalid_argument("This command does not project annotation geometry.");
         }
         const auto* selected = findAnnotation(state, operation.objectId);
+        if (selected && selected->text) { throw std::invalid_argument("Use the text position controls to move text."); }
         if (selected && selected->section) { throw std::invalid_argument("Use the section plane controls to move or reshape a cross section."); }
         if (!selected || selected->settings.locked || !selected->targetValid) {
             throw std::invalid_argument("The annotation is locked or its source is unavailable.");

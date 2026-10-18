@@ -92,6 +92,34 @@ match the table without `--` (for example `comments`, `locked`, `start`, `delta`
 The camera and model must be positioned so the requested drawing area hits the
 intended surface before creation.
 
+## Text annotations
+
+Use the text glyph in the annotation toolbar, or **Tools > Text annotation**.
+Click a surface to place the text at that point. An empty-space click uses the
+camera target depth. Select the text to change its content, color, size, position,
+and rotation. Drag text to move it in the view plane.
+
+Text is an independent scene annotation. Its position stays fixed when models
+move. Text draws over scene geometry. Size is the line height in scene units.
+**Always face camera** is on by default. When it is off, text uses its local XY
+plane and the specified rotation in degrees. Text supports multiple lines,
+visibility, position locking, duplication, undo/redo, scene save/load, and PNG export.
+
+```powershell
+$created = woby.exe ctl --instance review annotation create scene --shape text --text "Check this area" --position 0 0 0 --size 0.5 --rgb 1 0.8 0 --face-camera true --json | ConvertFrom-Json
+$textId = $created.target
+woby.exe ctl --instance review annotation set $textId --text "Reviewed" --size 0.8 --rgb 0 1 0
+woby.exe ctl --instance review annotation set $textId --face-camera false --rotation-degrees 90 0 0 --position 1 2 3
+```
+
+Creation requires `scene`, `--shape text`, `--text`, and `--position X Y Z`.
+Use `--size` for a positive height from 0.000001 to 1000000 scene units (default 1).
+Use `--face-camera true|false` to change the facing mode. In RPC, these fields are
+`text`, `position`, `size`, `faceCamera`, and `rotationDegrees`.
+`annotation get` and `annotation list` return these values. Use `annotation set
+--position` to move text. The surface `move` and `reshape` commands do not apply.
+Text accepts up to 8192 UTF-8 bytes. Empty text hides the label until text is set again.
+
 ## Discovery, inspection, capture, and lifecycle
 
 All scene/camera/capture commands also work in [headless mode](headless.md).

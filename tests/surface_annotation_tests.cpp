@@ -657,7 +657,7 @@ struct AnnotationUiFixture {
     AnnotationNameEdit nameEdit;
     SceneQueryRuntime queries;
     ScenePickView pickView = view();
-    ImVec2 lineButton{}, rectangleButton{}, sectionButton{}, dimensions{};
+    ImVec2 lineButton{}, rectangleButton{}, sectionButton{}, textButton{}, dimensions{};
     bool pointerAllowed = true, captureMouse = false, disabled = false;
     bool showObjects = false, showInspector = false;
     bool showScaleOverlay = false;
@@ -682,7 +682,8 @@ struct AnnotationUiFixture {
         const auto origin = ImGui::GetCursorScreenPos();
         drawAnnotationTools(scene.state, interaction, disabled);
         const auto low = ImGui::GetItemRectMin(), high = ImGui::GetItemRectMax();
-        sectionButton = {(low.x + high.x) / 2, (low.y + high.y) / 2};
+        textButton = {(low.x + high.x) / 2, (low.y + high.y) / 2};
+        sectionButton = {textButton.x - renderModeButtonSize() - ImGui::GetStyle().ItemSpacing.x, textButton.y};
         lineButton = {origin.x + renderModeButtonSize() / 2, sectionButton.y};
         rectangleButton = {lineButton.x + renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.x, sectionButton.y};
         ImGui::SameLine();
@@ -904,7 +905,9 @@ TEST_CASE("annotation icon tools share the dimensions row and toggle without edi
 {
     AnnotationUiFixture fixture;
     CHECK(fixture.lineButton.x < fixture.rectangleButton.x);
-    CHECK(fixture.rectangleButton.x < fixture.dimensions.x);
+    CHECK(fixture.rectangleButton.x < fixture.sectionButton.x);
+    CHECK(fixture.sectionButton.x < fixture.textButton.x);
+    CHECK(fixture.textButton.x < fixture.dimensions.x);
     CHECK(fixture.dimensions.y < fixture.rectangleButton.y);
     const auto revision = fixture.scene.state.sceneEditRevision;
     fixture.click(fixture.lineButton);
@@ -918,7 +921,15 @@ TEST_CASE("annotation icon tools share the dimensions row and toggle without edi
     CHECK_FALSE(fixture.interaction.tool);
     fixture.click(fixture.sectionButton);
     CHECK_FALSE(fixture.interaction.sectionTool);
+    fixture.click(fixture.textButton);
+    CHECK(fixture.interaction.textTool);
+    CHECK_FALSE(fixture.interaction.sectionTool);
+    CHECK_FALSE(fixture.interaction.tool);
+    fixture.click(fixture.textButton);
+    CHECK_FALSE(fixture.interaction.textTool);
     fixture.disabled = true;
+    fixture.click(fixture.textButton);
+    CHECK_FALSE(fixture.interaction.textTool);
     fixture.click(fixture.lineButton);
     CHECK_FALSE(fixture.interaction.tool);
     CHECK(fixture.scene.state.sceneEditRevision == revision);
@@ -2034,7 +2045,7 @@ TEST_CASE("annotation bridges survive editing transforms scene files and history
     const auto path = fixture.root / "bridges.woby";
     const auto document = createSceneDocument(fixture.state);
     writeSceneDocument(path, document);
-    { std::ifstream stream(path); std::string line; std::getline(stream, line); std::getline(stream, line); CHECK(line == "version = 25"); }
+    { std::ifstream stream(path); std::string line; std::getline(stream, line); std::getline(stream, line); CHECK(line == "version = 26"); }
     const auto read = readSceneDocument(path);
     CHECK(read.annotations == document.annotations);
     const auto restored = prepareSceneReplacement(fixture.state, fixture.state.files, read);

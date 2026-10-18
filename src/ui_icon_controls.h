@@ -6,6 +6,7 @@ namespace woby {
 
 enum class RenderModeState { off, mixed, on };
 enum class CameraView;
+inline constexpr const char* textAnnotationIcon = "\xef\x80\xb1"; // Font Awesome font (U+F031).
 inline constexpr const char* solidMeshIcon = "\xef\x86\xb2";
 inline constexpr const char* trianglesIcon = "\xef\x81\x8b";
 inline constexpr const char* verticesIcon = "\xef\x86\x92";

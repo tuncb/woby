@@ -150,18 +150,22 @@ void drawAnnotationStyleMenu(UiState& state)
     if (ImGui::MenuItem("Unlock selected")) { setSelectedAnnotationStyle(state, false); }
     const auto* first = findAnnotation(state, state.selectedSceneObjects.front());
     float width = first->settings.width;
-    bool surfaceOnly = true, mixed = false, anySection = false;
+    bool surfaceOnly = true, mixed = false, anySection = false, anyText = false;
     for (auto id : state.selectedSceneObjects) {
         const auto* item = findAnnotation(state, id);
         anySection = anySection || item->section.has_value();
+        anyText = anyText || item->text.has_value();
         surfaceOnly = surfaceOnly && !item->section;
         mixed = mixed || item->settings.width != width;
     }
+    ImGui::BeginDisabled(anyText);
     if (mixed) { ImGui::TextDisabled("Line widths differ"); }
     ImGui::SetNextItemWidth(uiSize(180));
     if (ImGui::SliderFloat("Line width", &width, 1, anySection ? 8.0f : 12.0f, "%.1f px")) {
         setSelectedAnnotationStyle(state, {}, width);
     }
+    ImGui::EndDisabled();
+    if (anyText) { setLastItemTooltip("Use Size in the text inspector to change text size."); }
     ImGui::BeginDisabled(!surfaceOnly);
     auto color = first->settings.color;
     if (ImGui::ColorEdit4("Color", color.data(), ImGuiColorEditFlags_NoInputs)) { setSelectedAnnotationStyle(state, {}, {}, color); }

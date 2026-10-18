@@ -369,6 +369,8 @@ SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationG
 SceneObjectId duplicateAnnotation(UiState& state, SceneObjectId id);
 void renameAnnotation(UiState& state, SceneObjectId id, const std::string& name);
 void setAnnotationSettings(UiState& state, SceneObjectId id, AnnotationSettings settings);
+SceneObjectId createTextAnnotation(UiState& state, TextAnnotationSettings settings);
+void setTextAnnotationSettings(UiState& state, SceneObjectId id, TextAnnotationSettings settings);
 void setAllAnnotationsVisible(UiState& state, bool visible);
 void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometry geometry);
 void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometryOwner geometry);

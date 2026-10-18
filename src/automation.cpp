@@ -1240,6 +1240,7 @@ void printCommandLineHelp()
         "Move/reshape use the original projection. --delta is relative; use --request-key for retries.\n"
         "Comments support newlines; an empty string clears them. Width is 1-12 px; RGB/opacity are 0-1.\n"
         "\nCross-section annotations:\n"
+        "annotation create scene --shape text --text TEXT --position X Y Z [--size VALUE] [--face-camera true|false]\n"
         "annotation create TARGET --shape section --plane-start X Y Z --plane-end X Y Z\n"
         "  TARGET is scene (visible triangle meshes), or a folder/file/group ID (all its triangle parts).\n"
         "  Endpoints and --lift use world coordinates and model units; --section-up-axis y|z\n"

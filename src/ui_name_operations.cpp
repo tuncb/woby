@@ -42,7 +42,7 @@ void refreshReferenceNames(UiState& state)
         for (auto& part : comparison.b) { refresh(part.objectId, part.name); }
     }
     for (auto& annotation : state.annotations) {
-        if (!annotation.section) { refresh(annotation.targetId, annotation.targetName); }
+        if (!annotation.section && !annotation.text) { refresh(annotation.targetId, annotation.targetName); }
     }
 }
 

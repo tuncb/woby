@@ -3,11 +3,13 @@
 #include "surface_annotation.h"
 #include "annotation_work.h"
 #include "scene_renderer.h"
+#include "text_annotation_ui.h"
 
 namespace woby {
 struct AnnotationExecutor;
 struct AnnotationPointerRuntime;
 struct AnnotationInteraction {
+    TextAnnotationDrawCache textDrawCache;
     SceneQueryRuntime* queries = nullptr;
     AnnotationWorkIdentity identity;
     SceneQueryStamp overlayStamp;
@@ -15,7 +17,8 @@ struct AnnotationInteraction {
     AnnotationExecutor* executor = nullptr;
     std::shared_ptr<AnnotationPointerRuntime> pending;
     std::optional<AnnotationShape> tool;
-    bool sectionTool = false;
+    bool sectionTool = false, textTool = false;
+    std::optional<TextAnnotationSettings> textStart;
     std::optional<CrossSectionSettings> sectionStart;
     std::array<float, 3> sectionGrab{};
     bool dragging = false;

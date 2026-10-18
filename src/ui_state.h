@@ -224,6 +224,7 @@ struct UiAnnotation {
     AnnotationSettings settings;
     AnnotationGeometryOwner geometry;
     std::optional<CrossSectionSettings> section;
+    std::optional<TextAnnotationSettings> text;
     // Derived at load/geometry replacement boundaries, never serialized.
     uint64_t geometryRevision = 0; // Session-only attachment/outline identity.
     bool targetValid = false;

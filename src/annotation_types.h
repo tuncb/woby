@@ -107,6 +107,16 @@ struct SceneAnnotationTarget {
     friend bool operator==(const SceneAnnotationTarget&, const SceneAnnotationTarget&) = default;
 };
 
+// Text height and position use scene units. Fixed text lies in its local XY plane.
+struct TextAnnotationSettings {
+    std::string text = "Text";
+    std::array<float, 3> position{}, rotationDegrees{};
+    float size = 1;
+    bool faceCamera = true;
+    friend bool operator==(const TextAnnotationSettings&, const TextAnnotationSettings&) = default;
+};
+[[nodiscard]] TextAnnotationSettings normalizedTextAnnotationSettings(TextAnnotationSettings settings);
+
 // World-space vertical cutting plane. Lift changes display only.
 struct CrossSectionSettings {
     std::array<float, 3> a{}, b{1, 0, 0};
@@ -126,6 +136,7 @@ struct SceneAnnotationRecord {
     AnnotationGeometryOwner geometry;
     std::vector<SceneAnnotationTarget> targets;
     std::optional<CrossSectionSettings> section;
+    std::optional<TextAnnotationSettings> text;
     friend bool operator==(const SceneAnnotationRecord&, const SceneAnnotationRecord&) = default;
 };
 

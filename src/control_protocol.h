@@ -74,7 +74,10 @@ struct ControlOperation {
     std::optional<float> needleThresholdRatio, capMinAngleDegrees;
     std::optional<bool> qualityOnA, qualityMinimumEnabled, qualityMaximumEnabled;
     std::optional<float> qualityMinimumSize, qualityMaximumSize;
-    std::optional<std::string> shape, comments;
+    std::optional<std::string> shape, comments, text;
+    std::optional<std::array<float, 3>> position;
+    std::optional<float> size;
+    std::optional<bool> faceCamera;
     std::optional<bool> locked;
     std::optional<std::array<float, 2>> start, end, delta;
     std::optional<float> aspect, opacity;

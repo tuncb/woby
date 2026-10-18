@@ -114,6 +114,9 @@ MainMenuResult drawMainMenu(UiState& state, AnnotationInteraction& annotation,
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("Tools")) {
+        if (ImGui::MenuItem("Text annotation", nullptr, annotation.textTool, !annotation.dragging)) {
+            const bool active = annotation.textTool; cancelAnnotationPointer(annotation); annotation.textTool = !active;
+        }
         if (ImGui::MenuItem("Cross section", nullptr, annotation.sectionTool, ready && !state.files.empty() && !annotation.dragging)) {
             const bool active = annotation.sectionTool; cancelAnnotationPointer(annotation); annotation.sectionTool = !active;
         }

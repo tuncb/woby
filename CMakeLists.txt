@@ -181,6 +181,8 @@ add_library(woby_core STATIC
     src/annotation_command.cpp
     src/annotation_preparation.cpp
     src/annotation_ui.cpp
+    src/text_annotation.cpp
+    src/text_annotation_ui.cpp
     src/scene_pick.cpp
     src/scene_pick.h
     src/scene_dimensions.cpp
@@ -646,6 +648,7 @@ if(BUILD_TESTING)
         tests/hover_pick_tests.cpp
         tests/surface_annotation_tests.cpp
         tests/cross_section_tests.cpp
+        tests/text_annotation_tests.cpp
         tests/difference_mesh_tests.cpp
         tests/scene_pick_tests.cpp
         tests/scene_renderer_tests.cpp

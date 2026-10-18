@@ -265,6 +265,7 @@ bool setSelectedAnnotationStyle(UiState& state, std::optional<bool> locked, std:
     if (!sceneSelectionHasKind(state, SceneObjectKind::annotation) || (width && !std::isfinite(*width))) { return false; }
     if (color && std::any_of(color->begin(), color->end(), [](float value) { return !std::isfinite(value); })) { return false; }
     const auto ids = uniqueIds(state.selectedSceneObjects);
+    if (width && std::any_of(ids.begin(), ids.end(), [&](auto id) { return findAnnotation(state, id)->text.has_value(); })) { return false; }
     if (color && std::any_of(ids.begin(), ids.end(), [&](auto id) { return findAnnotation(state, id)->section.has_value(); })) { return false; }
     const auto revision = state.sceneEditRevision;
     for (auto id : ids) {

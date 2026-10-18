@@ -147,6 +147,7 @@ const UiAnnotation* selectedAnnotation(const UiState& state)
 }
 std::vector<std::array<float, 3>> annotationVertices(const UiState& state, const UiAnnotation& item)
 {
+    if (item.text) { return {item.text->position}; }
     if (!item.targetValid) { return {}; }
     if (!item.targetIds.empty()) { return annotationControlWorldPositions(item, scenePickParts(state, true)); }
     // Resolve the source independently of visibility, opacity, and selection.
@@ -181,7 +182,7 @@ void validateAnnotationTargets(UiState& state, bool notifyEdit)
 {
     bool changed = false;
     for (auto& item : state.annotations) {
-        if (item.section) { item.targetValid = true; item.targetPending = false; continue; }
+        if (item.section || item.text) { item.targetValid = true; item.targetPending = false; continue; }
         const bool validBefore = item.targetValid, pendingBefore = item.targetPending;
         item.targetPending = false;
         for (const auto& file : state.files) {
@@ -197,6 +198,33 @@ void validateAnnotationTargets(UiState& state, bool notifyEdit)
         changed = changed || validBefore != item.targetValid || pendingBefore != item.targetPending;
     }
     if (changed && notifyEdit) { notifySceneEdit(state, SceneChange::annotations); }
+}
+SceneObjectId createTextAnnotation(UiState& state, TextAnnotationSettings settings)
+{
+    UiAnnotation item;
+    item.text = normalizedTextAnnotationSettings(std::move(settings));
+    item.targetValid = true;
+    item.settings.name = "Text " + std::to_string(state.annotations.size() + 1);
+    state.annotations.push_back(std::move(item));
+    assignSceneObjectIds(state);
+    const auto id = state.annotations.back().objectId;
+    selectSceneObject(state, id);
+    markSceneDirty(state, SceneChange::annotations);
+    return id;
+}
+void setTextAnnotationSettings(UiState& state, SceneObjectId id, TextAnnotationSettings settings)
+{
+    settings = normalizedTextAnnotationSettings(std::move(settings));
+    for (auto& item : state.annotations) {
+        if (item.objectId != id || !item.text) { continue; }
+        if (item.settings.locked && (settings.position != item.text->position || settings.rotationDegrees != item.text->rotationDegrees)) { return; }
+        if (settings != *item.text) {
+            item.text = std::move(settings);
+            ++item.geometryRevision;
+            markSceneDirty(state, SceneChange::annotations);
+        }
+        return;
+    }
 }
 SceneObjectId createCrossSection(UiState& state, CrossSectionSettings settings, std::vector<SceneObjectId> sources)
 {
@@ -318,6 +346,7 @@ void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometryOwner
     validateAnnotationGeometry(*geometry);
     for (auto& item : state.annotations) {
         if (item.objectId != id) { continue; }
+        if (item.text) { throw std::runtime_error("Use the text position controls to move text."); }
         if (item.section) { throw std::runtime_error("Use the section plane controls to reshape a cross section."); }
         if (item.settings.locked || !item.targetValid || !findSceneObject(state, item.targetId)) { throw std::runtime_error("This annotation is locked or its target is unavailable."); }
         if (geometry->fingerprint != item.geometry->fingerprint || geometry->projector != item.geometry->projector
@@ -342,7 +371,7 @@ std::vector<SceneAnnotationRecord> sceneAnnotationRecords(const UiState& state)
     for (const auto& item : state.annotations) {
         SceneAnnotationRecord record;
         record.targetName = item.targetName; record.settings = item.settings; record.geometry = item.geometry;
-        record.section = item.section;
+        record.section = item.section; record.text = item.text;
         const auto primary = savedTarget(state, item.targetId);
         record.fileIndex = primary.fileIndex; record.groupIndex = primary.groupIndex;
         for (const auto id : item.targetIds) { record.targets.push_back(savedTarget(state, id)); }
@@ -356,16 +385,18 @@ void loadSceneAnnotations(UiState& state, const SceneDocument& document)
     annotations.reserve(document.annotations.size());
     std::map<size_t, Mesh> legacyMeshes;
     for (const auto& record : document.annotations) {
-        if (!record.section) { validateAnnotationGeometry(*record.geometry); }
+        if (!record.section && !record.text) { validateAnnotationGeometry(*record.geometry); }
         UiAnnotation item;
         item.targetName = record.targetName;
         item.settings = normalizedAnnotationSettings(record.settings);
         item.geometry = record.geometry;
+        if (record.text && record.section) { throw std::runtime_error("An annotation cannot be both text and a section."); }
+        if (record.text) { item.text = normalizedTextAnnotationSettings(*record.text); }
         if (record.section) { item.section = normalizedCrossSectionSettings(*record.section, record.targets.size()); }
-        if (!record.section && record.targets.size() != record.geometry->sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
+        if (!record.section && !record.text && record.targets.size() != record.geometry->sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
         item.targetId = loadedTarget(state, document, {record.fileIndex, record.groupIndex});
         for (const auto& target : record.targets) { item.targetIds.push_back(loadedTarget(state, document, target)); }
-        if (!record.section) { migrateAnnotationFrame(item, record, state, document, legacyMeshes); }
+        if (!record.section && !record.text) { migrateAnnotationFrame(item, record, state, document, legacyMeshes); }
         annotations.push_back(std::move(item));
     }
     state.annotations = std::move(annotations);

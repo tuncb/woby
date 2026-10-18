@@ -1,6 +1,7 @@
 #include "annotation_ui.h"
 #include "ui_bulk_controls.h"
 #include "cross_section_ui.h"
+#include "text_annotation_ui.h"
 #include "annotation_preparation.h"
 #include "annotation_work.h"
 #include "ui_operations.h"
@@ -99,6 +100,13 @@ void drawAnnotationTools(const UiState& state, AnnotationInteraction& interactio
         cancelAnnotationPointer(interaction); interaction.sectionTool = !active;
     }
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    const bool textActive = interaction.textTool;
+    if (drawRenderModeIconButton("annotation_text", textAnnotationIcon,
+            "Text: click in the scene to place text. Press Escape to cancel.",
+            textActive ? RenderModeState::on : RenderModeState::off, disabled || interaction.dragging)) {
+        cancelAnnotationPointer(interaction); interaction.textTool = !textActive;
+    }
 }
 void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
 {
@@ -149,7 +157,7 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
             setAnnotationSettings(state, id, style);
         }
         ImGui::SameLine();
-        const bool missing = !item.section && (!item.targetValid || !findSceneObject(state, item.targetId));
+        const bool missing = !item.section && !item.text && (!item.targetValid || !findSceneObject(state, item.targetId));
         const std::string label = item.settings.name + (item.targetPending ? " [preparing]" : missing ? " [needs reattachment]" : "") + "##annotation";
         const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
         if (edit.objectId == id) {
@@ -207,6 +215,7 @@ void drawAnnotationInspector(UiState& state, SceneQueryRuntime* queries)
 {
     const auto* item = selectedAnnotation(state);
     if (!item) { return; }
+    if (item->text) { drawTextAnnotationInspector(state); return; }
     if (item->section) { drawCrossSectionInspector(state, queries); return; }
     const auto id = item->objectId;
     ImGui::PushID(std::to_string(id).c_str());
@@ -455,10 +464,13 @@ void cancelAnnotationPointer(AnnotationInteraction& interaction)
     if (interaction.pending) { cancelAnnotationWork(interaction.pending->work); }
     auto* executor = interaction.executor;
     auto* queries = interaction.queries;
-    interaction = {}; interaction.executor = executor; interaction.queries = queries;
+    auto textDrawCache = std::move(interaction.textDrawCache);
+    interaction = {}; interaction.textDrawCache = std::move(textDrawCache); interaction.executor = executor; interaction.queries = queries;
 }
 bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, const ScenePickView& view, PickPoint point)
 {
+    if (!interaction.tool && !interaction.sectionTool && beginTextAnnotationPointer(state, interaction, view, point)) { return true; }
+    if (!interaction.tool && !interaction.sectionTool && selectedAnnotation(state) && selectedAnnotation(state)->text) { return false; }
     if (interaction.sectionTool || (!interaction.tool && selectedAnnotation(state) && selectedAnnotation(state)->section)) {
         return beginSectionPointer(state, interaction, view, point);
     }
@@ -509,6 +521,7 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
 }
 void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interaction, PickPoint point, bool lockDirection)
 {
+    if (interaction.textStart) { moveTextAnnotationPointer(interaction, point); return; }
     if (interaction.sectionStart) { moveSectionPointer(state, interaction, point, lockDirection); return; }
     if (!interaction.pending) { movePointerProjection(state, interaction, point, interactionParts(state, interaction)); return; }
     if (interaction.pending->released || point == interaction.pointerEnd) { return; }
@@ -549,6 +562,7 @@ void updateAnnotationPointer(UiState& state, AnnotationInteraction& interaction,
 }
 void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bool allowed)
 {
+    if (interaction.textStart) { endTextAnnotationPointer(state, interaction, allowed); return; }
     if (interaction.sectionStart) { endSectionPointer(state, interaction, allowed); return; }
     if (interaction.pending) {
         if (!allowed || !annotationWorkCurrent(interaction.pending->input->identity, state, true)) {
@@ -582,7 +596,8 @@ void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bo
 float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interaction,
     const ScenePickView& view, float windowX, float pixelsToWindow, bool pointerAllowed, float windowY)
 {
-    pointerAllowed = pointerAllowed && annotationPreparationReady(state);
+    drawTextAnnotations(*ImGui::GetForegroundDrawList(), state, view, {windowX, windowY}, pixelsToWindow, interaction.textDrawCache, &interaction);
+    pointerAllowed = pointerAllowed && (interaction.textTool || (selectedAnnotation(state) && selectedAnnotation(state)->text) || annotationPreparationReady(state));
     auto* draw = ImGui::GetForegroundDrawList();
     const ImVec2 low{windowX, windowY}, high{windowX + static_cast<float>(view.width) * pixelsToWindow, windowY + static_cast<float>(view.height) * pixelsToWindow};
     draw->PushClipRect(low, high);
@@ -610,7 +625,7 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
             // of those frames for settled navigation and ray-pick the mesh.
             auto parts = interactionParts(state, interaction);
             const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == item->targetId; });
-            if (item->section) {
+            if (item->section || item->text) {
                 interaction.overlayHandles = handles(*item, parts, view);
             } else if (target != parts.end()) {
                 const auto positions = handles(*item, parts, view);
@@ -639,8 +654,9 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
         }
     }
     float messageBottom = 0;
-    if (interaction.tool || interaction.sectionTool || interaction.dragging || !interaction.error.empty()) {
+    if (interaction.tool || interaction.sectionTool || interaction.textTool || interaction.dragging || !interaction.error.empty()) {
         const char* text = !interaction.error.empty() ? interaction.error.c_str()
+            : interaction.textTool || interaction.textStart ? "Click to place text. Drag text to move it. Escape cancels."
             : interaction.sectionTool || interaction.sectionStart ? "Drag a section line. Hold Shift for 45-degree directions. Escape cancels."
             : interaction.pending && interaction.pending->released ? "Attaching annotation... Escape cancels."
             : interaction.dragging && interaction.sampledPreview ? "Release to attach the outline to the surface. Escape cancels."
@@ -672,7 +688,7 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
         if ((interaction.dragging && interaction.editing)
             || (!interaction.tool && !interaction.dragging && (overHandle || interaction.overlayEdgeHit))) {
             ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
-        } else if (interaction.tool || interaction.sectionTool || interaction.dragging) {
+        } else if (interaction.tool || interaction.sectionTool || interaction.textTool || interaction.dragging) {
             // ImGui has no crosshair cursor. Hide the platform cursor and draw
             // a contrast-outlined crosshair in window coordinates at every DPI.
             ImGui::SetMouseCursor(ImGuiMouseCursor_None);

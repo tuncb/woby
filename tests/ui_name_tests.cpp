@@ -190,7 +190,7 @@ TEST_CASE("source name load defaults validate new fields and old scenes") {
     writeSceneDocument(path, document);
     std::string text;
     { std::ifstream input(path); text.assign(std::istreambuf_iterator<char>(input), {}); }
-    text.replace(text.find("version = 25"), 12, "version = 24");
+    text.replace(text.find("version = 26"), 12, "version = 24");
     { std::ofstream output(path); output << text; }
     const auto legacy = readSceneDocument(path);
     CHECK(legacy.files[0].customName.empty()); CHECK(legacy.files[0].groups[0].customName.empty());
@@ -205,7 +205,7 @@ TEST_CASE("source name load defaults validate new fields and old scenes") {
     CHECK(f.state.files[0].groupSettings[1].customName.empty());
     for (const auto section : {"[[files]]\npath = \"pump.obj\"\n", "[[files]]\npath = \"pump.obj\"\n[[files.groups]]\n",
             "[[nodes]]\nkind = \"folder\"\n"}) {
-        { std::ofstream output(path); output << "version = 25\n" << section << "custom_name = true\n"; }
+        { std::ofstream output(path); output << "version = 26\n" << section << "custom_name = true\n"; }
         CHECK_THROWS((void)readSceneDocument(path));
     }
 }

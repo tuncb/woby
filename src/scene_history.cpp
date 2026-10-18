@@ -196,7 +196,7 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
     }
     for (auto& annotation : prepared.annotations) {
         if (const auto* live = findAnnotation(current, annotation.objectId)) {
-            annotation.geometryRevision = live->geometryRevision + (annotation.geometry != live->geometry ? 1u : 0u);
+            annotation.geometryRevision = live->geometryRevision + ((annotation.geometry != live->geometry || annotation.text != live->text || annotation.section != live->section) ? 1u : 0u);
         }
     }
     validateAnnotationTargets(prepared);
