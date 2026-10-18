@@ -9,6 +9,7 @@
 #include "command_line.h"
 #include <nlohmann/json.hpp>
 #include <doctest/doctest.h>
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <limits>
@@ -31,6 +32,7 @@ Json runSectionCommand(UiState& state, const std::string& method, Json params, S
     if (id) { params["target"] = std::to_string(id); }
     auto command = parseControlOperation(*findControlMethod(method), params);
     command.objectId = id;
+    if (command.sourceObject) { command.sourceObjectId = std::stoull(*command.sourceObject); }
     return applyControlSceneOperation(state, {}, command, [](SceneObjectId value) { return std::to_string(value); }, 200, 800);
 }
 Mesh sheet(float height)
@@ -820,6 +822,7 @@ TEST_CASE("cross section settings and sources survive save load with one tempora
     s.faceOn = true;
     s.reference = 1;
     s.compared = 0;
+    s.sourceColors = {{{.1f, .2f, .3f}}, {{.7f, .6f, .5f}}};
     setCrossSectionSettings(f.state, id, s);
     const auto path = f.root / "section.woby";
     writeSceneDocument(path, createSceneDocument(f.state));
@@ -871,6 +874,14 @@ TEST_CASE("cross section worker caches geometry across display edits and source 
     setCrossSectionSettings(f.state, id, s);
     updateSceneAnnotationQueries(runtime, f.state);
     CHECK(crossSectionResult(runtime, id) == first);
+    s.sourceColors[0] = {.1f, .2f, .3f};
+    setCrossSectionSettings(f.state, id, s);
+    updateSceneAnnotationQueries(runtime, f.state);
+    CHECK(crossSectionResult(runtime, id) == first);
+    const auto& batches = runtime.annotations.objects.at(id).batches;
+    CHECK(std::any_of(batches.begin(), batches.end(), [&](const auto& batch) {
+        return !batch.lines.empty() && batch.color == sectionSourceColor(s, 0);
+    }));
     f.state.files[0].groupSettings[0].visible = false;
     notifySceneEdit(f.state, SceneChange::visibility);
     updateSceneAnnotationQueries(runtime, f.state);
@@ -973,7 +984,7 @@ TEST_CASE("cross section inspector displays all sources and the common face on p
     int width = 0, height = 0;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     std::string content;
-    ImGuiID folderToggle = 0, contourToggle = 0;
+    ImGuiID folderToggle = 0, contourToggle = 0, folderVisibility = 0, folderColor = 0;
     const auto frame = [&] {
         ImGui::NewFrame();
         ImGui::SetNextWindowPos({0, 0});
@@ -983,6 +994,8 @@ TEST_CASE("cross section inspector displays all sources and the common face on p
         ImGui::PushID("cut_meshes");
         ImGui::PushID(static_cast<int>(f.state.sceneNodes[0].objectId));
         folderToggle = ImGui::GetID("source");
+        folderVisibility = ImGui::GetID("##contour");
+        folderColor = ImGui::GetID("source_color");
         ImGui::PushID("source");
         ImGui::PushID(static_cast<int>(f.state.files[0].objectId));
         ImGui::PushID("source");
@@ -1008,7 +1021,8 @@ TEST_CASE("cross section inspector displays all sources and the common face on p
     CHECK(cutMeshes.find("Section models") != std::string::npos);
     CHECK(cutMeshes.find("a.obj") != std::string::npos);
     CHECK(cutMeshes.find("b.obj") != std::string::npos);
-    CHECK(cutMeshes.find("sheet | Cut") != std::string::npos);
+    CHECK(cutMeshes.find("sheet") != std::string::npos);
+    CHECK(cutMeshes.find("Cut") != std::string::npos);
     CHECK(cutMeshes.find("a.obj / sheet") == std::string::npos);
     CHECK(cutMeshes.find("b.obj / sheet") == std::string::npos);
     CHECK(content.find("Largest sampled 2D gap") != std::string::npos);
@@ -1018,11 +1032,38 @@ TEST_CASE("cross section inspector displays all sources and the common face on p
     CHECK(cutContent().find("a.obj") == std::string::npos);
     CHECK(cutContent().find("b.obj") == std::string::npos);
     ImGui::ActivateItemByID(folderToggle); frame();
-    CHECK(cutContent().find("sheet | Cut") != std::string::npos);
+    CHECK(cutContent().find("sheet") != std::string::npos);
     ImGui::ActivateItemByID(contourToggle); frame();
     CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{true, false});
     CHECK(f.state.files[0].groupSettings[0].visible);
     CHECK(findAnnotation(f.state, id)->targetIds == std::vector<SceneObjectId>{sources[1], sources[0]});
+    ImGui::ActivateItemByID(folderToggle); frame(); // Keep the branch closed for both bulk actions.
+    ImGui::ActivateItemByID(folderVisibility); frame();
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{true, true});
+    ImGui::ActivateItemByID(folderVisibility); frame();
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{false, false});
+    const auto colorsBefore = findAnnotation(f.state, id)->section->sourceColors;
+    ImGui::ActivateItemByID(folderColor); frame(); frame();
+    REQUIRE_FALSE(context->OpenPopupStack.empty());
+    auto* popup = context->OpenPopupStack.back().Window;
+    REQUIRE(popup);
+    const auto popupId = popup->ID;
+    const int presetIndex = 3;
+    const auto preset = ImHashStr("preset", 0, ImHashData(&presetIndex, sizeof(presetIndex), popupId));
+    ImGui::ActivateItemByID(preset); frame();
+    CHECK(findAnnotation(f.state, id)->section->sourceColors == colorsBefore);
+    ImGui::ActivateItemByID(ImHashStr("Cancel", 0, popupId)); frame();
+    CHECK(findAnnotation(f.state, id)->section->sourceColors == colorsBefore);
+    ImGui::ActivateItemByID(folderColor); frame(); frame();
+    ImGui::ActivateItemByID(preset); frame();
+    ImGui::ActivateItemByID(ImHashStr("Apply to 2 items", 0, popupId)); frame();
+    const auto expected = sectionSourceColor(static_cast<size_t>(presetIndex));
+    for (const auto& color : findAnnotation(f.state, id)->section->sourceColors) {
+        CHECK(color == std::array<float, 3>{expected[0], expected[1], expected[2]});
+    }
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{false, false});
+    CHECK(f.state.files[0].groupSettings[0].visible);
+    CHECK(f.state.files[1].groupSettings[0].visible);
     ImGui::DestroyContext(context);
     ImGui::SetCurrentContext(previous);
 }
@@ -1066,10 +1107,24 @@ TEST_CASE("cross section source tree preserves nested model order and captured s
     CHECK(nested.children[0].name == "Second mesh");
     CHECK(nested.children[0].objectId == sources[1]);
     CHECK(nested.children[0].sourceIndex == 1);
+    CHECK(nested.sourceIndices == std::vector<size_t>{1});
+    CHECK(nested.visible == 1);
+    CHECK_FALSE(nested.mixedColor);
     CHECK(assembly.children[1].objectId == sources[0]);
     CHECK(assembly.children[1].sourceIndex == 0);
+    CHECK(assembly.sourceIndices == std::vector<size_t>{1, 0});
+    CHECK(assembly.visible == 1);
+    CHECK(assembly.mixedColor);
     CHECK(findAnnotation(f.state, id)->targetIds == sources);
     CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{false, true});
+    REQUIRE(editCrossSectionSources(settings, assembly.sourceIndices, true, std::array<float, 3>{.2f, .3f, .4f}));
+    setCrossSectionSettings(f.state, id, settings);
+    updateCrossSectionSourceTree(tree, f.state, *findAnnotation(f.state, id));
+    CHECK(tree.roots[0].visible == 2);
+    CHECK_FALSE(tree.roots[0].mixedColor);
+    CHECK(tree.roots[0].color == std::array<float, 3>{.2f, .3f, .4f});
+    CHECK_FALSE(f.state.files[0].groupSettings[0].visible);
+    CHECK_FALSE(f.state.files[0].groupSettings[1].visible);
 }
 TEST_CASE("cross section source tree refreshes labels and removed sources without rebuilding for display edits")
 {
@@ -1080,7 +1135,9 @@ TEST_CASE("cross section source tree refreshes labels and removed sources withou
     const auto update = [&] { updateCrossSectionSourceTree(tree, f.state, *findAnnotation(f.state, id)); };
     update();
     const auto builds = tree.builds;
+    const auto styles = tree.styleBuilds;
     update();
+    CHECK(tree.styleBuilds == styles);
     setGroupVisible(f.state, f.state.files[0], f.state.files[0].groupSettings[0], false);
     auto settings = *findAnnotation(f.state, id)->section;
     settings.sourceVisible[0] = false;
@@ -1088,6 +1145,15 @@ TEST_CASE("cross section source tree refreshes labels and removed sources withou
     setCrossSectionSettings(f.state, id, settings);
     update();
     CHECK(tree.builds == builds);
+    CHECK(tree.styleBuilds == styles + 1);
+    settings.sourceColors[0] = {.4f, .3f, .2f};
+    setCrossSectionSettings(f.state, id, settings);
+    update();
+    CHECK(tree.builds == builds);
+    CHECK(tree.styleBuilds == styles + 2);
+    CHECK(tree.roots[0].color == settings.sourceColors[0]);
+    update();
+    CHECK(tree.styleBuilds == styles + 2);
     REQUIRE(tree.roots.size() == 2);
     REQUIRE(renameSceneObject(f.state, sources[0], "Renamed mesh"));
     update();
@@ -1142,6 +1208,184 @@ TEST_CASE("cross section source tree handles implicit file trees and changed cap
     capture.targetIds.clear();
     updateCrossSectionSourceTree(tree, f.state, capture);
     CHECK(tree.roots.empty());
+}
+TEST_CASE("cross section source colors normalize and invalid edits leave state intact")
+{
+    Fixture f;
+    const auto id = f.add();
+    auto settings = *findAnnotation(f.state, id)->section;
+    REQUIRE(settings.sourceColors.size() == 2);
+    CHECK(sectionSourceColor(settings, 0) == sectionSourceColor(0));
+    CHECK(sectionSourceColor(settings, 1) == sectionSourceColor(1));
+    const auto original = settings;
+    const std::array<size_t, 2> both{0, 1};
+    CHECK_THROWS(editCrossSectionSources(settings, std::array<size_t, 2>{0, 2}, false, {}));
+    CHECK(settings == original);
+    CHECK_THROWS(editCrossSectionSources(settings, both, false,
+        std::array<float, 3>{0, std::numeric_limits<float>::quiet_NaN(), 1}));
+    CHECK(settings == original);
+    REQUIRE(editCrossSectionSources(settings, both, false, std::array<float, 3>{-1, .5f, 2}));
+    CHECK(settings.sourceColors == std::vector<std::array<float, 3>>{{{0, .5f, 1}}, {{0, .5f, 1}}});
+    CHECK(settings.sourceVisible == std::vector<bool>{false, false});
+    CHECK_FALSE(editCrossSectionSources(settings, both, false, std::array<float, 3>{0, .5f, 1}));
+    settings.sourceColors[1][2] = std::numeric_limits<float>::infinity();
+    CHECK_THROWS(setCrossSectionSettings(f.state, id, settings));
+    CHECK(findAnnotation(f.state, id)->section == original);
+    settings = original;
+    settings.sourceColors = {{{-1, 2, .4f}}};
+    setCrossSectionSettings(f.state, id, settings);
+    CHECK(findAnnotation(f.state, id)->section->sourceColors[0] == std::array<float, 3>{0, 1, .4f});
+    CHECK(sectionSourceColor(*findAnnotation(f.state, id)->section, 1) == sectionSourceColor(1));
+}
+TEST_CASE("cross section bulk style is one undo step and survives duplication and redo")
+{
+    Fixture f;
+    const auto id = f.add();
+    SceneHistory history;
+    resetSceneHistory(history, f.state);
+    const auto clean = createSceneDocument(f.state);
+    const auto original = *findAnnotation(f.state, id)->section;
+    auto changed = original;
+    REQUIRE(editCrossSectionSources(changed, std::array<size_t, 2>{0, 1}, false, std::array<float, 3>{.1f, .2f, .3f}));
+    setCrossSectionSettings(f.state, id, changed);
+    REQUIRE(recordSceneHistory(history, f.state));
+    auto undo = prepareSceneHistoryStep(history, f.state, clean, false);
+    REQUIRE(undo);
+    commitSceneHistoryStep(history, f.state, std::move(*undo), false);
+    CHECK(findAnnotation(f.state, id)->section == original);
+    CHECK_FALSE(canUndoScene(history));
+    auto redo = prepareSceneHistoryStep(history, f.state, clean, true);
+    REQUIRE(redo);
+    commitSceneHistoryStep(history, f.state, std::move(*redo), true);
+    CHECK(findAnnotation(f.state, id)->section == changed);
+    const auto copy = duplicateAnnotation(f.state, id);
+    CHECK(findAnnotation(f.state, copy)->section == changed);
+    CHECK(f.state.files[0].groupSettings[0].visible);
+    CHECK(f.state.files[1].groupSettings[0].visible);
+}
+TEST_CASE("cross section scene files retain the default palette without saved colors and reject incomplete triples")
+{
+    Fixture f;
+    f.add();
+    const auto path = f.root / "colors.woby";
+    writeSceneDocument(path, createSceneDocument(f.state));
+    std::ifstream input(path);
+    const std::string saved{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+    input.close();
+    const auto start = saved.find("section_colors = ");
+    REQUIRE(start != std::string::npos);
+    const auto end = saved.find('\n', start);
+    REQUIRE(end != std::string::npos);
+    auto legacy = saved;
+    legacy.erase(start, end - start + 1);
+    { std::ofstream output(path); output << legacy; }
+    const auto loaded = readSceneDocument(path);
+    REQUIRE(loaded.annotations.size() == 1);
+    REQUIRE(loaded.annotations[0].section);
+    CHECK(sectionSourceColor(*loaded.annotations[0].section, 0) == sectionSourceColor(0));
+    CHECK(sectionSourceColor(*loaded.annotations[0].section, 1) == sectionSourceColor(1));
+    auto malformed = saved;
+    malformed.replace(start, end - start, "section_colors = [0.2, 0.3]");
+    { std::ofstream output(path); output << malformed; }
+    CHECK_THROWS((void)readSceneDocument(path));
+}
+TEST_CASE("cross section CLI parses single and subtree styles and rejects ambiguous scopes")
+{
+    const auto single = sectionCommand({"annotation", "set", "section", "--source-index", "1", "--source-rgb", ".2", ".4", ".6"});
+    CHECK(single.sourceIndex == 1);
+    CHECK(single.sourceRgb == std::array<float, 3>{.2f, .4f, .6f});
+    const auto group = sectionCommand({"annotation", "set", "section", "--source-object", "model",
+        "--source-side", "b", "--source-visible", "false", "--source-rgb", ".3", ".5", ".7"});
+    CHECK(group.sourceObject == "model");
+    CHECK(group.sourceSide == "b");
+    CHECK(group.sourceVisible == false);
+    const auto params = controlOperationParams(group);
+    CHECK(params["sourceObject"] == "model");
+    CHECK(params["sourceSide"] == "b");
+    CHECK(params["sourceRgb"] == Json(*group.sourceRgb));
+    const auto roundtrip = parseControlOperation(controlMethod(ControlAction::annotationSet), params);
+    CHECK(roundtrip.sourceRgb == group.sourceRgb);
+    CHECK(roundtrip.sourceObject == group.sourceObject);
+    CHECK(roundtrip.sourceSide == group.sourceSide);
+    const auto usage = controlMethodUsage(controlMethod(ControlAction::annotationSet));
+    CHECK(usage.find("--source-object OBJECT_ID") != std::string::npos);
+    CHECK(usage.find("--source-rgb R G B") != std::string::npos);
+    for (auto invalid : {Json{{"sourceRgb", {1, 0, 0}}}, Json{{"sourceObject", "model"}},
+        Json{{"sourceObject", "model"}, {"sourceIndex", 0}, {"sourceVisible", false}},
+        Json{{"sourceSide", "c"}, {"sourceVisible", true}},
+        Json{{"sourceSide", "a"}, {"sourceIndex", 0}, {"sourceRgb", {1, 0, 0}}},
+        Json{{"sourceIndex", 0}, {"sourceRgb", {1, 0}}},
+        Json{{"sourceIndex", 0}, {"sourceRgb", {1, 0, std::numeric_limits<double>::infinity()}}}}) {
+        invalid["target"] = "section";
+        CHECK_THROWS(parseControlOperation(controlMethod(ControlAction::annotationSet), invalid));
+    }
+}
+TEST_CASE("cross section CLI edits captured subtrees without changing models or unrelated contours")
+{
+    Fixture f;
+    auto mesh = sheet(0);
+    auto& geometry = editMeshGeometry(mesh);
+    geometry.nodes = {{"first", 0, 6}, {"second", 0, 6}, {"uncaptured", 0, 6}};
+    geometry.hierarchy = {{"Assembly", UINT32_MAX, UINT32_MAX}, {"Nested", 0, UINT32_MAX},
+        {"second", 1, 1}, {"first", 0, 0}, {"uncaptured", 0, 2}};
+    f.state.files[0] = createUiFileState(f.root / "a.obj", std::move(mesh), 0);
+    f.state.sceneNodes.clear();
+    appendFolderTreeSceneNode(f.state, f.root, 0, f.state.files.size());
+    const auto& groups = f.state.files[0].groupSettings;
+    const auto id = createCrossSection(f.state, f.settings(), {f.sources()[1], groups[1].objectId, groups[0].objectId});
+    const auto file = f.state.files[0].objectId;
+    const auto original = *findAnnotation(f.state, id)->section;
+    runSectionCommand(f.state, "annotation.set", {{"locked", true}}, id);
+    runSectionCommand(f.state, "annotation.set", {{"sourceObject", std::to_string(file)}, {"sourceVisible", false}}, id);
+    const auto result = runSectionCommand(f.state, "annotation.set",
+        {{"sourceObject", std::to_string(file)}, {"sourceRgb", {.2f, .4f, .6f}}}, id);
+    const auto& edited = *findAnnotation(f.state, id)->section;
+    CHECK(edited.sourceVisible == std::vector<bool>{true, false, false});
+    CHECK(edited.sourceColors[0] == original.sourceColors[0]);
+    CHECK(edited.sourceColors[1] == std::array<float, 3>{.2f, .4f, .6f});
+    CHECK(edited.sourceColors[2] == edited.sourceColors[1]);
+    CHECK(result["object"]["sourceColors"] == Json(edited.sourceColors));
+    CHECK(result["object"]["sourceVisible"] == Json(edited.sourceVisible));
+    for (const auto& group : groups) { CHECK(group.visible); CHECK_FALSE(group.colorOverride); }
+    CrossSectionSourceTree tree;
+    updateCrossSectionSourceTree(tree, f.state, *findAnnotation(f.state, id));
+    const auto& nested = tree.roots[0].children[0].children[0].children[0];
+    CHECK(nested.name == "Nested");
+    runSectionCommand(f.state, "annotation.set", {{"sourceObject", std::to_string(nested.objectId)}, {"sourceVisible", true}}, id);
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{true, true, false});
+    runSectionCommand(f.state, "annotation.set", {{"sourceIndex", 2}, {"sourceRgb", {1, 0, 0}}}, id);
+    CHECK(findAnnotation(f.state, id)->section->sourceColors[2] == std::array<float, 3>{1, 0, 0});
+    CHECK(findAnnotation(f.state, id)->section->sourceColors[1] == std::array<float, 3>{.2f, .4f, .6f});
+    const auto before = createSceneDocument(f.state);
+    for (const auto scope : {groups[2].objectId, id, SceneObjectId{999999}}) {
+        CHECK_THROWS(runSectionCommand(f.state, "annotation.set",
+            {{"sourceObject", std::to_string(scope)}, {"sourceVisible", false}, {"name", "Invalid"}}, id));
+        CHECK(createSceneDocument(f.state) == before);
+    }
+    CHECK_THROWS(runSectionCommand(f.state, "annotation.set", {{"sourceSide", "a"}, {"sourceVisible", false}}, id));
+    CHECK(createSceneDocument(f.state) == before);
+}
+TEST_CASE("cross section CLI can edit an analysis side when both sides capture the same model")
+{
+    Fixture f;
+    const auto analysis = f.analysis(true);
+    const auto id = f.analysisSection(analysis);
+    runSectionCommand(f.state, "annotation.set", {{"sourceSide", "a"}, {"sourceVisible", false}, {"sourceRgb", {1, 0, 0}}}, id);
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{false, true});
+    CHECK(findAnnotation(f.state, id)->section->sourceColors[0] == std::array<float, 3>{1, 0, 0});
+    runSectionCommand(f.state, "annotation.set", {{"sourceSide", "b"}, {"sourceObject", std::to_string(f.state.files[0].objectId)},
+        {"sourceRgb", {0, 1, 0}}}, id);
+    CHECK(findAnnotation(f.state, id)->section->sourceColors[1] == std::array<float, 3>{0, 1, 0});
+    runSectionCommand(f.state, "annotation.set", {{"sourceObject", std::to_string(f.sources()[0])}, {"sourceVisible", true}}, id);
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{true, true});
+    CrossSectionSourceTree tree;
+    updateCrossSectionSourceTree(tree, f.state, *findAnnotation(f.state, id));
+    REQUIRE(tree.roots.size() == 2);
+    CHECK(tree.roots[0].sourceIndices == std::vector<size_t>{0});
+    CHECK(tree.roots[1].sourceIndices == std::vector<size_t>{1});
+    CHECK(tree.roots[0].color == std::array<float, 3>{1, 0, 0});
+    CHECK(tree.roots[1].color == std::array<float, 3>{0, 1, 0});
+    CHECK(f.state.files[0].groupSettings[0].visible);
 }
 TEST_CASE("cross section lift handle changes display only and the line moves the plane")
 {

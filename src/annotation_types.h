@@ -126,6 +126,7 @@ struct CrossSectionSettings {
     bool showPlane = true, showConnections = true, showDifferences = false, faceOn = false;
     int reference = 0, compared = 1;
     std::vector<bool> sourceVisible;
+    std::vector<std::array<float, 3>> sourceColors;
     friend bool operator==(const CrossSectionSettings&, const CrossSectionSettings&) = default;
 };
 [[nodiscard]] CrossSectionSettings normalizedCrossSectionSettings(CrossSectionSettings settings, size_t sources);

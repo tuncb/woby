@@ -25,6 +25,12 @@ Select the annotation to show its Properties panel and handles:
 - Use the eye beside a source to show or hide its contour. Later visibility
   changes in **Models** do not change the section's visibility. Draw another
   section to capture a different set of meshes.
+- Use a group eye to show or hide all captured items below it, including items
+  in collapsed branches. If only some items are shown, a click shows all items.
+- Select a color swatch to open its color picker. **Apply** changes one contour
+  or all contours below a group, including hidden items. You can then change
+  each item separately. A multicolor swatch shows that the items have different
+  colors. These controls change only the selected cross section.
 - Enable **Face-on 2D** to inspect all contours in one plot with equal axis scales.
 - Enable **Show 2D differences** and choose two sources. Other contours remain
   visible. The white segment marks the largest sampled gap.
@@ -37,7 +43,7 @@ use model units. **No cut** and **Missing source** do not mean zero distance.
 
 Cuts update in the background after a plane or source geometry edit. **Updating**
 replaces old results until the new cut is ready. PNG export waits for the cuts.
-Names, comments, source visibility, plane settings, display settings, and the
+Names, comments, source visibility and colors, plane settings, display settings, and the
 comparison pair are saved in `.woby` files. Annotation duplication, deletion,
 visibility, and Undo/Redo also apply to cross sections.
 
@@ -85,6 +91,9 @@ Use the returned annotation ID to read or change the section:
 woby ctl --instance demo annotation get ANNOTATION_ID
 woby ctl --instance demo annotation set ANNOTATION_ID --plane-end 105 45 0 --lift 30 --face-on true
 woby ctl --instance demo annotation set ANNOTATION_ID --source-index 2 --source-visible false
+woby ctl --instance demo annotation set ANNOTATION_ID --source-index 2 --source-rgb 0.2 0.8 1
+woby ctl --instance demo annotation set ANNOTATION_ID --source-object MODEL_ID --source-visible false
+woby ctl --instance demo annotation set ANNOTATION_ID --source-object MODEL_ID --source-rgb 1 0.6 0.2
 woby ctl --instance demo annotation set ANNOTATION_ID --reference-index 0 --compared-index 1 --show-differences true
 woby ctl --instance demo annotation set ANNOTATION_ID --show-plane false --show-connections false
 ```
@@ -93,6 +102,23 @@ Indices start at zero and follow `sourceIds` in `annotation get`. The source
 visibility flags control contours, not the source models. Use `annotation set`
 for plane edits. Surface `move` and `reshape` commands do not apply to sections.
 Unlock the section before changing its plane.
+
+Use `--source-object` with a folder, file, or group ID from `scene tree` or
+`objects --json` to change all captured contours below that object. Hidden
+contours receive color changes too. RGB values are clamped to 0–1.
+`annotation get` returns `sourceColors` and `sourceVisible` in `sourceIds` order.
+An object with no captured contours is rejected.
+
+For an analysis section, `--source-side a|b` selects all contours on that side.
+Combine it with `--source-object` to limit the change to one model on that side.
+Without a side, an object edit applies to both captured placements of that model.
+Use either `--source-index` or an object/side scope. Supply `--source-visible`,
+`--source-rgb`, or both. Visibility and color edits also work when the plane is locked.
+
+```text
+woby ctl --instance demo annotation set ANNOTATION_ID --source-side a --source-visible false
+woby ctl --instance demo annotation set ANNOTATION_ID --source-side b --source-object MODEL_ID --source-rgb 0.4 0.9 0.55
+```
 
 Common annotation controls include `--name`, `--comments`, `--visible`,
 `--locked`, `--opacity`, and `--width`. Sections also support `annotation list`,

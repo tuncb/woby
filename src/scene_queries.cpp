@@ -69,17 +69,49 @@ bool sceneTreeMember(const SceneTreeQueries& cache, SceneObjectId id, Comparison
     return id && cache.members[side == ComparisonSide::a ? 0 : 1].contains(id);
 }
 
+namespace {
+void updateSectionSourceStyles(CrossSectionSourceTree& tree, const UiAnnotation& item, bool rebuild)
+{
+    if (!item.section || (!rebuild && tree.annotationRevision == item.geometryRevision)) { return; }
+    const auto& settings = *item.section;
+    const auto visit = [&](auto&& self, CrossSectionSourceNode& node) -> void {
+        if (rebuild) { node.sourceIndices.clear(); }
+        node.visible = 0; node.mixedColor = false;
+        if (node.sourceIndex) {
+            const auto index = *node.sourceIndex;
+            if (rebuild) { node.sourceIndices.push_back(index); }
+            node.visible = settings.sourceVisible[index] ? 1u : 0u;
+            node.color = settings.sourceColors[index];
+        } else {
+            for (auto& child : node.children) {
+                self(self, child);
+                if (rebuild) { node.sourceIndices.insert(node.sourceIndices.end(), child.sourceIndices.begin(), child.sourceIndices.end()); }
+                node.visible += child.visible;
+                if (&child == &node.children.front()) { node.color = child.color; }
+                node.mixedColor |= child.mixedColor || child.color != node.color;
+            }
+        }
+    };
+    for (auto& node : tree.roots) { visit(visit, node); }
+    tree.annotationRevision = item.geometryRevision;
+    ++tree.styleBuilds;
+}
+}
 const CrossSectionSourceTree& updateCrossSectionSourceTree(CrossSectionSourceTree& cache,
     const UiState& state, const UiAnnotation& item)
 {
     if (cache.owner == &state && cache.id == item.objectId && cache.generation == state.sceneGeneration
         && cache.geometry == state.revisions.geometry && cache.labels == state.revisions.labels
-        && cache.sources == item.targetIds && cache.analysis == item.sectionAnalysis && cache.sides == item.sectionSides) { return cache; }
+        && cache.sources == item.targetIds && cache.analysis == item.sectionAnalysis && cache.sides == item.sectionSides) {
+        updateSectionSourceStyles(cache, item, false);
+        return cache;
+    }
 
     CrossSectionSourceTree next;
     next.owner = &state; next.id = item.objectId; next.generation = state.sceneGeneration;
     next.geometry = state.revisions.geometry; next.labels = state.revisions.labels;
     next.builds = cache.builds + 1; next.sources = item.targetIds;
+    next.styleBuilds = cache.styleBuilds;
     next.analysis = item.sectionAnalysis; next.sides = item.sectionSides;
     if (item.sectionAnalysis) {
         for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
@@ -104,6 +136,7 @@ const CrossSectionSourceTree& updateCrossSectionSourceTree(CrossSectionSourceTre
             for (auto& node : root.children) { remap(remap, node); }
             next.roots.push_back(std::move(root));
         }
+        updateSectionSourceStyles(next, item, true);
         cache = std::move(next);
         return cache;
     }
@@ -149,6 +182,7 @@ const CrossSectionSourceTree& updateCrossSectionSourceTree(CrossSectionSourceTre
         node.sourceIndex = i; node.missing = !object;
         next.roots.push_back(std::move(node));
     }
+    updateSectionSourceStyles(next, item, true);
     cache = std::move(next);
     return cache;
 }
@@ -324,7 +358,7 @@ void updateSceneAnnotationQueries(SceneQueryRuntime& runtime, const UiState& sta
                                 line.a[up] += s.lift; line.b[up] += s.lift;
                                 lines.push_back({renderPosition(line.a),renderPosition(line.b)});
                             }
-                            addBatch(std::move(lines), sectionSourceColor(i));
+                            addBatch(std::move(lines), sectionSourceColor(s, i));
                         }
                         if (s.showDifferences && result->largestGap && s.sourceVisible[static_cast<size_t>(s.reference)] && s.sourceVisible[static_cast<size_t>(s.compared)]) {
                             auto line = *result->largestGap; line.a[up] += s.lift; line.b[up] += s.lift;

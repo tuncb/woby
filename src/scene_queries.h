@@ -83,11 +83,16 @@ struct CrossSectionSourceNode {
     std::optional<size_t> sourceIndex;
     bool missing = false;
     std::vector<CrossSectionSourceNode> children;
+    std::vector<size_t> sourceIndices;
+    size_t visible = 0;
+    std::array<float, 3> color{};
+    bool mixedColor = false;
 };
 struct CrossSectionSourceTree {
     const UiState* owner = nullptr;
     SceneObjectId id = invalidSceneObjectId;
     uint64_t generation = 0, geometry = 0, labels = 0, builds = 0;
+    uint64_t annotationRevision = 0, styleBuilds = 0;
     std::vector<SceneObjectId> sources;
     std::optional<SceneObjectId> analysis;
     std::vector<ComparisonSide> sides;

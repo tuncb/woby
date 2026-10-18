@@ -87,6 +87,9 @@ struct ControlOperation {
     std::optional<float> lift;
     std::optional<bool> showPlane, showConnections, showDifferences, faceOn, sourceVisible;
     std::optional<uint64_t> sourceIndex, referenceIndex, comparedIndex;
+    std::optional<std::string> sourceObject, sourceSide;
+    SceneObjectId sourceObjectId = invalidSceneObjectId;
+    std::optional<std::array<float, 3>> sourceRgb;
 };
 
 struct ControlMethod {

@@ -3,6 +3,7 @@
 #include "ui_operations.h"
 #include "ui_icon_controls.h"
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include <algorithm>
 #include <cmath>
@@ -47,30 +48,121 @@ std::string sourceLabel(const UiState& state, const UiAnnotation& item, size_t i
     const auto file = findSceneObject(state, object->fileId);
     return prefix + (file ? file->name + " / " + object->name : object->name);
 }
+bool drawSectionSourceColor(const CrossSectionSourceNode& node, CrossSectionSettings& settings)
+{
+    const auto colorId = ImGui::GetID("source_color_draft");
+    auto* storage = ImGui::GetStateStorage();
+    const ImVec4 color{node.color[0], node.color[1], node.color[2], 1};
+    const bool clicked = ImGui::ColorButton("source_color", color, ImGuiColorEditFlags_NoTooltip,
+        {uiSize(18), uiSize(18)});
+    const auto low = ImGui::GetItemRectMin(), high = ImGui::GetItemRectMax();
+    if (node.mixedColor) {
+        auto* draw = ImGui::GetWindowDrawList();
+        const ImVec2 middle{(low.x + high.x) * .5f, (low.y + high.y) * .5f};
+        for (size_t i = 0; i < 4; ++i) {
+            const auto c = sectionSourceColor(i);
+            const bool right = i % 2 != 0, bottom = i >= 2;
+            draw->AddRectFilled({right ? middle.x : low.x + 1, bottom ? middle.y : low.y + 1},
+                {right ? high.x - 1 : middle.x, bottom ? high.y - 1 : middle.y},
+                ImGui::ColorConvertFloat4ToU32({c[0], c[1], c[2], 1}));
+        }
+    }
+    const auto count = node.sourceIndices.size();
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("%s%s: change %zu contour color%s.", node.mixedColor ? "Mixed colors. " : "",
+            node.name.c_str(), count, count == 1 ? "" : "s");
+    }
+    if (clicked) {
+        for (ImGuiID i = 0; i < 3; ++i) { storage->SetFloat(colorId + i, node.color[i]); }
+        ImGui::OpenPopup("source_color_popup");
+    }
+    bool changed = false;
+    ImGui::SetNextWindowPos({low.x, high.y + ImGui::GetStyle().ItemSpacing.y}, ImGuiCond_Appearing);
+    if (ImGui::BeginPopup("source_color_popup")) {
+        ImGui::Text("%s | Color", node.name.c_str());
+        if (!node.sourceIndex) { ImGui::Text("All %zu items, including hidden items", count); }
+        std::array<float, 3> draft{};
+        for (ImGuiID i = 0; i < 3; ++i) { draft[i] = storage->GetFloat(colorId + i); }
+        ImGui::SetNextItemWidth(uiSize(240));
+        ImGui::ColorPicker3("##color", draft.data(), ImGuiColorEditFlags_DisplayHex | ImGuiColorEditFlags_NoSidePreview
+            | ImGuiColorEditFlags_NoSmallPreview | ImGuiColorEditFlags_NoOptions | ImGuiColorEditFlags_PickerHueBar);
+        for (int i = 0; i < 6; ++i) {
+            if (i) { ImGui::SameLine(); }
+            ImGui::PushID(i);
+            const auto preset = sectionSourceColor(static_cast<size_t>(i));
+            if (ImGui::ColorButton("preset", {preset[0], preset[1], preset[2], 1}, ImGuiColorEditFlags_NoTooltip,
+                {uiSize(24), uiSize(24)})) { std::copy_n(preset.begin(), 3, draft.begin()); }
+            ImGui::PopID();
+        }
+        for (ImGuiID i = 0; i < 3; ++i) { storage->SetFloat(colorId + i, draft[i]); }
+        if (ImGui::Button("Cancel")) { ImGui::CloseCurrentPopup(); }
+        ImGui::SameLine();
+        const auto label = node.sourceIndex ? std::string("Apply color") : "Apply to " + std::to_string(count) + " items";
+        if (ImGui::Button(label.c_str())) {
+            changed = editCrossSectionSources(settings, node.sourceIndices, {}, draft);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+    return changed;
+}
+void drawSectionSourceLabel(const CrossSectionSourceNode& node, const char* status, float rowHeight)
+{
+    const auto low = ImGui::GetCursorScreenPos();
+    const auto textSize = ImGui::CalcTextSize(status);
+    const float available = ImGui::GetContentRegionAvail().x;
+    const float labelWidth = std::max(uiSize(20), available - textSize.x - ImGui::GetStyle().ItemSpacing.x);
+    ImGui::Dummy({labelWidth, rowHeight});
+    const ImVec2 textLow{low.x, low.y + (rowHeight - ImGui::GetTextLineHeight()) * .5f};
+    ImGui::RenderTextEllipsis(ImGui::GetWindowDrawList(), textLow, {low.x + labelWidth, low.y + rowHeight},
+        low.x + labelWidth, node.name.c_str(), nullptr, nullptr);
+    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s", node.name.c_str()); }
+    ImGui::SameLine();
+    ImGui::TextDisabled("%s", status);
+}
 bool drawSectionSourceNode(const CrossSectionSourceNode& node, CrossSectionSettings& settings,
                            const CrossSectionResult* result)
 {
     if (node.objectId) { ImGui::PushID(static_cast<int>(node.objectId)); }
     else { ImGui::PushID(node.name.c_str()); }
     bool changed = false;
+    const float rowHeight = renderModeButtonSize();
+    const bool group = !node.sourceIndex;
+    bool open = false;
+    ImGui::AlignTextToFramePadding();
+    if (group) {
+        const auto low = ImGui::GetCursorScreenPos();
+        ImGui::GetWindowDrawList()->AddRectFilled(low, {low.x + ImGui::GetContentRegionAvail().x, low.y + rowHeight},
+            ImGui::GetColorU32(ImGuiCol_FrameBg), uiSize(3));
+        open = ImGui::TreeNodeEx("source", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth
+            | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_NoTreePushOnOpen
+            | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick, "");
+    } else { ImGui::Dummy({ImGui::GetTreeNodeToLabelSpacing(), rowHeight}); }
+    ImGui::SameLine(0, 0);
     if (node.sourceIndex) {
         const size_t i = *node.sourceIndex;
         if (drawVisibilityButton("contour", settings.sourceVisible[i], "Contour")) {
-            settings.sourceVisible[i] = !settings.sourceVisible[i];
-            changed = true;
+            changed |= editCrossSectionSources(settings, node.sourceIndices, !settings.sourceVisible[i], {});
         }
-        ImGui::SameLine();
-        const auto color = sectionSourceColor(i);
-        ImGui::ColorButton("source_color", {color[0], color[1], color[2], 1}, ImGuiColorEditFlags_NoTooltip,
-                           ImVec2(uiSize(12), uiSize(12)));
-        ImGui::SameLine();
+    } else if (drawTriStateVisibilityButton("contour", node.name.c_str(), node.visible, node.sourceIndices.size(), "items")) {
+        changed |= editCrossSectionSources(settings, node.sourceIndices, node.visible != node.sourceIndices.size(), {});
+    }
+    ImGui::SameLine();
+    changed |= drawSectionSourceColor(node, settings);
+    ImGui::SameLine();
+    if (node.sourceIndex) {
+        const size_t i = *node.sourceIndex;
         const char* status = node.missing || (result && result->contours[i].missing) ? "Missing source"
                              : !result                           ? "Updating"
                              : result->contours[i].lines.empty() ? "No cut"
                                                                  : "Cut";
-        ImGui::TextWrapped("%s | %s", node.name.c_str(), status);
-    } else if (ImGui::TreeNodeEx("source", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth
-            | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick, "%s", node.name.c_str())) {
+        drawSectionSourceLabel(node, status, rowHeight);
+    } else {
+        const auto count = std::to_string(node.visible) + " / " + std::to_string(node.sourceIndices.size());
+        drawSectionSourceLabel(node, count.c_str(), rowHeight);
+    }
+    if (group && open) {
+        ImGui::TreePush("source");
         for (const auto& child : node.children) { changed |= drawSectionSourceNode(child, settings, result); }
         ImGui::TreePop();
     }
@@ -125,7 +217,7 @@ void drawProfile(const CrossSectionSettings& s, const CrossSectionResult& result
         if (!s.sourceVisible[i]) {
             continue;
         }
-        const auto c = sectionSourceColor(i);
+        const auto c = sectionSourceColor(s, i);
         const auto color = ImGui::ColorConvertFloat4ToU32({c[0], c[1], c[2], 1});
         for (const auto& line : result.contours[i].lines) {
             draw->AddLine(map(line.a), map(line.b), color, uiSize(2));
@@ -203,9 +295,6 @@ void drawCrossSectionInspector(UiState& state, SceneQueryRuntime* queries)
         result = crossSectionResult(*queries, id);
     }
     ImGui::SeparatorText("Cut meshes");
-    ImGui::TextWrapped(item->sectionAnalysis
-        ? "Captured analysis inputs. Contours use the analysis placement."
-        : "Initial visibility comes from Models. Contour visibility is independent after creation.");
     CrossSectionSourceTree localSources;
     const auto& sources = updateCrossSectionSourceTree(queries ? queries->sectionSources : localSources, state, *item);
     ImGui::PushID("cut_meshes");

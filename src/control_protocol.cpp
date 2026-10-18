@@ -29,10 +29,10 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::annotationGet, "annotation.get", "annotation get", "target", {}, {}},
         {ControlAction::annotationCreate, "annotation.create", "annotation create", "target",
             {"shape", "start", "end", "aspect", "name", "comments", "visible", "locked", "rgb", "opacity", "width",
-             "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceVisible", "referenceIndex", "comparedIndex", "text", "position", "size", "faceCamera", "rotationDegrees"}, {"shape"}, false, true},
+             "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceObject", "sourceSide", "sourceVisible", "sourceRgb", "referenceIndex", "comparedIndex", "text", "position", "size", "faceCamera", "rotationDegrees"}, {"shape"}, false, true},
         {ControlAction::annotationSet, "annotation.set", "annotation set", "target",
             {"name", "comments", "visible", "locked", "rgb", "opacity", "width",
-             "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceVisible", "referenceIndex", "comparedIndex", "text", "position", "size", "faceCamera", "rotationDegrees"}, {}, true, true},
+             "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceObject", "sourceSide", "sourceVisible", "sourceRgb", "referenceIndex", "comparedIndex", "text", "position", "size", "faceCamera", "rotationDegrees"}, {}, true, true},
         {ControlAction::annotationReshape, "annotation.reshape", "annotation reshape", "target", {"start", "end"}, {}, true, true},
         {ControlAction::annotationMove, "annotation.move", "annotation move", "target", {"delta"}, {"delta"}, false, true},
         {ControlAction::annotationDelete, "annotation.delete", "annotation delete", "target", {}, {}, false, true},
@@ -141,6 +141,7 @@ bool booleanOption(const std::string& name)
 }
 bool stringOption(const std::string& name)
 {
+    if (name == "sourceObject" || name == "sourceSide") { return true; }
     if (name == "alignment" || name == "originA" || name == "originB") { return true; }
     if (name == "text") { return true; }
     if (name == "sectionUpAxis") { return true; }
@@ -154,6 +155,7 @@ bool integerOption(const std::string& name)
 size_t vectorSize(const std::string& name) { return name == "start" || name == "end" || name == "delta" ? 2u : 3u; }
 bool vectorOption(const std::string& name)
 {
+    if (name == "sourceRgb") { return true; }
     if (name == "planeStart" || name == "planeEnd" || name == "position") { return true; }
     return name == "barycentric" || name == "start" || name == "end" || name == "delta" || name == "translation" || name == "rotationDegrees" || name == "rgb" || name == "eye" || name == "target";
 }
@@ -170,6 +172,9 @@ std::string cliOption(const std::string& name)
     if (name == "showDifferences") { return "--show-differences"; }
     if (name == "faceOn") { return "--face-on"; }
     if (name == "sourceIndex") { return "--source-index"; }
+    if (name == "sourceObject") { return "--source-object"; }
+    if (name == "sourceSide") { return "--source-side"; }
+    if (name == "sourceRgb") { return "--source-rgb"; }
     if (name == "sourceVisible") { return "--source-visible"; }
     if (name == "referenceIndex") { return "--reference-index"; }
     if (name == "comparedIndex") { return "--compared-index"; }
@@ -375,6 +380,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     NUMBER_FIELD(tolerance) NUMBER_FIELD(colorRange) NUMBER_FIELD(colorMinimum)
 #undef NUMBER_FIELD
 #define VECTOR_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::array<float, 3>>(); }
+    VECTOR_FIELD(sourceRgb)
     VECTOR_FIELD(position)
     VECTOR_FIELD(planeStart) VECTOR_FIELD(planeEnd)
     VECTOR_FIELD(translation) VECTOR_FIELD(rotationDegrees) VECTOR_FIELD(rgb) VECTOR_FIELD(eye)
@@ -395,6 +401,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         command.cameraTarget = params["target"].get<std::array<float, 3>>();
     }
 #define STRING_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::string>(); }
+    STRING_FIELD(sourceObject) STRING_FIELD(sourceSide)
     STRING_FIELD(alignment) STRING_FIELD(originA) STRING_FIELD(originB)
     STRING_FIELD(text)
     STRING_FIELD(sectionUpAxis)
@@ -429,7 +436,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
             if (command.target != "scene" || !command.text || !command.position) {
                 throw std::invalid_argument("Text creation requires target scene, text, and position in world coordinates.");
             }
-            for (const auto* key : {"start", "end", "aspect", "width", "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceVisible", "referenceIndex", "comparedIndex"}) {
+            for (const auto* key : {"start", "end", "aspect", "width", "planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceObject", "sourceSide", "sourceRgb", "sourceVisible", "referenceIndex", "comparedIndex"}) {
                 if (params.contains(key)) { throw std::invalid_argument(std::string(key) + " does not apply to text."); }
             }
         } else if (command.shape == "section") {
@@ -437,7 +444,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
             if (command.start || command.end || command.aspect || command.rgb) { throw std::invalid_argument("Sections use planeStart/planeEnd and per-source colors, without start/end/aspect/rgb."); }
         } else {
             if (!command.start || !command.end) { throw std::invalid_argument("A surface annotation requires start and end."); }
-            for (const auto* key : {"planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceVisible", "referenceIndex", "comparedIndex"}) {
+            for (const auto* key : {"planeStart", "planeEnd", "sectionUpAxis", "lift", "showPlane", "showConnections", "showDifferences", "faceOn", "sourceIndex", "sourceObject", "sourceSide", "sourceRgb", "sourceVisible", "referenceIndex", "comparedIndex"}) {
                 if (params.contains(key)) { throw std::invalid_argument(std::string(key) + " requires a section annotation."); }
             }
         }
@@ -477,7 +484,17 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     INTEGER_FIELD(intersectionPairLimit, 2147483647)
     INTEGER_FIELD(intersectionCandidateLimit, 2147483647)
 #undef INTEGER_FIELD
-    if (command.sourceIndex.has_value() != command.sourceVisible.has_value()) { throw std::invalid_argument("Supply sourceIndex and sourceVisible together."); }
+    if (command.sourceIndex && (command.sourceObject || command.sourceSide)) {
+        throw std::invalid_argument("Use sourceIndex or a sourceObject/sourceSide scope, not both.");
+    }
+    if (command.sourceSide && *command.sourceSide != "a" && *command.sourceSide != "b") {
+        throw std::invalid_argument("sourceSide must be a or b.");
+    }
+    const bool sourceScope = command.sourceIndex || command.sourceObject || command.sourceSide;
+    const bool sourceEdit = command.sourceVisible || command.sourceRgb;
+    if (sourceScope != sourceEdit) {
+        throw std::invalid_argument("Supply sourceIndex, sourceObject, or sourceSide with sourceVisible and/or sourceRgb.");
+    }
     if (command.limit && !*command.limit) { throw std::invalid_argument("limit must be from 1 to 100."); }
     if (command.collection && (command.collection->empty() || command.collection->front() != '/')) { throw std::invalid_argument("collection must start with /."); }
     if (params.contains("index")) {
@@ -519,10 +536,10 @@ std::string controlMethodUsage(const ControlMethod& method)
         result += required ? " " : " [";
         result += cliOption(name);
         if (name != "tree" && name != "remember") {
-            result += booleanOption(name) ? " true|false" : name == "rgb" ? " R G B" : vectorOption(name) ? (vectorSize(name) == 2 ? " U V" : " X Y Z")
+            result += booleanOption(name) ? " true|false" : name == "rgb" || name == "sourceRgb" ? " R G B" : vectorOption(name) ? (vectorSize(name) == 2 ? " U V" : " X Y Z")
                 : name == "sectionUpAxis" ? " y|z" : name == "type" ? " mesh|surface_comparison|difference_mesh|uv|uv_quality" : name == "uvColor" ? " grid|u|v" : name == "uvMetric" ? " angle|area|orientation|anisotropy|min_stretch|overlap" : name == "uvNormalization" ? " per_patch|absolute" : name == "uvView" ? " layout|surface" : name == "shape" ? " line|rectangle|section|text" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
-                : name == "path" ? " PATH" : name == "collection" ? " ARRAY_PATH" : name == "index" ? " POSITIVE_INTEGER"
-                : name == "a" || name == "b" || name == "object" ? " OBJECT_ID" : stringOption(name) ? " TEXT" : " N";
+                : name == "sourceSide" ? " a|b" : name == "path" ? " PATH" : name == "collection" ? " ARRAY_PATH" : name == "index" ? " POSITIVE_INTEGER"
+                : name == "a" || name == "b" || name == "object" || name == "sourceObject" ? " OBJECT_ID" : stringOption(name) ? " TEXT" : " N";
         }
         if (!required) { result += "]"; }
     }
@@ -543,6 +560,7 @@ Json controlOperationParams(const ControlOperation& command)
     if (command.action == ControlAction::folderAdd) { result["tree"] = command.tree; }
     if (command.action == ControlAction::importersAdd || command.action == ControlAction::importersScan) { result["remember"] = command.remember; }
 #define FIELD(field) if (command.field) { result[#field] = *command.field; }
+    FIELD(sourceObject) FIELD(sourceSide) FIELD(sourceRgb)
     FIELD(text) FIELD(position) FIELD(size) FIELD(faceCamera)
     FIELD(showAOnly) FIELD(showBOnly)
     FIELD(planeStart) FIELD(planeEnd) FIELD(sectionUpAxis) FIELD(lift) FIELD(showPlane) FIELD(showConnections) FIELD(showDifferences) FIELD(faceOn) FIELD(sourceIndex) FIELD(sourceVisible) FIELD(referenceIndex) FIELD(comparedIndex)

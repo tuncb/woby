@@ -43,6 +43,10 @@ void validateSectionAnalysis(const SceneAnnotationRecord& record, size_t compari
 [[nodiscard]] std::array<double, 2> sectionCoordinates(const CrossSectionSettings& settings,
                                                        const Coordinate& point);
 [[nodiscard]] std::array<float, 4> sectionSourceColor(size_t index);
+[[nodiscard]] std::array<float, 4> sectionSourceColor(const CrossSectionSettings& settings, size_t index);
+// Edit captured source indices, including hidden items. Validate before changing any value.
+bool editCrossSectionSources(CrossSectionSettings& settings, std::span<const size_t> indices,
+    std::optional<bool> visible, std::optional<std::array<float, 3>> color);
 [[nodiscard]] std::vector<DiagnosticEdge> sectionGuides(const CrossSectionSettings& settings);
 [[nodiscard]] std::optional<std::array<float, 3>> sectionWorkplanePoint(const ScenePickView& view, PickPoint point,
                                                                         SceneUpAxis up, float height);

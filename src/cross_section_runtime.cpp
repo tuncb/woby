@@ -36,6 +36,7 @@ bool updateCrossSections(SceneQueryRuntime& runtime, const UiState& state)
         settings.showConnections = false;
         settings.faceOn = false;
         settings.sourceVisible.clear();
+        settings.sourceColors.clear();
         requests.push_back({item.objectId, std::move(settings), item.targetIds, item.sectionAnalysis, item.sectionSides});
         analysisSections |= item.sectionAnalysis.has_value();
     }

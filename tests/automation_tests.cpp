@@ -288,6 +288,35 @@ TEST_CASE("analysis RPC validates every input ID before admission and resolves m
     }
 }
 
+TEST_CASE("cross section RPC validates and resolves source object IDs before admission")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    const auto section = woby::automationObjectId(*fixture.server, 10);
+    const auto source = woby::automationObjectId(*fixture.server, 20);
+    auto foreign = source;
+    foreign[4] = foreign[4] == '0' ? '1' : '0';
+    CHECK(request(fixture.instance, "annotation.set",
+        {{"target", section}, {"sourceObject", "invalid"}, {"sourceVisible", false}})["error"]["code"] == -32602);
+    CHECK(request(fixture.instance, "annotation.set",
+        {{"target", section}, {"sourceObject", foreign}, {"sourceRgb", {1, 0, 0}}})["error"]["code"] == -32005);
+    CHECK_FALSE(takeCommand(*fixture.server));
+    auto pending = std::async(std::launch::async, [&] {
+        return request(fixture.instance, "annotation.set", {{"target", section}, {"sourceObject", source},
+            {"sourceSide", "b"}, {"sourceVisible", false}, {"sourceRgb", {.2f, .4f, .6f}}});
+    });
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command);
+    const auto& operation = std::get<woby::ControlOperation>(command->payload);
+    CHECK(operation.objectId == 10);
+    CHECK(operation.sourceObjectId == 20);
+    CHECK(operation.sourceSide == "b");
+    CHECK(operation.sourceVisible == false);
+    CHECK(operation.sourceRgb == std::array<float, 3>{.2f, .4f, .6f});
+    CHECK(completeCommand(*fixture.server, command->id, woby::AutomationControlResult{Json::object()}));
+    CHECK(pending.get().contains("result"));
+}
+
 TEST_CASE("analysis creation retries reuse the created object and recover its result")
 {
     AutomationFixture fixture;

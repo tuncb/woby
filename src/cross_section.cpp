@@ -250,6 +250,18 @@ CrossSectionSettings normalizedCrossSectionSettings(CrossSectionSettings s, size
     }
     s.lift = std::max(0.0f, s.lift);
     s.sourceVisible.resize(sources, true);
+    const auto previousColors = s.sourceColors.size();
+    s.sourceColors.resize(sources);
+    for (size_t i = 0; i < sources; ++i) {
+        if (i >= previousColors) {
+            const auto color = sectionSourceColor(i);
+            std::copy_n(color.begin(), 3, s.sourceColors[i].begin());
+        }
+        for (auto& value : s.sourceColors[i]) {
+            if (!std::isfinite(value)) { throw std::invalid_argument("Section colors must be finite."); }
+            value = std::clamp(value, 0.0f, 1.0f);
+        }
+    }
     const int last = sources ? static_cast<int>(sources - 1) : 0;
     s.reference = std::clamp(s.reference, 0, last);
     s.compared = std::clamp(s.compared, 0, last);
@@ -291,6 +303,32 @@ std::array<float, 4> sectionSourceColor(size_t index)
                                                           {1, .4f, .65f, 1},
                                                           {.95f, .9f, .4f, 1}}};
     return colors[index % colors.size()];
+}
+std::array<float, 4> sectionSourceColor(const CrossSectionSettings& settings, size_t index)
+{
+    const auto& color = settings.sourceColors[index];
+    return {color[0], color[1], color[2], 1};
+}
+bool editCrossSectionSources(CrossSectionSettings& settings, std::span<const size_t> indices,
+    std::optional<bool> visible, std::optional<std::array<float, 3>> color)
+{
+    for (const auto index : indices) {
+        if (index >= settings.sourceVisible.size() || index >= settings.sourceColors.size()) {
+            throw std::invalid_argument("Section source index is out of range.");
+        }
+    }
+    if (color) {
+        for (auto& value : *color) {
+            if (!std::isfinite(value)) { throw std::invalid_argument("Section colors must be finite."); }
+            value = std::clamp(value, 0.0f, 1.0f);
+        }
+    }
+    bool changed = false;
+    for (const auto index : indices) {
+        if (visible && settings.sourceVisible[index] != *visible) { settings.sourceVisible[index] = *visible; changed = true; }
+        if (color && settings.sourceColors[index] != *color) { settings.sourceColors[index] = *color; changed = true; }
+    }
+    return changed;
 }
 std::vector<DiagnosticEdge> sectionGuides(const CrossSectionSettings& s)
 {

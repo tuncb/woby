@@ -4,6 +4,7 @@
 #include "annotation_preparation.h"
 #include "surface_annotation.h"
 #include "cross_section.h"
+#include "scene_queries.h"
 #include "ui_operations.h"
 
 #include <nlohmann/json.hpp>
@@ -16,10 +17,13 @@ namespace {
 bool hasSectionOptions(const ControlOperation& c)
 {
     return c.planeStart || c.planeEnd || c.sectionUpAxis || c.lift || c.showPlane || c.showConnections
-        || c.showDifferences || c.faceOn || c.sourceIndex || c.sourceVisible || c.referenceIndex || c.comparedIndex;
+        || c.showDifferences || c.faceOn || c.sourceIndex || c.sourceObject || c.sourceSide || c.sourceVisible || c.sourceRgb
+        || c.referenceIndex || c.comparedIndex;
 }
-CrossSectionSettings sectionOptions(CrossSectionSettings s, const ControlOperation& c, size_t sourceCount)
+CrossSectionSettings sectionOptions(CrossSectionSettings s, const ControlOperation& c,
+    const UiState& state, const UiAnnotation& capture)
 {
+    const auto sourceCount = capture.targetIds.size();
     if (c.planeStart) { s.a = *c.planeStart; }
     if (c.planeEnd) { s.b = *c.planeEnd; }
     if (c.sectionUpAxis) { s.upAxis = *c.sectionUpAxis == "z" ? SceneUpAxis::z : SceneUpAxis::y; }
@@ -33,9 +37,35 @@ CrossSectionSettings sectionOptions(CrossSectionSettings s, const ControlOperati
     }
     if (c.referenceIndex) { s.reference = static_cast<int>(*c.referenceIndex); }
     if (c.comparedIndex) { s.compared = static_cast<int>(*c.comparedIndex); }
-    s.sourceVisible.resize(sourceCount, true);
-    if (c.sourceIndex) { s.sourceVisible[static_cast<size_t>(*c.sourceIndex)] = *c.sourceVisible; }
-    return normalizedCrossSectionSettings(std::move(s), sourceCount);
+    s = normalizedCrossSectionSettings(std::move(s), sourceCount);
+    std::vector<size_t> indices;
+    if (c.sourceIndex) { indices.push_back(static_cast<size_t>(*c.sourceIndex)); }
+    else if (c.sourceObject) {
+        const auto object = findSceneObject(state, c.sourceObjectId);
+        if (!object || (object->kind != SceneObjectKind::folder && object->kind != SceneObjectKind::file
+            && object->kind != SceneObjectKind::group)) { throw std::invalid_argument("sourceObject requires a model folder, file, or group ID."); }
+        CrossSectionSourceTree tree;
+        auto definition = capture;
+        definition.section = s;
+        updateCrossSectionSourceTree(tree, state, definition);
+        const auto collect = [&](auto&& self, const CrossSectionSourceNode& node) -> void {
+            if (node.objectId == c.sourceObjectId) { indices.insert(indices.end(), node.sourceIndices.begin(), node.sourceIndices.end()); }
+            else { for (const auto& child : node.children) { self(self, child); } }
+        };
+        for (const auto& node : tree.roots) { collect(collect, node); }
+    } else if (c.sourceSide) {
+        for (size_t i = 0; i < sourceCount; ++i) { indices.push_back(i); }
+    }
+    if (c.sourceSide) {
+        if (!capture.sectionAnalysis) { throw std::invalid_argument("sourceSide requires an analysis cross section."); }
+        const auto side = *c.sourceSide == "a" ? ComparisonSide::a : ComparisonSide::b;
+        std::erase_if(indices, [&](size_t i) { return capture.sectionSides.at(i) != side; });
+    }
+    if ((c.sourceVisible || c.sourceRgb) && indices.empty()) {
+        throw std::invalid_argument("The source scope contains no captured contours in this section.");
+    }
+    editCrossSectionSources(s, indices, c.sourceVisible, c.sourceRgb);
+    return s;
 }
 }
 
@@ -65,7 +95,7 @@ Json controlAnnotationDetails(const UiState& state, const UiAnnotation& item)
             {"locked", settings.locked}, {"width", settings.width}, {"color", settings.color}}}, {"start", s.a}, {"end", s.b}, {"controlSpace", "world"},
             {"lift", s.lift}, {"upAxis", s.upAxis == SceneUpAxis::z ? "z" : "y"}, {"showPlane", s.showPlane},
             {"showConnections", s.showConnections}, {"showDifferences", s.showDifferences}, {"faceOn", s.faceOn},
-            {"sourceVisible", s.sourceVisible}, {"referenceIndex", s.reference}, {"comparedIndex", s.compared},
+            {"sourceVisible", s.sourceVisible}, {"sourceColors", s.sourceColors}, {"referenceIndex", s.reference}, {"comparedIndex", s.compared},
             {"sourceSides", item.sectionSides},
             {"targetValid", item.targetValid}, {"targetPending", false}, {"effectiveVisible", settings.visible},
             {"vertices", annotationOriginalVertices(state, item)}, {"vertexSpace", "world"}};
@@ -132,7 +162,8 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
         CrossSectionSettings s = definition.section.value_or(CrossSectionSettings{});
         s.upAxis = state.upAxis;
         if (!definition.sectionAnalysis) { s.sourceVisible = crossSectionSourceVisibility(state, sources); }
-        s = sectionOptions(std::move(s), command, sources.size());
+        definition.targetIds = sources;
+        s = sectionOptions(std::move(s), command, state, definition);
         const auto selection = state.selectedSceneObjects;
         id = createCrossSection(state, std::move(s), std::move(sources), definition.sectionAnalysis, definition.sectionSides);
         clearSceneSelection(state);
@@ -203,7 +234,7 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
     if (command.action == A::annotationSet && hasSectionOptions(command)) {
         const auto* item = findAnnotation(state, id);
         if (!item->section) { throw std::invalid_argument("Section options require a cross-section annotation."); }
-        auto section = sectionOptions(*item->section, command, item->targetIds.size());
+        auto section = sectionOptions(*item->section, command, state, *item);
         if (item->settings.locked && (section.a != item->section->a || section.b != item->section->b || section.upAxis != item->section->upAxis)) {
             throw std::invalid_argument("Unlock the section before changing its plane.");
         }

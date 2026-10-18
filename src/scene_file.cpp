@@ -1074,6 +1074,14 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                         s.sourceVisible.clear();
                         for (auto v : parseTomlFloatArray(value)) { s.sourceVisible.push_back(v != 0); }
                     }
+                    else if (key == "section_colors") {
+                        const auto values = parseTomlFloatArray(value);
+                        if (values.size() % 3 != 0) { throw std::runtime_error("Section colors require RGB triples."); }
+                        s.sourceColors.clear();
+                        for (size_t i = 0; i < values.size(); i += 3) {
+                            s.sourceColors.push_back({values[i], values[i + 1], values[i + 2]});
+                        }
+                    }
                 } else if (key == "projector") {
                     const auto values = parseTomlFloatArray<double>(value);
                     if (values.size() != 16) { throw std::runtime_error("Expected 16 annotation projector values."); }
@@ -1444,6 +1452,14 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             stream << "section_reference = " << s.reference << "\nsection_compared = " << s.compared << "\n";
             stream << "section_visibility = [";
             for (size_t i = 0; i < s.sourceVisible.size(); ++i) { if (i) { stream << ", "; } stream << (s.sourceVisible[i] ? 1 : 0); }
+            stream << "]\n";
+            stream << "section_colors = [";
+            for (size_t i = 0; i < s.sourceColors.size(); ++i) {
+                for (size_t channel = 0; channel < 3; ++channel) {
+                    if (i || channel) { stream << ", "; }
+                    writeTomlFloat(stream, s.sourceColors[i][channel]);
+                }
+            }
             stream << "]\n";
             if (item.sectionAnalysis) {
                 stream << "section_analysis = " << *item.sectionAnalysis << "\nsection_sides = [";

@@ -613,6 +613,7 @@ Json executeControlOperation(AutomationRuntime& runtime, const Json& id, Json pa
     for (const auto& [text, resolved] : {std::pair{command.target, &command.objectId},
         std::pair{command.a.value_or(""), &command.aId}, std::pair{command.b.value_or(""), &command.bId},
         std::pair{command.object.value_or(""), &command.memberId},
+        std::pair{command.sourceObject.value_or(""), &command.sourceObjectId},
         std::pair{command.originA.value_or(""), &command.originAId}, std::pair{command.originB.value_or(""), &command.originBId}}) {
         if (text.empty() || (resolved == &command.objectId && text == "scene")) { continue; }
         const auto isHex = [](char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); };
