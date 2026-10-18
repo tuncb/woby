@@ -1,0 +1,5402 @@
+[
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1890.2936372224847,
+    "minimum": 1649.63,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1891.8787057156353,
+    "minimum": 1649.35,
+    "maximum": 1980.07
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1924.1031506849315,
+    "minimum": 1649.43,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1906.6887907416155,
+    "minimum": 1649.38,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1883.252366556448,
+    "minimum": 1646.17,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1866.2803070382618,
+    "minimum": 1645.87,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1937.5508502598016,
+    "minimum": 1653.37,
+    "maximum": 1980.09
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1932.9402078412847,
+    "minimum": 1649.45,
+    "maximum": 1980.07
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1867.5424752007557,
+    "minimum": 1649.46,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1860.068535663675,
+    "minimum": 1649.37,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1967.6368823807275,
+    "minimum": 1751.11,
+    "maximum": 1980.05
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1966.2766650921114,
+    "minimum": 1744.92,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 2116,
+    "mean": 1904.7185869565217,
+    "minimum": 1649.3,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 2116,
+    "mean": 1900.0510586011342,
+    "minimum": 1649.31,
+    "maximum": 1980.46
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1979.7074917335854,
+    "minimum": 1978.84,
+    "maximum": 1980.3
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 2117,
+    "mean": 1979.8252007557865,
+    "minimum": 1979.11,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "socket0-package-power",
+    "samples": 2117,
+    "mean": 9.039829948039678,
+    "minimum": 4.48,
+    "maximum": 15.39
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "core0-power",
+    "samples": 2117,
+    "mean": 0.5070477090222012,
+    "minimum": 0.02,
+    "maximum": 1.44
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "core1-power",
+    "samples": 2117,
+    "mean": 0.6993528578176665,
+    "minimum": 0.01,
+    "maximum": 1.56
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "core2-power",
+    "samples": 2117,
+    "mean": 0.5579310344827586,
+    "minimum": 0.0,
+    "maximum": 1.57
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "core3-power",
+    "samples": 2117,
+    "mean": 0.840108644307983,
+    "minimum": 0.02,
+    "maximum": 1.71
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "core4-power",
+    "samples": 2117,
+    "mean": 0.4778837978271138,
+    "minimum": 0.0,
+    "maximum": 1.46
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "core5-power",
+    "samples": 2117,
+    "mean": 0.8107179971658006,
+    "minimum": 0.14,
+    "maximum": 1.69
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "core6-power",
+    "samples": 2117,
+    "mean": 0.6116957959376477,
+    "minimum": 0.0,
+    "maximum": 1.66
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "op.distance",
+    "counter": "core7-power",
+    "samples": 2117,
+    "mean": 0.7035049598488426,
+    "minimum": 0.13,
+    "maximum": 1.7
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 720,
+    "mean": 1979.1951666666666,
+    "minimum": 1886.34,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 720,
+    "mean": 1978.7822361111112,
+    "minimum": 1734.25,
+    "maximum": 1980.07
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 720,
+    "mean": 1979.5416388888889,
+    "minimum": 1941.17,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 720,
+    "mean": 1979.2661805555556,
+    "minimum": 1662.07,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 720,
+    "mean": 1979.358125,
+    "minimum": 1928.21,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 720,
+    "mean": 1978.3592777777778,
+    "minimum": 1729.81,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 720,
+    "mean": 1979.8221666666666,
+    "minimum": 1910.81,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 720,
+    "mean": 1978.766375,
+    "minimum": 1676.81,
+    "maximum": 1980.07
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 720,
+    "mean": 1978.568875,
+    "minimum": 1858.77,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 720,
+    "mean": 1977.6838055555556,
+    "minimum": 1699.59,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 720,
+    "mean": 1979.7882916666667,
+    "minimum": 1949.54,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 720,
+    "mean": 1979.5548333333334,
+    "minimum": 1890.11,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 720,
+    "mean": 1979.5412361111112,
+    "minimum": 1928.58,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 720,
+    "mean": 1979.2399722222221,
+    "minimum": 1663.22,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 720,
+    "mean": 1979.9650972222223,
+    "minimum": 1979.18,
+    "maximum": 1980.05
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 720,
+    "mean": 1979.9814722222222,
+    "minimum": 1979.49,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "socket0-package-power",
+    "samples": 720,
+    "mean": 13.353055555555555,
+    "minimum": 7.69,
+    "maximum": 15.39
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "core0-power",
+    "samples": 720,
+    "mean": 1.0664305555555555,
+    "minimum": 0.39,
+    "maximum": 1.44
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "core1-power",
+    "samples": 720,
+    "mean": 1.1765277777777778,
+    "minimum": 0.41,
+    "maximum": 1.56
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "core2-power",
+    "samples": 720,
+    "mean": 1.101013888888889,
+    "minimum": 0.25,
+    "maximum": 1.57
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "core3-power",
+    "samples": 720,
+    "mean": 1.3473333333333333,
+    "minimum": 0.23,
+    "maximum": 1.71
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "core4-power",
+    "samples": 720,
+    "mean": 1.0194305555555556,
+    "minimum": 0.18,
+    "maximum": 1.46
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "core5-power",
+    "samples": 720,
+    "mean": 1.2697777777777777,
+    "minimum": 0.38,
+    "maximum": 1.69
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "core6-power",
+    "samples": 720,
+    "mean": 1.1702083333333333,
+    "minimum": 0.28,
+    "maximum": 1.66
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.queries",
+    "counter": "core7-power",
+    "samples": 720,
+    "mean": 1.336375,
+    "minimum": 0.16,
+    "maximum": 1.7
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 814,
+    "mean": 1839.6710442260442,
+    "minimum": 1649.63,
+    "maximum": 1979.96
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 814,
+    "mean": 1838.848488943489,
+    "minimum": 1649.35,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 814,
+    "mean": 1892.3887837837838,
+    "minimum": 1649.43,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 814,
+    "mean": 1863.7932309582309,
+    "minimum": 1649.38,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 814,
+    "mean": 1828.0728624078624,
+    "minimum": 1646.17,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 814,
+    "mean": 1800.534828009828,
+    "minimum": 1645.87,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 814,
+    "mean": 1916.3356019656019,
+    "minimum": 1658.65,
+    "maximum": 1980.09
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 814,
+    "mean": 1909.8045085995086,
+    "minimum": 1649.56,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 814,
+    "mean": 1807.7007493857493,
+    "minimum": 1649.46,
+    "maximum": 1979.98
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 814,
+    "mean": 1801.0627395577396,
+    "minimum": 1649.37,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 814,
+    "mean": 1961.603538083538,
+    "minimum": 1751.11,
+    "maximum": 1980.05
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 814,
+    "mean": 1960.2648525798527,
+    "minimum": 1751.32,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 814,
+    "mean": 1871.5344471744472,
+    "minimum": 1649.3,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 814,
+    "mean": 1865.7616216216215,
+    "minimum": 1649.32,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 814,
+    "mean": 1979.5720393120394,
+    "minimum": 1979.16,
+    "maximum": 1980.3
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 814,
+    "mean": 1979.7326904176905,
+    "minimum": 1979.11,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "socket0-package-power",
+    "samples": 814,
+    "mean": 6.681240786240786,
+    "minimum": 4.48,
+    "maximum": 11.13
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "core0-power",
+    "samples": 814,
+    "mean": 0.20097051597051596,
+    "minimum": 0.02,
+    "maximum": 0.98
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "core1-power",
+    "samples": 814,
+    "mean": 0.421019656019656,
+    "minimum": 0.02,
+    "maximum": 1.18
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "core2-power",
+    "samples": 814,
+    "mean": 0.25437346437346436,
+    "minimum": 0.0,
+    "maximum": 1.15
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "core3-power",
+    "samples": 814,
+    "mean": 0.5888943488943489,
+    "minimum": 0.02,
+    "maximum": 1.41
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "core4-power",
+    "samples": 814,
+    "mean": 0.19245700245700245,
+    "minimum": 0.01,
+    "maximum": 1.07
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "core5-power",
+    "samples": 814,
+    "mean": 0.5692997542997543,
+    "minimum": 0.14,
+    "maximum": 1.49
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "core6-power",
+    "samples": 814,
+    "mean": 0.3418181818181818,
+    "minimum": 0.0,
+    "maximum": 1.21
+  },
+  {
+    "case": "bennu-timechart",
+    "phase": "distance.statistics",
+    "counter": "core7-power",
+    "samples": 814,
+    "mean": 0.3458968058968059,
+    "minimum": 0.13,
+    "maximum": 1.16
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 39,
+    "mean": 1936.2064102564102,
+    "minimum": 1712.3,
+    "maximum": 1979.99
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 39,
+    "mean": 1938.8635897435897,
+    "minimum": 1740.0,
+    "maximum": 1979.98
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 39,
+    "mean": 1979.8923076923077,
+    "minimum": 1979.55,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 39,
+    "mean": 1979.820512820513,
+    "minimum": 1979.47,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 39,
+    "mean": 1926.3897435897436,
+    "minimum": 1651.43,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 39,
+    "mean": 1921.3674358974358,
+    "minimum": 1657.75,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 39,
+    "mean": 1950.8438461538462,
+    "minimum": 1687.08,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 39,
+    "mean": 1941.5433333333333,
+    "minimum": 1670.36,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 39,
+    "mean": 1908.8697435897436,
+    "minimum": 1649.71,
+    "maximum": 1979.97
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 39,
+    "mean": 1881.7266666666667,
+    "minimum": 1649.44,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 39,
+    "mean": 1972.0964102564103,
+    "minimum": 1866.12,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 39,
+    "mean": 1971.21,
+    "minimum": 1850.65,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 39,
+    "mean": 1906.5866666666666,
+    "minimum": 1649.37,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 39,
+    "mean": 1912.2692307692307,
+    "minimum": 1649.21,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 39,
+    "mean": 1952.173076923077,
+    "minimum": 1795.6,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 39,
+    "mean": 1959.4753846153847,
+    "minimum": 1746.3,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "socket0-package-power",
+    "samples": 39,
+    "mean": 8.661538461538461,
+    "minimum": 6.32,
+    "maximum": 12.13
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "core0-power",
+    "samples": 39,
+    "mean": 0.44769230769230767,
+    "minimum": 0.07,
+    "maximum": 0.9
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "core1-power",
+    "samples": 39,
+    "mean": 0.7002564102564103,
+    "minimum": 0.21,
+    "maximum": 1.22
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "core2-power",
+    "samples": 39,
+    "mean": 0.5187179487179487,
+    "minimum": 0.04,
+    "maximum": 1.17
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "core3-power",
+    "samples": 39,
+    "mean": 0.8038461538461539,
+    "minimum": 0.04,
+    "maximum": 1.18
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "core4-power",
+    "samples": 39,
+    "mean": 0.3515384615384615,
+    "minimum": 0.02,
+    "maximum": 0.92
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "core5-power",
+    "samples": 39,
+    "mean": 0.7297435897435898,
+    "minimum": 0.15,
+    "maximum": 1.26
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "core6-power",
+    "samples": 39,
+    "mean": 0.4441025641025641,
+    "minimum": 0.02,
+    "maximum": 1.23
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.auto",
+    "counter": "core7-power",
+    "samples": 39,
+    "mean": 0.5876923076923077,
+    "minimum": 0.12,
+    "maximum": 1.25
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 73,
+    "mean": 1935.4645205479453,
+    "minimum": 1690.24,
+    "maximum": 1979.95
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 73,
+    "mean": 1937.0160273972604,
+    "minimum": 1693.78,
+    "maximum": 1979.96
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 73,
+    "mean": 1979.9197260273972,
+    "minimum": 1979.45,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 73,
+    "mean": 1979.7531506849316,
+    "minimum": 1979.34,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 73,
+    "mean": 1929.9631506849314,
+    "minimum": 1654.28,
+    "maximum": 1979.99
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 73,
+    "mean": 1908.5071232876712,
+    "minimum": 1650.81,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 73,
+    "mean": 1947.5506849315068,
+    "minimum": 1651.35,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 73,
+    "mean": 1947.7906849315068,
+    "minimum": 1649.56,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 73,
+    "mean": 1908.8809589041095,
+    "minimum": 1657.98,
+    "maximum": 1979.94
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 73,
+    "mean": 1903.8419178082193,
+    "minimum": 1649.36,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 73,
+    "mean": 1979.1460273972602,
+    "minimum": 1948.38,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 73,
+    "mean": 1979.1913698630137,
+    "minimum": 1964.77,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 73,
+    "mean": 1927.958082191781,
+    "minimum": 1656.85,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 73,
+    "mean": 1921.6946575342465,
+    "minimum": 1649.47,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 73,
+    "mean": 1971.7131506849314,
+    "minimum": 1875.6,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 73,
+    "mean": 1968.5650684931506,
+    "minimum": 1850.71,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "socket0-package-power",
+    "samples": 73,
+    "mean": 8.737260273972602,
+    "minimum": 6.45,
+    "maximum": 12.9
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "core0-power",
+    "samples": 73,
+    "mean": 0.36164383561643837,
+    "minimum": 0.05,
+    "maximum": 1.01
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "core1-power",
+    "samples": 73,
+    "mean": 0.6704109589041096,
+    "minimum": 0.16,
+    "maximum": 1.18
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "core2-power",
+    "samples": 73,
+    "mean": 0.4980821917808219,
+    "minimum": 0.02,
+    "maximum": 1.05
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "core3-power",
+    "samples": 73,
+    "mean": 0.7034246575342465,
+    "minimum": 0.04,
+    "maximum": 1.22
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "core4-power",
+    "samples": 73,
+    "mean": 0.38315068493150684,
+    "minimum": 0.02,
+    "maximum": 1.14
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "core5-power",
+    "samples": 73,
+    "mean": 0.9609589041095891,
+    "minimum": 0.21,
+    "maximum": 1.37
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "core6-power",
+    "samples": 73,
+    "mean": 0.4776712328767123,
+    "minimum": 0.05,
+    "maximum": 1.17
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.quality",
+    "counter": "core7-power",
+    "samples": 73,
+    "mean": 0.6813698630136986,
+    "minimum": 0.18,
+    "maximum": 1.14
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 45,
+    "mean": 1937.4126666666666,
+    "minimum": 1696.39,
+    "maximum": 1979.95
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 45,
+    "mean": 1941.2704444444444,
+    "minimum": 1693.78,
+    "maximum": 1979.95
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 45,
+    "mean": 1979.916888888889,
+    "minimum": 1979.45,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 45,
+    "mean": 1979.757111111111,
+    "minimum": 1979.38,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 45,
+    "mean": 1927.3762222222222,
+    "minimum": 1654.28,
+    "maximum": 1979.98
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 45,
+    "mean": 1893.2646666666667,
+    "minimum": 1650.81,
+    "maximum": 1979.94
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 45,
+    "mean": 1941.2955555555557,
+    "minimum": 1651.35,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 45,
+    "mean": 1941.6535555555556,
+    "minimum": 1649.56,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 45,
+    "mean": 1908.3126666666667,
+    "minimum": 1657.98,
+    "maximum": 1979.93
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 45,
+    "mean": 1906.2593333333334,
+    "minimum": 1649.74,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 45,
+    "mean": 1979.7126666666668,
+    "minimum": 1974.88,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 45,
+    "mean": 1979.4635555555556,
+    "minimum": 1967.05,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 45,
+    "mean": 1934.4582222222223,
+    "minimum": 1656.85,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 45,
+    "mean": 1927.7466666666667,
+    "minimum": 1649.47,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 45,
+    "mean": 1976.726,
+    "minimum": 1935.94,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 45,
+    "mean": 1971.9337777777778,
+    "minimum": 1901.29,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "socket0-package-power",
+    "samples": 45,
+    "mean": 8.844222222222223,
+    "minimum": 6.48,
+    "maximum": 12.9
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "core0-power",
+    "samples": 45,
+    "mean": 0.3695555555555556,
+    "minimum": 0.07,
+    "maximum": 1.01
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "core1-power",
+    "samples": 45,
+    "mean": 0.6691111111111111,
+    "minimum": 0.32,
+    "maximum": 1.18
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "core2-power",
+    "samples": 45,
+    "mean": 0.4631111111111111,
+    "minimum": 0.04,
+    "maximum": 1.05
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "core3-power",
+    "samples": 45,
+    "mean": 0.6911111111111111,
+    "minimum": 0.04,
+    "maximum": 1.22
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "core4-power",
+    "samples": 45,
+    "mean": 0.4013333333333333,
+    "minimum": 0.02,
+    "maximum": 1.14
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "core5-power",
+    "samples": 45,
+    "mean": 0.9993333333333333,
+    "minimum": 0.21,
+    "maximum": 1.37
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "core6-power",
+    "samples": 45,
+    "mean": 0.5253333333333333,
+    "minimum": 0.06,
+    "maximum": 1.17
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "quality.statistics",
+    "counter": "core7-power",
+    "samples": 45,
+    "mean": 0.7197777777777777,
+    "minimum": 0.2,
+    "maximum": 1.13
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 31,
+    "mean": 1969.3783870967743,
+    "minimum": 1903.97,
+    "maximum": 1979.97
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 31,
+    "mean": 1972.0732258064515,
+    "minimum": 1929.11,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 31,
+    "mean": 1979.8522580645163,
+    "minimum": 1979.46,
+    "maximum": 1979.98
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 31,
+    "mean": 1979.8670967741937,
+    "minimum": 1979.31,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 31,
+    "mean": 1973.4712903225807,
+    "minimum": 1933.22,
+    "maximum": 1979.98
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 31,
+    "mean": 1964.4451612903226,
+    "minimum": 1806.78,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 31,
+    "mean": 1966.679677419355,
+    "minimum": 1884.93,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 31,
+    "mean": 1959.2667741935484,
+    "minimum": 1855.53,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 31,
+    "mean": 1935.163870967742,
+    "minimum": 1740.84,
+    "maximum": 1979.98
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 31,
+    "mean": 1918.2677419354839,
+    "minimum": 1686.04,
+    "maximum": 1979.92
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 31,
+    "mean": 1978.5,
+    "minimum": 1955.33,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 31,
+    "mean": 1978.7606451612903,
+    "minimum": 1951.93,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 31,
+    "mean": 1943.9290322580646,
+    "minimum": 1715.8,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 31,
+    "mean": 1939.018064516129,
+    "minimum": 1683.95,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 31,
+    "mean": 1976.8509677419354,
+    "minimum": 1920.92,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 31,
+    "mean": 1977.4767741935484,
+    "minimum": 1944.41,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "socket0-package-power",
+    "samples": 31,
+    "mean": 9.402258064516129,
+    "minimum": 7.65,
+    "maximum": 11.33
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "core0-power",
+    "samples": 31,
+    "mean": 0.4335483870967742,
+    "minimum": 0.16,
+    "maximum": 1.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "core1-power",
+    "samples": 31,
+    "mean": 0.7406451612903225,
+    "minimum": 0.34,
+    "maximum": 1.2
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "core2-power",
+    "samples": 31,
+    "mean": 0.6861290322580645,
+    "minimum": 0.18,
+    "maximum": 1.21
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "core3-power",
+    "samples": 31,
+    "mean": 0.6932258064516129,
+    "minimum": 0.22,
+    "maximum": 1.36
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "core4-power",
+    "samples": 31,
+    "mean": 0.4390322580645161,
+    "minimum": 0.09,
+    "maximum": 1.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "core5-power",
+    "samples": 31,
+    "mean": 0.9480645161290323,
+    "minimum": 0.23,
+    "maximum": 1.32
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "core6-power",
+    "samples": 31,
+    "mean": 0.6406451612903226,
+    "minimum": 0.04,
+    "maximum": 1.2
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.intersections",
+    "counter": "core7-power",
+    "samples": 31,
+    "mean": 0.7519354838709678,
+    "minimum": 0.17,
+    "maximum": 1.35
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 232,
+    "mean": 1956.1359482758621,
+    "minimum": 1696.45,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 232,
+    "mean": 1955.9212068965517,
+    "minimum": 1686.17,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 232,
+    "mean": 1979.9178879310346,
+    "minimum": 1979.2,
+    "maximum": 1980.05
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 232,
+    "mean": 1979.8793534482759,
+    "minimum": 1979.3,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 232,
+    "mean": 1957.031422413793,
+    "minimum": 1649.51,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 232,
+    "mean": 1949.8521551724139,
+    "minimum": 1649.49,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 232,
+    "mean": 1962.5557327586207,
+    "minimum": 1670.56,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 232,
+    "mean": 1960.3759051724137,
+    "minimum": 1667.92,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 232,
+    "mean": 1942.41125,
+    "minimum": 1653.67,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 232,
+    "mean": 1933.9096551724137,
+    "minimum": 1654.3,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 232,
+    "mean": 1977.3054310344828,
+    "minimum": 1879.23,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 232,
+    "mean": 1977.0638362068967,
+    "minimum": 1904.37,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 232,
+    "mean": 1956.9331465517241,
+    "minimum": 1650.82,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 232,
+    "mean": 1958.8411637931035,
+    "minimum": 1649.57,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 232,
+    "mean": 1972.4203448275862,
+    "minimum": 1660.66,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 232,
+    "mean": 1972.2278448275863,
+    "minimum": 1649.53,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "socket0-package-power",
+    "samples": 232,
+    "mean": 10.909310344827587,
+    "minimum": 6.52,
+    "maximum": 15.93
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "core0-power",
+    "samples": 232,
+    "mean": 0.6652155172413793,
+    "minimum": 0.03,
+    "maximum": 1.4
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "core1-power",
+    "samples": 232,
+    "mean": 0.9265948275862069,
+    "minimum": 0.15,
+    "maximum": 1.61
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "core2-power",
+    "samples": 232,
+    "mean": 0.8087931034482758,
+    "minimum": 0.02,
+    "maximum": 1.53
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "core3-power",
+    "samples": 232,
+    "mean": 0.9388793103448276,
+    "minimum": 0.04,
+    "maximum": 1.62
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "core4-power",
+    "samples": 232,
+    "mean": 0.7017672413793103,
+    "minimum": 0.0,
+    "maximum": 1.47
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "core5-power",
+    "samples": 232,
+    "mean": 1.0325862068965517,
+    "minimum": 0.16,
+    "maximum": 1.52
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "core6-power",
+    "samples": 232,
+    "mean": 0.7598275862068966,
+    "minimum": 0.02,
+    "maximum": 1.44
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "op.distance",
+    "counter": "core7-power",
+    "samples": 232,
+    "mean": 0.8986206896551724,
+    "minimum": 0.01,
+    "maximum": 1.59
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 78,
+    "mean": 1978.5098717948717,
+    "minimum": 1939.48,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 78,
+    "mean": 1978.4814102564103,
+    "minimum": 1913.1,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 78,
+    "mean": 1979.9679487179487,
+    "minimum": 1979.63,
+    "maximum": 1980.05
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 78,
+    "mean": 1979.9738461538461,
+    "minimum": 1979.33,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 78,
+    "mean": 1979.6748717948717,
+    "minimum": 1965.94,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 78,
+    "mean": 1975.9284615384615,
+    "minimum": 1867.99,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 78,
+    "mean": 1979.7765384615384,
+    "minimum": 1963.71,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 78,
+    "mean": 1979.316923076923,
+    "minimum": 1930.06,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 78,
+    "mean": 1979.426282051282,
+    "minimum": 1960.31,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 78,
+    "mean": 1976.2883333333334,
+    "minimum": 1842.65,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 78,
+    "mean": 1979.9384615384615,
+    "minimum": 1978.3,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 78,
+    "mean": 1979.9605128205128,
+    "minimum": 1978.79,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 78,
+    "mean": 1979.4311538461538,
+    "minimum": 1941.4,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 78,
+    "mean": 1977.950641025641,
+    "minimum": 1881.79,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 78,
+    "mean": 1979.921282051282,
+    "minimum": 1975.5,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 78,
+    "mean": 1978.2207692307693,
+    "minimum": 1884.17,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "socket0-package-power",
+    "samples": 78,
+    "mean": 14.271923076923077,
+    "minimum": 8.56,
+    "maximum": 15.93
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "core0-power",
+    "samples": 78,
+    "mean": 1.1203846153846153,
+    "minimum": 0.3,
+    "maximum": 1.4
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "core1-power",
+    "samples": 78,
+    "mean": 1.2757692307692308,
+    "minimum": 0.57,
+    "maximum": 1.61
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "core2-power",
+    "samples": 78,
+    "mean": 1.1984615384615385,
+    "minimum": 0.45,
+    "maximum": 1.53
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "core3-power",
+    "samples": 78,
+    "mean": 1.369102564102564,
+    "minimum": 0.35,
+    "maximum": 1.62
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "core4-power",
+    "samples": 78,
+    "mean": 1.1726923076923077,
+    "minimum": 0.52,
+    "maximum": 1.47
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "core5-power",
+    "samples": 78,
+    "mean": 1.3525641025641026,
+    "minimum": 1.05,
+    "maximum": 1.52
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "core6-power",
+    "samples": 78,
+    "mean": 1.2267948717948718,
+    "minimum": 0.23,
+    "maximum": 1.44
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.queries",
+    "counter": "core7-power",
+    "samples": 78,
+    "mean": 1.3705128205128205,
+    "minimum": 0.52,
+    "maximum": 1.59
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 90,
+    "mean": 1941.8866666666668,
+    "minimum": 1725.14,
+    "maximum": 1979.96
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 90,
+    "mean": 1938.0957777777778,
+    "minimum": 1730.19,
+    "maximum": 1979.99
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 90,
+    "mean": 1979.9177777777777,
+    "minimum": 1979.44,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 90,
+    "mean": 1979.7836666666667,
+    "minimum": 1979.3,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 90,
+    "mean": 1944.8838888888888,
+    "minimum": 1684.26,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 90,
+    "mean": 1928.822111111111,
+    "minimum": 1657.05,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 90,
+    "mean": 1943.3894444444445,
+    "minimum": 1670.56,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 90,
+    "mean": 1935.6475555555555,
+    "minimum": 1667.92,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 90,
+    "mean": 1907.359888888889,
+    "minimum": 1653.67,
+    "maximum": 1979.98
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 90,
+    "mean": 1887.5184444444444,
+    "minimum": 1654.3,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 90,
+    "mean": 1975.0476666666666,
+    "minimum": 1879.23,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 90,
+    "mean": 1975.3042222222223,
+    "minimum": 1913.03,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 90,
+    "mean": 1942.3036666666667,
+    "minimum": 1653.05,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 90,
+    "mean": 1945.532888888889,
+    "minimum": 1653.86,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 90,
+    "mean": 1972.8303333333333,
+    "minimum": 1828.32,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 90,
+    "mean": 1974.087888888889,
+    "minimum": 1814.75,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "socket0-package-power",
+    "samples": 90,
+    "mean": 9.033444444444445,
+    "minimum": 6.52,
+    "maximum": 13.99
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "core0-power",
+    "samples": 90,
+    "mean": 0.4057777777777778,
+    "minimum": 0.09,
+    "maximum": 1.14
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "core1-power",
+    "samples": 90,
+    "mean": 0.6954444444444444,
+    "minimum": 0.15,
+    "maximum": 1.18
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "core2-power",
+    "samples": 90,
+    "mean": 0.5991111111111111,
+    "minimum": 0.03,
+    "maximum": 1.2
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "core3-power",
+    "samples": 90,
+    "mean": 0.5886666666666667,
+    "minimum": 0.04,
+    "maximum": 1.19
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "core4-power",
+    "samples": 90,
+    "mean": 0.4132222222222222,
+    "minimum": 0.0,
+    "maximum": 1.06
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "core5-power",
+    "samples": 90,
+    "mean": 0.889,
+    "minimum": 0.17,
+    "maximum": 1.46
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "core6-power",
+    "samples": 90,
+    "mean": 0.5342222222222223,
+    "minimum": 0.02,
+    "maximum": 1.17
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "phase": "distance.statistics",
+    "counter": "core7-power",
+    "samples": 90,
+    "mean": 0.702,
+    "minimum": 0.14,
+    "maximum": 1.24
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 38,
+    "mean": 1938.1584210526316,
+    "minimum": 1793.34,
+    "maximum": 1979.95
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 38,
+    "mean": 1935.0086842105263,
+    "minimum": 1740.22,
+    "maximum": 1979.97
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 38,
+    "mean": 1979.6921052631578,
+    "minimum": 1979.35,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 38,
+    "mean": 1979.7484210526316,
+    "minimum": 1979.4,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 38,
+    "mean": 1811.2057894736843,
+    "minimum": 1649.4,
+    "maximum": 1979.43
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 38,
+    "mean": 1792.7013157894737,
+    "minimum": 1649.31,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 38,
+    "mean": 1874.0157894736842,
+    "minimum": 1660.63,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 38,
+    "mean": 1882.7176315789475,
+    "minimum": 1659.07,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 38,
+    "mean": 1782.3515789473684,
+    "minimum": 1649.55,
+    "maximum": 1979.99
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 38,
+    "mean": 1769.2384210526316,
+    "minimum": 1649.33,
+    "maximum": 1979.96
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 38,
+    "mean": 1960.0731578947368,
+    "minimum": 1809.97,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 38,
+    "mean": 1959.4705263157894,
+    "minimum": 1811.56,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 38,
+    "mean": 1910.5734210526316,
+    "minimum": 1649.5,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 38,
+    "mean": 1907.101052631579,
+    "minimum": 1649.31,
+    "maximum": 1979.98
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 38,
+    "mean": 1910.72,
+    "minimum": 1653.28,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 38,
+    "mean": 1915.5707894736843,
+    "minimum": 1649.31,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "socket0-package-power",
+    "samples": 38,
+    "mean": 6.890263157894736,
+    "minimum": 5.05,
+    "maximum": 9.54
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "core0-power",
+    "samples": 38,
+    "mean": 0.3523684210526316,
+    "minimum": 0.15,
+    "maximum": 0.9
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "core1-power",
+    "samples": 38,
+    "mean": 0.4213157894736842,
+    "minimum": 0.13,
+    "maximum": 1.22
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "core2-power",
+    "samples": 38,
+    "mean": 0.24105263157894738,
+    "minimum": 0.0,
+    "maximum": 0.86
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "core3-power",
+    "samples": 38,
+    "mean": 0.43894736842105264,
+    "minimum": 0.02,
+    "maximum": 1.05
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "core4-power",
+    "samples": 38,
+    "mean": 0.19473684210526315,
+    "minimum": 0.01,
+    "maximum": 1.25
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "core5-power",
+    "samples": 38,
+    "mean": 0.5526315789473685,
+    "minimum": 0.14,
+    "maximum": 1.31
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "core6-power",
+    "samples": 38,
+    "mean": 0.30973684210526314,
+    "minimum": 0.0,
+    "maximum": 1.22
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.auto",
+    "counter": "core7-power",
+    "samples": 38,
+    "mean": 0.42026315789473684,
+    "minimum": 0.02,
+    "maximum": 1.08
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 72,
+    "mean": 1942.6406944444445,
+    "minimum": 1720.29,
+    "maximum": 1979.98
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 72,
+    "mean": 1940.8479166666666,
+    "minimum": 1717.46,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 72,
+    "mean": 1979.7723611111112,
+    "minimum": 1979.15,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 72,
+    "mean": 1979.6920833333334,
+    "minimum": 1979.18,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 72,
+    "mean": 1831.0659722222222,
+    "minimum": 1649.54,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 72,
+    "mean": 1801.8097222222223,
+    "minimum": 1649.4,
+    "maximum": 1979.96
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 72,
+    "mean": 1848.872361111111,
+    "minimum": 1650.44,
+    "maximum": 1980.01
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 72,
+    "mean": 1833.015138888889,
+    "minimum": 1651.2,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 72,
+    "mean": 1775.9806944444445,
+    "minimum": 1649.6,
+    "maximum": 1979.94
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 72,
+    "mean": 1750.9927777777777,
+    "minimum": 1649.38,
+    "maximum": 1979.94
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 72,
+    "mean": 1958.5745833333333,
+    "minimum": 1856.24,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 72,
+    "mean": 1955.3804166666666,
+    "minimum": 1770.06,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 72,
+    "mean": 1843.2381944444444,
+    "minimum": 1653.97,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 72,
+    "mean": 1830.4008333333334,
+    "minimum": 1649.32,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 72,
+    "mean": 1933.3881944444445,
+    "minimum": 1652.05,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 72,
+    "mean": 1929.7033333333334,
+    "minimum": 1649.4,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "socket0-package-power",
+    "samples": 72,
+    "mean": 6.973055555555556,
+    "minimum": 4.51,
+    "maximum": 12.37
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "core0-power",
+    "samples": 72,
+    "mean": 0.3826388888888889,
+    "minimum": 0.13,
+    "maximum": 1.04
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "core1-power",
+    "samples": 72,
+    "mean": 0.4951388888888889,
+    "minimum": 0.13,
+    "maximum": 1.12
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "core2-power",
+    "samples": 72,
+    "mean": 0.30625,
+    "minimum": 0.0,
+    "maximum": 1.07
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "core3-power",
+    "samples": 72,
+    "mean": 0.40111111111111114,
+    "minimum": 0.01,
+    "maximum": 1.16
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "core4-power",
+    "samples": 72,
+    "mean": 0.15638888888888888,
+    "minimum": 0.0,
+    "maximum": 0.98
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "core5-power",
+    "samples": 72,
+    "mean": 0.5195833333333333,
+    "minimum": 0.14,
+    "maximum": 1.47
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "core6-power",
+    "samples": 72,
+    "mean": 0.32944444444444443,
+    "minimum": 0.0,
+    "maximum": 1.11
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.quality",
+    "counter": "core7-power",
+    "samples": 72,
+    "mean": 0.5113888888888889,
+    "minimum": 0.04,
+    "maximum": 1.12
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 44,
+    "mean": 1940.7613636363635,
+    "minimum": 1720.29,
+    "maximum": 1979.97
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 44,
+    "mean": 1937.69,
+    "minimum": 1717.46,
+    "maximum": 1979.99
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 44,
+    "mean": 1979.7397727272728,
+    "minimum": 1979.15,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 44,
+    "mean": 1979.7061363636365,
+    "minimum": 1979.18,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 44,
+    "mean": 1839.3097727272727,
+    "minimum": 1652.76,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 44,
+    "mean": 1790.8525,
+    "minimum": 1649.4,
+    "maximum": 1979.94
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 44,
+    "mean": 1838.6763636363637,
+    "minimum": 1661.18,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 44,
+    "mean": 1831.121818181818,
+    "minimum": 1659.44,
+    "maximum": 1979.97
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 44,
+    "mean": 1765.4013636363636,
+    "minimum": 1652.55,
+    "maximum": 1976.3
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 44,
+    "mean": 1742.6293181818182,
+    "minimum": 1649.59,
+    "maximum": 1973.94
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 44,
+    "mean": 1962.0297727272728,
+    "minimum": 1858.66,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 44,
+    "mean": 1960.019090909091,
+    "minimum": 1849.13,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 44,
+    "mean": 1828.5997727272727,
+    "minimum": 1656.76,
+    "maximum": 1979.65
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 44,
+    "mean": 1818.7518181818182,
+    "minimum": 1649.32,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 44,
+    "mean": 1933.4529545454545,
+    "minimum": 1666.59,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 44,
+    "mean": 1929.8690909090908,
+    "minimum": 1675.45,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "socket0-package-power",
+    "samples": 44,
+    "mean": 6.837272727272727,
+    "minimum": 4.51,
+    "maximum": 8.35
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "core0-power",
+    "samples": 44,
+    "mean": 0.34,
+    "minimum": 0.14,
+    "maximum": 1.04
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "core1-power",
+    "samples": 44,
+    "mean": 0.46340909090909094,
+    "minimum": 0.15,
+    "maximum": 0.98
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "core2-power",
+    "samples": 44,
+    "mean": 0.2775,
+    "minimum": 0.0,
+    "maximum": 1.05
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "core3-power",
+    "samples": 44,
+    "mean": 0.3975,
+    "minimum": 0.01,
+    "maximum": 1.08
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "core4-power",
+    "samples": 44,
+    "mean": 0.1275,
+    "minimum": 0.0,
+    "maximum": 0.84
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "core5-power",
+    "samples": 44,
+    "mean": 0.5115909090909091,
+    "minimum": 0.14,
+    "maximum": 1.47
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "core6-power",
+    "samples": 44,
+    "mean": 0.31022727272727274,
+    "minimum": 0.0,
+    "maximum": 1.11
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "quality.statistics",
+    "counter": "core7-power",
+    "samples": 44,
+    "mean": 0.5318181818181819,
+    "minimum": 0.1,
+    "maximum": 1.11
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 29,
+    "mean": 1941.2155172413793,
+    "minimum": 1844.92,
+    "maximum": 1979.79
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 29,
+    "mean": 1945.308620689655,
+    "minimum": 1808.64,
+    "maximum": 1979.96
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 29,
+    "mean": 1979.684827586207,
+    "minimum": 1979.37,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 29,
+    "mean": 1979.6027586206897,
+    "minimum": 1979.08,
+    "maximum": 1979.99
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 29,
+    "mean": 1747.6072413793104,
+    "minimum": 1649.4,
+    "maximum": 1979.42
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 29,
+    "mean": 1730.1093103448277,
+    "minimum": 1649.28,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 29,
+    "mean": 1879.643103448276,
+    "minimum": 1656.16,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 29,
+    "mean": 1903.041724137931,
+    "minimum": 1649.47,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 29,
+    "mean": 1746.9062068965518,
+    "minimum": 1649.7,
+    "maximum": 1966.06
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 29,
+    "mean": 1728.8175862068965,
+    "minimum": 1649.52,
+    "maximum": 1973.53
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 29,
+    "mean": 1950.174827586207,
+    "minimum": 1853.64,
+    "maximum": 1979.99
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 29,
+    "mean": 1948.1758620689654,
+    "minimum": 1817.94,
+    "maximum": 1979.95
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 29,
+    "mean": 1721.1993103448276,
+    "minimum": 1649.5,
+    "maximum": 1973.28
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 29,
+    "mean": 1696.7058620689656,
+    "minimum": 1649.53,
+    "maximum": 1907.72
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 29,
+    "mean": 1961.6017241379311,
+    "minimum": 1740.0,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 29,
+    "mean": 1963.433103448276,
+    "minimum": 1728.72,
+    "maximum": 1979.86
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "socket0-package-power",
+    "samples": 29,
+    "mean": 6.504827586206897,
+    "minimum": 4.52,
+    "maximum": 7.63
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "core0-power",
+    "samples": 29,
+    "mean": 0.28206896551724137,
+    "minimum": 0.16,
+    "maximum": 0.81
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "core1-power",
+    "samples": 29,
+    "mean": 0.27482758620689657,
+    "minimum": 0.12,
+    "maximum": 1.13
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "core2-power",
+    "samples": 29,
+    "mean": 0.11862068965517242,
+    "minimum": 0.0,
+    "maximum": 0.93
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "core3-power",
+    "samples": 29,
+    "mean": 0.5055172413793103,
+    "minimum": 0.04,
+    "maximum": 1.34
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "core4-power",
+    "samples": 29,
+    "mean": 0.10103448275862069,
+    "minimum": 0.02,
+    "maximum": 0.45
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "core5-power",
+    "samples": 29,
+    "mean": 0.34448275862068967,
+    "minimum": 0.15,
+    "maximum": 1.19
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "core6-power",
+    "samples": 29,
+    "mean": 0.10448275862068966,
+    "minimum": 0.0,
+    "maximum": 0.76
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.intersections",
+    "counter": "core7-power",
+    "samples": 29,
+    "mean": 1.0520689655172413,
+    "minimum": 0.07,
+    "maximum": 1.35
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 221,
+    "mean": 1957.593484162896,
+    "minimum": 1822.08,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 221,
+    "mean": 1954.4638009049775,
+    "minimum": 1762.13,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 221,
+    "mean": 1979.7854298642535,
+    "minimum": 1979.22,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 221,
+    "mean": 1979.8543438914028,
+    "minimum": 1979.27,
+    "maximum": 1980.49
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 221,
+    "mean": 1879.9739366515837,
+    "minimum": 1649.4,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 221,
+    "mean": 1863.5667873303166,
+    "minimum": 1649.26,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 221,
+    "mean": 1905.7990045248869,
+    "minimum": 1652.97,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 221,
+    "mean": 1901.7593212669683,
+    "minimum": 1649.58,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 221,
+    "mean": 1845.8957918552037,
+    "minimum": 1649.45,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 221,
+    "mean": 1833.1157918552037,
+    "minimum": 1649.3,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 221,
+    "mean": 1965.56778280543,
+    "minimum": 1789.26,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 221,
+    "mean": 1961.9823076923078,
+    "minimum": 1789.44,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 221,
+    "mean": 1894.7821719457013,
+    "minimum": 1649.33,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 221,
+    "mean": 1890.654886877828,
+    "minimum": 1649.29,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 221,
+    "mean": 1932.6578280542988,
+    "minimum": 1663.47,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 221,
+    "mean": 1936.3274660633483,
+    "minimum": 1649.48,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "socket0-package-power",
+    "samples": 221,
+    "mean": 9.004886877828055,
+    "minimum": 4.71,
+    "maximum": 14.59
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "core0-power",
+    "samples": 221,
+    "mean": 0.6279185520361991,
+    "minimum": 0.15,
+    "maximum": 1.39
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "core1-power",
+    "samples": 221,
+    "mean": 0.7394117647058823,
+    "minimum": 0.14,
+    "maximum": 1.51
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "core2-power",
+    "samples": 221,
+    "mean": 0.5366515837104072,
+    "minimum": 0.0,
+    "maximum": 1.41
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "core3-power",
+    "samples": 221,
+    "mean": 0.7685972850678733,
+    "minimum": 0.0,
+    "maximum": 1.53
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "core4-power",
+    "samples": 221,
+    "mean": 0.445158371040724,
+    "minimum": 0.01,
+    "maximum": 1.4
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "core5-power",
+    "samples": 221,
+    "mean": 0.7591855203619909,
+    "minimum": 0.15,
+    "maximum": 1.55
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "core6-power",
+    "samples": 221,
+    "mean": 0.5881447963800905,
+    "minimum": 0.01,
+    "maximum": 1.5
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "op.distance",
+    "counter": "core7-power",
+    "samples": 221,
+    "mean": 0.7170135746606335,
+    "minimum": 0.03,
+    "maximum": 1.58
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 71,
+    "mean": 1978.0121126760564,
+    "minimum": 1896.09,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 71,
+    "mean": 1973.5467605633803,
+    "minimum": 1862.86,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 71,
+    "mean": 1979.9039436619719,
+    "minimum": 1979.35,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 71,
+    "mean": 1979.9769014084507,
+    "minimum": 1979.87,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 71,
+    "mean": 1963.393661971831,
+    "minimum": 1661.57,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 71,
+    "mean": 1978.6839436619719,
+    "minimum": 1944.08,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 71,
+    "mean": 1979.9108450704225,
+    "minimum": 1974.79,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 71,
+    "mean": 1979.9512676056338,
+    "minimum": 1977.86,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 71,
+    "mean": 1974.2307042253522,
+    "minimum": 1757.8,
+    "maximum": 1979.99
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 71,
+    "mean": 1977.3854929577465,
+    "minimum": 1890.67,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 71,
+    "mean": 1978.8728169014084,
+    "minimum": 1927.21,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 71,
+    "mean": 1978.5945070422536,
+    "minimum": 1932.31,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 71,
+    "mean": 1976.1626760563381,
+    "minimum": 1807.81,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 71,
+    "mean": 1974.3069014084508,
+    "minimum": 1672.4,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 71,
+    "mean": 1977.1598591549296,
+    "minimum": 1856.9,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 71,
+    "mean": 1979.0684507042254,
+    "minimum": 1920.35,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "socket0-package-power",
+    "samples": 71,
+    "mean": 12.943661971830986,
+    "minimum": 6.61,
+    "maximum": 14.59
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "core0-power",
+    "samples": 71,
+    "mean": 1.0619718309859154,
+    "minimum": 0.24,
+    "maximum": 1.39
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "core1-power",
+    "samples": 71,
+    "mean": 0.9983098591549295,
+    "minimum": 0.19,
+    "maximum": 1.51
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "core2-power",
+    "samples": 71,
+    "mean": 0.9261971830985916,
+    "minimum": 0.03,
+    "maximum": 1.41
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "core3-power",
+    "samples": 71,
+    "mean": 1.33056338028169,
+    "minimum": 0.6,
+    "maximum": 1.53
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "core4-power",
+    "samples": 71,
+    "mean": 0.966056338028169,
+    "minimum": 0.15,
+    "maximum": 1.4
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "core5-power",
+    "samples": 71,
+    "mean": 1.2256338028169014,
+    "minimum": 0.2,
+    "maximum": 1.55
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "core6-power",
+    "samples": 71,
+    "mean": 1.1016901408450703,
+    "minimum": 0.1,
+    "maximum": 1.5
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.queries",
+    "counter": "core7-power",
+    "samples": 71,
+    "mean": 1.3019718309859154,
+    "minimum": 0.17,
+    "maximum": 1.58
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 87,
+    "mean": 1953.0502298850574,
+    "minimum": 1822.77,
+    "maximum": 1979.97
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 87,
+    "mean": 1954.4201149425287,
+    "minimum": 1775.65,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 87,
+    "mean": 1979.7471264367816,
+    "minimum": 1979.22,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 87,
+    "mean": 1979.8001149425288,
+    "minimum": 1979.28,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 87,
+    "mean": 1866.8627586206896,
+    "minimum": 1649.4,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 87,
+    "mean": 1839.5650574712643,
+    "minimum": 1649.26,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 87,
+    "mean": 1878.617356321839,
+    "minimum": 1652.97,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 87,
+    "mean": 1873.8386206896553,
+    "minimum": 1649.58,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 87,
+    "mean": 1816.9840229885058,
+    "minimum": 1649.45,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 87,
+    "mean": 1790.2824137931034,
+    "minimum": 1649.37,
+    "maximum": 1979.99
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 87,
+    "mean": 1956.6655172413793,
+    "minimum": 1789.26,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 87,
+    "mean": 1949.6264367816093,
+    "minimum": 1789.44,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 87,
+    "mean": 1898.5912643678162,
+    "minimum": 1649.33,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 87,
+    "mean": 1889.6914942528736,
+    "minimum": 1649.45,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 87,
+    "mean": 1937.713103448276,
+    "minimum": 1672.74,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 87,
+    "mean": 1943.8264367816091,
+    "minimum": 1649.48,
+    "maximum": 1980.0
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "socket0-package-power",
+    "samples": 87,
+    "mean": 7.393103448275862,
+    "minimum": 4.71,
+    "maximum": 13.28
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "core0-power",
+    "samples": 87,
+    "mean": 0.44471264367816093,
+    "minimum": 0.15,
+    "maximum": 1.18
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "core1-power",
+    "samples": 87,
+    "mean": 0.6196551724137931,
+    "minimum": 0.14,
+    "maximum": 1.35
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "core2-power",
+    "samples": 87,
+    "mean": 0.42333333333333334,
+    "minimum": 0.01,
+    "maximum": 1.41
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "core3-power",
+    "samples": 87,
+    "mean": 0.48333333333333334,
+    "minimum": 0.0,
+    "maximum": 1.26
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "core4-power",
+    "samples": 87,
+    "mean": 0.254367816091954,
+    "minimum": 0.01,
+    "maximum": 1.09
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "core5-power",
+    "samples": 87,
+    "mean": 0.5713793103448276,
+    "minimum": 0.15,
+    "maximum": 1.51
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "core6-power",
+    "samples": 87,
+    "mean": 0.4091954022988506,
+    "minimum": 0.02,
+    "maximum": 1.14
+  },
+  {
+    "case": "bus-timechart",
+    "phase": "distance.statistics",
+    "counter": "core7-power",
+    "samples": 87,
+    "mean": 0.5605747126436782,
+    "minimum": 0.03,
+    "maximum": 1.39
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 168,
+    "mean": 1919.925773809524,
+    "minimum": 1672.22,
+    "maximum": 1979.98
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 168,
+    "mean": 1914.0290476190476,
+    "minimum": 1660.39,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 168,
+    "mean": 1943.6822023809523,
+    "minimum": 1666.06,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 168,
+    "mean": 1917.7963095238094,
+    "minimum": 1661.44,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 168,
+    "mean": 1882.6619047619047,
+    "minimum": 1649.42,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 168,
+    "mean": 1867.3543452380952,
+    "minimum": 1649.26,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 168,
+    "mean": 1979.83,
+    "minimum": 1979.39,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 168,
+    "mean": 1979.5930357142856,
+    "minimum": 1979.32,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 168,
+    "mean": 1831.6695833333333,
+    "minimum": 1649.52,
+    "maximum": 1979.95
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 168,
+    "mean": 1823.3994642857142,
+    "minimum": 1649.5,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 168,
+    "mean": 1971.484880952381,
+    "minimum": 1852.07,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 168,
+    "mean": 1969.1266666666668,
+    "minimum": 1815.65,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 168,
+    "mean": 1925.0241071428572,
+    "minimum": 1649.37,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 168,
+    "mean": 1927.4460714285715,
+    "minimum": 1649.38,
+    "maximum": 1980.02
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 168,
+    "mean": 1959.028988095238,
+    "minimum": 1695.71,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 168,
+    "mean": 1961.8670238095237,
+    "minimum": 1685.56,
+    "maximum": 1980.07
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "socket0-package-power",
+    "samples": 168,
+    "mean": 7.777142857142858,
+    "minimum": 5.36,
+    "maximum": 13.67
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "core0-power",
+    "samples": 168,
+    "mean": 0.32511904761904764,
+    "minimum": 0.04,
+    "maximum": 1.06
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "core1-power",
+    "samples": 168,
+    "mean": 0.5471428571428572,
+    "minimum": 0.03,
+    "maximum": 1.28
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "core2-power",
+    "samples": 168,
+    "mean": 0.34077380952380953,
+    "minimum": 0.01,
+    "maximum": 1.26
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "core3-power",
+    "samples": 168,
+    "mean": 0.39095238095238094,
+    "minimum": 0.14,
+    "maximum": 1.31
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "core4-power",
+    "samples": 168,
+    "mean": 0.23875,
+    "minimum": 0.01,
+    "maximum": 1.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "core5-power",
+    "samples": 168,
+    "mean": 0.7060119047619048,
+    "minimum": 0.15,
+    "maximum": 1.41
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "core6-power",
+    "samples": 168,
+    "mean": 0.5110119047619047,
+    "minimum": 0.01,
+    "maximum": 1.31
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.auto",
+    "counter": "core7-power",
+    "samples": 168,
+    "mean": 0.6340476190476191,
+    "minimum": 0.05,
+    "maximum": 1.43
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 249,
+    "mean": 1902.9019277108434,
+    "minimum": 1666.37,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 249,
+    "mean": 1900.9036546184739,
+    "minimum": 1649.61,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 249,
+    "mean": 1920.4157831325301,
+    "minimum": 1656.38,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 249,
+    "mean": 1908.482329317269,
+    "minimum": 1666.33,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 249,
+    "mean": 1856.8666666666668,
+    "minimum": 1649.73,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 249,
+    "mean": 1820.1694377510041,
+    "minimum": 1649.39,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 249,
+    "mean": 1979.8205220883535,
+    "minimum": 1979.49,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 249,
+    "mean": 1979.514779116466,
+    "minimum": 1979.23,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 249,
+    "mean": 1783.2268674698796,
+    "minimum": 1649.42,
+    "maximum": 1979.95
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 249,
+    "mean": 1780.2685542168674,
+    "minimum": 1649.35,
+    "maximum": 1979.96
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 249,
+    "mean": 1962.9278714859438,
+    "minimum": 1789.99,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 249,
+    "mean": 1961.0093975903615,
+    "minimum": 1776.2,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 249,
+    "mean": 1873.3980321285142,
+    "minimum": 1651.95,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 249,
+    "mean": 1867.1506827309238,
+    "minimum": 1649.39,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 249,
+    "mean": 1946.235702811245,
+    "minimum": 1690.38,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 249,
+    "mean": 1949.3493172690762,
+    "minimum": 1658.95,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "socket0-package-power",
+    "samples": 249,
+    "mean": 7.0826907630522085,
+    "minimum": 4.55,
+    "maximum": 14.3
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "core0-power",
+    "samples": 249,
+    "mean": 0.27550200803212854,
+    "minimum": 0.03,
+    "maximum": 1.33
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "core1-power",
+    "samples": 249,
+    "mean": 0.4769879518072289,
+    "minimum": 0.03,
+    "maximum": 1.3
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "core2-power",
+    "samples": 249,
+    "mean": 0.30538152610441766,
+    "minimum": 0.01,
+    "maximum": 1.29
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "core3-power",
+    "samples": 249,
+    "mean": 0.4049799196787149,
+    "minimum": 0.14,
+    "maximum": 1.29
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "core4-power",
+    "samples": 249,
+    "mean": 0.1706425702811245,
+    "minimum": 0.0,
+    "maximum": 1.31
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "core5-power",
+    "samples": 249,
+    "mean": 0.5840160642570281,
+    "minimum": 0.13,
+    "maximum": 1.42
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "core6-power",
+    "samples": 249,
+    "mean": 0.36859437751004015,
+    "minimum": 0.03,
+    "maximum": 1.29
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.quality",
+    "counter": "core7-power",
+    "samples": 249,
+    "mean": 0.5878714859437751,
+    "minimum": 0.05,
+    "maximum": 1.29
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 134,
+    "mean": 1906.5655223880597,
+    "minimum": 1666.37,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 134,
+    "mean": 1901.5399253731343,
+    "minimum": 1649.61,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 134,
+    "mean": 1923.244776119403,
+    "minimum": 1656.38,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 134,
+    "mean": 1906.6603731343284,
+    "minimum": 1666.33,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 134,
+    "mean": 1870.099552238806,
+    "minimum": 1649.73,
+    "maximum": 1979.96
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 134,
+    "mean": 1834.4538805970149,
+    "minimum": 1649.5,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 134,
+    "mean": 1979.815223880597,
+    "minimum": 1979.51,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 134,
+    "mean": 1979.5312686567165,
+    "minimum": 1979.23,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 134,
+    "mean": 1784.5348507462686,
+    "minimum": 1649.42,
+    "maximum": 1979.95
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 134,
+    "mean": 1779.121343283582,
+    "minimum": 1649.35,
+    "maximum": 1979.96
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 134,
+    "mean": 1964.5120149253733,
+    "minimum": 1789.99,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 134,
+    "mean": 1964.4983582089553,
+    "minimum": 1776.2,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 134,
+    "mean": 1887.5473134328358,
+    "minimum": 1662.78,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 134,
+    "mean": 1880.5420895522388,
+    "minimum": 1649.63,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 134,
+    "mean": 1955.3849253731344,
+    "minimum": 1697.63,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 134,
+    "mean": 1959.7453731343282,
+    "minimum": 1658.95,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "socket0-package-power",
+    "samples": 134,
+    "mean": 7.135820895522388,
+    "minimum": 4.55,
+    "maximum": 14.3
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "core0-power",
+    "samples": 134,
+    "mean": 0.27186567164179104,
+    "minimum": 0.03,
+    "maximum": 1.33
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "core1-power",
+    "samples": 134,
+    "mean": 0.48194029850746267,
+    "minimum": 0.03,
+    "maximum": 1.3
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "core2-power",
+    "samples": 134,
+    "mean": 0.3385820895522388,
+    "minimum": 0.01,
+    "maximum": 1.29
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "core3-power",
+    "samples": 134,
+    "mean": 0.40328358208955223,
+    "minimum": 0.14,
+    "maximum": 1.29
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "core4-power",
+    "samples": 134,
+    "mean": 0.17492537313432835,
+    "minimum": 0.0,
+    "maximum": 1.31
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "core5-power",
+    "samples": 134,
+    "mean": 0.6066417910447761,
+    "minimum": 0.13,
+    "maximum": 1.29
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "core6-power",
+    "samples": 134,
+    "mean": 0.3491791044776119,
+    "minimum": 0.03,
+    "maximum": 1.29
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "quality.statistics",
+    "counter": "core7-power",
+    "samples": 134,
+    "mean": 0.636044776119403,
+    "minimum": 0.05,
+    "maximum": 1.29
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 111,
+    "mean": 1869.4806306306307,
+    "minimum": 1649.55,
+    "maximum": 1979.97
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 111,
+    "mean": 1873.7737837837838,
+    "minimum": 1649.61,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 111,
+    "mean": 1926.3867567567568,
+    "minimum": 1658.09,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 111,
+    "mean": 1911.7748648648649,
+    "minimum": 1657.32,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 111,
+    "mean": 1823.0904504504504,
+    "minimum": 1652.96,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 111,
+    "mean": 1806.9778378378378,
+    "minimum": 1649.5,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 111,
+    "mean": 1979.8036036036035,
+    "minimum": 1979.38,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 111,
+    "mean": 1979.5036936936938,
+    "minimum": 1979.27,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 111,
+    "mean": 1760.5962162162161,
+    "minimum": 1649.45,
+    "maximum": 1979.92
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 111,
+    "mean": 1741.9731531531531,
+    "minimum": 1649.35,
+    "maximum": 1979.88
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 111,
+    "mean": 1958.721981981982,
+    "minimum": 1838.29,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 111,
+    "mean": 1955.7541441441442,
+    "minimum": 1777.27,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 111,
+    "mean": 1828.1652252252252,
+    "minimum": 1653.87,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 111,
+    "mean": 1801.3814414414414,
+    "minimum": 1649.4,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 111,
+    "mean": 1921.3292792792793,
+    "minimum": 1654.82,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 111,
+    "mean": 1928.0454054054055,
+    "minimum": 1649.61,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "socket0-package-power",
+    "samples": 111,
+    "mean": 6.948558558558559,
+    "minimum": 5.03,
+    "maximum": 10.12
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "core0-power",
+    "samples": 111,
+    "mean": 0.2833333333333333,
+    "minimum": 0.01,
+    "maximum": 1.27
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "core1-power",
+    "samples": 111,
+    "mean": 0.6730630630630631,
+    "minimum": 0.06,
+    "maximum": 1.45
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "core2-power",
+    "samples": 111,
+    "mean": 0.23594594594594595,
+    "minimum": 0.0,
+    "maximum": 1.28
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "core3-power",
+    "samples": 111,
+    "mean": 0.37594594594594594,
+    "minimum": 0.15,
+    "maximum": 1.35
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "core4-power",
+    "samples": 111,
+    "mean": 0.12279279279279279,
+    "minimum": 0.0,
+    "maximum": 0.77
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "core5-power",
+    "samples": 111,
+    "mean": 0.5557657657657658,
+    "minimum": 0.15,
+    "maximum": 1.3
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "core6-power",
+    "samples": 111,
+    "mean": 0.3,
+    "minimum": 0.02,
+    "maximum": 1.4
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.intersections",
+    "counter": "core7-power",
+    "samples": 111,
+    "mean": 0.48693693693693696,
+    "minimum": 0.04,
+    "maximum": 1.39
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1959.201842475387,
+    "minimum": 1656.24,
+    "maximum": 1980.03
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1959.2338162212845,
+    "minimum": 1653.34,
+    "maximum": 1980.04
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1967.3777027660572,
+    "minimum": 1649.47,
+    "maximum": 1980.06
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1962.6579278012189,
+    "minimum": 1649.31,
+    "maximum": 1980.06
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1950.2694889826535,
+    "minimum": 1649.35,
+    "maximum": 1980.94
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1946.5096132208157,
+    "minimum": 1649.33,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1979.947630098453,
+    "minimum": 1979.16,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1979.8920464135022,
+    "minimum": 1979.29,
+    "maximum": 1980.12
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1941.6872269104547,
+    "minimum": 1649.4,
+    "maximum": 1980.23
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1940.185218002813,
+    "minimum": 1649.31,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1976.4965518049696,
+    "minimum": 1801.12,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1975.866547116737,
+    "minimum": 1794.66,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1957.198820909517,
+    "minimum": 1649.36,
+    "maximum": 1980.07
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1955.1460782934835,
+    "minimum": 1649.24,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1972.3658321612752,
+    "minimum": 1656.62,
+    "maximum": 1980.06
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 4266,
+    "mean": 1972.9917369901548,
+    "minimum": 1649.34,
+    "maximum": 1980.09
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "socket0-package-power",
+    "samples": 4266,
+    "mean": 12.065389123300516,
+    "minimum": 4.55,
+    "maximum": 16.4
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "core0-power",
+    "samples": 4266,
+    "mean": 0.8941514299109236,
+    "minimum": 0.02,
+    "maximum": 1.51
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "core1-power",
+    "samples": 4266,
+    "mean": 1.054439756211908,
+    "minimum": 0.02,
+    "maximum": 1.67
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "core2-power",
+    "samples": 4266,
+    "mean": 0.9483333333333334,
+    "minimum": 0.0,
+    "maximum": 1.59
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "core3-power",
+    "samples": 4266,
+    "mean": 1.1384481950304735,
+    "minimum": 0.13,
+    "maximum": 1.69
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "core4-power",
+    "samples": 4266,
+    "mean": 0.8546624472573839,
+    "minimum": 0.0,
+    "maximum": 1.55
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "core5-power",
+    "samples": 4266,
+    "mean": 1.1421284575714956,
+    "minimum": 0.14,
+    "maximum": 1.67
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "core6-power",
+    "samples": 4266,
+    "mean": 1.0004946085325832,
+    "minimum": 0.0,
+    "maximum": 1.64
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "op.distance",
+    "counter": "core7-power",
+    "samples": 4266,
+    "mean": 1.148947491795593,
+    "minimum": 0.02,
+    "maximum": 1.67
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.5221754284055,
+    "minimum": 1947.39,
+    "maximum": 1980.03
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.2118152773744,
+    "minimum": 1664.96,
+    "maximum": 1980.04
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.617731629393,
+    "minimum": 1673.96,
+    "maximum": 1980.06
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.523586988092,
+    "minimum": 1745.13,
+    "maximum": 1980.06
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.3498547778102,
+    "minimum": 1756.84,
+    "maximum": 1980.94
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.5072901539356,
+    "minimum": 1659.47,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.9820824862038,
+    "minimum": 1979.4,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.9746906767355,
+    "minimum": 1979.34,
+    "maximum": 1980.12
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1978.8516671507407,
+    "minimum": 1658.94,
+    "maximum": 1980.23
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.2328085971537,
+    "minimum": 1793.07,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.8599825733372,
+    "minimum": 1945.62,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.8276183560847,
+    "minimum": 1912.55,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.7267993029336,
+    "minimum": 1903.75,
+    "maximum": 1980.07
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.471977926227,
+    "minimum": 1694.45,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.9635376125473,
+    "minimum": 1968.22,
+    "maximum": 1980.06
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 3443,
+    "mean": 1979.857095556201,
+    "minimum": 1840.51,
+    "maximum": 1980.09
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "socket0-package-power",
+    "samples": 3443,
+    "mean": 13.324118501307,
+    "minimum": 7.62,
+    "maximum": 16.4
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "core0-power",
+    "samples": 3443,
+    "mean": 1.052111530641882,
+    "minimum": 0.45,
+    "maximum": 1.51
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "core1-power",
+    "samples": 3443,
+    "mean": 1.1843363345919256,
+    "minimum": 0.05,
+    "maximum": 1.67
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "core2-power",
+    "samples": 3443,
+    "mean": 1.1089892535579438,
+    "minimum": 0.08,
+    "maximum": 1.59
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "core3-power",
+    "samples": 3443,
+    "mean": 1.3155097298867267,
+    "minimum": 0.19,
+    "maximum": 1.69
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "core4-power",
+    "samples": 3443,
+    "mean": 1.0168661051408656,
+    "minimum": 0.04,
+    "maximum": 1.55
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "core5-power",
+    "samples": 3443,
+    "mean": 1.2801190821957595,
+    "minimum": 0.19,
+    "maximum": 1.67
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "core6-power",
+    "samples": 3443,
+    "mean": 1.152338077258205,
+    "minimum": 0.13,
+    "maximum": 1.64
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.queries",
+    "counter": "core7-power",
+    "samples": 3443,
+    "mean": 1.3036247458611676,
+    "minimum": 0.14,
+    "maximum": 1.67
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread0-core-effective-frequency",
+    "samples": 483,
+    "mean": 1878.5521739130436,
+    "minimum": 1656.24,
+    "maximum": 1979.99
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread1-core-effective-frequency",
+    "samples": 483,
+    "mean": 1879.4094616977225,
+    "minimum": 1657.96,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread2-core-effective-frequency",
+    "samples": 483,
+    "mean": 1916.936480331263,
+    "minimum": 1649.47,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread3-core-effective-frequency",
+    "samples": 483,
+    "mean": 1889.585320910973,
+    "minimum": 1649.31,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread4-core-effective-frequency",
+    "samples": 483,
+    "mean": 1827.9159213250518,
+    "minimum": 1649.35,
+    "maximum": 1980.08
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread5-core-effective-frequency",
+    "samples": 483,
+    "mean": 1807.8816356107661,
+    "minimum": 1649.37,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread6-core-effective-frequency",
+    "samples": 483,
+    "mean": 1979.8102691511388,
+    "minimum": 1979.16,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread7-core-effective-frequency",
+    "samples": 483,
+    "mean": 1979.5623809523809,
+    "minimum": 1979.29,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread8-core-effective-frequency",
+    "samples": 483,
+    "mean": 1792.9855279503106,
+    "minimum": 1649.41,
+    "maximum": 1979.99
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread9-core-effective-frequency",
+    "samples": 483,
+    "mean": 1779.3311594202899,
+    "minimum": 1649.32,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread10-core-effective-frequency",
+    "samples": 483,
+    "mean": 1961.3904761904762,
+    "minimum": 1801.12,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread11-core-effective-frequency",
+    "samples": 483,
+    "mean": 1958.1422360248448,
+    "minimum": 1794.66,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread12-core-effective-frequency",
+    "samples": 483,
+    "mean": 1864.0619461697722,
+    "minimum": 1649.36,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread13-core-effective-frequency",
+    "samples": 483,
+    "mean": 1851.4474327122152,
+    "minimum": 1649.24,
+    "maximum": 1980.0
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread14-core-effective-frequency",
+    "samples": 483,
+    "mean": 1941.5130020703934,
+    "minimum": 1673.77,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "thread15-core-effective-frequency",
+    "samples": 483,
+    "mean": 1946.7368737060042,
+    "minimum": 1665.58,
+    "maximum": 1980.01
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "socket0-package-power",
+    "samples": 483,
+    "mean": 6.756459627329193,
+    "minimum": 4.55,
+    "maximum": 11.68
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "core0-power",
+    "samples": 483,
+    "mean": 0.24939958592132505,
+    "minimum": 0.04,
+    "maximum": 0.96
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "core1-power",
+    "samples": 483,
+    "mean": 0.5035610766045548,
+    "minimum": 0.02,
+    "maximum": 1.46
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "core2-power",
+    "samples": 483,
+    "mean": 0.26525879917184264,
+    "minimum": 0.0,
+    "maximum": 1.22
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "core3-power",
+    "samples": 483,
+    "mean": 0.4287370600414079,
+    "minimum": 0.14,
+    "maximum": 1.53
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "core4-power",
+    "samples": 483,
+    "mean": 0.19095238095238096,
+    "minimum": 0.0,
+    "maximum": 1.27
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "core5-power",
+    "samples": 483,
+    "mean": 0.5838923395445135,
+    "minimum": 0.15,
+    "maximum": 1.48
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "core6-power",
+    "samples": 483,
+    "mean": 0.36076604554865427,
+    "minimum": 0.0,
+    "maximum": 1.43
+  },
+  {
+    "case": "powerplant-timechart",
+    "phase": "distance.statistics",
+    "counter": "core7-power",
+    "samples": 483,
+    "mean": 0.49836438923395443,
+    "minimum": 0.02,
+    "maximum": 1.54
+  }
+]

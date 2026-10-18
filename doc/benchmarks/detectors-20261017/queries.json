@@ -1,0 +1,1220 @@
+[
+  {
+    "case": "bennu-query-local-deformation",
+    "direction": 0,
+    "triangles_per_side": 17866836,
+    "shift": 0.0,
+    "batch_stride": 100,
+    "queries": 714752,
+    "mean_stack_visits": 13.865912932037965,
+    "mean_triangle_tests": 13.744146221346705,
+    "mean_internal_nodes": 10.83231246642192,
+    "zero_hint_percent": 17.81960736031519,
+    "maximum_stack_visits": 85,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      16,
+      31
+    ],
+    "visit_p99_bucket": [
+      32,
+      63
+    ],
+    "triangle_p95_bucket": [
+      32,
+      63
+    ]
+  },
+  {
+    "case": "bennu-query-local-deformation",
+    "direction": 1,
+    "triangles_per_side": 17866836,
+    "shift": 0.0,
+    "batch_stride": 100,
+    "queries": 714752,
+    "mean_stack_visits": 13.863174919412607,
+    "mean_triangle_tests": 13.696112777578797,
+    "mean_internal_nodes": 10.828329266654729,
+    "zero_hint_percent": 17.81960736031519,
+    "maximum_stack_visits": 90,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      16,
+      31
+    ],
+    "visit_p99_bucket": [
+      32,
+      63
+    ],
+    "triangle_p95_bucket": [
+      32,
+      63
+    ]
+  },
+  {
+    "case": "bennu-query-shift-.00001",
+    "direction": 0,
+    "triangles_per_side": 17866836,
+    "shift": 9.324620562621481e-06,
+    "batch_stride": 100,
+    "queries": 714752,
+    "mean_stack_visits": 15.46684864120702,
+    "mean_triangle_tests": 12.387920565454872,
+    "mean_internal_nodes": 12.3689405556053,
+    "zero_hint_percent": 0.000279817335243553,
+    "maximum_stack_visits": 84,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      16,
+      31
+    ],
+    "visit_p99_bucket": [
+      32,
+      63
+    ],
+    "triangle_p95_bucket": [
+      16,
+      31
+    ]
+  },
+  {
+    "case": "bennu-query-shift-.00001",
+    "direction": 1,
+    "triangles_per_side": 17866836,
+    "shift": 9.324620562621481e-06,
+    "batch_stride": 100,
+    "queries": 714752,
+    "mean_stack_visits": 15.466775888699857,
+    "mean_triangle_tests": 12.391765255641117,
+    "mean_internal_nodes": 12.369935306232092,
+    "zero_hint_percent": 0.000279817335243553,
+    "maximum_stack_visits": 86,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      16,
+      31
+    ],
+    "visit_p99_bucket": [
+      32,
+      63
+    ],
+    "triangle_p95_bucket": [
+      16,
+      31
+    ]
+  },
+  {
+    "case": "bennu-query-shift-.001",
+    "direction": 0,
+    "triangles_per_side": 17866836,
+    "shift": 0.0009324620562621479,
+    "batch_stride": 100,
+    "queries": 714752,
+    "mean_stack_visits": 24.999103185440543,
+    "mean_triangle_tests": 39.32652024758238,
+    "mean_internal_nodes": 17.626678904011463,
+    "zero_hint_percent": 0.0,
+    "maximum_stack_visits": 88,
+    "visit_p50_bucket": [
+      16,
+      31
+    ],
+    "visit_p95_bucket": [
+      32,
+      63
+    ],
+    "visit_p99_bucket": [
+      32,
+      63
+    ],
+    "triangle_p95_bucket": [
+      64,
+      127
+    ]
+  },
+  {
+    "case": "bennu-query-shift-.001",
+    "direction": 1,
+    "triangles_per_side": 17866836,
+    "shift": 0.0009324620562621479,
+    "batch_stride": 100,
+    "queries": 714752,
+    "mean_stack_visits": 25.13435849077722,
+    "mean_triangle_tests": 39.356331986479226,
+    "mean_internal_nodes": 17.704766128671203,
+    "zero_hint_percent": 0.0,
+    "maximum_stack_visits": 88,
+    "visit_p50_bucket": [
+      16,
+      31
+    ],
+    "visit_p95_bucket": [
+      32,
+      63
+    ],
+    "visit_p99_bucket": [
+      32,
+      63
+    ],
+    "triangle_p95_bucket": [
+      64,
+      127
+    ]
+  },
+  {
+    "case": "bennu-query-shift-.01",
+    "direction": 0,
+    "triangles_per_side": 17866836,
+    "shift": 0.00932462056262148,
+    "batch_stride": 100,
+    "queries": 714752,
+    "mean_stack_visits": 78.9992528877149,
+    "mean_triangle_tests": 171.31179066305515,
+    "mean_internal_nodes": 49.973962996955585,
+    "zero_hint_percent": 0.0,
+    "maximum_stack_visits": 300,
+    "visit_p50_bucket": [
+      64,
+      127
+    ],
+    "visit_p95_bucket": [
+      128,
+      255
+    ],
+    "visit_p99_bucket": [
+      128,
+      255
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "bennu-query-shift-.01",
+    "direction": 1,
+    "triangles_per_side": 17866836,
+    "shift": 0.00932462056262148,
+    "batch_stride": 100,
+    "queries": 714752,
+    "mean_stack_visits": 78.54094427157952,
+    "mean_triangle_tests": 166.74062052292263,
+    "mean_internal_nodes": 49.71133484061605,
+    "zero_hint_percent": 0.0,
+    "maximum_stack_visits": 366,
+    "visit_p50_bucket": [
+      64,
+      127
+    ],
+    "visit_p95_bucket": [
+      128,
+      255
+    ],
+    "visit_p99_bucket": [
+      128,
+      255
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "bennu-query-shift-0",
+    "direction": 0,
+    "triangles_per_side": 17866836,
+    "shift": 0.0,
+    "batch_stride": 100,
+    "queries": 714752,
+    "mean_stack_visits": 10.765783096794413,
+    "mean_triangle_tests": 8.658412988001432,
+    "mean_internal_nodes": 8.705213836407593,
+    "zero_hint_percent": 28.76592160637536,
+    "maximum_stack_visits": 85,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      16,
+      31
+    ],
+    "visit_p99_bucket": [
+      32,
+      63
+    ],
+    "triangle_p95_bucket": [
+      16,
+      31
+    ]
+  },
+  {
+    "case": "bennu-query-shift-0",
+    "direction": 1,
+    "triangles_per_side": 17866836,
+    "shift": 0.0,
+    "batch_stride": 100,
+    "queries": 714752,
+    "mean_stack_visits": 10.765783096794413,
+    "mean_triangle_tests": 8.658412988001432,
+    "mean_internal_nodes": 8.705213836407593,
+    "zero_hint_percent": 28.76592160637536,
+    "maximum_stack_visits": 85,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      16,
+      31
+    ],
+    "visit_p99_bucket": [
+      32,
+      63
+    ],
+    "triangle_p95_bucket": [
+      16,
+      31
+    ]
+  },
+  {
+    "case": "bennu-query-stride-97",
+    "direction": 0,
+    "triangles_per_side": 17866836,
+    "shift": 0.0009324620562621479,
+    "batch_stride": 97,
+    "queries": 737280,
+    "mean_stack_visits": 25.006316460503474,
+    "mean_triangle_tests": 39.24061414930556,
+    "mean_internal_nodes": 17.643950737847224,
+    "zero_hint_percent": 0.0,
+    "maximum_stack_visits": 93,
+    "visit_p50_bucket": [
+      16,
+      31
+    ],
+    "visit_p95_bucket": [
+      32,
+      63
+    ],
+    "visit_p99_bucket": [
+      32,
+      63
+    ],
+    "triangle_p95_bucket": [
+      64,
+      127
+    ]
+  },
+  {
+    "case": "bennu-query-stride-97",
+    "direction": 1,
+    "triangles_per_side": 17866836,
+    "shift": 0.0009324620562621479,
+    "batch_stride": 97,
+    "queries": 737280,
+    "mean_stack_visits": 25.009935167100693,
+    "mean_triangle_tests": 39.06089545355903,
+    "mean_internal_nodes": 17.62492404513889,
+    "zero_hint_percent": 0.0,
+    "maximum_stack_visits": 91,
+    "visit_p50_bucket": [
+      16,
+      31
+    ],
+    "visit_p95_bucket": [
+      32,
+      63
+    ],
+    "visit_p99_bucket": [
+      32,
+      63
+    ],
+    "triangle_p95_bucket": [
+      64,
+      127
+    ]
+  },
+  {
+    "case": "bus-query-local-deformation",
+    "direction": 0,
+    "triangles_per_side": 1054542,
+    "shift": 0.0,
+    "batch_stride": 1,
+    "queries": 4218168,
+    "mean_stack_visits": 18.265678370325695,
+    "mean_triangle_tests": 20.970155527233622,
+    "mean_internal_nodes": 15.395195497192146,
+    "zero_hint_percent": 3.874383381600733,
+    "maximum_stack_visits": 213,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      64,
+      127
+    ],
+    "visit_p99_bucket": [
+      64,
+      127
+    ],
+    "triangle_p95_bucket": [
+      64,
+      127
+    ]
+  },
+  {
+    "case": "bus-query-local-deformation",
+    "direction": 1,
+    "triangles_per_side": 1054542,
+    "shift": 0.0,
+    "batch_stride": 1,
+    "queries": 4218168,
+    "mean_stack_visits": 18.158464764798367,
+    "mean_triangle_tests": 19.83028603886806,
+    "mean_internal_nodes": 15.42390511710297,
+    "zero_hint_percent": 3.8801678833085838,
+    "maximum_stack_visits": 245,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      64,
+      127
+    ],
+    "visit_p99_bucket": [
+      64,
+      127
+    ],
+    "triangle_p95_bucket": [
+      32,
+      63
+    ]
+  },
+  {
+    "case": "bus-query-shift-.00001",
+    "direction": 0,
+    "triangles_per_side": 1054542,
+    "shift": 1.1868894399114664,
+    "batch_stride": 1,
+    "queries": 4218168,
+    "mean_stack_visits": 22.036622770833215,
+    "mean_triangle_tests": 33.5555769708556,
+    "mean_internal_nodes": 17.556898871737683,
+    "zero_hint_percent": 0.20179376449681474,
+    "maximum_stack_visits": 580,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      64,
+      127
+    ],
+    "visit_p99_bucket": [
+      128,
+      255
+    ],
+    "triangle_p95_bucket": [
+      128,
+      255
+    ]
+  },
+  {
+    "case": "bus-query-shift-.00001",
+    "direction": 1,
+    "triangles_per_side": 1054542,
+    "shift": 1.1868894399114664,
+    "batch_stride": 1,
+    "queries": 4218168,
+    "mean_stack_visits": 21.51705432310899,
+    "mean_triangle_tests": 31.59116896245005,
+    "mean_internal_nodes": 17.251094076859907,
+    "zero_hint_percent": 0.2016752296257522,
+    "maximum_stack_visits": 1003,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      64,
+      127
+    ],
+    "visit_p99_bucket": [
+      128,
+      255
+    ],
+    "triangle_p95_bucket": [
+      64,
+      127
+    ]
+  },
+  {
+    "case": "bus-query-shift-.001",
+    "direction": 0,
+    "triangles_per_side": 1054542,
+    "shift": 118.68894399114663,
+    "batch_stride": 1,
+    "queries": 4218168,
+    "mean_stack_visits": 18.680306237210086,
+    "mean_triangle_tests": 21.15339336887483,
+    "mean_internal_nodes": 15.833655748182624,
+    "zero_hint_percent": 0.1041684446897326,
+    "maximum_stack_visits": 214,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      64,
+      127
+    ],
+    "visit_p99_bucket": [
+      64,
+      127
+    ],
+    "triangle_p95_bucket": [
+      64,
+      127
+    ]
+  },
+  {
+    "case": "bus-query-shift-.001",
+    "direction": 1,
+    "triangles_per_side": 1054542,
+    "shift": 118.68894399114663,
+    "batch_stride": 1,
+    "queries": 4218168,
+    "mean_stack_visits": 18.762446398531306,
+    "mean_triangle_tests": 20.78047175930404,
+    "mean_internal_nodes": 15.883543282296959,
+    "zero_hint_percent": 0.1040499098186701,
+    "maximum_stack_visits": 245,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      64,
+      127
+    ],
+    "visit_p99_bucket": [
+      64,
+      127
+    ],
+    "triangle_p95_bucket": [
+      32,
+      63
+    ]
+  },
+  {
+    "case": "bus-query-shift-.01",
+    "direction": 0,
+    "triangles_per_side": 1054542,
+    "shift": 1186.8894399114663,
+    "batch_stride": 1,
+    "queries": 4218168,
+    "mean_stack_visits": 20.10730511444779,
+    "mean_triangle_tests": 27.385684259138092,
+    "mean_internal_nodes": 16.43160727595487,
+    "zero_hint_percent": 0.005594845914150408,
+    "maximum_stack_visits": 171,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      32,
+      63
+    ],
+    "visit_p99_bucket": [
+      32,
+      63
+    ],
+    "triangle_p95_bucket": [
+      64,
+      127
+    ]
+  },
+  {
+    "case": "bus-query-shift-.01",
+    "direction": 1,
+    "triangles_per_side": 1054542,
+    "shift": 1186.8894399114663,
+    "batch_stride": 1,
+    "queries": 4218168,
+    "mean_stack_visits": 19.664927285968695,
+    "mean_triangle_tests": 27.323163989675137,
+    "mean_internal_nodes": 15.988155995683433,
+    "zero_hint_percent": 0.005025878533050367,
+    "maximum_stack_visits": 174,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      32,
+      63
+    ],
+    "visit_p99_bucket": [
+      32,
+      63
+    ],
+    "triangle_p95_bucket": [
+      64,
+      127
+    ]
+  },
+  {
+    "case": "bus-query-shift-0",
+    "direction": 0,
+    "triangles_per_side": 1054542,
+    "shift": 0.0,
+    "batch_stride": 1,
+    "queries": 4218168,
+    "mean_stack_visits": 13.762967951963981,
+    "mean_triangle_tests": 16.41340150510838,
+    "mean_internal_nodes": 11.514262115686241,
+    "zero_hint_percent": 12.930826842363793,
+    "maximum_stack_visits": 514,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      32,
+      63
+    ],
+    "visit_p99_bucket": [
+      64,
+      127
+    ],
+    "triangle_p95_bucket": [
+      32,
+      63
+    ]
+  },
+  {
+    "case": "bus-query-shift-0",
+    "direction": 1,
+    "triangles_per_side": 1054542,
+    "shift": 0.0,
+    "batch_stride": 1,
+    "queries": 4218168,
+    "mean_stack_visits": 13.762967951963981,
+    "mean_triangle_tests": 16.41340150510838,
+    "mean_internal_nodes": 11.514262115686241,
+    "zero_hint_percent": 12.930826842363793,
+    "maximum_stack_visits": 514,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      32,
+      63
+    ],
+    "visit_p99_bucket": [
+      64,
+      127
+    ],
+    "triangle_p95_bucket": [
+      32,
+      63
+    ]
+  },
+  {
+    "case": "bus-query-shuffled",
+    "direction": 0,
+    "triangles_per_side": 1054542,
+    "shift": 118.68894399114663,
+    "batch_stride": 1,
+    "queries": 4218168,
+    "mean_stack_visits": 24.150712821300623,
+    "mean_triangle_tests": 22.37709166633477,
+    "mean_internal_nodes": 16.024897538457452,
+    "zero_hint_percent": 0.0985973057497947,
+    "maximum_stack_visits": 408,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      64,
+      127
+    ],
+    "visit_p99_bucket": [
+      64,
+      127
+    ],
+    "triangle_p95_bucket": [
+      64,
+      127
+    ]
+  },
+  {
+    "case": "bus-query-shuffled",
+    "direction": 1,
+    "triangles_per_side": 1054542,
+    "shift": 118.68894399114663,
+    "batch_stride": 1,
+    "queries": 4218168,
+    "mean_stack_visits": 24.31330331082119,
+    "mean_triangle_tests": 22.677311572227563,
+    "mean_internal_nodes": 16.083516351174254,
+    "zero_hint_percent": 0.1000908451251823,
+    "maximum_stack_visits": 581,
+    "visit_p50_bucket": [
+      8,
+      15
+    ],
+    "visit_p95_bucket": [
+      64,
+      127
+    ],
+    "visit_p99_bucket": [
+      64,
+      127
+    ],
+    "triangle_p95_bucket": [
+      64,
+      127
+    ]
+  },
+  {
+    "case": "powerplant-query-local-deformation",
+    "direction": 0,
+    "triangles_per_side": 12759246,
+    "shift": 0.0,
+    "batch_stride": 100,
+    "queries": 510464,
+    "mean_stack_visits": 386.57515319395685,
+    "mean_triangle_tests": 424.1001990346038,
+    "mean_internal_nodes": 316.68673207121367,
+    "zero_hint_percent": 1.539187876128385,
+    "maximum_stack_visits": 3563,
+    "visit_p50_bucket": [
+      256,
+      511
+    ],
+    "visit_p95_bucket": [
+      512,
+      1023
+    ],
+    "visit_p99_bucket": [
+      1024,
+      2047
+    ],
+    "triangle_p95_bucket": [
+      1024,
+      2047
+    ]
+  },
+  {
+    "case": "powerplant-query-local-deformation",
+    "direction": 1,
+    "triangles_per_side": 12759246,
+    "shift": 0.0,
+    "batch_stride": 100,
+    "queries": 510464,
+    "mean_stack_visits": 305.5757193455366,
+    "mean_triangle_tests": 195.92787150514042,
+    "mean_internal_nodes": 273.2324473420261,
+    "zero_hint_percent": 1.5856162236710132,
+    "maximum_stack_visits": 2295,
+    "visit_p50_bucket": [
+      256,
+      511
+    ],
+    "visit_p95_bucket": [
+      512,
+      1023
+    ],
+    "visit_p99_bucket": [
+      512,
+      1023
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "powerplant-query-shift-.00001",
+    "direction": 0,
+    "triangles_per_side": 12759246,
+    "shift": 6.857350353118616,
+    "batch_stride": 100,
+    "queries": 510464,
+    "mean_stack_visits": 263.538414070336,
+    "mean_triangle_tests": 145.32645201228686,
+    "mean_internal_nodes": 239.39549899699097,
+    "zero_hint_percent": 6.211603560682046,
+    "maximum_stack_visits": 2256,
+    "visit_p50_bucket": [
+      128,
+      255
+    ],
+    "visit_p95_bucket": [
+      256,
+      511
+    ],
+    "visit_p99_bucket": [
+      512,
+      1023
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "powerplant-query-shift-.00001",
+    "direction": 1,
+    "triangles_per_side": 12759246,
+    "shift": 6.857350353118616,
+    "batch_stride": 100,
+    "queries": 510464,
+    "mean_stack_visits": 262.1870298395186,
+    "mean_triangle_tests": 144.04886534603813,
+    "mean_internal_nodes": 238.2628001191073,
+    "zero_hint_percent": 6.311120862587763,
+    "maximum_stack_visits": 2277,
+    "visit_p50_bucket": [
+      128,
+      255
+    ],
+    "visit_p95_bucket": [
+      256,
+      511
+    ],
+    "visit_p99_bucket": [
+      512,
+      1023
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "powerplant-query-shift-.001",
+    "direction": 0,
+    "triangles_per_side": 12759246,
+    "shift": 685.7350353118616,
+    "batch_stride": 100,
+    "queries": 510464,
+    "mean_stack_visits": 323.76049045574223,
+    "mean_triangle_tests": 207.55116129638915,
+    "mean_internal_nodes": 289.4785548050401,
+    "zero_hint_percent": 1.2698251003009027,
+    "maximum_stack_visits": 2406,
+    "visit_p50_bucket": [
+      256,
+      511
+    ],
+    "visit_p95_bucket": [
+      512,
+      1023
+    ],
+    "visit_p99_bucket": [
+      512,
+      1023
+    ],
+    "triangle_p95_bucket": [
+      512,
+      1023
+    ]
+  },
+  {
+    "case": "powerplant-query-shift-.001",
+    "direction": 1,
+    "triangles_per_side": 12759246,
+    "shift": 685.7350353118616,
+    "batch_stride": 100,
+    "queries": 510464,
+    "mean_stack_visits": 307.29529996238716,
+    "mean_triangle_tests": 198.2484680604313,
+    "mean_internal_nodes": 274.56228646878134,
+    "zero_hint_percent": 1.3236976554663993,
+    "maximum_stack_visits": 2311,
+    "visit_p50_bucket": [
+      256,
+      511
+    ],
+    "visit_p95_bucket": [
+      512,
+      1023
+    ],
+    "visit_p99_bucket": [
+      512,
+      1023
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "powerplant-query-shift-.01",
+    "direction": 0,
+    "triangles_per_side": 12759246,
+    "shift": 6857.350353118615,
+    "batch_stride": 100,
+    "queries": 510464,
+    "mean_stack_visits": 416.7085279275326,
+    "mean_triangle_tests": 326.64871959628886,
+    "mean_internal_nodes": 362.7267231381645,
+    "zero_hint_percent": 0.3682923771313942,
+    "maximum_stack_visits": 4134,
+    "visit_p50_bucket": [
+      256,
+      511
+    ],
+    "visit_p95_bucket": [
+      512,
+      1023
+    ],
+    "visit_p99_bucket": [
+      512,
+      1023
+    ],
+    "triangle_p95_bucket": [
+      512,
+      1023
+    ]
+  },
+  {
+    "case": "powerplant-query-shift-.01",
+    "direction": 1,
+    "triangles_per_side": 12759246,
+    "shift": 6857.350353118615,
+    "batch_stride": 100,
+    "queries": 510464,
+    "mean_stack_visits": 277.74421310807423,
+    "mean_triangle_tests": 204.18778209628886,
+    "mean_internal_nodes": 243.75526775639418,
+    "zero_hint_percent": 0.2799413866599799,
+    "maximum_stack_visits": 4375,
+    "visit_p50_bucket": [
+      128,
+      255
+    ],
+    "visit_p95_bucket": [
+      512,
+      1023
+    ],
+    "visit_p99_bucket": [
+      512,
+      1023
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "powerplant-query-shift-0",
+    "direction": 0,
+    "triangles_per_side": 12759246,
+    "shift": 0.0,
+    "batch_stride": 100,
+    "queries": 510464,
+    "mean_stack_visits": 140.5267286233701,
+    "mean_triangle_tests": 77.03684490972918,
+    "mean_internal_nodes": 127.71975300902709,
+    "zero_hint_percent": 42.22824724172518,
+    "maximum_stack_visits": 2183,
+    "visit_p50_bucket": [
+      64,
+      127
+    ],
+    "visit_p95_bucket": [
+      256,
+      511
+    ],
+    "visit_p99_bucket": [
+      512,
+      1023
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "powerplant-query-shift-0",
+    "direction": 1,
+    "triangles_per_side": 12759246,
+    "shift": 0.0,
+    "batch_stride": 100,
+    "queries": 510464,
+    "mean_stack_visits": 140.5267286233701,
+    "mean_triangle_tests": 77.03684490972918,
+    "mean_internal_nodes": 127.71975300902709,
+    "zero_hint_percent": 42.22824724172518,
+    "maximum_stack_visits": 2183,
+    "visit_p50_bucket": [
+      64,
+      127
+    ],
+    "visit_p95_bucket": [
+      256,
+      511
+    ],
+    "visit_p99_bucket": [
+      512,
+      1023
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "powerplant-query-stride-97",
+    "direction": 0,
+    "triangles_per_side": 12759246,
+    "shift": 685.7350353118616,
+    "batch_stride": 97,
+    "queries": 526336,
+    "mean_stack_visits": 326.6839661357004,
+    "mean_triangle_tests": 209.71002173516536,
+    "mean_internal_nodes": 292.0498635852383,
+    "zero_hint_percent": 1.217093263618677,
+    "maximum_stack_visits": 2369,
+    "visit_p50_bucket": [
+      256,
+      511
+    ],
+    "visit_p95_bucket": [
+      512,
+      1023
+    ],
+    "visit_p99_bucket": [
+      512,
+      1023
+    ],
+    "triangle_p95_bucket": [
+      512,
+      1023
+    ]
+  },
+  {
+    "case": "powerplant-query-stride-97",
+    "direction": 1,
+    "triangles_per_side": 12759246,
+    "shift": 685.7350353118616,
+    "batch_stride": 97,
+    "queries": 526336,
+    "mean_stack_visits": 311.19378305873056,
+    "mean_triangle_tests": 201.34455366913912,
+    "mean_internal_nodes": 277.9387083535992,
+    "zero_hint_percent": 1.2172832563229572,
+    "maximum_stack_visits": 2451,
+    "visit_p50_bucket": [
+      256,
+      511
+    ],
+    "visit_p95_bucket": [
+      512,
+      1023
+    ],
+    "visit_p99_bucket": [
+      512,
+      1023
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "sanmiguel-query-local-deformation",
+    "direction": 0,
+    "triangles_per_side": 9980699,
+    "shift": 0.0,
+    "batch_stride": 100,
+    "queries": 399360,
+    "mean_stack_visits": 244.7784380008013,
+    "mean_triangle_tests": 122.66007361778846,
+    "mean_internal_nodes": 218.62168970352565,
+    "zero_hint_percent": 2.9915364583333335,
+    "maximum_stack_visits": 1608,
+    "visit_p50_bucket": [
+      128,
+      255
+    ],
+    "visit_p95_bucket": [
+      256,
+      511
+    ],
+    "visit_p99_bucket": [
+      256,
+      511
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "sanmiguel-query-local-deformation",
+    "direction": 1,
+    "triangles_per_side": 9980699,
+    "shift": 0.0,
+    "batch_stride": 100,
+    "queries": 399360,
+    "mean_stack_visits": 242.20863131009617,
+    "mean_triangle_tests": 121.48724459134615,
+    "mean_internal_nodes": 216.39659204727565,
+    "zero_hint_percent": 3.00380608974359,
+    "maximum_stack_visits": 1578,
+    "visit_p50_bucket": [
+      128,
+      255
+    ],
+    "visit_p95_bucket": [
+      256,
+      511
+    ],
+    "visit_p99_bucket": [
+      256,
+      511
+    ],
+    "triangle_p95_bucket": [
+      128,
+      255
+    ]
+  },
+  {
+    "case": "sanmiguel-query-shift-.001",
+    "direction": 0,
+    "triangles_per_side": 9980699,
+    "shift": 0.07564733731679286,
+    "batch_stride": 100,
+    "queries": 399360,
+    "mean_stack_visits": 265.2168444511218,
+    "mean_triangle_tests": 142.53317057291667,
+    "mean_internal_nodes": 234.96133313301283,
+    "zero_hint_percent": 0.02679286858974359,
+    "maximum_stack_visits": 1636,
+    "visit_p50_bucket": [
+      128,
+      255
+    ],
+    "visit_p95_bucket": [
+      256,
+      511
+    ],
+    "visit_p99_bucket": [
+      256,
+      511
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "sanmiguel-query-shift-.001",
+    "direction": 1,
+    "triangles_per_side": 9980699,
+    "shift": 0.07564733731679286,
+    "batch_stride": 100,
+    "queries": 399360,
+    "mean_stack_visits": 261.5401592548077,
+    "mean_triangle_tests": 140.46861478365383,
+    "mean_internal_nodes": 231.84833233173077,
+    "zero_hint_percent": 0.03856169871794872,
+    "maximum_stack_visits": 1572,
+    "visit_p50_bucket": [
+      128,
+      255
+    ],
+    "visit_p95_bucket": [
+      256,
+      511
+    ],
+    "visit_p99_bucket": [
+      256,
+      511
+    ],
+    "triangle_p95_bucket": [
+      256,
+      511
+    ]
+  },
+  {
+    "case": "sanmiguel-query-shift-0",
+    "direction": 0,
+    "triangles_per_side": 9980699,
+    "shift": 0.0,
+    "batch_stride": 100,
+    "queries": 399360,
+    "mean_stack_visits": 185.3716321113782,
+    "mean_triangle_tests": 82.40201822916667,
+    "mean_internal_nodes": 167.75887920673077,
+    "zero_hint_percent": 19.774138621794872,
+    "maximum_stack_visits": 1521,
+    "visit_p50_bucket": [
+      128,
+      255
+    ],
+    "visit_p95_bucket": [
+      256,
+      511
+    ],
+    "visit_p99_bucket": [
+      256,
+      511
+    ],
+    "triangle_p95_bucket": [
+      128,
+      255
+    ]
+  },
+  {
+    "case": "sanmiguel-query-shift-0",
+    "direction": 1,
+    "triangles_per_side": 9980699,
+    "shift": 0.0,
+    "batch_stride": 100,
+    "queries": 399360,
+    "mean_stack_visits": 185.3716321113782,
+    "mean_triangle_tests": 82.40201822916667,
+    "mean_internal_nodes": 167.75887920673077,
+    "zero_hint_percent": 19.774138621794872,
+    "maximum_stack_visits": 1521,
+    "visit_p50_bucket": [
+      128,
+      255
+    ],
+    "visit_p95_bucket": [
+      256,
+      511
+    ],
+    "visit_p99_bucket": [
+      256,
+      511
+    ],
+    "triangle_p95_bucket": [
+      128,
+      255
+    ]
+  }
+]

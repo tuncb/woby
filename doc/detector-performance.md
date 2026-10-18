@@ -1,5 +1,8 @@
 # Automatic detector performance
 
+For the current large-model investigation, CPU counters, mesh comparison, and
+difference meshes, see the [17 October 2026 report](detector-performance-analysis-20261017.md).
+
 Measured on 25 September 2026 on Windows, Ryzen 7 5800H (8 cores / 16 threads),
 using MSVC Release builds from the `vs2026-vcpkg` preset.
 

@@ -1,0 +1,362 @@
+[
+  {
+    "case": "bennu-difference-cancel",
+    "operation": "difference",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 30005.2983,
+    "response_ms": 1613.1036,
+    "error": "Input A: Difference mesh canceled."
+  },
+  {
+    "case": "bus-cancel-1500",
+    "operation": "quality",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 1513.1429,
+    "response_ms": 30.0382,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-1500",
+    "operation": "quality",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 1511.0678,
+    "response_ms": 29.4894,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-1500",
+    "operation": "quality",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 1506.3013,
+    "response_ms": 30.9769,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-1500",
+    "operation": "distance",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 1506.6354,
+    "response_ms": 13.8894,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-1500",
+    "operation": "distance",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 1504.5915,
+    "response_ms": 11.8195,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-1500",
+    "operation": "distance",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 1502.7771,
+    "response_ms": 11.7627,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-3000",
+    "operation": "distance",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 3010.2779,
+    "response_ms": 22.1802,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-3000",
+    "operation": "distance",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 3006.0112,
+    "response_ms": 21.6458,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-3000",
+    "operation": "distance",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 3003.4427,
+    "response_ms": 22.4634,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-50",
+    "operation": "auto",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 52.3778,
+    "response_ms": 0.5601,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-50",
+    "operation": "auto",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 61.3965,
+    "response_ms": 0.2013,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-50",
+    "operation": "auto",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 62.1656,
+    "response_ms": 0.2014,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-50",
+    "operation": "quality",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 63.0014,
+    "response_ms": 6.0526,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-50",
+    "operation": "quality",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 54.7473,
+    "response_ms": 5.1767,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-50",
+    "operation": "quality",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 56.3558,
+    "response_ms": 5.6728,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-50",
+    "operation": "intersections",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 56.1398,
+    "response_ms": 3.2426,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-50",
+    "operation": "intersections",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 58.7657,
+    "response_ms": 2.8908,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-50",
+    "operation": "intersections",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 58.0706,
+    "response_ms": 3.0043,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-50",
+    "operation": "distance",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 59.0215,
+    "response_ms": 5.0946,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-50",
+    "operation": "distance",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 56.9895,
+    "response_ms": 5.0652,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-50",
+    "operation": "distance",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 55.8232,
+    "response_ms": 5.1731,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-500",
+    "operation": "auto",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 510.252,
+    "response_ms": 6.5848,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-500",
+    "operation": "auto",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 509.9397,
+    "response_ms": 6.2623,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-500",
+    "operation": "auto",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 507.8839,
+    "response_ms": 6.5947,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-500",
+    "operation": "quality",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 506.014,
+    "response_ms": 28.6298,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-500",
+    "operation": "quality",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 513.741,
+    "response_ms": 33.6034,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-500",
+    "operation": "quality",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 514.8999,
+    "response_ms": 29.6335,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-500",
+    "operation": "intersections",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 504.734,
+    "response_ms": 7.8389,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-500",
+    "operation": "intersections",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 508.9455,
+    "response_ms": 7.4225,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-500",
+    "operation": "intersections",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 511.725,
+    "response_ms": 7.5766,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-500",
+    "operation": "distance",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 509.9179,
+    "response_ms": 7.39,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-500",
+    "operation": "distance",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 509.8747,
+    "response_ms": 7.1611,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "bus-cancel-500",
+    "operation": "distance",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 508.183,
+    "response_ms": 7.3028,
+    "error": "Analysis canceled."
+  },
+  {
+    "case": "grid-256-cancel-6900",
+    "operation": "difference",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 6912.5962,
+    "response_ms": 361.1901,
+    "error": "Difference mesh canceled."
+  },
+  {
+    "case": "grid-256-cancel-6900",
+    "operation": "difference",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 6902.3945,
+    "response_ms": 323.7515,
+    "error": "Difference mesh canceled."
+  },
+  {
+    "case": "grid-256-cancel-6900",
+    "operation": "difference",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 6914.9455,
+    "response_ms": 263.5068,
+    "error": "Difference mesh canceled."
+  },
+  {
+    "case": "sphere-512-cancel-4500",
+    "operation": "difference",
+    "run": 0,
+    "status": "error",
+    "requested_ms": 4510.7519,
+    "response_ms": 941.0617,
+    "error": "Difference mesh canceled."
+  },
+  {
+    "case": "sphere-512-cancel-4500",
+    "operation": "difference",
+    "run": 1,
+    "status": "error",
+    "requested_ms": 4508.6581,
+    "response_ms": 941.1144,
+    "error": "Difference mesh canceled."
+  },
+  {
+    "case": "sphere-512-cancel-4500",
+    "operation": "difference",
+    "run": 2,
+    "status": "error",
+    "requested_ms": 4514.5704,
+    "response_ms": 889.0156,
+    "error": "Difference mesh canceled."
+  }
+]
