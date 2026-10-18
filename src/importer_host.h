@@ -48,6 +48,9 @@ void loadImporter(const std::filesystem::path& path);
 void unloadImporters();
 [[nodiscard]] std::vector<ImporterInfo> loadedImporters();
 [[nodiscard]] std::vector<std::filesystem::path> discoverImporterFiles(const std::filesystem::path& folder);
+// Load sorted loose libraries, then immediate manifest packages. The folder must exist;
+// failures are returned per library or package so other importers can still load.
+[[nodiscard]] std::vector<ImporterLoadFailure> loadImporterFolder(const std::filesystem::path& folder);
 // Load importer.json from sorted immediate package folders. Missing folders are optional;
 // failures are returned per package so other importers can still load.
 [[nodiscard]] std::vector<ImporterLoadFailure> loadPortableImporters(const std::filesystem::path& folder);

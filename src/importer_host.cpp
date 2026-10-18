@@ -501,6 +501,25 @@ std::vector<ImporterLoadFailure> loadPortableImporters(const std::filesystem::pa
     return errors;
 }
 
+std::vector<ImporterLoadFailure> loadImporterFolder(const std::filesystem::path& folder)
+{
+    std::vector<std::filesystem::path> libraries;
+    try {
+        libraries = discoverImporterFiles(folder);
+    } catch (const std::exception& error) {
+        return {importerLoadFailure(folder, error)};
+    }
+    std::vector<ImporterLoadFailure> errors;
+    for (const auto& library : libraries) {
+        try { loadImporter(library); }
+        catch (const std::exception& error) { errors.push_back(importerLoadFailure(library, error)); }
+    }
+    for (auto& error : loadPortableImporters(folder)) {
+        errors.push_back(std::move(error));
+    }
+    return errors;
+}
+
 bool hasImporterForPath(const std::filesystem::path& path)
 {
     auto& host = registry();

@@ -107,12 +107,19 @@ woby.exe --plugin-folder C:\importers --plugin D:\tools\other.dll --file C:\mode
 ```
 
 Options are processed in their command-line order, before any model or scene is
-loaded. Each plugin folder is scanned non-recursively, in sorted path order, for
-`.dll` files on Windows, `.so` files on Linux, and `.dylib`/`.so` files on macOS.
-Use a dedicated importer folder; dependencies can live beside the importer but
-will be reported as missing the importer export if included in a folder scan.
-These explicit scans retain their existing loose-library behavior; use portable
-packages above to select an entry library without scanning its dependencies.
+loaded. Each plugin folder first loads loose libraries directly in that folder,
+in sorted path order: `.dll` files on Windows, `.so` files on Linux, and
+`.dylib`/`.so` files on macOS. It then loads packages from immediate subfolders,
+in sorted folder order, using the same `importer.json` rules as the portable
+`importers` folder beside the executable. Only each manifest's declared library
+is loaded; its dependencies and data files are not scanned. Subfolders without
+manifests and deeper nested packages are ignored. The selected folder must exist.
+Loose libraries take precedence over packages in the same folder. A failed
+library or package does not stop other importers from loading.
+
+Use package subfolders to keep dependencies beside their importer. A dependency
+directly in the selected folder will be scanned as a loose library and can be
+reported as missing the importer export.
 Loading the same physical file more than once has no effect. Duplicate importer
 IDs and extension conflicts are reported, with the earlier registration retained.
 OBJ, VTK, and the `.woby` scene extension are reserved.

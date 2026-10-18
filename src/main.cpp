@@ -2169,9 +2169,7 @@ int main(int argc, char** argv)
         };
         for (const auto& source : commandLine.pluginPaths) {
             if (source.folder) {
-                try {
-                    for (const auto& path : woby::discoverImporterFiles(source.path)) { tryLoadImporter(path); }
-                } catch (const std::exception& error) { reportImporterError(woby::importerLoadFailure(source.path, error)); }
+                for (const auto& error : woby::loadImporterFolder(source.path)) { reportImporterError(error); }
             } else {
                 tryLoadImporter(source.path);
             }

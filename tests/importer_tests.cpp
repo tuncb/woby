@@ -304,6 +304,91 @@ TEST_CASE("Portable importers load only manifest entries and remain relocatable"
         moved / "importers" / package.filename() / library.filename()));
 }
 
+TEST_CASE("Explicit plugin folders load loose libraries and immediate manifest packages")
+{
+    ImporterTestScope scope;
+    const auto folder = scope.root / "plugins";
+    const auto package = folder / woby::pathFromUtf8("caf\xc3\xa9 importer");
+    const auto library = installPortableImporter(package / "bin");
+    writeFile(package / "importer.json", nlohmann::json{{"schema", 1},
+        {"library", "bin/" + woby::pathToUtf8(library.filename())}}.dump());
+    const auto loose = folder / std::filesystem::path(WOBY_TEST_OFF_IMPORTER).filename();
+    std::filesystem::copy_file(WOBY_TEST_OFF_IMPORTER, loose);
+    const auto dependency = std::filesystem::path("dependency").concat(library.extension().native());
+    writeFile(package / dependency, "not an importer");
+    writeFile(package / "bin" / dependency, "not an importer");
+    // Loose libraries in subfolders and deeper packages must not be scanned.
+    installPortableImporter(folder / "unregistered" / "nested", WOBY_TEST_BAD_IMPORTER);
+    std::filesystem::copy_file(WOBY_TEST_BAD_IMPORTER,
+        folder / "unregistered" / std::filesystem::path(WOBY_TEST_BAD_IMPORTER).filename());
+
+    CHECK(woby::loadImporterFolder(folder).empty());
+    const auto loaded = woby::loadedImporters();
+    REQUIRE(loaded.size() == 2u);
+    CHECK(loaded[0].path == std::filesystem::canonical(loose));
+    CHECK(loaded[1].path == std::filesystem::canonical(library));
+    CHECK(woby::loadImporterFolder(folder).empty());
+    CHECK(woby::loadedImporters().size() == 2u);
+}
+
+TEST_CASE("Explicit plugin folder failures do not stop sorted package loading")
+{
+    ImporterTestScope scope;
+    const auto folder = scope.root / "plugins";
+    // Create the conflicting package first to check that folder order wins.
+    installPortableImporter(folder / "20-conflict", WOBY_TEST_CONFLICT_IMPORTER);
+    installPortableImporter(folder / "10-first");
+    installPortableImporter(folder / "30-independent", WOBY_TEST_OFF_IMPORTER);
+    const auto broken = folder / "00-broken";
+    installPortableImporter(broken, WOBY_TEST_BAD_IMPORTER);
+    writeFile(broken / "importer.json", "{");
+    const auto loose = folder / std::filesystem::path(WOBY_TEST_BAD_IMPORTER).filename();
+    std::filesystem::copy_file(WOBY_TEST_BAD_IMPORTER, loose);
+
+    const auto errors = woby::loadImporterFolder(folder);
+    REQUIRE(errors.size() == 3u);
+    CHECK(errors[0].path == loose);
+    CHECK(errors[0].reason.find("Incompatible importer API") != std::string::npos);
+    CHECK(errors[1].path == broken / "importer.json");
+    CHECK(errors[1].reason == "Invalid importer manifest JSON.");
+    CHECK(errors[2].path == folder / "20-conflict" / "importer.json");
+    CHECK(errors[2].reason.find("extension already registered") != std::string::npos);
+    const auto loaded = woby::loadedImporters();
+    REQUIRE(loaded.size() == 2u);
+    CHECK(loaded[0].id == "org.woby.test");
+    CHECK(loaded[1].id == "org.woby.example.off");
+}
+
+TEST_CASE("Explicit plugin folders keep loose library precedence over packages")
+{
+    ImporterTestScope scope;
+    const auto folder = scope.root / "plugins";
+    installPortableImporter(folder / "package");
+    const auto loose = folder / std::filesystem::path(WOBY_TEST_CONFLICT_IMPORTER).filename();
+    std::filesystem::copy_file(WOBY_TEST_CONFLICT_IMPORTER, loose);
+
+    const auto errors = woby::loadImporterFolder(folder);
+    REQUIRE(errors.size() == 1u);
+    CHECK(errors[0].path == folder / "package" / "importer.json");
+    CHECK(errors[0].reason.find("extension already registered") != std::string::npos);
+    REQUIRE(woby::loadedImporters().size() == 1u);
+    CHECK(woby::loadedImporters()[0].path == std::filesystem::canonical(loose));
+}
+
+TEST_CASE("Explicit plugin folders require an existing directory")
+{
+    ImporterTestScope scope;
+    const auto folder = scope.root / "plugins";
+    SUBCASE("missing directory") { CHECK_FALSE(std::filesystem::exists(folder)); }
+    SUBCASE("file instead of directory") { writeFile(folder); }
+    const auto errors = woby::loadImporterFolder(folder);
+    REQUIRE(errors.size() == 1u);
+    CHECK(errors[0].path == folder);
+    CHECK_FALSE(errors[0].reason.empty());
+    CHECK(woby::loadedImporters().empty());
+    CHECK(woby::loadImporterFolder(scope.root).empty());
+}
+
 TEST_CASE("Portable importer failures are isolated and conflicts use sorted package order")
 {
     ImporterTestScope scope;
