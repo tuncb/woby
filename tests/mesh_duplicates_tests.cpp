@@ -5,6 +5,7 @@
 #include "comparison_report.h"
 #include "control_scene.h"
 #include "obj_mesh.h"
+#include "freeform.h"
 #include "importer_host.h"
 #include "scene_history.h"
 #include "ui_operations.h"
@@ -56,6 +57,50 @@ woby::UiState scene(const std::filesystem::path& path)
     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
     return state;
 }
+}
+
+TEST_CASE("freeform duplicate inspection separates authored controls from generated samples")
+{
+    const Fixture fixture;
+    const std::string controls = "v 0 0 0\nv 2 0 0\nv 0 3 0\nv 2 3 0\n";
+    const std::string patch = "cstype bezier\ndeg 1 1\nsurf 0 1 0 1 1 2 3 4\nparm u 0 1\nparm v 0 1\nend\n";
+    std::string text = controls + patch;
+    size_t expected = 0;
+    bool native = false;
+    SUBCASE("OBJ surface") {}
+    SUBCASE("native surface without authored position records") { native = true; }
+    SUBCASE("mixed polygon and parametric surface") { text = controls + "f 1 2 3\n" + patch; }
+    SUBCASE("duplicate authored point stays detectable") { text = controls + "v 0 0 0\n" + patch; expected = 1; }
+    SUBCASE("duplicate generated samples stay detectable") { text += patch; expected = 33*33; }
+    const auto path = fixture.write("surface.obj",text.c_str());
+    auto mesh = woby::loadObjMesh(path);
+    if (native) {
+        const auto patches = mesh.freeform->patches;
+        mesh = {};
+        woby::appendFreeformGeometry(mesh,patches);
+        woby::finalizeMesh(mesh,false);
+    }
+    REQUIRE(mesh.sourceData->firstGeneratedPosition);
+    CHECK(*mesh.sourceData->firstGeneratedPosition == (native ? 0u : expected == 1 ? 5u : 4u));
+    // Exercise the complete file selection, which includes unused authored controls.
+    woby::UiState state;
+    state.files.push_back(woby::createUiFileState(path,mesh,0));
+    woby::appendDefaultSceneNodesForFiles(state,0);
+    REQUIRE(woby::setModelAnalysisMode(state,state.files[0].objectId,woby::AnalysisMode::whole));
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state,{state.files[0].objectId},woby::ComparisonSide::a,true,id);
+    const auto world = woby::comparisonWorldMesh(state,woby::ComparisonSide::a,id);
+    REQUIRE(world.duplicateInput);
+    CHECK(woby::inspectDuplicates(*world.duplicateInput).points.duplicateCount == expected);
+    woby::rebaseMesh(mesh,{100,-200,300});
+    CHECK(woby::inspectDuplicates(inputFor(mesh.sourceData)).points.duplicateCount == expected);
+}
+
+TEST_CASE("source duplicate inspection validates the generated position boundary")
+{
+    auto data = triangle();
+    data->firstGeneratedPosition = 4;
+    CHECK_THROWS_AS((void)woby::inspectDuplicates(inputFor(data)),std::invalid_argument);
 }
 
 TEST_CASE("source duplicate points use exact coordinates signed zero and source scopes")

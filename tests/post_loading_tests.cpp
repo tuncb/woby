@@ -406,6 +406,7 @@ TEST_CASE("Deferred mixed and freeform OBJ source topology matches complete load
         REQUIRE(data);
         REQUIRE(data->source);
         CHECK(data->source->indices == eager.sourceData->indices);
+        CHECK(data->source->firstGeneratedPosition == eager.sourceData->firstGeneratedPosition);
         CHECK(woby::sourcePositions(*data->source) == woby::sourcePositions(*eager.sourceData));
         CHECK(data->originalBounds == *eager.originalBounds);
         const auto groups = woby::createUiGroupStates(eager, 0);
