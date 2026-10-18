@@ -1390,10 +1390,12 @@ std::optional<double> annotationLength(const UiAnnotation& item, std::span<const
             const auto triangle = k == 0 ? segment.triangle : segment.endTriangle.value_or(segment.triangle);
             const auto local = annotationPosition(*part.mesh, part.indexOffset, triangle, k == 0 ? segment.a : segment.b);
             for (size_t row = 0; row < 3; ++row) {
-                if (item.targetIds.empty()) { endpoints[k][row] = local[row]; }
-                else {
-                    endpoints[k][row] = part.model[12 + row];
-                    for (size_t axis = 0; axis < 3; ++axis) { endpoints[k][row] += double(part.model[axis * 4 + row]) * local[axis]; }
+                const auto matrix = [&](size_t index) { return part.coordinateModel ? (*part.coordinateModel)[index] : double(part.model[index]); };
+                // A common translation cannot change length. Omit it for segments
+                // on one part to retain small distances at large translations.
+                if (segment.source != segment.endSource.value_or(segment.source)) { endpoints[k][row] = matrix(12 + row); }
+                for (size_t axis = 0; axis < 3; ++axis) {
+                    endpoints[k][row] += matrix(axis * 4 + row) * local[axis];
                 }
             }
         }

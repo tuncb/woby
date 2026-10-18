@@ -274,9 +274,26 @@ const AnnotationInspectorQuery& updateAnnotationInspectorQuery(SceneQueryRuntime
     const auto positions = annotationVertices(state, item);
     cache.vertices = annotationOriginalVertices(state, item, positions);
     if (positions.empty()) { return cache; }
-    // Measure in the recentered frame, before adding a possibly distant origin.
+    std::vector<ScenePickPart> parts;
+    resolveSceneParts(runtime, state, parts, true);
+    const auto* source = item.targetIds.empty() ? annotationSourcePart(item, parts, 0) : nullptr;
+    if (item.targetIds.empty() && !source) { return cache; }
+    // Single-part controls use local coordinates. Measure their transformed
+    // offsets; a common translation cannot change length or area.
     std::vector<Coordinate> vertices;
-    for (const auto& p : positions) { vertices.push_back({p[0], p[1], p[2]}); }
+    for (const auto& p : positions) {
+        Coordinate value{p[0],p[1],p[2]};
+        if (source) {
+            value = {};
+            for (size_t row = 0; row < 3; ++row) {
+                for (size_t axis = 0; axis < 3; ++axis) {
+                    const size_t index = axis * 4 + row;
+                    value[row] += (source->coordinateModel ? (*source->coordinateModel)[index] : double(source->model[index])) * p[axis];
+                }
+            }
+        }
+        vertices.push_back(value);
+    }
     if (item.geometry->shape == AnnotationShape::rectangle) { cache.area = annotationArea(vertices); }
     else {
         if (vertices.size() == 2) {
@@ -284,8 +301,6 @@ const AnnotationInspectorQuery& updateAnnotationInspectorQuery(SceneQueryRuntime
             const double length = std::hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
             if (std::isfinite(length)) { cache.straightLength = length; }
         }
-        std::vector<ScenePickPart> parts;
-        resolveSceneParts(runtime, state, parts, true);
         cache.length = annotationLength(item, parts);
     }
     return cache;
