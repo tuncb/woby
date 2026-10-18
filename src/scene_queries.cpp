@@ -92,11 +92,11 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
             part.pointIndexOffset = node.pointIndexOffset; part.pointIndexCount = node.pointIndexCount;
             PickMatrix local;
             groupTransformMatrix(settings, local.data());
-            woby::multiplyMatrices(part.model.data(), parent.data(), local.data());
+            woby::multiplyMatrices(part.model.data(), local.data(), parent.data());
             CoordinateMatrix preciseLocal;
             groupTransformMatrix(settings, preciseLocal.data());
             part.coordinateModel.emplace();
-            coordinateMultiply(part.coordinateModel->data(), coordinateParent.data(), preciseLocal.data());
+            coordinateMultiply(part.coordinateModel->data(), preciseLocal.data(), coordinateParent.data());
             if (settings.localBoundsValid) { part.bounds = settings.localBounds; }
             part.solid = node.indexCount && settings.showSolidMesh;
             part.edges = node.lineIndexCount || (node.indexCount && settings.showTriangles);
@@ -124,8 +124,8 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
                     fileTransformMatrix(file.fileSettings, preciseLocal.data());
                     opacity *= file.fileSettings.opacity; visible = visible && file.fileSettings.visible;
                 }
-                woby::multiplyMatrices(model.data(), parent.data(), local.data());
-                coordinateMultiply(preciseWorld.data(), coordinateParent.data(), preciseLocal.data());
+                woby::multiplyMatrices(model.data(), local.data(), parent.data());
+                coordinateMultiply(preciseWorld.data(), preciseLocal.data(), coordinateParent.data());
                 if (node.kind == UiSceneNodeKind::file && node.children.empty()) {
                     for (size_t g = 0; g < state.files[node.fileIndex].groupSettings.size(); ++g) { group(node.fileIndex, g, model, preciseWorld, opacity, visible); }
                 } else { for (const auto& child : node.children) { self(self, child, model, preciseWorld, opacity, visible); } }

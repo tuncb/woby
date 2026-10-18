@@ -595,15 +595,15 @@ TEST_CASE("picking and selection boxes use renderer hierarchy transforms")
     file.fileSettings.center = {};
     file.groupSettings[0].scale = .2f;
     file.groupSettings[0].rotationDegrees[2] = 90;
-    file.fileSettings.translation[0] = 1;
+    file.fileSettings.translation[0] = .2f;
     woby::UiSceneNode folder;
-    folder.settings.translation[1] = 1;
+    folder.settings.translation[1] = .2f;
     folder.children = state.sceneNodes;
     state.sceneNodes = {folder};
     woby::assignSceneObjectIds(state);
     woby::selectSceneObject(state, state.sceneNodes[0].objectId);
-    // Renderer order applies the parent translations before this group's rotation/scale.
-    CHECK(pick(state, {60, 60}) == file.groupSettings[0].objectId);
+    // Parent translations follow the group's rotation and scale.
+    CHECK(pick(state, {60, 40}) == file.groupSettings[0].objectId);
     CHECK(pick(state, {50, 50}) == woby::invalidSceneObjectId);
     const auto parts = woby::scenePickParts(state);
     REQUIRE(parts.size() == 1);
@@ -613,8 +613,8 @@ TEST_CASE("picking and selection boxes use renderer hierarchy transforms")
     for (const auto& p : lines) {
         CHECK(p[0] >= .039f);
         CHECK(p[0] <= .361f);
-        CHECK(p[1] >= -.361f);
-        CHECK(p[1] <= -.039f);
+        CHECK(p[1] >= .039f);
+        CHECK(p[1] <= .361f);
     }
     CHECK_FALSE(state.isDirty);
 }

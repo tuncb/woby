@@ -197,7 +197,7 @@ Json treeNode(const UiState& state, const UiSceneNode& node, const ObjectIdForma
                 state.masterVertexPointSize * (file.vertexSizeScale * group.vertexSizeScale), minVertexPointSize, maxVertexPointSize));
         }
     }
-    woby::multiplyMatrices(world.data(), parent.data(), local.data());
+    woby::multiplyMatrices(world.data(), local.data(), parent.data());
     result["effective"] = {{"visible", parentVisible && visible}, {"opacity", parentOpacity * opacity}, {"worldMatrix", world}};
     result["children"] = Json::array();
     if (node.kind == UiSceneNodeKind::group) { return result; }

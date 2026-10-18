@@ -228,10 +228,10 @@ void findHoveredGroupVertex(
     float groupModel[16];
     float groupWorld[16];
     groupTransformMatrix(settings, groupModel);
-    woby::multiplyMatrices(groupWorld, model, groupModel);
+    woby::multiplyMatrices(groupWorld, groupModel, model);
     CoordinateMatrix preciseLocal, preciseWorld;
     groupTransformMatrix(settings, preciseLocal.data());
-    coordinateMultiply(preciseWorld.data(), coordinateModel, preciseLocal.data());
+    coordinateMultiply(preciseWorld.data(), preciseLocal.data(), coordinateModel);
 
     const uint32_t pointSize = vertexPointSize(
         masterVertexPointSize,
@@ -293,10 +293,10 @@ void findHoveredSceneNodeVertex(
         float nodeModel[16];
         float model[16];
         sceneNodeTransformMatrix(node.settings, nodeModel);
-        woby::multiplyMatrices(model, parentModel, nodeModel);
+        woby::multiplyMatrices(model, nodeModel, parentModel);
         CoordinateMatrix preciseLocal, preciseWorld;
         sceneNodeTransformMatrix(node.settings, preciseLocal.data());
-        coordinateMultiply(preciseWorld.data(), coordinateParent, preciseLocal.data());
+        coordinateMultiply(preciseWorld.data(), preciseLocal.data(), coordinateParent);
         for (const auto& child : node.children) {
             findHoveredSceneNodeVertex(
                 files,
@@ -329,10 +329,10 @@ void findHoveredSceneNodeVertex(
         float fileModel[16];
         float model[16];
         fileTransformMatrix(file.fileSettings, fileModel);
-        woby::multiplyMatrices(model, parentModel, fileModel);
+        woby::multiplyMatrices(model, fileModel, parentModel);
         CoordinateMatrix preciseLocal, preciseWorld;
         fileTransformMatrix(file.fileSettings, preciseLocal.data());
-        coordinateMultiply(preciseWorld.data(), coordinateParent, preciseLocal.data());
+        coordinateMultiply(preciseWorld.data(), preciseLocal.data(), coordinateParent);
         const auto& gpuMesh = runtimes[node.fileIndex].gpuMesh;
         if (node.children.empty()) {
             const size_t groupCount = std::min(file.groupSettings.size(), gpuMesh.nodeRanges.size());
@@ -539,10 +539,10 @@ std::optional<HoveredVertex> findHoveredVertex(
             float groupModel[16];
             float model[16];
             groupTransformMatrix(settings, groupModel);
-            woby::multiplyMatrices(model, fileModel, groupModel);
+            woby::multiplyMatrices(model, groupModel, fileModel);
             CoordinateMatrix preciseLocal, preciseWorld;
             groupTransformMatrix(settings, preciseLocal.data());
-            coordinateMultiply(preciseWorld.data(), preciseFile.data(), preciseLocal.data());
+            coordinateMultiply(preciseWorld.data(), preciseLocal.data(), preciseFile.data());
 
             const uint32_t pointSize = vertexPointSize(
                 masterVertexPointSize,

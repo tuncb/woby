@@ -32,7 +32,7 @@ std::vector<ComparisonSourceTransform> comparisonSourceTransforms(const UiState&
         ComparisonSourceTransform transform;
         transform.objectId = id; transform.fileIndex = fileIndex; transform.groupIndex = groupIndex;
         transform.parent = parent;
-        coordinateMultiply(transform.model.data(), parent.data(), local.data());
+        coordinateMultiply(transform.model.data(), local.data(), parent.data());
         transform.origin = transformCoordinate(transform.model.data(), center);
         result.push_back(transform);
         return transform.model;
@@ -124,8 +124,8 @@ void resolveComparisonPlacement(const UiState& state, const UiFileState& file,
     CoordinateMatrix rebase;
     coordinateIdentity(rebase.data());
     for (size_t k = 0; k < 3; ++k) { rebase[12 + k] = file.mesh.origin[k] - placement.sourceOrigin[k]; }
-    coordinateMultiply(parent.data(), placement.parent.data(), rebase.data());
-    coordinateMultiply(model.data(), placement.model.data(), rebase.data());
+    coordinateMultiply(parent.data(), rebase.data(), placement.parent.data());
+    coordinateMultiply(model.data(), rebase.data(), placement.model.data());
     const auto sceneOrigin = state.coordinateOrigin.value_or(Coordinate{});
     Coordinate offset;
     for (size_t k = 0; k < 3; ++k) { offset[k] = placement.sceneOrigin[k] - sceneOrigin[k]; }

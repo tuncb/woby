@@ -96,6 +96,27 @@ Json command(UiState& state, const std::string& method, Json params, SceneObject
 }
 }
 
+TEST_CASE("locked rotated comparison placement rebases input coordinates before its transform")
+{
+    PlacementFixture fixture;
+    auto& state = fixture.state;
+    auto& file = state.files[0];
+    file.fileSettings.rotationDegrees = {17,-31,74};
+    file.fileSettings.scale = 2;
+    const auto transforms = comparisonSourceTransforms(state);
+    const auto found = std::find_if(transforms.begin(),transforms.end(),[&](const auto& t) {
+        return t.objectId == file.groupSettings[0].objectId;
+    });
+    REQUIRE(found != transforms.end());
+    const auto placement = comparisonPartPlacement(state,*found,{});
+    const Coordinate oldPoint{.25,.5,0};
+    const auto expected = transformCoordinate(placement.model.data(),oldPoint);
+    file.mesh.origin = {100,-200,300};
+    CoordinateMatrix parent, model;
+    resolveComparisonPlacement(state,file,placement,parent,model);
+    checkPoint(transformCoordinate(model.data(),relativePosition(oldPoint,file.mesh.origin)),expected);
+}
+
 TEST_CASE("new surface comparisons align and lock while source transforms remain editable")
 {
     PlacementFixture fixture;

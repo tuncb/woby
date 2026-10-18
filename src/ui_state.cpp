@@ -314,7 +314,7 @@ void expandSceneNodeBounds(
         float nodeModel[16];
         float model[16];
         sceneNodeTransformMatrix(node.settings, nodeModel);
-        woby::multiplyMatrices(model, parentModel, nodeModel);
+        woby::multiplyMatrices(model, nodeModel, parentModel);
         for (const auto& child : node.children) {
             expandSceneNodeBounds(bounds, files, child, model, selection, included);
         }
@@ -334,7 +334,7 @@ void expandSceneNodeBounds(
         float fileModel[16];
         float model[16];
         fileTransformMatrix(file.fileSettings, fileModel);
-        woby::multiplyMatrices(model, parentModel, fileModel);
+        woby::multiplyMatrices(model, fileModel, parentModel);
         if (node.children.empty()) {
             const size_t groupCount = std::min(file.groupSettings.size(), meshGeometry(file.mesh).nodes.size());
             for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
@@ -345,7 +345,7 @@ void expandSceneNodeBounds(
                 float groupModel[16];
                 float groupWorld[16];
                 groupTransformMatrix(file.groupSettings[groupIndex], groupModel);
-                woby::multiplyMatrices(groupWorld, model, groupModel);
+                woby::multiplyMatrices(groupWorld, groupModel, model);
                 const Bounds localBounds = file.groupSettings[groupIndex].localBoundsValid
                     ? file.groupSettings[groupIndex].localBounds
                     : nodeBounds(file.mesh, meshGeometry(file.mesh).nodes[groupIndex]);
@@ -373,7 +373,7 @@ void expandSceneNodeBounds(
     float groupModel[16];
     float model[16];
     groupTransformMatrix(group, groupModel);
-    woby::multiplyMatrices(model, parentModel, groupModel);
+    woby::multiplyMatrices(model, groupModel, parentModel);
     const Bounds localBounds = group.localBoundsValid
         ? group.localBounds
         : nodeBounds(file.mesh, meshGeometry(file.mesh).nodes[node.groupIndex]);
@@ -625,7 +625,7 @@ Bounds combineBounds(const std::vector<UiFileState>& files)
             float groupModel[16];
             float model[16];
             groupTransformMatrix(file.groupSettings[groupIndex], groupModel);
-            woby::multiplyMatrices(model, fileModel, groupModel);
+            woby::multiplyMatrices(model, groupModel, fileModel);
             const Bounds localBounds = file.groupSettings[groupIndex].localBoundsValid
                 ? file.groupSettings[groupIndex].localBounds
                 : nodeBounds(file.mesh, meshGeometry(file.mesh).nodes[groupIndex]);
