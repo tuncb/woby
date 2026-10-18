@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.24)
 
+# Use the level-set allocation fix in local and CI dependency builds.
+list(APPEND VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg-ports")
+
 option(WOBY_BUILD_HASH_BENCHMARKS "Build opt-in hash table and scene query benchmarks" OFF)
 if(WOBY_BUILD_HASH_BENCHMARKS)
     list(APPEND VCPKG_MANIFEST_FEATURES hash-benchmarks)
@@ -753,7 +756,7 @@ if(BUILD_TESTING)
         set_source_files_properties(tests/mesh_intersection_predicates_tests.cpp PROPERTIES
             COMPILE_OPTIONS "-fno-fast-math;-ffp-contract=off;-frounding-math")
     endif()
-    target_link_libraries(woby_tests PRIVATE CDT::CDT Boost::multiprecision)
+    target_link_libraries(woby_tests PRIVATE CDT::CDT Boost::multiprecision manifold::manifold)
     option(WOBY_TEST_INTERSECTION_FMA "Test the production intersection classifier with AVX2/FMA; requires an AVX2 CPU" OFF)
     if(WOBY_TEST_INTERSECTION_FMA AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_VS_PLATFORM_NAME STREQUAL "x64")
         add_executable(woby_intersection_fma_tests tests/mesh_intersection_predicates_tests.cpp

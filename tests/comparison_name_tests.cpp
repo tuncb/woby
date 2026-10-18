@@ -1025,9 +1025,9 @@ TEST_CASE("analysis bulk menu duplicates all selected rows after Ctrl and Shift 
     const float stride = woby::renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.y;
     f.click(f.row);
     auto& io = ImGui::GetIO();
-    io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+    io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, true); f.frame();
     f.click({f.row.x, f.row.y + 2 * stride});
-    io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, false); f.frame();
     CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{f.id, third});
     io.AddKeyEvent(ImGuiMod_Shift, true); f.frame();
     f.click({f.row.x, f.row.y + stride});
@@ -1055,9 +1055,9 @@ TEST_CASE("view bulk selection leaves the active view intact and context deletes
     f.frame(); f.frame();
     const auto revision = f.state.sceneEditRevision;
     auto& io = ImGui::GetIO();
-    io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+    io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, true); f.frame();
     f.click(f.viewRow);
-    io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, false); f.frame();
     CHECK(f.state.viewSelection.ids == std::vector<woby::ViewId>{second, first});
     CHECK(f.state.activeViewId == second);
     CHECK(f.state.showGrid);
@@ -1082,11 +1082,40 @@ TEST_CASE("Ctrl A selects only the analysis list under the pointer")
     f.frame(); f.frame();
     f.click(f.row);
     auto& io = ImGui::GetIO();
-    io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+    io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, true); f.frame();
     f.key(ImGuiKey_A);
-    io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, false); f.frame();
     CHECK(f.state.selectedSceneObjects.size() == 3);
     CHECK(f.state.viewSelection.ids.size() == 1);
+}
+
+TEST_CASE("analysis bulk shortcuts select and delete with Windows and macOS modifiers")
+{
+    for (const bool macOSBehaviors : {false, true}) {
+        CAPTURE(macOSBehaviors);
+        ComparisonNameFixture f(true);
+        auto& io = ImGui::GetIO();
+        io.ConfigMacOSXBehaviors = macOSBehaviors;
+        const auto modifier = macOSBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl;
+        const auto second = woby::createComparison(f.state);
+        const auto third = woby::createComparison(f.state);
+        const auto view = woby::createView(f.state);
+        f.frame(); f.frame();
+        f.click(f.row);
+        io.AddKeyEvent(modifier, true); f.frame();
+        f.click({f.row.x, f.row.y + woby::renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.y});
+        CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{f.id, second});
+        CHECK(f.context->OpenPopupStack.empty());
+        f.key(ImGuiKey_A);
+        io.AddKeyEvent(modifier, false); f.frame();
+        REQUIRE(f.state.selectedSceneObjects.size() == 3);
+        io.AddMousePosEvent(f.viewRow.x, f.viewRow.y); f.frame();
+        f.key(ImGuiKey_Delete);
+        CHECK_FALSE(woby::findComparison(f.state, f.id));
+        CHECK_FALSE(woby::findComparison(f.state, second));
+        CHECK_FALSE(woby::findComparison(f.state, third));
+        CHECK(woby::findView(f.state, view));
+    }
 }
 
 TEST_CASE("Delete removes single or multiple analyses in one undo step")
@@ -1101,9 +1130,9 @@ TEST_CASE("Delete removes single or multiple analyses in one undo step")
     SUBCASE("multiple analyses") {
         bulk = true;
         auto& io = ImGui::GetIO();
-        io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+        io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, true); f.frame();
         f.click({f.row.x, f.row.y + woby::renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.y});
-        io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+        io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, false); f.frame();
     }
     REQUIRE(f.state.selectedSceneObjects.size() == (bulk ? 2 : 1));
     const auto clean = woby::createSceneDocument(f.state);
@@ -1134,9 +1163,9 @@ TEST_CASE("Delete removes only the focused view selection")
     SUBCASE("multiple views") {
         bulk = true;
         auto& io = ImGui::GetIO();
-        io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+        io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, true); f.frame();
         f.click(f.viewRow);
-        io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+        io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, false); f.frame();
     }
     REQUIRE(f.state.viewSelection.ids.size() == (bulk ? 2 : 1));
     REQUIRE(woby::sceneObjectSelected(f.state, f.id));
@@ -1242,9 +1271,9 @@ TEST_CASE("Delete removes selected analysis inputs only from the focused group")
     const auto sideIndex = side == woby::ComparisonSide::a ? 0 : 1;
     REQUIRE(woby::findComparison(f.state, f.id)->inputSelection[sideIndex].ids.size() == 1);
     if (bulk) {
-        io.AddKeyEvent(ImGuiMod_Ctrl, true); frame();
+        io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, true); frame();
         io.AddKeyEvent(ImGuiKey_A, true); frame();
-        io.AddKeyEvent(ImGuiKey_A, false); io.AddKeyEvent(ImGuiMod_Ctrl, false); frame();
+        io.AddKeyEvent(ImGuiKey_A, false); io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, false); frame();
     }
     io.AddKeyEvent(ImGuiKey_Delete, true); frame();
     io.AddKeyEvent(ImGuiKey_Delete, false); frame();
@@ -1398,9 +1427,9 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
     if (bulk) {
         auto& input = ImGui::GetIO();
         click(findingLabels[2]); // Holes.
-        input.AddKeyEvent(ImGuiMod_Ctrl, true); frame();
+        input.AddKeyEvent(input.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, true); frame();
         click(findingLabels[3]); // Fin candidates.
-        input.AddKeyEvent(ImGuiMod_Ctrl, false); frame();
+        input.AddKeyEvent(input.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, false); frame();
         auto* selected = woby::findComparison(f.state, f.id);
         REQUIRE(selected->detectorSelection.ids.size() == 2);
         input.AddMousePosEvent(findingLabels[2].x, findingLabels[2].y); frame();

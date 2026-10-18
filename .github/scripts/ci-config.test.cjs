@@ -13,6 +13,7 @@ function inputs() {
         os: 'Windows', arch: 'X64', image: 'windows-2025/20260901',
         triplet: 'woby-ci-x64-windows',
         triplets: { 'woby-ci-x64-windows.cmake': 'set(VCPKG_BUILD_TYPE release)\n' },
+        ports: { 'manifold/fix.patch': 'level-set allocation fix\n' },
     };
 }
 
@@ -52,6 +53,21 @@ test('feature and override changes invalidate the dependency cache', () => {
     assert.notEqual(createCiConfig(overrideChange).key, baseline);
 });
 
+test('overlay port edits additions and removals invalidate the dependency cache', () => {
+    const baseline = createCiConfig(inputs());
+    for (const change of [
+        input => { input.ports['manifold/fix.patch'] += 'new fix\n'; },
+        input => { input.ports['manifold/portfile.cmake'] = 'new port\n'; },
+        input => { delete input.ports['manifold/fix.patch']; },
+    ]) {
+        const input = inputs();
+        change(input);
+        const config = createCiConfig(input);
+        assert.notEqual(config.key, baseline.key);
+        assert.equal(config.restorePrefix, baseline.restorePrefix);
+    }
+});
+
 test('compiler, SDK, vcpkg revision, image, and included triplet changes invalidate cache identity', () => {
     const prefix = createCiConfig(inputs()).restorePrefix;
     for (const change of [
@@ -71,6 +87,7 @@ test('JSON key order and checkout line endings do not change cache identity', ()
     const after = inputs();
     after.manifest.dependencies[1] = { features: ['vulkan'], name: 'sdl3' };
     after.triplets['woby-ci-x64-windows.cmake'] = 'set(VCPKG_BUILD_TYPE release)\r\n';
+    after.ports = { 'manifold\\fix.patch': 'level-set allocation fix\r\n' };
     after.revision += '\r\n';
     assert.equal(createCiConfig(before).key, createCiConfig(after).key);
 });

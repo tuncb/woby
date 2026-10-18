@@ -11,7 +11,7 @@ function canonicalJson(value) {
     return JSON.stringify(value);
 }
 
-function createCiConfig({ manifest, revision, triplets, compiler, os, arch, triplet, image }) {
+function createCiConfig({ manifest, revision, triplets, ports = {}, compiler, os, arch, triplet, image }) {
     revision = revision.trim();
     if (!/^[a-f0-9]{40}$/.test(revision)) throw new Error('Expected a full vcpkg commit SHA.');
     if (!compiler.trim()) throw new Error('Missing CI compiler identity.');
@@ -29,7 +29,11 @@ function createCiConfig({ manifest, revision, triplets, compiler, os, arch, trip
         revision, compiler: compiler.trim().replace(/\r\n/g, '\n'), os, arch, triplet, image,
         triplets: normalizedTriplets,
     })).digest('hex');
-    const dependencyHash = createHash('sha256').update(canonicalJson(dependencyManifest)).digest('hex');
+    const normalizedPorts = Object.fromEntries(Object.entries(ports).map(([name, text]) =>
+        [name.replaceAll('\\', '/'), text.replace(/\r\n/g, '\n')]));
+    const dependencyHash = createHash('sha256').update(canonicalJson({
+        manifest: dependencyManifest, ports: normalizedPorts,
+    })).digest('hex');
     const restorePrefix = `vcpkg-ci-v1-${os}-${arch}-${triplet}-${toolchainHash}-`;
     return { manifest: ciManifest, revision, key: restorePrefix + dependencyHash, restorePrefix };
 }
@@ -40,10 +44,14 @@ function main() {
     const triplets = Object.fromEntries(fs.readdirSync(tripletDirectory)
         .filter(name => name.endsWith('.cmake')).map(name =>
             [name, fs.readFileSync(path.join(tripletDirectory, name), 'utf8')]));
+    const portDirectory = path.join(root, 'cmake/vcpkg-ports');
+    const ports = Object.fromEntries(fs.readdirSync(portDirectory, { recursive: true })
+        .filter(name => fs.statSync(path.join(portDirectory, name)).isFile()).map(name =>
+            [name, fs.readFileSync(path.join(portDirectory, name), 'utf8')]));
     const config = createCiConfig({
         manifest: JSON.parse(fs.readFileSync(path.join(root, 'vcpkg.json'), 'utf8')),
         revision: fs.readFileSync(path.join(root, 'cmake/ci-vcpkg-revision.txt'), 'utf8'),
-        triplets, compiler: process.env.WOBY_CI_COMPILER_ID || '',
+        triplets, ports, compiler: process.env.WOBY_CI_COMPILER_ID || '',
         os: process.env.RUNNER_OS, arch: process.env.RUNNER_ARCH,
         triplet: process.env.WOBY_CI_TRIPLET,
         image: `${process.env.ImageOS || ''}/${process.env.ImageVersion || ''}`,

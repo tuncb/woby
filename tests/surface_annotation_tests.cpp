@@ -1196,9 +1196,9 @@ TEST_CASE("annotation context deletion applies to every Ctrl selected row")
     const float stride = renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.y;
     const ImVec2 firstRow{f.objectRow.x, f.objectRow.y - stride};
     auto& io = ImGui::GetIO();
-    io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+    io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, true); f.frame();
     f.click(firstRow);
-    io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, false); f.frame();
     REQUIRE(f.scene.state.selectedSceneObjects == std::vector<SceneObjectId>{second, first});
     f.click(firstRow, ImGuiMouseButton_Right); f.frame();
     CHECK(f.objectContents.find("Delete 2 annotations") != std::string::npos);
@@ -1223,9 +1223,9 @@ TEST_CASE("Delete removes single or multiple annotation rows and preserves the m
     SUBCASE("multiple annotations") {
         bulk = true;
         auto& io = ImGui::GetIO();
-        io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+        io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, true); f.frame();
         f.click(f.objectRow);
-        io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+        io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, false); f.frame();
     }
     REQUIRE(f.scene.state.selectedSceneObjects.size() == (bulk ? 2 : 1));
     const auto revision = f.scene.state.sceneEditRevision;
@@ -1234,6 +1234,32 @@ TEST_CASE("Delete removes single or multiple annotation rows and preserves the m
     CHECK((findAnnotation(f.scene.state, second) == nullptr) == bulk);
     CHECK(f.scene.state.files.size() == 1);
     CHECK(f.scene.state.sceneEditRevision == revision + 1);
+}
+
+TEST_CASE("annotation bulk shortcuts select and delete with Windows and macOS modifiers")
+{
+    for (const bool macOSBehaviors : {false, true}) {
+        CAPTURE(macOSBehaviors);
+        AnnotationUiFixture f;
+        auto& io = ImGui::GetIO();
+        io.ConfigMacOSXBehaviors = macOSBehaviors;
+        const auto modifier = macOSBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl;
+        const auto first = f.scene.add();
+        const auto second = f.scene.add();
+        f.showObjects = true;
+        f.frame(); f.frame();
+        const float stride = renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.y;
+        f.click({f.objectRow.x, f.objectRow.y - stride});
+        io.AddKeyEvent(modifier, true); f.frame();
+        f.click(f.objectRow);
+        io.AddKeyEvent(modifier, false); f.frame();
+        REQUIRE(f.scene.state.selectedSceneObjects == std::vector<SceneObjectId>{first, second});
+        CHECK(f.context->OpenPopupStack.empty());
+        f.key(ImGuiKey_Delete);
+        CHECK_FALSE(findAnnotation(f.scene.state, first));
+        CHECK_FALSE(findAnnotation(f.scene.state, second));
+        CHECK(f.scene.state.files.size() == 1);
+    }
 }
 
 TEST_CASE("Delete edits an annotation name without removing the annotation")
@@ -1256,9 +1282,9 @@ TEST_CASE("Delete removes a cross section together with a selected surface annot
     REQUIRE(section != invalidSceneObjectId);
     f.showObjects = true; f.frame(); f.frame();
     auto& io = ImGui::GetIO();
-    io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+    io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, true); f.frame();
     f.click({f.objectRow.x, f.objectRow.y - renderModeButtonSize() - ImGui::GetStyle().ItemSpacing.y});
-    io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    io.AddKeyEvent(io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, false); f.frame();
     REQUIRE(f.scene.state.selectedSceneObjects.size() == 2);
     f.key(ImGuiKey_Delete);
     CHECK(findAnnotation(f.scene.state, annotation) == nullptr);

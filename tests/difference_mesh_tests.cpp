@@ -9,6 +9,7 @@
 #include <fstream>
 #include <limits>
 #include <map>
+#include <manifold/manifold.h>
 #include <nlohmann/json.hpp>
 #include <thread>
 
@@ -182,6 +183,21 @@ ControlOperation cli(std::vector<std::string> words)
         argv.push_back(w.data());
     }
     return parseCommandLine(static_cast<int>(argv.size()), argv.data()).control.operation;
+}
+
+TEST_CASE("binary level sets grow their surface table without collapsed vertices")
+{
+    // Equal magnitudes prevent Manifold's NearSurface pass from moving vertices.
+    // These grids fill its initial sparse table and must grow before triangulation.
+    for (const double cellSize : {.1, .05}) {
+        CAPTURE(cellSize);
+        const auto solid = manifold::Manifold::LevelSet([](manifold::vec3 p) {
+            return p.x > 0 && p.x < 1 && p.y > 0 && p.y < 1 && p.z > 0 && p.z < 1 ? 1.0 : -1.0;
+        }, {{-.2, -.2, -.2}, {1.2, 1.2, 1.2}}, cellSize, 0, -1, false);
+        REQUIRE(solid.Status() == manifold::Manifold::Error::NoError);
+        CHECK_FALSE(solid.IsEmpty());
+        CHECK(std::abs(solid.Volume() - 1) < .2);
+    }
 }
 
 TEST_CASE("approximate difference measures solids on a shared grid and improves with refinement")

@@ -1,0 +1,23 @@
+diff --git a/src/sdf.cpp b/src/sdf.cpp
+index 7ef0ca8..b1e41c4 100644
+--- a/src/sdf.cpp
++++ b/src/sdf.cpp
+@@ -548,15 +548,9 @@ void Manifold::Impl::CreateLevelSet(std::function<double(vec3)> sdf, Box bounds,
+         MakeEmpty(Error::Cancelled);
+         return;
+       }
+-      const vec3 lastVert = vertPos[index[0] - 1];
+-      const uint64_t lastIndex =
+-          EncodeIndex(ivec4(ivec3((lastVert - origin) / spacing), 1), gridPow);
+-      const double ratio = static_cast<double>(maxIndex) / lastIndex;
+-
+-      if (ratio > 1000)  // do not trust the ratio if it is too large
+-        tableSize *= 2;
+-      else
+-        tableSize *= ratio;
++      // Binary fields can fill the table without moving any vertices.
++      // Grow from the allocated capacity without reading an absent vertex.
++      tableSize = gridVerts.Size() * 2;
+       gridVerts = HashTable<GridVert>(tableSize);
+       vertPos = Vec<vec3>(gridVerts.Size() * 7);
+     } else {  // Success
