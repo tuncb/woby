@@ -1,0 +1,190 @@
+{
+  "extent": [
+    3267.5646124837876,
+    5637.435706013039,
+    321.86454345842964
+  ],
+  "low": [
+    -1.0532325752513157e-12,
+    0.0,
+    -1.4210854715202004e-14
+  ],
+  "high": [
+    3267.5646124837867,
+    5637.435706013039,
+    321.86454345842964
+  ],
+  "minimum_cell": 22.731595588762254,
+  "rows": [
+    {
+      "cell_size": 0.5,
+      "size": [
+        6540,
+        11279,
+        648
+      ],
+      "padded_axes": [
+        8192,
+        16384,
+        1024
+      ],
+      "guard_count": 274877906944,
+      "accepted": false,
+      "lattice_callbacks_per_side": 95855025820,
+      "voxel_buffer_slots": 219569755415
+    },
+    {
+      "cell_size": 1,
+      "size": [
+        3272,
+        5642,
+        326
+      ],
+      "padded_axes": [
+        4096,
+        8192,
+        512
+      ],
+      "guard_count": 34359738368,
+      "accepted": false,
+      "lattice_callbacks_per_side": 12100472821,
+      "voxel_buffer_slots": 27478472339
+    },
+    {
+      "cell_size": 5,
+      "size": [
+        658,
+        1132,
+        69
+      ],
+      "padded_axes": [
+        1024,
+        2048,
+        128
+      ],
+      "guard_count": 536870912,
+      "accepted": false,
+      "lattice_callbacks_per_side": 105404530,
+      "voxel_buffer_slots": 346845073
+    },
+    {
+      "cell_size": 10,
+      "size": [
+        331,
+        568,
+        37
+      ],
+      "padded_axes": [
+        512,
+        1024,
+        64
+      ],
+      "guard_count": 67108864,
+      "accepted": false,
+      "lattice_callbacks_per_side": 14581094,
+      "voxel_buffer_slots": 43851217
+    },
+    {
+      "cell_size": 20,
+      "size": [
+        168,
+        286,
+        21
+      ],
+      "padded_axes": [
+        256,
+        512,
+        32
+      ],
+      "guard_count": 8388608,
+      "accepted": false,
+      "lattice_callbacks_per_side": 2193146,
+      "voxel_buffer_slots": 5621873
+    },
+    {
+      "cell_size": 22.7316,
+      "size": [
+        148,
+        252,
+        19
+      ],
+      "padded_axes": [
+        256,
+        256,
+        32
+      ],
+      "guard_count": 4194304,
+      "accepted": true,
+      "lattice_callbacks_per_side": 1554040,
+      "voxel_buffer_slots": 2490349
+    },
+    {
+      "cell_size": 25,
+      "size": [
+        135,
+        230,
+        17
+      ],
+      "padded_axes": [
+        256,
+        256,
+        32
+      ],
+      "guard_count": 4194304,
+      "accepted": true,
+      "lattice_callbacks_per_side": 1169384,
+      "voxel_buffer_slots": 2275945
+    },
+    {
+      "cell_size": 50,
+      "size": [
+        70,
+        117,
+        11
+      ],
+      "padded_axes": [
+        128,
+        128,
+        16
+      ],
+      "guard_count": 524288,
+      "accepted": true,
+      "lattice_callbacks_per_side": 211920,
+      "voxel_buffer_slots": 302877
+    },
+    {
+      "cell_size": 100,
+      "size": [
+        37,
+        61,
+        8
+      ],
+      "padded_axes": [
+        64,
+        128,
+        16
+      ],
+      "guard_count": 262144,
+      "accepted": true,
+      "lattice_callbacks_per_side": 45774,
+      "voxel_buffer_slots": 165911
+    },
+    {
+      "cell_size": 500,
+      "size": [
+        11,
+        16,
+        5
+      ],
+      "padded_axes": [
+        16,
+        32,
+        16
+      ],
+      "guard_count": 16384,
+      "accepted": true,
+      "lattice_callbacks_per_side": 2862,
+      "voxel_buffer_slots": 14961
+    }
+  ]
+}

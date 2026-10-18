@@ -612,8 +612,6 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
 {
     if (!std::isfinite(settings.difference.opacity)) { settings.difference.opacity = .85f; }
     settings.difference.opacity = std::clamp(settings.difference.opacity, .05f, 1.0f);
-    if (settings.difference.method != DifferenceMethod::approximate) { settings.difference.method = DifferenceMethod::direct; }
-    if (!std::isfinite(settings.difference.cellSize) || settings.difference.cellSize <= 0) { settings.difference.cellSize = .5; }
     if (settings.type != AnalysisType::mesh && settings.type != AnalysisType::uv && settings.type != AnalysisType::uvQuality
         && settings.type != AnalysisType::surfaceComparison) { settings.type = AnalysisType::mesh; }
     if (settings.uvView != UvView::layout && settings.uvView != UvView::surface) { settings.uvView = UvView::layout; }

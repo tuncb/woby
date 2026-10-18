@@ -1,0 +1,46 @@
+{
+  "original_sha256": "2bdbfd97611a65a4ac2da3e4a1e3357c33b067c82d06967e4da1090170658d41",
+  "copy_sha256": "88be51656b2ae68e77210f62a27d0e1e4baae96cfc9da825c0245649b4ab0e78",
+  "pairs": [
+    [
+      0,
+      7
+    ],
+    [
+      1,
+      6
+    ],
+    [
+      2,
+      8
+    ],
+    [
+      3,
+      1
+    ],
+    [
+      4,
+      2
+    ],
+    [
+      5,
+      4
+    ],
+    [
+      6,
+      3
+    ],
+    [
+      7,
+      5
+    ],
+    [
+      8,
+      0
+    ]
+  ],
+  "all_identity_placements": true,
+  "source_file_records_unchanged_except_visibility": true,
+  "original_unchanged": true,
+  "camera_framed_in_viewer": true
+}

@@ -630,10 +630,7 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
     } else if (key == "difference_visible") { record.settings.difference.visible = parseTomlBool(value);
     } else if (key == "difference_show_a") { record.settings.difference.showA = parseTomlBool(value);
     } else if (key == "difference_show_b") { record.settings.difference.showB = parseTomlBool(value);
-    } else if (key == "difference_show_walls") { record.settings.difference.showWalls = parseTomlBool(value);
     } else if (key == "difference_opacity") { record.settings.difference.opacity = parseTomlFloat(value);
-    } else if (key == "difference_method") { record.settings.difference.method = parseDifferenceMethod(parseTomlString(value));
-    } else if (key == "difference_cell_size") { record.settings.difference.cellSize = parseTomlFloat<double>(value);
     } else if (key == "analysis_color_range") {
         record.settings.colorRange = parseTomlFloat(value);
     } else if (key == "analysis_color_minimum") {
@@ -711,10 +708,7 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "difference_visible = " << (comparison.difference.visible ? "true" : "false") << "\n";
     stream << "difference_show_a = " << (comparison.difference.showA ? "true" : "false") << "\n";
     stream << "difference_show_b = " << (comparison.difference.showB ? "true" : "false") << "\n";
-    stream << "difference_show_walls = " << (comparison.difference.showWalls ? "true" : "false") << "\n";
     stream << "difference_opacity = "; writeTomlFloat(stream, comparison.difference.opacity); stream << "\n";
-    stream << "difference_method = \"" << differenceMethodName(comparison.difference.method) << "\"\n";
-    stream << "difference_cell_size = "; writeTomlFloat(stream, comparison.difference.cellSize); stream << "\n";
     stream << "analysis_color_minimum = "; writeTomlFloat(stream, comparison.colorMinimum); stream << "\n";
     stream << "analysis_color_range_mode = \"" << comparisonColorRangeKeys[static_cast<size_t>(comparison.colorRangeMode)] << "\"\n";
     stream << "analysis_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";

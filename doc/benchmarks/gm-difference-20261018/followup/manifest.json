@@ -1,0 +1,39 @@
+{
+  "files": [
+    {
+      "path": "C:\\Users\\tuncb\\.t3\\worktrees\\woby\\t3-02e73cf6\\src\\difference_mesh.cpp",
+      "sha256": "371545eefe3113dc637f8e051a2a4a34928e4fc5f570385cade9235329a9cf84"
+    },
+    {
+      "path": "C:\\Users\\tuncb\\.t3\\worktrees\\woby\\t3-02e73cf6\\tests\\difference_mesh_tests.cpp",
+      "sha256": "1b7c6c078c1190456ba68ea5d07c6025c4c7fd9090d9e17c1fe5b0cd16a372b8"
+    },
+    {
+      "path": "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\woby.exe",
+      "sha256": "4b863298da0be62341f46a351d0af67880463fd86e2690b5b2516e494bf78741"
+    },
+    {
+      "path": "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+      "sha256": "3c0b938c18d1fa4489b5dbb88128dc4c9207fedab5821f1030216e31d2ac292b"
+    },
+    {
+      "path": "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_profile.exe",
+      "sha256": "e2e7d6bdab42d02d048e90edc375fb5c36ac29c719b0c4651fb30c73c042e711"
+    },
+    {
+      "path": "D:\\temp\\GM-data\\test-unit-comparisons.woby",
+      "sha256": "88be51656b2ae68e77210f62a27d0e1e4baae96cfc9da825c0245649b4ab0e78"
+    },
+    {
+      "path": "D:\\temp\\GM-data\\Open-unit-comparisons.cmd",
+      "sha256": "f5c8071273539bd3444befe2ddb73f0db926f78f800ecf4108034bb9a569194e"
+    }
+  ],
+  "notes": [
+    "Final native runs use the final production code. Timings end in rejection, not a completed mesh.",
+    "Profile variants are diagnostic experiments; timings are not clean production benchmarks.",
+    "difference_mesh_contact_witness.cpp is the no-weld plus geometric-contact experiment; difference_mesh_profile.cpp also calls Simplify(). Neither is production code.",
+    "The launcher loads both importers without persistent registration. The scene remains inferred geometry mapping.",
+    "The notched-prism regression failed with the original output conversion and passed after the fix."
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "mapping_basis": "Inferred from geometry; user authorized use without geological-name confirmation",
+  "pairs": [
+    {
+      "a_triangles": 95060,
+      "b_triangles": 5952,
+      "id": 158,
+      "input": "input / Geological Model - Unknown",
+      "plaxis": "plaxis / Soil_8_1"
+    },
+    {
+      "a_triangles": 182890,
+      "b_triangles": 19216,
+      "id": 159,
+      "input": "input / Geological Model - Pdag-Gyarran Volcanics",
+      "plaxis": "plaxis / Soil_7_1"
+    },
+    {
+      "a_triangles": 62226,
+      "b_triangles": 19432,
+      "id": 160,
+      "input": "input / Geological Model - Pgs-Skeletar Formation",
+      "plaxis": "plaxis / Soil_9_1"
+    },
+    {
+      "a_triangles": 99078,
+      "b_triangles": 10192,
+      "id": 161,
+      "input": "input / Geological Model - Pmtb - Branxton Formation__1",
+      "plaxis": "plaxis / Soil_2_1"
+    },
+    {
+      "a_triangles": 44086,
+      "b_triangles": 19752,
+      "id": 162,
+      "input": "input / Geological Model - Pgr5 - Rowan Formation__1",
+      "plaxis": "plaxis / Soil_3_1"
+    },
+    {
+      "a_triangles": 42966,
+      "b_triangles": 15672,
+      "id": 163,
+      "input": "input / Geological Model - Pgr3 - Rowan Formation__1",
+      "plaxis": "plaxis / Soil_5_1"
+    },
+    {
+      "a_triangles": 2034,
+      "b_triangles": 1592,
+      "id": 164,
+      "input": "input / Geological Model - Pgr3 - Rowan Formation__2",
+      "plaxis": "plaxis / Soil_4_1"
+    },
+    {
+      "a_triangles": 96206,
+      "b_triangles": 15872,
+      "id": 165,
+      "input": "input / Geological Model - Pgr1 - Rowan Formation",
+      "plaxis": "plaxis / Soil_6_1"
+    },
+    {
+      "a_triangles": 5480,
+      "b_triangles": 952,
+      "id": 166,
+      "input": "input / Geological Model - Pmtm - Mulbring Siltstone",
+      "plaxis": "plaxis / Soil_1_1"
+    }
+  ],
+  "path": "D:/temp/GM-data/test-unit-approximate.woby"
+}

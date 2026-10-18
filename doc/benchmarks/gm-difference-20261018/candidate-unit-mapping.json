@@ -1,0 +1,155 @@
+[
+  {
+    "input": "Geological Model - Unknown",
+    "plaxis": "Soil_8_1",
+    "input_member": 0,
+    "plaxis_member": 7,
+    "a_triangles": 95060,
+    "b_triangles": 5952,
+    "a_signed_triangle_volume": 204577641.03584433,
+    "b_signed_triangle_volume": 204504685.12860814,
+    "minimum_cell_scene_alignment": 9.347672355621476,
+    "extent": [
+      984.8191856070475,
+      2773.744779843837,
+      224.34413653491544
+    ],
+    "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+  },
+  {
+    "input": "Geological Model - Pdag-Gyarran Volcanics",
+    "plaxis": "Soil_7_1",
+    "input_member": 1,
+    "plaxis_member": 6,
+    "a_triangles": 182890,
+    "b_triangles": 19216,
+    "a_signed_triangle_volume": 1123399549.418985,
+    "b_signed_triangle_volume": 1124053572.0782518,
+    "minimum_cell_scene_alignment": 20.980817718243422,
+    "extent": [
+      3267.5646124837867,
+      5203.242794124369,
+      234.98044117896222
+    ],
+    "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+  },
+  {
+    "input": "Geological Model - Pgs-Skeletar Formation",
+    "plaxis": "Soil_9_1",
+    "input_member": 2,
+    "plaxis_member": 8,
+    "a_triangles": 62226,
+    "b_triangles": 19432,
+    "a_signed_triangle_volume": 549980622.7102381,
+    "b_signed_triangle_volume": 549112047.5869569,
+    "minimum_cell_scene_alignment": 17.373323698122057,
+    "extent": [
+      3267.564612480602,
+      4308.5842771342695,
+      274.3668273644105
+    ],
+    "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+  },
+  {
+    "input": "Geological Model - Pmtb - Branxton Formation__1",
+    "plaxis": "Soil_2_1",
+    "input_member": 3,
+    "plaxis_member": 1,
+    "a_triangles": 99078,
+    "b_triangles": 10192,
+    "a_signed_triangle_volume": 184031008.6509926,
+    "b_signed_triangle_volume": 184239682.9096619,
+    "minimum_cell_scene_alignment": 11.948009111202293,
+    "extent": [
+      2963.1062595781686,
+      2732.911323909804,
+      153.9044013641767
+    ],
+    "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+  },
+  {
+    "input": "Geological Model - Pgr5 - Rowan Formation__1",
+    "plaxis": "Soil_3_1",
+    "input_member": 4,
+    "plaxis_member": 2,
+    "a_triangles": 44086,
+    "b_triangles": 19752,
+    "a_signed_triangle_volume": 190555149.59318453,
+    "b_signed_triangle_volume": 190766592.9920643,
+    "minimum_cell_scene_alignment": 14.795970980536374,
+    "extent": [
+      3267.564612481394,
+      3669.400803173021,
+      205.47110215897283
+    ],
+    "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+  },
+  {
+    "input": "Geological Model - Pgr3 - Rowan Formation__1",
+    "plaxis": "Soil_5_1",
+    "input_member": 5,
+    "plaxis_member": 4,
+    "a_triangles": 42966,
+    "b_triangles": 15672,
+    "a_signed_triangle_volume": 117557233.36328682,
+    "b_signed_triangle_volume": 117398141.3177001,
+    "minimum_cell_scene_alignment": 13.65546557724749,
+    "extent": [
+      3267.5646124815253,
+      3386.5554631573777,
+      152.27216547052114
+    ],
+    "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+  },
+  {
+    "input": "Geological Model - Pgr3 - Rowan Formation__2",
+    "plaxis": "Soil_4_1",
+    "input_member": 6,
+    "plaxis_member": 3,
+    "a_triangles": 2034,
+    "b_triangles": 1592,
+    "a_signed_triangle_volume": 804287.4792694867,
+    "b_signed_triangle_volume": 795098.8613307497,
+    "minimum_cell_scene_alignment": 3.176844191035226,
+    "extent": [
+      787.857359376736,
+      439.5430252933875,
+      57.779549845459826
+    ],
+    "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+  },
+  {
+    "input": "Geological Model - Pgr1 - Rowan Formation",
+    "plaxis": "Soil_6_1",
+    "input_member": 7,
+    "plaxis_member": 5,
+    "a_triangles": 96206,
+    "b_triangles": 15872,
+    "a_signed_triangle_volume": 142418974.9351579,
+    "b_signed_triangle_volume": 142623084.078756,
+    "minimum_cell_scene_alignment": 13.175663759994476,
+    "extent": [
+      3267.56461247863,
+      3100.845730046525,
+      181.43862341136514
+    ],
+    "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+  },
+  {
+    "input": "Geological Model - Pmtm - Mulbring Siltstone",
+    "plaxis": "Soil_1_1",
+    "input_member": 8,
+    "plaxis_member": 0,
+    "a_triangles": 5480,
+    "b_triangles": 952,
+    "a_signed_triangle_volume": 2891051.488527787,
+    "b_signed_triangle_volume": 2882609.5359758227,
+    "minimum_cell_scene_alignment": 2.761137478262587,
+    "extent": [
+      827.0517296853296,
+      331.3364973915104,
+      66.04518143654957
+    ],
+    "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+  }
+]

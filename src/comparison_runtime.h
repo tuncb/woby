@@ -55,25 +55,14 @@ struct ComparisonSourceRuntime {
     uint64_t preparationSignature = 0;
     bool refreshUvQuality = false;
 };
-struct DifferenceResolutionRuntime {
-    std::stop_source stop;
-    std::future<std::array<double, 2>> worker;
-    std::shared_ptr<const DifferenceMesh> base;
-    std::array<double, 2> volumes{};
-    double cellSize = 0;
-    uint64_t consumedRequest = 0, workerRequest = 0;
-    std::string phase = "idle", error;
-};
 struct DifferenceRuntime {
     std::stop_source stop;
     std::future<std::shared_ptr<const DifferenceMesh>> worker;
     std::shared_ptr<const DifferenceMesh> result;
-    std::array<ComparisonGpuSurface, 3> gpu;
+    std::array<ComparisonGpuSurface, 2> gpu;
     uint64_t signature = 0, workerSignature = 0, consumedRequest = 0, workerRequest = 0;
     std::string phase = "not_created", error;
     bool uploaded = false, initialized = false;
-    DifferenceSettings workerSettings;
-    DifferenceResolutionRuntime resolution;
     std::future<std::string> exportWorker;
     std::string exportPath, exportState = "idle", exportError;
 };

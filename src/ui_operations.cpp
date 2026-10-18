@@ -493,7 +493,6 @@ SceneObjectId duplicateComparison(UiState& state, SceneObjectId id)
     copy.intersectionRequestRevision = 0; copy.cancelIntersections = false;
     copy.detectorRequests = {};
     copy.differenceRequest = {};
-    copy.differenceResolutionRequest = {};
     copy.objectId = invalidSceneObjectId;
     copy.name += " copy";
     const auto sourceBounds = comparisonDisplayBounds(state, id);
@@ -895,19 +894,6 @@ void requestDifferenceMesh(UiState& state, SceneObjectId id, bool cancel)
         setComparisonSettings(state, settings, id);
     }
     item = findComparison(state, id); ++item->differenceRequest.revision; item->differenceRequest.cancel = cancel;
-    ++item->differenceResolutionRequest.revision;
-    item->differenceResolutionRequest.cancel = true;
-}
-
-void requestDifferenceResolutionCheck(UiState& state, SceneObjectId id, bool cancel)
-{
-    auto* item = findComparison(state, id);
-    if (!item || isUvAnalysis(item->settings.type) || (!cancel && (!item->settings.difference.created ||
-        item->settings.difference.method != DifferenceMethod::approximate))) {
-        throw std::invalid_argument("Resolution checks require an approximate difference volume.");
-    }
-    ++item->differenceResolutionRequest.revision;
-    item->differenceResolutionRequest.cancel = cancel;
 }
 
 void requestComparisonDetector(UiState& state, SceneObjectId id, DiagnosticCategory category, bool cancel)

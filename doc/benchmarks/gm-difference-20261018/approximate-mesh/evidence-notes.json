@@ -1,0 +1,25 @@
+{
+  "purpose": "Fast approximate Boolean mesh for geometrically matched input/PLAXIS units. No repair or new dependency.",
+  "method": "approximate_mesh",
+  "unit_mapping_b_to_a": [
+    7,
+    6,
+    8,
+    1,
+    2,
+    4,
+    3,
+    5,
+    0
+  ],
+  "mapping_note": "Values are zero-based B indexes in A order. Geological identities are inferred, not confirmed.",
+  "probe_build": "Link tolerant_probe.cpp to woby_core, nlohmann_json, spdlog, and Manifold in a Release vs2026-vcpkg build.",
+  "timing_scope": "buildDifferenceMesh including input reading, Boolean computation, topology checks, and output publication; excludes scene load and comparison input assembly.",
+  "tolerant-pairs.jsonl": "Earlier isolated prototype, before the production checks and publication. Not the final application timing.",
+  "rebase-sweep-summaries": "Exact intersection scans and rejected simplification experiments. Invalid experimental volumes are not valid measurement results.",
+  "penetration-depths.json": "Pairwise plane-penetration heuristic only; not proof of a globally valid mesh or an error bound.",
+  "synthetic-blocker.json": "Two rotated 3x4x5 boxes offset 0.1 along local x; expected A-only and B-only volumes are 2 each.",
+  "scene": "D:/temp/GM-data/test-unit-approximate.woby",
+  "launcher": "D:/temp/GM-data/Open-unit-approximate.cmd",
+  "original_scene_sha256": "2bdbfd97611a65a4ac2da3e4a1e3357c33b067c82d06967e4da1090170658d41"
+}

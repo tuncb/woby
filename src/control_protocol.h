@@ -24,7 +24,7 @@ enum class ControlAction {
     comparisonUvTriangles, comparisonUvProbe, comparisonUvProbeGet, comparisonUvProbeClear,
     annotationList, annotationGet, annotationCreate, annotationSet, annotationReshape, annotationMove, annotationDelete,
     differenceCreate, differenceGet, differenceSet, differenceRebuild, differenceCancel, differenceExport,
-    differenceCheckResolution, differenceCancelCheck, differenceDelete,
+    differenceDelete,
 };
 
 // Validated, owned command data. No scene pointers or runtime resources cross threads.
@@ -81,9 +81,7 @@ struct ControlOperation {
     std::optional<bool> locked;
     std::optional<std::array<float, 2>> start, end, delta;
     std::optional<float> aspect, opacity;
-    std::optional<bool> showAOnly, showBOnly, showWalls;
-    std::optional<std::string> method;
-    std::optional<double> cellSize;
+    std::optional<bool> showAOnly, showBOnly;
     std::optional<std::array<float, 3>> planeStart, planeEnd;
     std::optional<std::string> sectionUpAxis;
     std::optional<float> lift;
