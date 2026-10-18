@@ -70,12 +70,13 @@ inline constexpr std::array<const char*, 6> comparisonColorRangeKeys = {"custom"
 inline constexpr std::array<const char*, 6> comparisonColorRangeLabels = {
     "Custom", "90% of maximum", "95% of maximum", "97.5% of maximum", "99% of maximum", "100% of maximum"};
 
-enum class AnalysisType { mesh, uv, uvQuality, surfaceComparison };
+enum class AnalysisType { mesh, uv, uvQuality, surfaceComparison, differenceMesh };
 // Automatic preserves the behavior of scenes and API clients predating task selection.
-enum class AnalysisTask { automatic, meshChecks, meshQuality, surfaceComparison, uvInspection };
+enum class AnalysisTask { automatic, meshChecks, meshQuality, surfaceComparison, uvInspection, differenceMesh };
 [[nodiscard]] inline bool isUvAnalysis(AnalysisType type) { return type == AnalysisType::uv || type == AnalysisType::uvQuality; }
+[[nodiscard]] inline bool isTwoInputAnalysisTask(AnalysisTask task) { return task == AnalysisTask::surfaceComparison || task == AnalysisTask::differenceMesh; }
 [[nodiscard]] inline bool isSingleSourceMeshTask(AnalysisTask task) { return task == AnalysisTask::meshChecks || task == AnalysisTask::meshQuality; }
-[[nodiscard]] inline const char* analysisTypeKey(AnalysisType type) { return type == AnalysisType::surfaceComparison ? "surface_comparison" : type == AnalysisType::uvQuality ? "uv_quality" : type == AnalysisType::uv ? "uv" : "mesh"; }
+[[nodiscard]] inline const char* analysisTypeKey(AnalysisType type) { return type == AnalysisType::differenceMesh ? "difference_mesh" : type == AnalysisType::surfaceComparison ? "surface_comparison" : type == AnalysisType::uvQuality ? "uv_quality" : type == AnalysisType::uv ? "uv" : "mesh"; }
 enum class UvQualityMetric { angle, area, orientation, anisotropy, minStretch, overlap };
 enum class UvAreaNormalization { perPatch, absolute };
 enum class UvOverlapScope { perPatch, selectedPatches };

@@ -284,26 +284,20 @@ void submitSceneScreenshotCapture(
             const auto a = comparisonInputSummary(ui, ComparisonSide::a, item.objectId);
             const auto b = comparisonInputSummary(ui, ComparisonSide::b, item.objectId);
             const auto settings = effectiveComparisonSettings(ui, item.objectId);
-            if (settings.difference.visible) {
+            if (settings.type == AnalysisType::differenceMesh) {
+                if (!settings.difference.created) { line(item.name + ": Difference mesh not built."); continue; }
                 const auto& result = *comparison->objects.at(item.objectId).difference.result;
                 if (options.comparisonName) { line(item.name); }
                 if (options.sources) { line("A: " + a.sourceNames); line("B: " + b.sourceNames); }
-                line(result.constructed ? "Constructed gap volume" : "Difference mesh");
+                line("Approximate difference mesh");
                 if (options.legend) {
                     line(result.message);
-                    line("Volumes in model units cubed");
-                    if (result.constructed) {
-                        line(std::string("Blue: gap surfaces") + (settings.difference.showA ? "" : " (hidden)"));
-                        line(std::string("Gold: generated closure walls") + (settings.difference.showWalls ? "" : " (hidden)"));
-                        line("Constructed gap: " + measurementNumber(result.volumes[0]));
-                        line("Closure triangles: " + std::to_string(result.closureTriangles));
-                    } else {
-                        line(std::string("Blue: A only") + (settings.difference.showA ? "" : " (hidden)") + ": " + measurementNumber(result.volumes[0]));
-                        line(std::string("Orange: B only") + (settings.difference.showB ? "" : " (hidden)") + ": " + measurementNumber(result.volumes[1]));
-                        line("Total changed: " + measurementNumber(result.volumes[0] + result.volumes[1]));
-                        line("Net change: " + measurementNumber(result.volumes[1] - result.volumes[0]));
-                    }
-                    line("Full geometry; heatmap color limits and acceptance tolerance do not change the volume.");
+                    line("Estimated volumes in model units cubed");
+                    line(std::string("Blue: A only") + (settings.difference.showA ? "" : " (hidden)") + ": " + measurementNumber(result.volumes[0]));
+                    line(std::string("Orange: B only") + (settings.difference.showB ? "" : " (hidden)") + ": " + measurementNumber(result.volumes[1]));
+                    line("Total changed: " + measurementNumber(result.volumes[0] + result.volumes[1]));
+                    line("Net change: " + measurementNumber(result.volumes[1] - result.volumes[0]));
+                    line("Compares the full geometry of inputs A and B.");
                 }
                 continue;
             }

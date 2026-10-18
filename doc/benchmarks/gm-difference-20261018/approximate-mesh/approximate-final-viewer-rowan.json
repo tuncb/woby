@@ -1,0 +1,43 @@
+{
+  "commandId": "cmd-e5f3a36086780f70c3dbd9d6b3456d1e-2",
+  "difference": {
+    "closureTriangles": 0,
+    "current": true,
+    "error": "",
+    "exportError": "",
+    "exportState": "idle",
+    "kind": "approximate_mesh",
+    "message": "Approximate mesh. Surface intersections are accepted without an exact check. Volumes are estimates and assume valid closed solids. Source meshes are unchanged.",
+    "method": "approximate_mesh",
+    "netVolume": -9188.617939311658,
+    "removedCollapsedTriangles": {
+      "a": 0,
+      "b": 0
+    },
+    "resolutionCheck": {
+      "state": "idle"
+    },
+    "settings": {
+      "cellSize": 0.5,
+      "created": true,
+      "method": "approximate_mesh",
+      "opacity": 0.8500000238418579,
+      "showAOnly": true,
+      "showBOnly": true,
+      "showWalls": true,
+      "visible": true
+    },
+    "state": "ready",
+    "totalVolume": 38470.780382950164,
+    "triangles": [
+      7038,
+      5852,
+      0
+    ],
+    "volumeA": 23829.699161130913,
+    "volumeB": 14641.081221819255
+  },
+  "instance": "gm-approx-final",
+  "sequence": "2",
+  "state": "succeeded"
+}

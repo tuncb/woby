@@ -612,10 +612,8 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
 {
     if (!std::isfinite(settings.difference.opacity)) { settings.difference.opacity = .85f; }
     settings.difference.opacity = std::clamp(settings.difference.opacity, .05f, 1.0f);
-    if (settings.difference.method != DifferenceMethod::approximate) { settings.difference.method = DifferenceMethod::direct; }
-    if (!std::isfinite(settings.difference.cellSize) || settings.difference.cellSize <= 0) { settings.difference.cellSize = .5; }
     if (settings.type != AnalysisType::mesh && settings.type != AnalysisType::uv && settings.type != AnalysisType::uvQuality
-        && settings.type != AnalysisType::surfaceComparison) { settings.type = AnalysisType::mesh; }
+        && settings.type != AnalysisType::surfaceComparison && settings.type != AnalysisType::differenceMesh) { settings.type = AnalysisType::mesh; }
     if (settings.uvView != UvView::layout && settings.uvView != UvView::surface) { settings.uvView = UvView::layout; }
     settings.uvGrid = normalizedUvGrid(settings.uvGrid);
     if (settings.uvMetric < UvQualityMetric::angle || settings.uvMetric > UvQualityMetric::overlap) { settings.uvMetric = UvQualityMetric::angle; }
@@ -660,6 +658,16 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     }
     settings.intersections.limits.pairs = std::min(settings.intersections.limits.pairs, size_t{2147483647});
     settings.intersections.limits.candidateTests = std::min(settings.intersections.limits.candidateTests, size_t{2147483647});
+    if (settings.type == AnalysisType::differenceMesh) {
+        settings.task = AnalysisTask::differenceMesh;
+        settings.mode = ComparisonMode::original;
+        settings.distanceOnOriginal = false; // Align B to A when origin alignment is enabled.
+        for (size_t i = 0; i < diagnosticCategoryCount; ++i) {
+            setDiagnosticAutoUpdate(settings, static_cast<DiagnosticCategory>(i), false);
+        }
+        return settings;
+    }
+    settings.difference = {};
     if (isUvAnalysis(settings.type)) { settings.mode = ComparisonMode::original; }
     if (settings.task < AnalysisTask::automatic || settings.task > AnalysisTask::uvInspection) {
         settings.task = AnalysisTask::automatic;
@@ -1010,6 +1018,7 @@ uint32_t nextComparisonStage(uint32_t missing)
 
 uint32_t requestedComparisonStages(const ComparisonSettings& settings, bool bothInputs, bool fullResults)
 {
+    if (settings.type == AnalysisType::differenceMesh) { return 0; }
     if (isUvAnalysis(settings.type)) { return comparisonSource; }
     uint32_t stages = comparisonSource;
     for (size_t i = 0; i < diagnosticCategoryCount; ++i) {

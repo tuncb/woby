@@ -58,6 +58,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
         comparison.uvFindingFocus.reset();
         comparison.intersectionRequestRevision = 0; comparison.cancelIntersections = false;
         comparison.detectorRequests = {};
+        comparison.differenceRequest = {};
     }
     content.sceneNodes = state.sceneNodes;
     for (const auto& file : state.files) {

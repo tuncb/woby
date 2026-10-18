@@ -158,12 +158,12 @@ arrival time. Dependent scripts should wait for each response before submitting 
 next command. The runtime leaves HTTP workers available for discovery while scene
 requests wait.
 
-Difference create, rebuild, resolution check, and export commands start in admission
+Difference create, rebuild, and export commands start in admission
 order, then run in the background. Their CLI calls wait for completion. Other calls
 can get status, cancel work, or change the scene during that wait. A source change,
-new build, cancellation, or scene replacement makes obsolete build/check commands
+new build, cancellation, or scene replacement makes obsolete build commands
 fail. Their results cannot replace the current result. Use
-`analysis.difference-cancel-check` to stop a check and keep the base result.
+`analysis.difference-cancel` to stop publication of a build.
 
 HTTP handlers only validate and enqueue commands. Scene commands, UI input, and load
 commits execute on the main thread. Query results own their data, and object IDs are

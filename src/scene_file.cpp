@@ -511,13 +511,14 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         const auto task = parseTomlString(value);
         bool found = false;
         for (const auto candidate : {AnalysisTask::automatic, AnalysisTask::meshChecks, AnalysisTask::meshQuality,
-                AnalysisTask::surfaceComparison, AnalysisTask::uvInspection}) {
+                AnalysisTask::surfaceComparison, AnalysisTask::uvInspection, AnalysisTask::differenceMesh}) {
             if (task == analysisTaskKey(candidate)) { record.settings.task = candidate; found = true; break; }
         }
         if (!found) { throw std::runtime_error("Unknown analysis task."); }
     } else if (key == "analysis_type") {
         const auto type = parseTomlString(value);
         if (type == "mesh") { record.settings.type = AnalysisType::mesh; }
+        else if (type == "difference_mesh") { record.settings.type = AnalysisType::differenceMesh; }
         else if (type == "surface_comparison") { record.settings.type = AnalysisType::surfaceComparison; }
         else if (type == "uv") { record.settings.type = AnalysisType::uv; }
         else if (type == "uv_quality") { record.settings.type = AnalysisType::uvQuality; }
@@ -628,13 +629,9 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
     } else if (key == "quality_maximum_size") {
         record.settings.quality.maximumSize = parseTomlFloat(value);
     } else if (key == "difference_created") { record.settings.difference.created = parseTomlBool(value);
-    } else if (key == "difference_visible") { record.settings.difference.visible = parseTomlBool(value);
     } else if (key == "difference_show_a") { record.settings.difference.showA = parseTomlBool(value);
     } else if (key == "difference_show_b") { record.settings.difference.showB = parseTomlBool(value);
-    } else if (key == "difference_show_walls") { record.settings.difference.showWalls = parseTomlBool(value);
     } else if (key == "difference_opacity") { record.settings.difference.opacity = parseTomlFloat(value);
-    } else if (key == "difference_method") { record.settings.difference.method = parseDifferenceMethod(parseTomlString(value));
-    } else if (key == "difference_cell_size") { record.settings.difference.cellSize = parseTomlFloat<double>(value);
     } else if (key == "analysis_color_range") {
         record.settings.colorRange = parseTomlFloat(value);
     } else if (key == "analysis_color_minimum") {
@@ -708,14 +705,12 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "diagnostic_category = \"" << category << "\"\n";
     stream << "analysis_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
     stream << "analysis_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
-    stream << "difference_created = " << (comparison.difference.created ? "true" : "false") << "\n";
-    stream << "difference_visible = " << (comparison.difference.visible ? "true" : "false") << "\n";
-    stream << "difference_show_a = " << (comparison.difference.showA ? "true" : "false") << "\n";
-    stream << "difference_show_b = " << (comparison.difference.showB ? "true" : "false") << "\n";
-    stream << "difference_show_walls = " << (comparison.difference.showWalls ? "true" : "false") << "\n";
-    stream << "difference_opacity = "; writeTomlFloat(stream, comparison.difference.opacity); stream << "\n";
-    stream << "difference_method = \"" << differenceMethodName(comparison.difference.method) << "\"\n";
-    stream << "difference_cell_size = "; writeTomlFloat(stream, comparison.difference.cellSize); stream << "\n";
+    if (comparison.type == AnalysisType::differenceMesh) {
+        stream << "difference_created = " << (comparison.difference.created ? "true" : "false") << "\n";
+        stream << "difference_show_a = " << (comparison.difference.showA ? "true" : "false") << "\n";
+        stream << "difference_show_b = " << (comparison.difference.showB ? "true" : "false") << "\n";
+        stream << "difference_opacity = "; writeTomlFloat(stream, comparison.difference.opacity); stream << "\n";
+    }
     stream << "analysis_color_minimum = "; writeTomlFloat(stream, comparison.colorMinimum); stream << "\n";
     stream << "analysis_color_range_mode = \"" << comparisonColorRangeKeys[static_cast<size_t>(comparison.colorRangeMode)] << "\"\n";
     stream << "analysis_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";
@@ -1159,7 +1154,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     object.settings.diagnosticIndex = static_cast<size_t>(index);
                 }
                 else if (key == "selection_order") { object.settings.selectionOrder = parseTomlInteger(value); }
-                else if (key.starts_with("analysis_") || key.starts_with("quality_") || key == "topology_mode"
+                else if (key.starts_with("analysis_") || key.starts_with("difference_") || key.starts_with("quality_") || key == "topology_mode"
                     || key.starts_with("duplicate_") || key.starts_with("show_duplicate_")
                     || key == "degenerate_triangles_enabled" || key == "show_degenerate_triangles"
                     || key == "needle_threshold_ratio" || key == "cap_min_angle_degrees"

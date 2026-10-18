@@ -1,0 +1,8 @@
+foreach(target IN ITEMS gm_difference_probe gm_difference_profile)
+    add_executable(${target} "${CMAKE_CURRENT_LIST_DIR}/main.cpp")
+    target_link_libraries(${target} PRIVATE woby_core nlohmann_json::nlohmann_json spdlog::spdlog manifold::manifold)
+    target_compile_options(${target} PRIVATE /W4 /WX /Zi /Zo)
+    target_link_options(${target} PRIVATE /DEBUG:FULL /INCREMENTAL:NO)
+    set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+endforeach()
+target_sources(gm_difference_profile PRIVATE "${CMAKE_CURRENT_LIST_DIR}/difference_mesh_profile.cpp")

@@ -1,0 +1,38 @@
+{
+  "method": "approximate_mesh",
+  "git_head": "679ca030ebc3239aaf5afaf493b6f9181256c0f5",
+  "working_tree_changes": true,
+  "configuration": "Release, Visual Studio 2026, vs2026-vcpkg",
+  "manifold_version": "3.5.2",
+  "license": "Apache-2.0",
+  "timing_run": "No other build, viewer, or test launched by this task ran during this capture. File load and input assembly are excluded.",
+  "seconds_total": 16.9890027,
+  "seconds_min": 0.1366317,
+  "seconds_max": 3.9742825,
+  "files": {
+    "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\woby.exe": {
+      "bytes": 5537280,
+      "sha256": "b1e6874c88447d68df397a58ef6b221d8fe18dfa09007194389bba21bb2fb8af"
+    },
+    "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_tolerant_probe.exe": {
+      "bytes": 1533952,
+      "sha256": "013cb03641da18fa13118e142c2ca2760f0bd32c3b7a723af491414341d5837a"
+    },
+    "src\\difference_mesh.cpp": {
+      "bytes": 35798,
+      "sha256": "0be265fce71b70a7e44a072c9727aad476beebd64c7703e08ab9278913870b9b"
+    },
+    "tests\\difference_mesh_tests.cpp": {
+      "bytes": 51229,
+      "sha256": "2616943555fecaa5afaedde085125f3ca6ae6b66b371cdacea94cec75018adba"
+    },
+    "D:\\temp\\GM-data\\test.woby": {
+      "bytes": 102673,
+      "sha256": "2bdbfd97611a65a4ac2da3e4a1e3357c33b067c82d06967e4da1090170658d41"
+    },
+    "D:\\temp\\GM-data\\test-unit-approximate.woby": {
+      "bytes": 123388,
+      "sha256": "c7ce184cbe6dbb12c92c00b3d4a5936ffdda0a33b3910983d999937e1b396f27"
+    }
+  }
+}

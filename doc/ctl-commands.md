@@ -207,7 +207,7 @@ Manual run/cancel requests do not change these saved preferences.
 
 | CLI | RPC method | Behavior |
 | --- | --- | --- |
-| `analysis create [--type mesh|surface_comparison|uv|uv_quality] [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `analysis.create` | Create an analysis, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
+| `analysis create [--type mesh|surface_comparison|difference_mesh|uv|uv_quality] [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `analysis.create` | Create an analysis, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
 | `analysis delete ANALYSIS_ID` | `analysis.delete` | Delete the analysis without deleting its source models. Returns `removed` and `dirty`. |
 | `analysis set ANALYSIS_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-minimum N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL] [--show-winding BOOL] [--topology-mode original_index\|exact_position]` | `analysis.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
 | `analysis add ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.add` | Add the input's current triangular parts to the selected side, deduplicating existing membership. |
@@ -1122,35 +1122,36 @@ other topology detectors remain usable.
 
 ### Difference volumes
 
-Use the same commands for triangle comparisons and parametric-versus-triangle
-comparisons. Parametric inputs use their tessellation. Approximate construction
-accepts defects in models that represent solids, with reasonably consistent face
-orientation. See [Difference mesh](difference-mesh.md) for assumptions and limits.
+Create an independent analysis with `analysis create --type difference_mesh`.
+The returned `target` is `ANALYSIS_ID`. Assign inputs with `--a` and `--b`, or add
+them later. Creation with both inputs starts the build. Difference commands
+require this type; they do not operate on Surface comparison analyses.
+
+Use the same commands for triangle and parametric-versus-triangle comparisons.
+Parametric inputs use their current tessellation. The approximate calculation
+requires closed, consistently oriented input topology. It accepts surface
+intersections without exact checks and reports estimated volumes.
+See [Difference mesh](difference-mesh.md) for assumptions and limits.
 
 ```text
-woby ctl --instance review analysis difference-create ANALYSIS_ID --method approximate --cell-size 0.1 --json
-woby ctl --instance review analysis difference-rebuild ANALYSIS_ID --cell-size 0.05 --json
-woby ctl --instance review analysis difference-check-resolution ANALYSIS_ID --json
+woby ctl --instance review analysis create --type difference_mesh --a A_ID --b B_ID --alignment scene --lock-placement false --json
+woby ctl --instance review analysis difference-create ANALYSIS_ID --json
+woby ctl --instance review analysis difference-rebuild ANALYSIS_ID --json
 woby ctl --instance review analysis difference-get ANALYSIS_ID --json
-woby ctl --instance review analysis difference-cancel-check ANALYSIS_ID --json
+woby ctl --instance review analysis difference-cancel ANALYSIS_ID --json
+woby ctl --instance review analysis difference-export ANALYSIS_ID --path C:/output/difference.obj --json
 ```
 
-Create and rebuild accept `--method direct|approximate` and `--cell-size VALUE`.
-`difference-set` accepts these settings without starting work. It also accepts
-`--visible`, `--show-a-only`, `--show-b-only`, `--show-walls`, and `--opacity`.
-`difference-cancel` stops a build and any check. `difference-delete` removes the
-result. `camera frame --object ANALYSIS_ID` frames the comparison.
+`difference-set` accepts `--visible`, `--show-a-only`, `--show-b-only`, and
+`--opacity`. Visibility controls the analysis eye. These settings do not change measurements. `difference-cancel` stops
+publication of a build. `difference-delete` clears the result; `analysis delete`
+removes the analysis. `analysis results` reports the difference status.
+`camera frame --object ANALYSIS_ID` frames the comparison.
 
-A resolution check requires a current approximate result. It runs at half the
-cell size and keeps the base result. The returned `difference.resolutionCheck`
-contains the check state, cell sizes, volumes, `totalVolumeChange`, and
-`relativeChangePercent` (null when the base total is zero). This measures sensitivity
-to resolution. It is not an error bound.
-
-Build and check calls wait for their jobs. Use another call to get status or cancel.
-The standard timeout and retry-key options apply. RPC names have the prefix
-`analysis.`, for example `analysis.difference-check-resolution`; their `target`
-is the analysis ID. RPC construction options are `method` and `cellSize`.
+Build and export calls wait for their jobs. Use another call to get status or
+cancel. The standard timeout and retry-key options apply. RPC names have the
+prefix `analysis.`, for example `analysis.difference-create`; their `target` is the
+analysis ID. There are no method or resolution settings.
 
 ### Coordinate origins
 

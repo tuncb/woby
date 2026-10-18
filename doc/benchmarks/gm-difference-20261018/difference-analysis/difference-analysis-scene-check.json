@@ -1,0 +1,340 @@
+{
+  "scene": "D:\\temp\\GM-data\\test-unit-approximate.woby",
+  "executable": "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\woby.exe",
+  "executable_sha256": "c89959fba83a95fcddf571755d4e90728a41053c2f5093e3a6f8ad20f045d927",
+  "analyses": 9,
+  "verified": [
+    {
+      "object": {
+        "id": "obj-1ac373eae068ec4fc163561ea751b85b-000000000000009d",
+        "kind": "analysis",
+        "name": "input / Geological Model - Unknown / plaxis / Soil_8_1 [geometric match]"
+      },
+      "difference": {
+        "current": true,
+        "error": "",
+        "exportError": "",
+        "exportState": "idle",
+        "kind": "approximate_mesh",
+        "message": "Approximate mesh. Surface intersections are accepted without an exact check. Volumes are estimates and assume valid closed solids. Source meshes are unchanged.",
+        "netVolume": -72955.90721839166,
+        "removedCollapsedTriangles": {
+          "a": 0,
+          "b": 0
+        },
+        "settings": {
+          "created": true,
+          "opacity": 0.8500000238418579,
+          "showAOnly": true,
+          "showBOnly": true,
+          "visible": true
+        },
+        "state": "ready",
+        "totalVolume": 948226.8468782438,
+        "triangles": [
+          97462,
+          90924
+        ],
+        "volumeA": 510591.37704831775,
+        "volumeB": 437635.4698299261
+      },
+      "command_seconds": 1.875
+    },
+    {
+      "object": {
+        "id": "obj-1ac373eae068ec4fc163561ea751b85b-000000000000009e",
+        "kind": "analysis",
+        "name": "input / Geological Model - Pdag-Gyarran Volcanics / plaxis / Soil_7_1 [geometric match]"
+      },
+      "difference": {
+        "current": true,
+        "error": "",
+        "exportError": "",
+        "exportState": "idle",
+        "kind": "approximate_mesh",
+        "message": "Approximate mesh. Surface intersections are accepted without an exact check. Volumes are estimates and assume valid closed solids. Source meshes are unchanged.",
+        "netVolume": 654022.6594254072,
+        "removedCollapsedTriangles": {
+          "a": 0,
+          "b": 0
+        },
+        "settings": {
+          "created": true,
+          "opacity": 0.8500000238418579,
+          "showAOnly": true,
+          "showBOnly": true,
+          "visible": true
+        },
+        "state": "ready",
+        "totalVolume": 2769677.2139675906,
+        "triangles": [
+          199908,
+          199514
+        ],
+        "volumeA": 1057827.2772710917,
+        "volumeB": 1711849.936696499
+      },
+      "command_seconds": 4.125
+    },
+    {
+      "object": {
+        "id": "obj-1ac373eae068ec4fc163561ea751b85b-000000000000009f",
+        "kind": "analysis",
+        "name": "input / Geological Model - Pgs-Skeletar Formation / plaxis / Soil_9_1 [geometric match]"
+      },
+      "difference": {
+        "current": true,
+        "error": "",
+        "exportError": "",
+        "exportState": "idle",
+        "kind": "approximate_mesh",
+        "message": "Approximate mesh. Surface intersections are accepted without an exact check. Volumes are estimates and assume valid closed solids. Source meshes are unchanged.",
+        "netVolume": -868575.1232584636,
+        "removedCollapsedTriangles": {
+          "a": 0,
+          "b": 0
+        },
+        "settings": {
+          "created": true,
+          "opacity": 0.8500000238418579,
+          "showAOnly": true,
+          "showBOnly": true,
+          "visible": true
+        },
+        "state": "ready",
+        "totalVolume": 2677099.32898619,
+        "triangles": [
+          102696,
+          93966
+        ],
+        "volumeA": 1772837.2261223267,
+        "volumeB": 904262.1028638631
+      },
+      "command_seconds": 2.2809999999990396
+    },
+    {
+      "object": {
+        "id": "obj-1ac373eae068ec4fc163561ea751b85b-00000000000000a0",
+        "kind": "analysis",
+        "name": "input / Geological Model - Pmtb - Branxton Formation__1 / plaxis / Soil_2_1 [geometric match]"
+      },
+      "difference": {
+        "current": true,
+        "error": "",
+        "exportError": "",
+        "exportState": "idle",
+        "kind": "approximate_mesh",
+        "message": "Approximate mesh. Surface intersections are accepted without an exact check. Volumes are estimates and assume valid closed solids. Source meshes are unchanged.",
+        "netVolume": 208674.2587029183,
+        "removedCollapsedTriangles": {
+          "a": 0,
+          "b": 0
+        },
+        "settings": {
+          "created": true,
+          "opacity": 0.8500000238418579,
+          "showAOnly": true,
+          "showBOnly": true,
+          "visible": true
+        },
+        "state": "ready",
+        "totalVolume": 1273945.2723319083,
+        "triangles": [
+          108196,
+          106728
+        ],
+        "volumeA": 532635.5068144951,
+        "volumeB": 741309.7655174134
+      },
+      "command_seconds": 2.4690000000009604
+    },
+    {
+      "object": {
+        "id": "obj-1ac373eae068ec4fc163561ea751b85b-00000000000000a1",
+        "kind": "analysis",
+        "name": "input / Geological Model - Pgr5 - Rowan Formation__1 / plaxis / Soil_3_1 [geometric match]"
+      },
+      "difference": {
+        "current": true,
+        "error": "",
+        "exportError": "",
+        "exportState": "idle",
+        "kind": "approximate_mesh",
+        "message": "Approximate mesh. Surface intersections are accepted without an exact check. Volumes are estimates and assume valid closed solids. Source meshes are unchanged.",
+        "netVolume": 211443.39889318182,
+        "removedCollapsedTriangles": {
+          "a": 0,
+          "b": 0
+        },
+        "settings": {
+          "created": true,
+          "opacity": 0.8500000238418579,
+          "showAOnly": true,
+          "showBOnly": true,
+          "visible": true
+        },
+        "state": "ready",
+        "totalVolume": 2151710.090288805,
+        "triangles": [
+          83794,
+          67896
+        ],
+        "volumeA": 970133.3456978115,
+        "volumeB": 1181576.7445909933
+      },
+      "command_seconds": 2.0939999999973224
+    },
+    {
+      "object": {
+        "id": "obj-1ac373eae068ec4fc163561ea751b85b-00000000000000a2",
+        "kind": "analysis",
+        "name": "input / Geological Model - Pgr3 - Rowan Formation__1 / plaxis / Soil_5_1 [geometric match]"
+      },
+      "difference": {
+        "current": true,
+        "error": "",
+        "exportError": "",
+        "exportState": "idle",
+        "kind": "approximate_mesh",
+        "message": "Approximate mesh. Surface intersections are accepted without an exact check. Volumes are estimates and assume valid closed solids. Source meshes are unchanged.",
+        "netVolume": -159092.04557439627,
+        "removedCollapsedTriangles": {
+          "a": 0,
+          "b": 0
+        },
+        "settings": {
+          "created": true,
+          "opacity": 0.8500000238418579,
+          "showAOnly": true,
+          "showBOnly": true,
+          "visible": true
+        },
+        "state": "ready",
+        "totalVolume": 1620999.5563372076,
+        "triangles": [
+          80844,
+          61190
+        ],
+        "volumeA": 890045.800955802,
+        "volumeB": 730953.7553814057
+      },
+      "command_seconds": 2.062000000001717
+    },
+    {
+      "object": {
+        "id": "obj-1ac373eae068ec4fc163561ea751b85b-00000000000000a3",
+        "kind": "analysis",
+        "name": "input / Geological Model - Pgr3 - Rowan Formation__2 / plaxis / Soil_4_1 [geometric match]"
+      },
+      "difference": {
+        "current": true,
+        "error": "",
+        "exportError": "",
+        "exportState": "idle",
+        "kind": "approximate_mesh",
+        "message": "Approximate mesh. Surface intersections are accepted without an exact check. Volumes are estimates and assume valid closed solids. Source meshes are unchanged.",
+        "netVolume": -9188.617939311658,
+        "removedCollapsedTriangles": {
+          "a": 0,
+          "b": 0
+        },
+        "settings": {
+          "created": true,
+          "opacity": 0.8500000238418579,
+          "showAOnly": true,
+          "showBOnly": true,
+          "visible": true
+        },
+        "state": "ready",
+        "totalVolume": 38470.780382950164,
+        "triangles": [
+          7038,
+          5852
+        ],
+        "volumeA": 23829.699161130913,
+        "volumeB": 14641.081221819255
+      },
+      "command_seconds": 0.28100000000267755
+    },
+    {
+      "object": {
+        "id": "obj-1ac373eae068ec4fc163561ea751b85b-00000000000000a4",
+        "kind": "analysis",
+        "name": "input / Geological Model - Pgr1 - Rowan Formation / plaxis / Soil_6_1 [geometric match]"
+      },
+      "difference": {
+        "current": true,
+        "error": "",
+        "exportError": "",
+        "exportState": "idle",
+        "kind": "approximate_mesh",
+        "message": "Approximate mesh. Surface intersections are accepted without an exact check. Volumes are estimates and assume valid closed solids. Source meshes are unchanged.",
+        "netVolume": 204109.1436129564,
+        "removedCollapsedTriangles": {
+          "a": 0,
+          "b": 0
+        },
+        "settings": {
+          "created": true,
+          "opacity": 0.8500000238418579,
+          "showAOnly": true,
+          "showBOnly": true,
+          "visible": true
+        },
+        "state": "ready",
+        "totalVolume": 1935589.684919119,
+        "triangles": [
+          136636,
+          109970
+        ],
+        "volumeA": 865740.2706530814,
+        "volumeB": 1069849.4142660378
+      },
+      "command_seconds": 3.139999999999418
+    },
+    {
+      "object": {
+        "id": "obj-1ac373eae068ec4fc163561ea751b85b-00000000000000a5",
+        "kind": "analysis",
+        "name": "input / Geological Model - Pmtm - Mulbring Siltstone / plaxis / Soil_1_1 [geometric match]"
+      },
+      "difference": {
+        "current": true,
+        "error": "",
+        "exportError": "",
+        "exportState": "idle",
+        "kind": "approximate_mesh",
+        "message": "Approximate mesh. Surface intersections are accepted without an exact check. Volumes are estimates and assume valid closed solids. Source meshes are unchanged.",
+        "netVolume": -8441.95255243143,
+        "removedCollapsedTriangles": {
+          "a": 0,
+          "b": 0
+        },
+        "settings": {
+          "created": true,
+          "opacity": 0.8500000238418579,
+          "showAOnly": true,
+          "showBOnly": true,
+          "visible": true
+        },
+        "state": "ready",
+        "totalVolume": 21210.26275742024,
+        "triangles": [
+          8650,
+          7202
+        ],
+        "volumeA": 14826.107654925836,
+        "volumeB": 6384.155102494405
+      },
+      "command_seconds": 0.3440000000009604
+    }
+  ],
+  "screenshot": {
+    "commandId": "cmd-6260c48c0577101d322287f46eb4666e-56",
+    "instance": "difference-analysis-eccd62c9",
+    "path": "D:\\woby-builds\\gm-difference-20261018\\difference-analysis-rowan.png",
+    "sequence": "56",
+    "state": "succeeded"
+  },
+  "original_sha256": "2bdbfd97611a65a4ac2da3e4a1e3357c33b067c82d06967e4da1090170658d41"
+}

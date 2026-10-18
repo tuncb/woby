@@ -1,0 +1,2258 @@
+[
+  {
+    "name": "rowan-unwelded",
+    "metadata": {
+      "command": [
+        "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_profile.exe",
+        "D:/temp/GM-data/test.woby",
+        "D:/temp/GM-data/importers",
+        "5",
+        "30",
+        "pair-direct",
+        "6",
+        "3"
+      ],
+      "exe_sha256": "cdd7781f679910793ffbcff42563a2ec7b9a24472571cbeb7822687a883243a7",
+      "start_utc": "2026-10-18T13:43:42Z",
+      "exit_code": 0,
+      "process_wall_seconds": 3.588866900001449,
+      "samples": [
+        {
+          "wall_seconds": 0.08599529999992228,
+          "process_cpu_seconds": 0.0
+        },
+        {
+          "wall_seconds": 0.5868607000011252,
+          "process_cpu_seconds": 0.5
+        },
+        {
+          "wall_seconds": 1.087527499999851,
+          "process_cpu_seconds": 1.0
+        },
+        {
+          "wall_seconds": 1.5878966999989643,
+          "process_cpu_seconds": 1.5
+        },
+        {
+          "wall_seconds": 2.088257600000361,
+          "process_cpu_seconds": 1.984375
+        },
+        {
+          "wall_seconds": 2.588476400000218,
+          "process_cpu_seconds": 2.484375
+        },
+        {
+          "wall_seconds": 3.088645700001507,
+          "process_cpu_seconds": 2.984375
+        }
+      ]
+    },
+    "stdout": [
+      {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            }
+          ],
+          "triangles": 2034,
+          "vertices": 1019
+        },
+        "assembly_seconds": 0.0013181,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                179.95904669721506
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                135.7823842102213
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613300043,
+              "triangles": 1592
+            }
+          ],
+          "triangles": 1592,
+          "vertices": 798
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.2460193,
+        "mode": "pair-direct"
+      },
+      {
+        "cell_size": 5.0,
+        "error": "Surface or closure walls self-intersect. Automatic difference creation stopped.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "pair-direct",
+        "seconds": 0.1001759,
+        "status": "error"
+      }
+    ],
+    "stderr": [
+      {
+        "event": "begin",
+        "stage": "read"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0012272,
+        "stage": "read"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0128511,
+        "stage": "validate"
+      },
+      {
+        "event": "begin",
+        "stage": "read"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0008924,
+        "stage": "read"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0064907,
+        "stage": "validate"
+      },
+      {
+        "event": "begin",
+        "stage": "solid"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0042159,
+        "stage": "solid"
+      },
+      {
+        "event": "begin",
+        "stage": "solid"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0029503,
+        "stage": "solid"
+      },
+      {
+        "event": "begin",
+        "stage": "output"
+      },
+      {
+        "event": "manifold_output",
+        "status": 0,
+        "triangles": 6388,
+        "vertices": 3174
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0625717,
+        "stage": "output"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0078532,
+        "stage": "validate"
+      }
+    ]
+  },
+  {
+    "name": "rowan-contact-validation",
+    "metadata": {
+      "command": [
+        "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_profile.exe",
+        "D:/temp/GM-data/test.woby",
+        "D:/temp/GM-data/importers",
+        "5",
+        "30",
+        "pair-direct",
+        "6",
+        "3"
+      ],
+      "exe_sha256": "2fed821201dfce8dd65ce6620d2ce3228ceaa962eba4d3b09ba58ec4b05b610f",
+      "start_utc": "2026-10-18T13:44:40Z",
+      "exit_code": 0,
+      "process_wall_seconds": 3.603990600000543,
+      "samples": [
+        {
+          "wall_seconds": 0.10093290000077104,
+          "process_cpu_seconds": 0.0
+        },
+        {
+          "wall_seconds": 0.6013923000027717,
+          "process_cpu_seconds": 0.484375
+        },
+        {
+          "wall_seconds": 1.1018462000029103,
+          "process_cpu_seconds": 1.015625
+        },
+        {
+          "wall_seconds": 1.6022131000027002,
+          "process_cpu_seconds": 1.515625
+        },
+        {
+          "wall_seconds": 2.1025814000022365,
+          "process_cpu_seconds": 2.0
+        },
+        {
+          "wall_seconds": 2.6028093000022636,
+          "process_cpu_seconds": 2.515625
+        },
+        {
+          "wall_seconds": 3.10343130000183,
+          "process_cpu_seconds": 3.015625
+        }
+      ]
+    },
+    "stdout": [
+      {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            }
+          ],
+          "triangles": 2034,
+          "vertices": 1019
+        },
+        "assembly_seconds": 0.0020098,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                179.95904669721506
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                135.7823842102213
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613300043,
+              "triangles": 1592
+            }
+          ],
+          "triangles": 1592,
+          "vertices": 798
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.3259813,
+        "mode": "pair-direct"
+      },
+      {
+        "cell_size": 5.0,
+        "error": "Surface or closure walls self-intersect. Automatic difference creation stopped.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "pair-direct",
+        "seconds": 0.102993,
+        "status": "error"
+      }
+    ],
+    "stderr": [
+      {
+        "event": "begin",
+        "stage": "read"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0012256,
+        "stage": "read"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.013422,
+        "stage": "validate"
+      },
+      {
+        "event": "begin",
+        "stage": "read"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0009135,
+        "stage": "read"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0066545,
+        "stage": "validate"
+      },
+      {
+        "event": "begin",
+        "stage": "solid"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0041459,
+        "stage": "solid"
+      },
+      {
+        "event": "begin",
+        "stage": "solid"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0030651,
+        "stage": "solid"
+      },
+      {
+        "event": "begin",
+        "stage": "output"
+      },
+      {
+        "event": "manifold_output",
+        "status": 0,
+        "triangles": 6388,
+        "vertices": 3174
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0628693,
+        "stage": "output"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.009547,
+        "stage": "validate"
+      }
+    ]
+  },
+  {
+    "name": "rowan-intersection-witness",
+    "metadata": {
+      "command": [
+        "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_profile.exe",
+        "D:/temp/GM-data/test.woby",
+        "D:/temp/GM-data/importers",
+        "5",
+        "30",
+        "pair-direct",
+        "6",
+        "3"
+      ],
+      "exe_sha256": "a4fb975bde9fed858aa6e00b182235a4c957604cfe6eca28da8c911ff1b5409c",
+      "start_utc": "2026-10-18T13:47:40Z",
+      "exit_code": 0,
+      "process_wall_seconds": 4.602124200002436,
+      "samples": [
+        {
+          "wall_seconds": 0.09822200000053272,
+          "process_cpu_seconds": 0.0
+        },
+        {
+          "wall_seconds": 0.5984891000007337,
+          "process_cpu_seconds": 0.515625
+        },
+        {
+          "wall_seconds": 1.0990286000014748,
+          "process_cpu_seconds": 1.03125
+        },
+        {
+          "wall_seconds": 1.5996747999997751,
+          "process_cpu_seconds": 1.5
+        },
+        {
+          "wall_seconds": 2.100213800000347,
+          "process_cpu_seconds": 2.0
+        },
+        {
+          "wall_seconds": 2.6006512000021758,
+          "process_cpu_seconds": 2.5
+        },
+        {
+          "wall_seconds": 3.10089650000009,
+          "process_cpu_seconds": 3.0
+        },
+        {
+          "wall_seconds": 3.6014130000003206,
+          "process_cpu_seconds": 3.5
+        },
+        {
+          "wall_seconds": 4.101819200001046,
+          "process_cpu_seconds": 4.0
+        }
+      ]
+    },
+    "stdout": [
+      {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            }
+          ],
+          "triangles": 2034,
+          "vertices": 1019
+        },
+        "assembly_seconds": 0.0014244,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                179.95904669721506
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                135.7823842102213
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613300043,
+              "triangles": 1592
+            }
+          ],
+          "triangles": 1592,
+          "vertices": 798
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.873286,
+        "mode": "pair-direct"
+      },
+      {
+        "cell_size": 5.0,
+        "error": "Surface or closure walls self-intersect. Automatic difference creation stopped.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "pair-direct",
+        "seconds": 0.112393,
+        "status": "error"
+      }
+    ],
+    "stderr": [
+      {
+        "event": "begin",
+        "stage": "read"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0012098,
+        "stage": "read"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0168493,
+        "stage": "validate"
+      },
+      {
+        "event": "begin",
+        "stage": "read"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0015201,
+        "stage": "read"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0074569,
+        "stage": "validate"
+      },
+      {
+        "event": "begin",
+        "stage": "solid"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0042614,
+        "stage": "solid"
+      },
+      {
+        "event": "begin",
+        "stage": "solid"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0031586,
+        "stage": "solid"
+      },
+      {
+        "event": "begin",
+        "stage": "output"
+      },
+      {
+        "event": "manifold_output",
+        "status": 0,
+        "triangles": 6388,
+        "vertices": 3174
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0620606,
+        "stage": "output"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "event": "intersection",
+        "faces": [
+          {
+            "id": 44,
+            "indices": [
+              1507,
+              126,
+              59
+            ],
+            "points": [
+              [
+                1668.5432674224721,
+                3015.6943295011297,
+                141.93441411658432
+              ],
+              [
+                1480.0794260014054,
+                2839.9427879017494,
+                162.50338025888178
+              ],
+              [
+                1598.2506259086422,
+                2950.407282211693,
+                149.56693933171724
+              ]
+            ]
+          },
+          {
+            "id": 61,
+            "indices": [
+              57,
+              58,
+              59
+            ],
+            "points": [
+              [
+                1598.2506258897997,
+                2950.4072821933096,
+                149.5669393338943
+              ],
+              [
+                1598.2506259065137,
+                2950.407282207952,
+                149.56693933221027
+              ],
+              [
+                1598.2506259086422,
+                2950.407282211693,
+                149.56693933171724
+              ]
+            ]
+          }
+        ],
+        "triangles": 6388
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0145186,
+        "stage": "validate"
+      }
+    ]
+  },
+  {
+    "name": "rowan-roundoff-witness",
+    "metadata": {
+      "command": [
+        "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_profile.exe",
+        "D:/temp/GM-data/test.woby",
+        "D:/temp/GM-data/importers",
+        "5",
+        "30",
+        "pair-direct",
+        "6",
+        "3"
+      ],
+      "exe_sha256": "44192d4666a8216ba59ca341a857188c39ebf8476e167c5aa5eeca4f394ba594",
+      "start_utc": "2026-10-18T13:49:09Z",
+      "exit_code": 0,
+      "process_wall_seconds": 4.098307100000966,
+      "samples": [
+        {
+          "wall_seconds": 0.09572019999905024,
+          "process_cpu_seconds": 0.0
+        },
+        {
+          "wall_seconds": 0.5961693999997806,
+          "process_cpu_seconds": 0.5
+        },
+        {
+          "wall_seconds": 1.096328399999038,
+          "process_cpu_seconds": 1.015625
+        },
+        {
+          "wall_seconds": 1.5968333000018902,
+          "process_cpu_seconds": 1.515625
+        },
+        {
+          "wall_seconds": 2.0971161000015854,
+          "process_cpu_seconds": 2.015625
+        },
+        {
+          "wall_seconds": 2.5973393000022043,
+          "process_cpu_seconds": 2.515625
+        },
+        {
+          "wall_seconds": 3.0976765000013984,
+          "process_cpu_seconds": 3.015625
+        },
+        {
+          "wall_seconds": 3.598024200000509,
+          "process_cpu_seconds": 3.4375
+        }
+      ]
+    },
+    "stdout": [
+      {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            }
+          ],
+          "triangles": 2034,
+          "vertices": 1019
+        },
+        "assembly_seconds": 0.0013238,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                179.95904669721506
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                135.7823842102213
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613300043,
+              "triangles": 1592
+            }
+          ],
+          "triangles": 1592,
+          "vertices": 798
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.3629067,
+        "mode": "pair-direct"
+      },
+      {
+        "cell_size": 5.0,
+        "error": "Surface or closure walls self-intersect. Automatic difference creation stopped.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "pair-direct",
+        "seconds": 0.1090151,
+        "status": "error"
+      }
+    ],
+    "stderr": [
+      {
+        "event": "begin",
+        "stage": "read"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0011916,
+        "stage": "read"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0128405,
+        "stage": "validate"
+      },
+      {
+        "event": "begin",
+        "stage": "read"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0008727,
+        "stage": "read"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0065605,
+        "stage": "validate"
+      },
+      {
+        "event": "begin",
+        "stage": "solid"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0039915,
+        "stage": "solid"
+      },
+      {
+        "event": "begin",
+        "stage": "solid"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0029731,
+        "stage": "solid"
+      },
+      {
+        "event": "begin",
+        "stage": "output"
+      },
+      {
+        "epsilon": 3.1955252884328364e-09,
+        "event": "manifold_output",
+        "property_merges": 0,
+        "status": 0,
+        "tolerance": 3.1955252884328364e-09,
+        "triangles": 6388,
+        "vertices": 3174,
+        "volume": 23829.699160922046
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0646726,
+        "stage": "output"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "event": "intersection",
+        "faces": [
+          {
+            "id": 44,
+            "indices": [
+              1507,
+              126,
+              59
+            ],
+            "points": [
+              [
+                1668.5432674224721,
+                3015.6943295011297,
+                141.93441411658432
+              ],
+              [
+                1480.0794260014054,
+                2839.9427879017494,
+                162.50338025888178
+              ],
+              [
+                1598.2506259086422,
+                2950.407282211693,
+                149.56693933171724
+              ]
+            ]
+          },
+          {
+            "id": 61,
+            "indices": [
+              57,
+              58,
+              59
+            ],
+            "points": [
+              [
+                1598.2506258897997,
+                2950.4072821933096,
+                149.5669393338943
+              ],
+              [
+                1598.2506259065137,
+                2950.407282207952,
+                149.56693933221027
+              ],
+              [
+                1598.2506259086422,
+                2950.407282211693,
+                149.56693933171724
+              ]
+            ]
+          }
+        ],
+        "triangles": 6388
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0146023,
+        "stage": "validate"
+      }
+    ]
+  },
+  {
+    "name": "rowan-fixed-native",
+    "metadata": {
+      "command": [
+        "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+        "D:/temp/GM-data/test.woby",
+        "D:/temp/GM-data/importers",
+        "5",
+        "30",
+        "pair-direct",
+        "6",
+        "3"
+      ],
+      "exe_sha256": "1e0031447487072d9c13d02dceab19623348dae09de740669580d8c479d8f5f9",
+      "start_utc": "2026-10-18T13:49:14Z",
+      "exit_code": 0,
+      "process_wall_seconds": 3.5899406999997154,
+      "samples": [
+        {
+          "wall_seconds": 0.08691429999817046,
+          "process_cpu_seconds": 0.0
+        },
+        {
+          "wall_seconds": 0.5873648999986472,
+          "process_cpu_seconds": 0.484375
+        },
+        {
+          "wall_seconds": 1.0880131000012625,
+          "process_cpu_seconds": 1.0
+        },
+        {
+          "wall_seconds": 1.5885468000014953,
+          "process_cpu_seconds": 1.5
+        },
+        {
+          "wall_seconds": 2.0890427000013005,
+          "process_cpu_seconds": 2.0
+        },
+        {
+          "wall_seconds": 2.5893833999980416,
+          "process_cpu_seconds": 2.5
+        },
+        {
+          "wall_seconds": 3.0895510999980615,
+          "process_cpu_seconds": 2.984375
+        }
+      ]
+    },
+    "stdout": [
+      {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            }
+          ],
+          "triangles": 2034,
+          "vertices": 1019
+        },
+        "assembly_seconds": 0.0013332,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                179.95904669721506
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                135.7823842102213
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613300043,
+              "triangles": 1592
+            }
+          ],
+          "triangles": 1592,
+          "vertices": 798
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.3004833,
+        "mode": "pair-direct"
+      },
+      {
+        "cell_size": 5.0,
+        "error": "Output A only: Surface or closure walls self-intersect. Automatic difference creation stopped.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "pair-direct",
+        "seconds": 0.1008207,
+        "status": "error"
+      }
+    ],
+    "stderr": []
+  },
+  {
+    "name": "mulbring-fixed-native",
+    "metadata": {
+      "command": [
+        "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+        "D:/temp/GM-data/test.woby",
+        "D:/temp/GM-data/importers",
+        "5",
+        "30",
+        "pair-direct",
+        "8",
+        "0"
+      ],
+      "exe_sha256": "1e0031447487072d9c13d02dceab19623348dae09de740669580d8c479d8f5f9",
+      "start_utc": "2026-10-18T13:49:18Z",
+      "exit_code": 0,
+      "process_wall_seconds": 4.015354200000729,
+      "samples": [
+        {
+          "wall_seconds": 0.012309400000958703,
+          "process_cpu_seconds": 0.0
+        },
+        {
+          "wall_seconds": 0.5128302999983134,
+          "process_cpu_seconds": 0.515625
+        },
+        {
+          "wall_seconds": 1.0132860000012442,
+          "process_cpu_seconds": 1.03125
+        },
+        {
+          "wall_seconds": 1.5138366999999562,
+          "process_cpu_seconds": 1.53125
+        },
+        {
+          "wall_seconds": 2.0141140000014275,
+          "process_cpu_seconds": 2.03125
+        },
+        {
+          "wall_seconds": 2.514419999999518,
+          "process_cpu_seconds": 2.53125
+        },
+        {
+          "wall_seconds": 3.014639500001067,
+          "process_cpu_seconds": 3.03125
+        },
+        {
+          "wall_seconds": 3.515072999998665,
+          "process_cpu_seconds": 3.53125
+        }
+      ]
+    },
+    "stdout": [
+      {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                827.0517296764883,
+                5637.435706000775,
+                104.50961781467214
+              ],
+              "min": [
+                0.0,
+                5306.099208620377,
+                38.46443637812257
+              ],
+              "name": "Geological Model - Pmtm - Mulbring Siltstone",
+              "signed_triangle_volume": 2891051.488527787,
+              "triangles": 5480
+            }
+          ],
+          "triangles": 5480,
+          "vertices": 2742
+        },
+        "assembly_seconds": 0.0016357,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                827.0517296853296,
+                5637.435706011887,
+                104.14752840041629
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                5306.099208628735,
+                38.46443638287787
+              ],
+              "name": "Soil_1_1",
+              "signed_triangle_volume": 2882609.535975914,
+              "triangles": 952
+            }
+          ],
+          "triangles": 952,
+          "vertices": 478
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.3753107,
+        "mode": "pair-direct"
+      },
+      {
+        "cell_size": 5.0,
+        "error": "Output A only: Surface or closure walls self-intersect. Automatic difference creation stopped.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "pair-direct",
+        "seconds": 0.225854,
+        "status": "error"
+      }
+    ],
+    "stderr": []
+  },
+  {
+    "name": "rowan-simplify-experiment",
+    "metadata": {
+      "command": [
+        "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_profile.exe",
+        "D:/temp/GM-data/test.woby",
+        "D:/temp/GM-data/importers",
+        "5",
+        "30",
+        "pair-direct",
+        "6",
+        "3"
+      ],
+      "exe_sha256": "17ba54cb335a2e81a38a74001d90f4120965eaafb84ff80e539916c250b23ab5",
+      "start_utc": "2026-10-18T13:51:00Z",
+      "exit_code": 0,
+      "process_wall_seconds": 4.095074699998804,
+      "samples": [
+        {
+          "wall_seconds": 0.09146970000074361,
+          "process_cpu_seconds": 0.0
+        },
+        {
+          "wall_seconds": 0.5916537000011886,
+          "process_cpu_seconds": 0.5
+        },
+        {
+          "wall_seconds": 1.0922342999983812,
+          "process_cpu_seconds": 0.9375
+        },
+        {
+          "wall_seconds": 1.5927621000009822,
+          "process_cpu_seconds": 1.4375
+        },
+        {
+          "wall_seconds": 2.093140199998743,
+          "process_cpu_seconds": 1.9375
+        },
+        {
+          "wall_seconds": 2.5937269999994896,
+          "process_cpu_seconds": 2.4375
+        },
+        {
+          "wall_seconds": 3.0941870999995444,
+          "process_cpu_seconds": 2.9375
+        },
+        {
+          "wall_seconds": 3.5945066999993287,
+          "process_cpu_seconds": 3.4375
+        }
+      ]
+    },
+    "stdout": [
+      {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            }
+          ],
+          "triangles": 2034,
+          "vertices": 1019
+        },
+        "assembly_seconds": 0.001378,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                179.95904669721506
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                135.7823842102213
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613300043,
+              "triangles": 1592
+            }
+          ],
+          "triangles": 1592,
+          "vertices": 798
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.3098447,
+        "mode": "pair-direct"
+      },
+      {
+        "cell_size": 5.0,
+        "error": "Surface or closure walls self-intersect. Automatic difference creation stopped.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "pair-direct",
+        "seconds": 0.1803769,
+        "status": "error"
+      }
+    ],
+    "stderr": [
+      {
+        "event": "begin",
+        "stage": "read"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.00128,
+        "stage": "read"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0133497,
+        "stage": "validate"
+      },
+      {
+        "event": "begin",
+        "stage": "read"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.000894,
+        "stage": "read"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0065859,
+        "stage": "validate"
+      },
+      {
+        "event": "begin",
+        "stage": "solid"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0042469,
+        "stage": "solid"
+      },
+      {
+        "event": "begin",
+        "stage": "solid"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0029529,
+        "stage": "solid"
+      },
+      {
+        "event": "begin",
+        "stage": "output"
+      },
+      {
+        "epsilon": 3.1955252884328364e-09,
+        "event": "manifold_output",
+        "property_merges": 0,
+        "status": 0,
+        "tolerance": 3.1955252884328364e-09,
+        "triangles": 5930,
+        "vertices": 2947,
+        "volume": 23829.699159535074
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0009331,
+        "stage": "output"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "event": "intersection",
+        "faces": [
+          {
+            "id": 41,
+            "indices": [
+              1454,
+              119,
+              55
+            ],
+            "points": [
+              [
+                1668.5432674224721,
+                3015.6943295011297,
+                141.93441411658432
+              ],
+              [
+                1480.0794260014054,
+                2839.9427879017494,
+                162.50338025888178
+              ],
+              [
+                1598.2506259086422,
+                2950.407282211693,
+                149.56693933171724
+              ]
+            ]
+          },
+          {
+            "id": 58,
+            "indices": [
+              53,
+              54,
+              55
+            ],
+            "points": [
+              [
+                1598.2506258897997,
+                2950.4072821933096,
+                149.5669393338943
+              ],
+              [
+                1598.2506259065137,
+                2950.407282207952,
+                149.56693933221027
+              ],
+              [
+                1598.2506259086422,
+                2950.407282211693,
+                149.56693933171724
+              ]
+            ]
+          }
+        ],
+        "triangles": 5930
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0140632,
+        "stage": "validate"
+      }
+    ]
+  },
+  {
+    "name": "mulbring-simplify-experiment",
+    "metadata": {
+      "command": [
+        "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_profile.exe",
+        "D:/temp/GM-data/test.woby",
+        "D:/temp/GM-data/importers",
+        "5",
+        "30",
+        "pair-direct",
+        "8",
+        "0"
+      ],
+      "exe_sha256": "17ba54cb335a2e81a38a74001d90f4120965eaafb84ff80e539916c250b23ab5",
+      "start_utc": "2026-10-18T13:51:04Z",
+      "exit_code": 0,
+      "process_wall_seconds": 4.0135181000005105,
+      "samples": [
+        {
+          "wall_seconds": 0.010324400001991307,
+          "process_cpu_seconds": 0.0
+        },
+        {
+          "wall_seconds": 0.5107802000020456,
+          "process_cpu_seconds": 0.53125
+        },
+        {
+          "wall_seconds": 1.011103600001661,
+          "process_cpu_seconds": 1.03125
+        },
+        {
+          "wall_seconds": 1.5112819000023592,
+          "process_cpu_seconds": 1.53125
+        },
+        {
+          "wall_seconds": 2.0117276000019046,
+          "process_cpu_seconds": 2.03125
+        },
+        {
+          "wall_seconds": 2.5123338000012154,
+          "process_cpu_seconds": 2.53125
+        },
+        {
+          "wall_seconds": 3.0127959000019473,
+          "process_cpu_seconds": 3.03125
+        },
+        {
+          "wall_seconds": 3.5131770000007236,
+          "process_cpu_seconds": 3.515625
+        }
+      ]
+    },
+    "stdout": [
+      {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                827.0517296764883,
+                5637.435706000775,
+                104.50961781467214
+              ],
+              "min": [
+                0.0,
+                5306.099208620377,
+                38.46443637812257
+              ],
+              "name": "Geological Model - Pmtm - Mulbring Siltstone",
+              "signed_triangle_volume": 2891051.488527787,
+              "triangles": 5480
+            }
+          ],
+          "triangles": 5480,
+          "vertices": 2742
+        },
+        "assembly_seconds": 0.0016289,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                827.0517296853296,
+                5637.435706011887,
+                104.14752840041629
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                5306.099208628735,
+                38.46443638287787
+              ],
+              "name": "Soil_1_1",
+              "signed_triangle_volume": 2882609.535975914,
+              "triangles": 952
+            }
+          ],
+          "triangles": 952,
+          "vertices": 478
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.3084164,
+        "mode": "pair-direct"
+      },
+      {
+        "cell_size": 5.0,
+        "error": "Surface or closure walls self-intersect. Automatic difference creation stopped.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "pair-direct",
+        "seconds": 0.27508,
+        "status": "error"
+      }
+    ],
+    "stderr": [
+      {
+        "event": "begin",
+        "stage": "read"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0032496,
+        "stage": "read"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0586567,
+        "stage": "validate"
+      },
+      {
+        "event": "begin",
+        "stage": "read"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0005554,
+        "stage": "read"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.003847,
+        "stage": "validate"
+      },
+      {
+        "event": "begin",
+        "stage": "solid"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0102359,
+        "stage": "solid"
+      },
+      {
+        "event": "begin",
+        "stage": "solid"
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0020702,
+        "stage": "solid"
+      },
+      {
+        "event": "begin",
+        "stage": "output"
+      },
+      {
+        "epsilon": 5.637435706011887e-09,
+        "event": "manifold_output",
+        "property_merges": 0,
+        "status": 0,
+        "tolerance": 5.637435706011887e-09,
+        "triangles": 7832,
+        "vertices": 3912,
+        "volume": 14826.107651075283
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0011883,
+        "stage": "output"
+      },
+      {
+        "event": "begin",
+        "stage": "validate"
+      },
+      {
+        "event": "intersection",
+        "faces": [
+          {
+            "id": 12,
+            "indices": [
+              8,
+              39,
+              16
+            ],
+            "points": [
+              [
+                0.0,
+                5319.549660478719,
+                82.55951758760162
+              ],
+              [
+                57.35949952760711,
+                5324.401671212167,
+                86.34500463115319
+              ],
+              [
+                28.135684963628634,
+                5315.087404059582,
+                85.45195430383275
+              ]
+            ]
+          },
+          {
+            "id": 5109,
+            "indices": [
+              16,
+              14,
+              27
+            ],
+            "points": [
+              [
+                28.135684963628634,
+                5315.087404059582,
+                85.45195430383275
+              ],
+              [
+                28.145117158576202,
+                5315.088141238539,
+                85.4525859742427
+              ],
+              [
+                28.14511716276219,
+                5332.581788628361,
+                82.80485538300759
+              ]
+            ]
+          }
+        ],
+        "triangles": 7832
+      },
+      {
+        "counts": {
+          "exact_fallbacks": 0,
+          "inside_queries": 0,
+          "queries": 0,
+          "sampled_angles": 0,
+          "sampled_far": 0,
+          "sampled_nodes": 0,
+          "sampled_queries": 0
+        },
+        "event": "end",
+        "seconds": 0.0166052,
+        "stage": "validate"
+      }
+    ]
+  },
+  {
+    "name": "rowan-final-native",
+    "metadata": {
+      "command": [
+        "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+        "D:/temp/GM-data/test.woby",
+        "D:/temp/GM-data/importers",
+        "5",
+        "30",
+        "pair-direct",
+        "6",
+        "3"
+      ],
+      "exe_sha256": "3c0b938c18d1fa4489b5dbb88128dc4c9207fedab5821f1030216e31d2ac292b",
+      "start_utc": "2026-10-18T13:56:39Z",
+      "exit_code": 0,
+      "process_wall_seconds": 3.5954255999968154,
+      "samples": [
+        {
+          "wall_seconds": 0.09230309999838937,
+          "process_cpu_seconds": 0.0
+        },
+        {
+          "wall_seconds": 0.5928167999991274,
+          "process_cpu_seconds": 0.484375
+        },
+        {
+          "wall_seconds": 1.093297799998254,
+          "process_cpu_seconds": 1.0
+        },
+        {
+          "wall_seconds": 1.5934525999982725,
+          "process_cpu_seconds": 1.5
+        },
+        {
+          "wall_seconds": 2.0938690999973915,
+          "process_cpu_seconds": 1.984375
+        },
+        {
+          "wall_seconds": 2.5943541999986337,
+          "process_cpu_seconds": 2.484375
+        },
+        {
+          "wall_seconds": 3.0948528999979317,
+          "process_cpu_seconds": 2.953125
+        }
+      ]
+    },
+    "stdout": [
+      {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            }
+          ],
+          "triangles": 2034,
+          "vertices": 1019
+        },
+        "assembly_seconds": 0.001591,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                179.95904669721506
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                135.7823842102213
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613300043,
+              "triangles": 1592
+            }
+          ],
+          "triangles": 1592,
+          "vertices": 798
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.3141649,
+        "mode": "pair-direct"
+      },
+      {
+        "cell_size": 5.0,
+        "error": "Output A only: Surface or closure walls self-intersect. Automatic difference creation stopped.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "pair-direct",
+        "seconds": 0.1000876,
+        "status": "error"
+      }
+    ],
+    "stderr": []
+  },
+  {
+    "name": "mulbring-final-native",
+    "metadata": {
+      "command": [
+        "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+        "D:/temp/GM-data/test.woby",
+        "D:/temp/GM-data/importers",
+        "5",
+        "30",
+        "pair-direct",
+        "8",
+        "0"
+      ],
+      "exe_sha256": "3c0b938c18d1fa4489b5dbb88128dc4c9207fedab5821f1030216e31d2ac292b",
+      "start_utc": "2026-10-18T13:56:43Z",
+      "exit_code": 0,
+      "process_wall_seconds": 3.5138576999997895,
+      "samples": [
+        {
+          "wall_seconds": 0.010396999998192769,
+          "process_cpu_seconds": 0.0
+        },
+        {
+          "wall_seconds": 0.5111367999998038,
+          "process_cpu_seconds": 0.515625
+        },
+        {
+          "wall_seconds": 1.0116912000012235,
+          "process_cpu_seconds": 1.015625
+        },
+        {
+          "wall_seconds": 1.5120954000012716,
+          "process_cpu_seconds": 1.515625
+        },
+        {
+          "wall_seconds": 2.0126829000000726,
+          "process_cpu_seconds": 2.015625
+        },
+        {
+          "wall_seconds": 2.5132338000003074,
+          "process_cpu_seconds": 2.515625
+        },
+        {
+          "wall_seconds": 3.0135321999987355,
+          "process_cpu_seconds": 3.015625
+        }
+      ]
+    },
+    "stdout": [
+      {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                827.0517296764883,
+                5637.435706000775,
+                104.50961781467214
+              ],
+              "min": [
+                0.0,
+                5306.099208620377,
+                38.46443637812257
+              ],
+              "name": "Geological Model - Pmtm - Mulbring Siltstone",
+              "signed_triangle_volume": 2891051.488527787,
+              "triangles": 5480
+            }
+          ],
+          "triangles": 5480,
+          "vertices": 2742
+        },
+        "assembly_seconds": 0.0015515,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                827.0517296853296,
+                5637.435706011887,
+                104.14752840041629
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                5306.099208628735,
+                38.46443638287787
+              ],
+              "name": "Soil_1_1",
+              "signed_triangle_volume": 2882609.535975914,
+              "triangles": 952
+            }
+          ],
+          "triangles": 952,
+          "vertices": 478
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.1967565,
+        "mode": "pair-direct"
+      },
+      {
+        "cell_size": 5.0,
+        "error": "Output A only: Surface or closure walls self-intersect. Automatic difference creation stopped.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "pair-direct",
+        "seconds": 0.1651165,
+        "status": "error"
+      }
+    ],
+    "stderr": []
+  }
+]

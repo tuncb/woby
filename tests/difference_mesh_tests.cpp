@@ -4,6 +4,8 @@
 #include "difference_runtime.h"
 #include "obj_mesh.h"
 #include "ui_operations.h"
+#include "analysis_presentation.h"
+#include "scene_history.h"
 #include <doctest/doctest.h>
 #include <cmath>
 #include <fstream>
@@ -74,12 +76,16 @@ Mesh withCollapsedTriangles(Mesh mesh)
     publishMeshGeometry(mesh);
     return mesh;
 }
-DifferenceSettings approximateSettings(double cellSize = .1)
+Mesh manifoldMesh(const manifold::Manifold &solid, Coordinate origin = {})
 {
-    DifferenceSettings settings;
-    settings.method = DifferenceMethod::approximate;
-    settings.cellSize = cellSize;
-    return settings;
+    const auto mesh = solid.GetMeshGL64();
+    std::vector<Coordinate> points;
+    std::vector<uint32_t> indices;
+    for (size_t i = 0; i < mesh.vertProperties.size(); i += mesh.numProp) {
+        points.push_back({mesh.vertProperties[i], mesh.vertProperties[i + 1], mesh.vertProperties[i + 2]});
+    }
+    for (const auto i : mesh.triVerts) { indices.push_back(static_cast<uint32_t>(i)); }
+    return surface(std::move(points), std::move(indices), origin);
 }
 void checkClosedEdges(const Mesh &mesh)
 {
@@ -118,17 +124,6 @@ Mesh subdivide(const Mesh &mesh)
     }
     return surface(std::move(points), std::move(indices), mesh.origin);
 }
-Mesh parametricCube()
-{
-    return loadObjMeshText("v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nv 0 0 1\nv 1 0 1\nv 1 1 1\nv 0 1 1\n"
-        "cstype bezier\ndeg 1 1\n"
-        "surf 0 1 0 1 1 4 2 3\nparm u 0 1\nparm v 0 1\nend\n"
-        "surf 0 1 0 1 5 6 8 7\nparm u 0 1\nparm v 0 1\nend\n"
-        "surf 0 1 0 1 1 2 5 6\nparm u 0 1\nparm v 0 1\nend\n"
-        "surf 0 1 0 1 2 3 6 7\nparm u 0 1\nparm v 0 1\nend\n"
-        "surf 0 1 0 1 3 4 7 8\nparm u 0 1\nparm v 0 1\nend\n"
-        "surf 0 1 0 1 4 1 8 5\nparm u 0 1\nparm v 0 1\nend\n");
-}
 struct Fixture {
     std::filesystem::path root = std::filesystem::absolute(std::filesystem::temp_directory_path()) /
                                  ("woby-difference-" + automationRandomHex(8));
@@ -151,7 +146,7 @@ struct Fixture {
         state.files.push_back(createUiFileState(root / "b.obj", std::move(b), 1));
         appendDefaultSceneNodesForFiles(state, 0);
         recalculateSceneBounds(state);
-        id = createAnalysisFromObjects(state, AnalysisTask::surfaceComparison,
+        id = createAnalysisFromObjects(state, AnalysisTask::differenceMesh,
                                        {state.files[0].objectId, state.files[1].objectId});
         if (scenePlacement) {
             // These tests measure the intentional offset between the two cubes.
@@ -161,12 +156,12 @@ struct Fixture {
             setComparisonSettings(state, settings, id);
         }
     }
-    void wait(bool resolution = false)
+    void wait()
     {
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
         do {
             updateDifferenceRuntime(runtime, state, id, comparisonGeometrySignature(state, id));
-            const auto &phase = resolution ? runtime.resolution.phase : runtime.phase;
+            const auto &phase = runtime.phase;
             if (phase != "running" && phase != "queued") {
                 return;
             }
@@ -185,351 +180,144 @@ ControlOperation cli(std::vector<std::string> words)
     return parseCommandLine(static_cast<int>(argv.size()), argv.data()).control.operation;
 }
 
-TEST_CASE("binary level sets grow their surface table without collapsed vertices")
+TEST_CASE("approximate mesh retains thin differences between rotated solids without a grid")
 {
-    // Equal magnitudes prevent Manifold's NearSurface pass from moving vertices.
-    // These grids fill its initial sparse table and must grow before triangulation.
-    for (const double cellSize : {.1, .05}) {
-        CAPTURE(cellSize);
-        const auto solid = manifold::Manifold::LevelSet([](manifold::vec3 p) {
-            return p.x > 0 && p.x < 1 && p.y > 0 && p.y < 1 && p.z > 0 && p.z < 1 ? 1.0 : -1.0;
-        }, {{-.2, -.2, -.2}, {1.2, 1.2, 1.2}}, cellSize, 0, -1, false);
-        REQUIRE(solid.Status() == manifold::Manifold::Error::NoError);
-        CHECK_FALSE(solid.IsEmpty());
-        CHECK(std::abs(solid.Volume() - 1) < .2);
+    for (const double shift : {.1, 1e-6, 1e-9}) {
+        CAPTURE(shift);
+        const auto a = manifoldMesh(manifold::Manifold::Cube({3, 4, 5}).Rotate(12.3, 6.15, 4.1), {1e9, 2e9, 3e9});
+        const auto b = manifoldMesh(manifold::Manifold::Cube({3, 4, 5}).Translate({shift, 0, 0}).Rotate(12.3, 6.15, 4.1), a.origin);
+        const auto before = meshGeometry(a).precisePositions;
+        const auto indices = meshGeometry(a).indices;
+        const auto result = buildDifferenceMesh(a, b);
+        const auto reverse = buildDifferenceMesh(b, a);
+        CHECK(result.message.find("estimates") != std::string::npos);
+        for (size_t i = 0; i < 2; ++i) {
+            CHECK(std::abs(result.volumes[i] - 20 * shift) < 20 * shift * 1e-4 + 1e-12);
+            CHECK(result.volumes[i] == doctest::Approx(reverse.volumes[1 - i]).epsilon(1e-6));
+            checkClosedEdges(result.parts[i]);
+            CHECK(result.parts[i].origin == a.origin);
+            CHECK(originalMeshBounds(result.parts[i])[0][0] > a.origin[0] - 2);
+        }
+        CHECK(meshGeometry(a).precisePositions == before);
+        CHECK(meshGeometry(a).indices == indices);
     }
+    CHECK(buildDifferenceMesh(cube(), subdivide(cube())).volumes == std::array<double, 2>{0, 0});
+    const auto disjoint = buildDifferenceMesh(cube(), cube(2));
+    CHECK(disjoint.volumes[0] == doctest::Approx(1));
+    CHECK(disjoint.volumes[1] == doctest::Approx(1));
 }
 
-TEST_CASE("approximate difference measures solids on a shared grid and improves with refinement")
+TEST_CASE("approximate mesh detects an internal unit boundary change and preserves cavities")
 {
-    const auto coarse = buildDifferenceMesh(cube(), cube(.5), approximateSettings(.2));
-    const auto fine = buildDifferenceMesh(cube(), cube(.5), approximateSettings(.05));
-    CHECK_FALSE(fine.constructed);
-    CHECK(fine.construction.method == DifferenceMethod::approximate);
-    for (size_t i = 0; i < 2; ++i) {
-        INFO(i, ": coarse=", coarse.volumes[i], ", fine=", fine.volumes[i]);
-        CHECK(std::abs(fine.volumes[i] - .5) < .06);
-        CHECK(std::abs(fine.volumes[i] - .5) < std::abs(coarse.volumes[i] - .5));
-    }
-    const auto identical = buildDifferenceMesh(cube(), subdivide(cube()), approximateSettings());
-    CHECK(identical.volumes == std::array<double, 2>{0, 0});
-    CHECK(meshGeometry(identical.parts[0]).indices.empty());
-    const auto validated = buildDifferenceMesh(fine.parts[0], fine.parts[0]);
-    CHECK(validated.volumes == std::array<double, 2>{0, 0});
-    const auto disjoint = buildDifferenceMesh(cube(), cube(2), approximateSettings(.05));
-    CHECK(std::abs(disjoint.volumes[0] - 1) < .12);
-    CHECK(std::abs(disjoint.volumes[1] - 1) < .12);
+    const auto box = [](double height, double z = 0) {
+        return manifoldMesh(manifold::Manifold::Cube({1, 1, height}).Translate({0, 0, z}));
+    };
+    const auto lower = buildDifferenceMesh(box(.5), box(.6));
+    const auto upper = buildDifferenceMesh(box(.5, .5), box(.4, .6));
+    CHECK(lower.volumes[0] == doctest::Approx(0));
+    CHECK(lower.volumes[1] == doctest::Approx(.1));
+    CHECK(upper.volumes[0] == doctest::Approx(.1));
+    CHECK(upper.volumes[1] == doctest::Approx(0));
+    CHECK(buildDifferenceMesh(cube(), cube()).volumes == std::array<double, 2>{0, 0});
+    const auto cavity = manifold::Manifold::Cube({1, 1, 1}) -
+                        manifold::Manifold::Cube({.5, .5, .5}).Translate({.25, .25, .25});
+    const auto result = buildDifferenceMesh(manifoldMesh(cavity), cube());
+    CHECK(result.volumes[0] == doctest::Approx(0));
+    CHECK(result.volumes[1] == doctest::Approx(.125));
+    checkClosedEdges(result.parts[1]);
 }
 
-TEST_CASE("approximate difference tolerates holes and non-manifold faces without editing inputs")
+TEST_CASE("approximate mesh rejects open topology invalid coordinates and canceled work")
 {
-    auto a = subdivide(subdivide(cube()));
-    auto &g = editMeshGeometry(a);
-    SUBCASE("missing triangle") { g.indices.erase(g.indices.begin(), g.indices.begin() + 3); }
-    SUBCASE("non-manifold duplicate face") {
-        const std::array face{g.indices[0], g.indices[1], g.indices[2]};
-        g.indices.insert(g.indices.end(), face.begin(), face.end());
-    }
-    SUBCASE("globally reversed winding") {
-        for (size_t i = 0; i < g.indices.size(); i += 3) { std::swap(g.indices[i], g.indices[i + 1]); }
-    }
-    publishMeshGeometry(a);
-    a = withCollapsedTriangles(a);
-    const auto indices = meshGeometry(a).indices;
-    const auto positions = meshGeometry(a).precisePositions;
-    const auto result = buildDifferenceMesh(a, cube(.5), approximateSettings(.1));
-    CHECK(result.removedCollapsedTriangles[0] == 3);
-    CHECK(std::abs(result.volumes[0] - .5) < .15);
-    CHECK(std::abs(result.volumes[1] - .5) < .15);
-    CHECK(meshGeometry(a).indices == indices);
-    CHECK(meshGeometry(a).precisePositions == positions);
-    const auto identical = buildDifferenceMesh(a, a, approximateSettings());
-    CHECK(identical.volumes == std::array<double, 2>{0, 0});
-}
-
-TEST_CASE("approximate difference accepts tessellated parametric solids and preserves world placement")
-{
-    auto a = parametricCube();
-    REQUIRE(a.freeform);
-    const auto indices = meshGeometry(a).indices;
-    auto b = cube(.5);
-    a.origin = {1e9, 2e9, 3e9};
-    b.origin = a.origin;
-    const auto result = buildDifferenceMesh(a, b, approximateSettings(.125));
-    const auto reverse = buildDifferenceMesh(b, a, approximateSettings(.125));
-    for (size_t i = 0; i < 2; ++i) {
-        CHECK(std::abs(result.volumes[i] - .5) < .16);
-        CHECK(result.volumes[i] == doctest::Approx(reverse.volumes[1 - i]).epsilon(1e-9));
-    }
-    CHECK(originalMeshBounds(result.parts[0])[0][0] > 1e9 - .2);
-    CHECK(originalMeshBounds(result.parts[0])[1][0] < 1e9 + .7);
-    CHECK(meshGeometry(a).indices == indices);
-}
-
-TEST_CASE("approximate difference rejects invalid settings oversized grids and surfaces without a solid")
-{
-    for (const double size : {0.0, -1.0, std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN()}) {
-        CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(cube(), cube(.5), approximateSettings(size)),
-                             doctest::Contains("finite and positive"), std::invalid_argument);
-    }
-    CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(cube(), cube(.5), approximateSettings(1e-5)),
-                         doctest::Contains("grid limit"), std::runtime_error);
-    CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(sheet(0), cube(), approximateSettings()),
-                         doctest::Contains("Input A: No solid volume"), std::runtime_error);
-    CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(cube(), sheet(0), approximateSettings()),
-                         doctest::Contains("Input B: No solid volume"), std::runtime_error);
+    CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(sheet(0), cube()),
+                         doctest::Contains("Input A:"), std::runtime_error);
+    CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(cube(), sheet(0)),
+                         doctest::Contains("Input B:"), std::runtime_error);
+    auto bad = cube();
+    auto &g = editMeshGeometry(bad);
+    g.precisePositions[0][0] = std::numeric_limits<double>::infinity();
+    publishMeshGeometry(bad);
+    CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(bad, cube()),
+                         doctest::Contains("non-finite"), std::runtime_error);
+    bad = cube();
+    auto &winding = editMeshGeometry(bad);
+    std::swap(winding.indices[0], winding.indices[1]);
+    publishMeshGeometry(bad);
+    CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(bad, cube()),
+                         doctest::Contains("closed solids"), std::runtime_error);
     std::stop_source stop;
     stop.request_stop();
-    CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(cube(), cube(.5), approximateSettings(), stop.get_token()),
+    CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(cube(), cube(.5), stop.get_token()),
                          doctest::Contains("canceled"), std::runtime_error);
 }
 
-TEST_CASE("approximate difference measures a curved parametric face against a triangular solid")
-{
-    // The quadratic top is z = 1 + 4u(1-u)v(1-v). Its added volume is 1/9.
-    // Its tessellated boundary also has T-junctions against the coarse triangle sides.
-    const auto curved = loadObjMeshText(
-        "v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nv 0 0 1\nv 1 0 1\nv 1 1 1\nv 0 1 1\n"
-        "f 1 3 2\nf 1 4 3\nf 1 2 6\nf 1 6 5\nf 2 3 7\nf 2 7 6\nf 3 4 8\nf 3 8 7\nf 4 1 5\nf 4 5 8\n"
-        "v 0 0 1\nv .5 0 1\nv 1 0 1\nv 0 .5 1\nv .5 .5 2\nv 1 .5 1\nv 0 1 1\nv .5 1 1\nv 1 1 1\n"
-        "cstype bezier\ndeg 2 2\nsurf 0 1 0 1 9 10 11 12 13 14 15 16 17\nparm u 0 1\nparm v 0 1\nend\n");
-    const auto result = buildDifferenceMesh(curved, cube(), approximateSettings(.0625));
-    CHECK(std::abs(result.volumes[0] - 1.0 / 9) < .025);
-    CHECK(result.volumes[1] < 1e-8);
-    checkClosedEdges(result.parts[0]);
-}
-
-TEST_CASE("approximate difference preserves oriented cavities and accepts overlapping components")
-{
-    auto a = cube();
-    auto inner = cube(.25);
-    bool cavity = false;
-    SUBCASE("overlapping components") {}
-    SUBCASE("oriented cavity") {
-        cavity = true;
-        inner = cube(.25, .5, {0, .25, .25});
-        auto &g = editMeshGeometry(inner);
-        for (size_t i = 0; i < g.indices.size(); i += 3) { std::swap(g.indices[i], g.indices[i + 1]); }
-        publishMeshGeometry(inner);
-    }
-    auto &g = editMeshGeometry(a);
-    const auto first = static_cast<uint32_t>(g.vertices.size());
-    const auto &ig = meshGeometry(inner);
-    for (size_t i = 0; i < ig.vertices.size(); ++i) {
-        auto p = meshPosition(inner, static_cast<uint32_t>(i));
-        for (size_t k = 0; k < 3; ++k) { p[k] += inner.origin[k]; }
-        Vertex vertex;
-        vertex.position = renderPosition(p);
-        g.vertices.push_back(vertex);
-        g.precisePositions.push_back(p);
-    }
-    for (const auto index : ig.indices) { g.indices.push_back(first + index); }
-    publishMeshGeometry(a);
-    const auto result = buildDifferenceMesh(a, cavity ? cube() : cube(.5), approximateSettings(.05));
-    checkClosedEdges(result.parts[0]);
-    checkClosedEdges(result.parts[1]);
-    if (cavity) {
-        CHECK(result.volumes[0] < 1e-8);
-        CHECK(std::abs(result.volumes[1] - .125) < .04);
-    } else {
-        CHECK(std::abs(result.volumes[0] - .5) < .06);
-        CHECK(std::abs(result.volumes[1] - .25) < .04);
-    }
-}
-
-TEST_CASE("approximate settings persist and invalidate only construction results")
+TEST_CASE("difference exposes one algorithm and retains display settings")
 {
     Fixture f;
     f.comparison();
-    auto settings = comparisonSettings(f.state, f.id);
-    settings.difference = approximateSettings(.1);
-    settings.difference.visible = true;
-    setComparisonSettings(f.state, settings, f.id);
-    f.wait();
-    CHECK(f.runtime.phase == "not_created");
-    CHECK(comparisonSettings(f.state, f.id).difference.visible);
-    requestDifferenceMesh(f.state, f.id);
+    auto command = cli({"analysis", "difference-create", "object"});
+    command.objectId = f.id;
+    (void)controlDifference(f.state, f.runtime, command);
     f.wait();
     INFO(f.runtime.error);
     REQUIRE(f.runtime.phase == "ready");
-    CHECK(differenceStatus(f.runtime, f.state, f.id)["kind"] == "approximate_volume");
-    const auto original = f.runtime.result;
-    requestDifferenceResolutionCheck(f.state, f.id);
-    f.wait(true);
-    INFO(f.runtime.resolution.error);
-    REQUIRE(f.runtime.resolution.phase == "ready");
-    CHECK(f.runtime.result == original);
-    CHECK(f.runtime.resolution.cellSize == .05);
-    CHECK(differenceStatus(f.runtime, f.state, f.id)["resolutionCheck"]["cellSize"] == .05);
-    settings = comparisonSettings(f.state, f.id);
+    const auto status = differenceStatus(f.runtime, f.state, f.id);
+    CHECK(status["kind"] == "approximate_mesh");
+    CHECK(status["triangles"].size() == 2);
+    for (const auto key : {"method", "cellSize", "showWalls", "closureTriangles", "resolutionCheck"}) {
+        CHECK_FALSE(status.contains(key));
+        CHECK_FALSE(status["settings"].contains(key));
+    }
+    auto settings = comparisonSettings(f.state, f.id);
     settings.difference.showB = false;
-    settings.difference.opacity = .25f;
-    settings.tolerance = .9f;
+    settings.difference.opacity = .4f;
     setComparisonSettings(f.state, settings, f.id);
     CHECK(differenceResultCurrent(f.runtime, f.state, f.id));
-    const auto path = f.root / "approximate.woby";
+    const auto path = f.root / "difference.woby";
     writeSceneDocument(path, createSceneDocument(f.state));
     const auto restored = prepareSceneReplacement(f.state, f.state.files, readSceneDocument(path));
     REQUIRE(restored.comparisons.size() == 1);
     CHECK(restored.comparisons[0].settings.difference == settings.difference);
-    settings.difference.cellSize = .2;
-    setComparisonSettings(f.state, settings, f.id);
-    CHECK_FALSE(differenceResultCurrent(f.runtime, f.state, f.id));
-    CHECK(differenceStatus(f.runtime, f.state, f.id)["totalVolume"].is_null());
-    CHECK_FALSE(differenceStatus(f.runtime, f.state, f.id)["resolutionCheck"].contains("totalVolume"));
-    f.wait();
-    CHECK(f.runtime.phase == "outdated");
-    requestDifferenceMesh(f.state, f.id);
-    f.wait();
-    REQUIRE(f.runtime.phase == "ready");
-    CHECK(f.runtime.result->construction.cellSize == .2);
-    settings = comparisonSettings(f.state, f.id);
-    settings.difference.method = DifferenceMethod::direct;
-    setComparisonSettings(f.state, settings, f.id);
-    CHECK_FALSE(differenceResultCurrent(f.runtime, f.state, f.id));
-    requestDifferenceMesh(f.state, f.id);
-    f.wait();
-    CHECK(differenceStatus(f.runtime, f.state, f.id)["totalVolume"] == 1);
-}
-
-TEST_CASE("approximate workers discard obsolete builds and canceled resolution checks")
-{
-    Fixture f;
-    f.comparison();
-    auto settings = comparisonSettings(f.state, f.id);
-    settings.difference = approximateSettings(.1);
-    setComparisonSettings(f.state, settings, f.id);
-    requestDifferenceMesh(f.state, f.id);
-    updateDifferenceRuntime(f.runtime, f.state, f.id, comparisonGeometrySignature(f.state, f.id));
-    REQUIRE(f.runtime.worker.valid());
-    settings = comparisonSettings(f.state, f.id);
-    settings.difference.cellSize = .2;
-    setComparisonSettings(f.state, settings, f.id);
-    f.runtime.worker.wait();
-    f.wait();
-    CHECK(f.runtime.phase == "outdated");
-    CHECK_FALSE(f.runtime.result);
-    requestDifferenceMesh(f.state, f.id);
-    f.wait();
-    REQUIRE(f.runtime.phase == "ready");
-    requestDifferenceResolutionCheck(f.state, f.id);
-    updateDifferenceRuntime(f.runtime, f.state, f.id, comparisonGeometrySignature(f.state, f.id));
-    REQUIRE(f.runtime.resolution.worker.valid());
-    requestDifferenceResolutionCheck(f.state, f.id, true);
-    f.runtime.resolution.worker.wait();
-    f.wait(true);
-    CHECK(f.runtime.resolution.phase == "canceled");
-    CHECK(differenceResultCurrent(f.runtime, f.state, f.id));
-    CHECK_FALSE(differenceStatus(f.runtime, f.state, f.id)["resolutionCheck"].contains("totalVolume"));
-}
-
-TEST_CASE("approximate difference CLI validates settings and supports configuration before creation")
-{
-    const auto command = cli({"analysis", "difference-set", "object", "--method", "approximate", "--cell-size", "0.125"});
-    CHECK(command.method == "approximate");
-    CHECK(command.cellSize == .125);
-    CHECK(controlOperationParams(parseControlOperation(controlMethod(command.action), controlOperationParams(command))) ==
-          controlOperationParams(command));
-    CHECK_THROWS(cli({"analysis", "difference-set", "object", "--method", "unknown"}));
-    CHECK_THROWS(cli({"analysis", "difference-set", "object", "--cell-size", "0"}));
-    CHECK_THROWS(cli({"analysis", "difference-set", "object", "--cell-size", "-1"}));
-    Fixture f;
-    f.comparison();
-    auto create = cli({"analysis", "difference-create", "object", "--method", "approximate", "--cell-size", "0.125"});
-    create.objectId = f.id;
-    (void)controlDifference(f.state, f.runtime, create);
-    f.wait();
-    CHECK(differenceStatus(f.runtime, f.state, f.id)["method"] == "approximate");
-    auto settings = comparisonSettings(f.state, f.id);
-    settings.difference.cellSize = std::numeric_limits<double>::quiet_NaN();
-    setComparisonSettings(f.state, settings, f.id);
-    CHECK(comparisonSettings(f.state, f.id).difference.cellSize == .5);
-}
-
-TEST_CASE("difference CLI checks resolution and reports changes without replacing the base result")
-{
-    Fixture f;
-    f.comparison();
-    const auto run = [&](std::vector<std::string> words) {
-        auto command = cli(std::move(words));
-        command.objectId = f.id;
-        return controlDifference(f.state, f.runtime, command)["difference"];
-    };
-    CHECK_THROWS(run({"analysis", "difference-check-resolution", "object"}));
-    run({"analysis", "difference-create", "object"});
-    f.wait();
-    CHECK_THROWS(run({"analysis", "difference-check-resolution", "object"}));
-    run({"analysis", "difference-rebuild", "object", "--method", "approximate", "--cell-size", "0.2"});
-    f.wait();
-    REQUIRE(differenceResultCurrent(f.runtime, f.state, f.id));
-    const auto original = f.runtime.result;
-    const auto total = original->volumes[0] + original->volumes[1];
-    auto status = run({"analysis", "difference-check-resolution", "object"});
-    CHECK(status["resolutionCheck"]["state"] == "running");
-    CHECK_FALSE(status["resolutionCheck"].contains("totalVolume"));
-    f.wait(true);
-    status = run({"analysis", "difference-get", "object"});
-    const auto &check = status["resolutionCheck"];
-    REQUIRE(check["state"] == "ready");
-    CHECK(check["baseCellSize"] == .2);
-    CHECK(check["cellSize"] == .1);
-    CHECK(check["totalVolume"].get<double>() == check["volumeA"].get<double>() + check["volumeB"].get<double>());
-    CHECK(check["netVolume"].get<double>() == check["volumeB"].get<double>() - check["volumeA"].get<double>());
-    CHECK(check["totalVolumeChange"].get<double>() == doctest::Approx(check["totalVolume"].get<double>() - total));
-    CHECK(check["relativeChangePercent"].get<double>() == doctest::Approx(100 * check["totalVolumeChange"].get<double>() / total));
-    CHECK(status["totalVolume"] == total);
-    CHECK(f.runtime.result == original);
-
-    run({"analysis", "difference-check-resolution", "object"});
-    REQUIRE(f.runtime.resolution.worker.valid());
-    status = run({"analysis", "difference-cancel-check", "object"});
-    CHECK(status["resolutionCheck"]["state"] == "canceled");
-    f.runtime.resolution.worker.wait();
-    f.wait(true);
-    CHECK(f.runtime.resolution.phase == "canceled");
-    CHECK(differenceResultCurrent(f.runtime, f.state, f.id));
-    CHECK(f.runtime.result == original);
-    CHECK_FALSE(differenceStatus(f.runtime, f.state, f.id)["resolutionCheck"].contains("totalVolume"));
-
-    run({"analysis", "difference-set", "object", "--cell-size", "0.3"});
-    CHECK_THROWS(run({"analysis", "difference-check-resolution", "object"}));
-    CHECK_FALSE(run({"analysis", "difference-get", "object"})["resolutionCheck"].contains("totalVolume"));
-    run({"analysis", "difference-set", "object", "--method", "direct"});
-    CHECK_NOTHROW(run({"analysis", "difference-cancel-check", "object"}));
-}
-
-TEST_CASE("resolution status handles a zero base volume and failed reconstruction")
-{
-    Fixture f;
-    f.comparison(cube(), cube());
-    auto settings = comparisonSettings(f.state, f.id);
-    settings.difference = approximateSettings(.2);
-    setComparisonSettings(f.state, settings, f.id);
-    requestDifferenceMesh(f.state, f.id);
-    f.wait();
-    REQUIRE(differenceResultCurrent(f.runtime, f.state, f.id));
-    auto command = cli({"analysis", "difference-check-resolution", "object"});
-    command.objectId = f.id;
-    (void)controlDifference(f.state, f.runtime, command);
-    SUBCASE("identical inputs") {
-        f.wait(true);
-        const auto check = differenceStatus(f.runtime, f.state, f.id)["resolutionCheck"];
-        REQUIRE(check["state"] == "ready");
-        CHECK(check["totalVolumeChange"] == 0);
-        CHECK(check["relativeChangePercent"].is_null());
+    for (const auto action : {"difference-create", "difference-rebuild", "difference-set"}) {
+        CHECK_THROWS(cli({"analysis", action, "object", "--method", "approximate_mesh"}));
+        CHECK_THROWS(cli({"analysis", action, "object", "--cell-size", "1"}));
     }
-    SUBCASE("failed check retains current base") {
-        // A worker failure must be returned by get, while base volumes stay available.
-        f.runtime.resolution.worker.wait();
-        f.runtime.resolution.worker = std::async(std::launch::async, []() -> std::array<double, 2> {
-            throw std::runtime_error("Grid allocation failed");
-        });
-        f.wait(true);
-        const auto status = differenceStatus(f.runtime, f.state, f.id);
-        CHECK(status["current"] == true);
-        CHECK(status["resolutionCheck"]["state"] == "failed");
-        CHECK(status["resolutionCheck"]["error"] == "Grid allocation failed");
-        CHECK_FALSE(status["resolutionCheck"].contains("totalVolume"));
+    CHECK_THROWS(cli({"analysis", "difference-set", "object", "--show-walls", "false"}));
+    CHECK_THROWS(cli({"analysis", "difference-check-resolution", "object"}));
+    CHECK_THROWS(cli({"analysis", "difference-cancel-check", "object"}));
+}
+
+TEST_CASE("difference workers discard results after cancellation source edits or replacement")
+{
+    Fixture f;
+    f.comparison();
+    requestDifferenceMesh(f.state, f.id);
+    // Supply an owned pending result to exercise publication without relying on timing.
+    std::promise<std::shared_ptr<const DifferenceMesh>> pending;
+    auto &r = f.runtime;
+    r.initialized = true;
+    r.phase = "running";
+    r.consumedRequest = r.workerRequest = findComparison(f.state, f.id)->differenceRequest.revision;
+    r.workerSignature = comparisonGeometrySignature(f.state, f.id);
+    r.worker = pending.get_future();
+    bool replaced = false;
+    SUBCASE("cancel") { requestDifferenceMesh(f.state, f.id, true); }
+    SUBCASE("source edit") {
+        selectSceneObject(f.state, f.state.files[1].objectId);
+        setSelectedObjectProperty(f.state, UiObjectProperty::translationX, 2);
+    }
+    SUBCASE("new request") { requestDifferenceMesh(f.state, f.id); replaced = true; }
+    pending.set_value(std::make_shared<const DifferenceMesh>(buildDifferenceMesh(cube(), cube(.5))));
+    updateDifferenceRuntime(r, f.state, f.id, comparisonGeometrySignature(f.state, f.id));
+    CHECK_FALSE(r.result);
+    if (replaced) {
+        CHECK(r.phase == "running");
+        f.wait();
+        REQUIRE(r.phase == "ready");
+        CHECK(differenceResultCurrent(r, f.state, f.id));
+    } else {
+        CHECK((r.phase == "canceled" || r.phase == "outdated"));
+        CHECK_FALSE(differenceResultCurrent(r, f.state, f.id));
     }
 }
 } // namespace
@@ -540,7 +328,6 @@ TEST_CASE("difference solids compute both directions and preserve small differen
         auto r = buildDifferenceMesh(cube(), cube(.5));
         CHECK(r.volumes[0] == doctest::Approx(.5));
         CHECK(r.volumes[1] == doctest::Approx(.5));
-        CHECK_FALSE(r.constructed);
         CHECK(r.removedCollapsedTriangles == std::array<size_t, 2>{0, 0});
     }
     SUBCASE("identical")
@@ -597,6 +384,36 @@ TEST_CASE("difference solids compute both directions and preserve small differen
         CHECK(r.parts[0].bounds.max[0] <= 1);
     }
 }
+TEST_CASE("difference preserves separate solids that meet at an edge")
+{
+    // A notched prism minus its lower half leaves two triangular prisms.
+    // They share a geometric edge, but each has its own closed topology.
+    const auto a = surface({{0, 0, 0}, {2, 0, 0}, {2, 2, 0}, {1, 1, 0}, {0, 2, 0},
+                            {0, 0, 1}, {2, 0, 1}, {2, 2, 1}, {1, 1, 1}, {0, 2, 1}},
+                           {0, 3, 1, 1, 3, 2, 0, 4, 3, 5, 6, 8, 6, 7, 8, 5, 8, 9,
+                            0, 1, 6, 0, 6, 5, 1, 2, 7, 1, 7, 6, 2, 3, 8, 2, 8, 7,
+                            3, 4, 9, 3, 9, 8, 4, 0, 5, 4, 5, 9});
+    auto b = cube();
+    auto &g = editMeshGeometry(b);
+    for (size_t i = 0; i < g.vertices.size(); ++i) {
+        g.precisePositions[i][0] *= 2;
+        g.vertices[i].position = renderPosition(g.precisePositions[i]);
+    }
+    publishMeshGeometry(b);
+    for (const bool reverse : {false, true}) {
+        CAPTURE(reverse);
+        const auto result = buildDifferenceMesh(reverse ? b : a, reverse ? a : b);
+        const size_t part = reverse ? 1 : 0;
+        CHECK(result.volumes[part] == doctest::Approx(1));
+        CHECK(result.volumes[1 - part] == 0);
+        checkClosedEdges(result.parts[part]);
+        std::map<Coordinate, size_t> positions;
+        for (const auto &p : meshGeometry(result.parts[part]).precisePositions) { ++positions[p]; }
+        CHECK(positions.at({1, 1, 0}) == 2);
+        CHECK(positions.at({1, 1, 1}) == 2);
+    }
+}
+
 TEST_CASE("difference removes exact collapsed faces from both solid inputs without changing the sources")
 {
     const auto a = withCollapsedTriangles(cube());
@@ -604,7 +421,6 @@ TEST_CASE("difference removes exact collapsed faces from both solid inputs witho
     const auto aIndices = meshGeometry(a).indices, bIndices = meshGeometry(b).indices;
     const auto aPositions = meshGeometry(a).precisePositions, bPositions = meshGeometry(b).precisePositions;
     const auto r = buildDifferenceMesh(a, b);
-    CHECK_FALSE(r.constructed);
     CHECK(r.removedCollapsedTriangles == std::array<size_t, 2>{3, 6});
     CHECK(r.volumes[0] == doctest::Approx(.5));
     CHECK(r.volumes[1] == doctest::Approx(.5));
@@ -614,80 +430,8 @@ TEST_CASE("difference removes exact collapsed faces from both solid inputs witho
     CHECK(meshGeometry(a).precisePositions == aPositions);
     CHECK(meshGeometry(b).precisePositions == bPositions);
 }
-TEST_CASE("difference closes open surfaces with unequal boundary vertex counts")
-{
-    const auto r = buildDifferenceMesh(sheet(0), sheet(.25, true));
-    CHECK(r.constructed);
-    CHECK(r.volumes[0] == doctest::Approx(.25));
-    CHECK(r.volumes[1] == 0);
-    CHECK(r.closureTriangles == 9);
-    CHECK_FALSE(meshGeometry(r.parts[0]).indices.empty());
-    CHECK(meshGeometry(r.parts[2]).indices.size() == 27);
-    const auto reversed = buildDifferenceMesh(sheet(.25, true), sheet(0));
-    CHECK(reversed.volumes[0] == doctest::Approx(.25));
-}
-TEST_CASE("difference cleanup excludes unused points from open surface results")
-{
-    const auto r = buildDifferenceMesh(withCollapsedTriangles(sheet(0)), sheet(.25, true));
-    CHECK(r.constructed);
-    CHECK(r.removedCollapsedTriangles == std::array<size_t, 2>{3, 0});
-    CHECK(r.volumes[0] == doctest::Approx(.25));
-    CHECK(r.closureTriangles == 9);
-    for (const auto part : {0, 2}) {
-        CHECK(r.parts[part].bounds.max == std::array<float, 3>{1, 1, .25f});
-        CHECK(r.parts[part].bounds.min == std::array<float, 3>{0, 0, 0});
-    }
-}
-TEST_CASE("difference runtime accepts a parametric collapsed boundary and reports cleanup counts")
-{
-    Fixture f;
-    const auto parametric = loadObjMeshText(
-        "v 0 0 0\nv 0 0 0\nv 0 1 0\nv 1 1 0\n"
-        "cstype bezier\ndeg 1 1\nsurf 0 1 0 1 1 2 3 4\nparm u 0 1\nparm v 0 1\nend\n");
-    const auto triangular = surface({{0, 0, .25}, {1, 1, .25}, {0, 1, .25}}, {0, 1, 2});
-    const auto sourceIndices = meshGeometry(parametric).indices;
-    REQUIRE(sourceIndices.size() / 3 == 2048);
-    bool reverse = false;
-    SUBCASE("parametric input A") {}
-    SUBCASE("parametric input B") { reverse = true; }
-    f.comparison(reverse ? triangular : parametric, reverse ? parametric : triangular);
-    requestDifferenceMesh(f.state, f.id);
-    f.wait();
-    INFO(f.runtime.error);
-    REQUIRE(f.runtime.phase == "ready");
-    REQUIRE(f.runtime.result);
-    CHECK(f.runtime.result->constructed);
-    CHECK(f.runtime.result->volumes[0] == doctest::Approx(.125));
-    CHECK(meshGeometry(f.runtime.result->parts[0]).indices.size() / 3 == 2017);
-    CHECK(meshGeometry(f.state.files[reverse ? 1 : 0].mesh).indices == sourceIndices);
-    CHECK(f.state.files[reverse ? 1 : 0].mesh.freeform == parametric.freeform);
-    const auto status = differenceStatus(f.runtime, f.state, f.id);
-    CHECK(status["removedCollapsedTriangles"]["a"] == (reverse ? 0 : 32));
-    CHECK(status["removedCollapsedTriangles"]["b"] == (reverse ? 32 : 0));
-    CHECK(f.runtime.result->message.find(reverse ? "A: 0, B: 32" : "A: 32, B: 0") != std::string::npos);
-    selectSceneObject(f.state, f.state.files[0].objectId);
-    setSelectedObjectProperty(f.state, UiObjectProperty::translationX, 2);
-    CHECK_FALSE(differenceStatus(f.runtime, f.state, f.id).contains("removedCollapsedTriangles"));
-}
 TEST_CASE("difference reports invalid geometry and cannot silently close holes")
 {
-    SUBCASE("mixed topology")
-    {
-        CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(cube(), sheet(0)), doctest::Contains("one outer boundary"),
-                             std::runtime_error);
-    }
-    SUBCASE("hole")
-    {
-        auto ring = surface({{0, 0, 0}, {3, 0, 0}, {3, 3, 0}, {0, 3, 0}, {1, 1, 0}, {2, 1, 0}, {2, 2, 0}, {1, 2, 0}},
-                            {0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7});
-        CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(ring, sheet(1)), doctest::Contains("A: 2"), std::runtime_error);
-    }
-    SUBCASE("crossing surfaces")
-    {
-        auto tilted = surface({{0, 0, -1}, {1, 0, 1}, {1, 1, 1}, {0, 1, -1}}, {0, 1, 2, 0, 2, 3});
-        CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(sheet(0), tilted), doctest::Contains("self-intersect"),
-                             std::runtime_error);
-    }
     SUBCASE("all triangles collapsed in A or B")
     {
         const auto bad = surface({{0, 0, 0}, {1, 0, 0}, {2, 0, 0}}, {0, 1, 2, 0, 0, 1});
@@ -709,7 +453,7 @@ TEST_CASE("difference reports invalid geometry and cannot silently close holes")
         auto &g = editMeshGeometry(bad);
         std::swap(g.indices[0], g.indices[1]);
         publishMeshGeometry(bad);
-        CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(bad, cube()), doctest::Contains("winding"), std::runtime_error);
+        CHECK_THROWS_WITH_AS((void)buildDifferenceMesh(bad, cube()), doctest::Contains("closed solids"), std::runtime_error);
     }
     SUBCASE("cancel")
     {
@@ -792,11 +536,10 @@ TEST_CASE("difference CLI supports creation display export cancellation and dele
         CHECK(controlOperationParams(parseControlOperation(controlMethod(c.action), p)) == p);
     }
     const auto c = cli({"analysis", "difference-set", "object", "--visible", "false", "--show-a-only", "false",
-                        "--show-b-only", "true", "--show-walls", "false", "--opacity", "0.6"});
+                        "--show-b-only", "true", "--opacity", "0.6"});
     CHECK(c.visible == false);
     CHECK(c.showAOnly == false);
     CHECK(c.showBOnly == true);
-    CHECK(c.showWalls == false);
     REQUIRE(c.opacity.has_value());
     CHECK(*c.opacity == doctest::Approx(.6f));
     CHECK(controlOperationParams(parseControlOperation(controlMethod(c.action), controlOperationParams(c))) ==
@@ -842,12 +585,6 @@ TEST_CASE("locked difference results remain current when source models move")
     f.comparison(cube(), cube(.5), false);
     REQUIRE(comparisonSettings(f.state, f.id).alignOrigins);
     REQUIRE(comparisonSettings(f.state, f.id).lockPlacement);
-    SUBCASE("direct") {}
-    SUBCASE("approximate") {
-        auto settings = comparisonSettings(f.state, f.id);
-        settings.difference = approximateSettings(.2);
-        setComparisonSettings(f.state, settings, f.id);
-    }
     requestDifferenceMesh(f.state, f.id);
     f.wait();
     REQUIRE(f.runtime.phase == "ready");
@@ -875,16 +612,119 @@ TEST_CASE("duplicated comparisons retain difference settings without copying req
     Fixture f;
     f.comparison();
     auto settings = comparisonSettings(f.state, f.id);
-    settings.difference = approximateSettings(.2);
+    settings.difference.opacity = .4f;
     setComparisonSettings(f.state, settings, f.id);
     requestDifferenceMesh(f.state, f.id);
-    requestDifferenceResolutionCheck(f.state, f.id);
     const auto duplicate = duplicateComparison(f.state, f.id);
     const auto* copy = findComparison(f.state, duplicate);
     REQUIRE(copy);
     CHECK(copy->settings.difference == comparisonSettings(f.state, f.id).difference);
     CHECK(copy->differenceRequest.revision == 0);
-    CHECK(copy->differenceResolutionRequest.revision == 0);
-    CHECK_FALSE(copy->differenceResolutionRequest.cancel);
-    CHECK(findComparison(f.state, f.id)->differenceResolutionRequest.revision > 0);
+    CHECK(findComparison(f.state, f.id)->differenceRequest.revision > 0);
+}
+
+TEST_CASE("difference mesh is a separate analysis with its own input membership")
+{
+    Fixture f;
+    f.comparison();
+    const auto settings = comparisonSettings(f.state, f.id);
+    CHECK(settings.type == AnalysisType::differenceMesh);
+    CHECK(comparisonTask(f.state, f.id) == AnalysisTask::differenceMesh);
+    CHECK(std::string(analysisTypeKey(settings.type)) == "difference_mesh");
+    CHECK(settings.difference.created);
+    CHECK(requestedComparisonStages(settings, true, true) == 0);
+    CHECK(comparisonPartCount(f.state, ComparisonSide::a, f.id) == 1);
+    CHECK(comparisonPartCount(f.state, ComparisonSide::b, f.id) == 1);
+    const auto other = createAnalysisFromObjects(f.state, AnalysisTask::surfaceComparison,
+        {f.state.files[0].objectId, f.state.files[1].objectId});
+    REQUIRE(other != f.id);
+    const auto original = *findComparison(f.state, other);
+    CHECK_THROWS_AS(requestDifferenceMesh(f.state, other), std::invalid_argument);
+    auto command = cli({"analysis", "difference-create", "object"});
+    command.objectId = other;
+    CHECK_THROWS_AS((void)controlDifference(f.state, f.runtime, command), std::invalid_argument);
+    CHECK_THROWS_AS(requestComparisonDetector(f.state, f.id, DiagnosticCategory::boundary), std::invalid_argument);
+    setAnalysisTask(f.state, f.id, AnalysisTask::meshChecks);
+    CHECK(comparisonSettings(f.state, f.id).type == AnalysisType::differenceMesh);
+    setAnalysisTask(f.state, other, AnalysisTask::differenceMesh);
+    CHECK(comparisonSettings(f.state, other).type == AnalysisType::surfaceComparison);
+    clearComparisonGroup(f.state, ComparisonSide::b, f.id);
+    CHECK(comparisonPartCount(f.state, ComparisonSide::b, other) == 1);
+    CHECK(comparisonSettings(f.state, other) == original.settings);
+    CHECK(findComparison(f.state, other)->differenceRequest.revision == 0);
+    CHECK_FALSE(comparisonSettings(f.state, other).difference.created);
+}
+
+TEST_CASE("difference runtime builds without comparison preparation detectors or heatmaps")
+{
+    Fixture f;
+    f.comparison();
+    ComparisonRuntimes runtimes;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    do {
+        updateComparisonRuntimes(runtimes, f.state);
+        const auto &r = runtimes.objects.at(f.id);
+        CHECK_FALSE(r.jobs.preparationWorker.valid());
+        CHECK_FALSE(r.jobs.worker.valid());
+        CHECK_FALSE(r.jobs.intersection.worker.valid());
+        CHECK_FALSE(r.sources.prepared);
+        CHECK(r.results.cache.completed == 0);
+        if (r.difference.phase != "running" && r.difference.phase != "queued") { break; }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    } while (std::chrono::steady_clock::now() < deadline);
+    const auto &r = runtimes.objects.at(f.id).difference;
+    CHECK(r.phase == "ready");
+    CHECK(differenceResultCurrent(r, f.state, f.id));
+    destroyComparisonRuntimes(runtimes);
+}
+
+TEST_CASE("difference visibility uses the analysis eye and preserves the result")
+{
+    Fixture f;
+    f.comparison();
+    f.wait();
+    REQUIRE(differenceResultCurrent(f.runtime, f.state, f.id));
+    const auto result = f.runtime.result;
+    auto command = cli({"analysis", "difference-set", "object", "--visible", "false"});
+    command.objectId = f.id;
+    const auto status = controlDifference(f.state, f.runtime, command)["difference"];
+    CHECK_FALSE(comparisonSettings(f.state, f.id).enabled);
+    CHECK(status["settings"]["visible"] == false);
+    CHECK(status["current"] == true);
+    auto settings = comparisonSettings(f.state, f.id);
+    settings.enabled = true;
+    setComparisonSettings(f.state, settings, f.id);
+    f.wait();
+    CHECK(f.runtime.result == result);
+    CHECK(differenceStatus(f.runtime, f.state, f.id)["settings"]["visible"] == true);
+}
+
+TEST_CASE("restoring a cleared difference through a view or undo starts a fresh build")
+{
+    Fixture f;
+    f.comparison();
+    f.wait();
+    REQUIRE(differenceResultCurrent(f.runtime, f.state, f.id));
+    const auto view = createView(f.state);
+    const auto before = createSceneDocument(f.state);
+    SceneHistory history;
+    resetSceneHistory(history, f.state);
+    auto command = cli({"analysis", "difference-delete", "object"});
+    command.objectId = f.id;
+    (void)controlDifference(f.state, f.runtime, command);
+    REQUIRE(f.runtime.phase == "not_created");
+    REQUIRE(findComparison(f.state, f.id)->differenceRequest.cancel);
+    SUBCASE("saved view") { applyView(f.state, view); }
+    SUBCASE("undo") {
+        REQUIRE(recordSceneHistory(history, f.state));
+        auto undo = prepareSceneHistoryStep(history, f.state, before, false);
+        REQUIRE(undo);
+        commitSceneHistoryStep(history, f.state, std::move(*undo), false);
+    }
+    REQUIRE(comparisonSettings(f.state, f.id).difference.created);
+    CHECK_FALSE(findComparison(f.state, f.id)->differenceRequest.cancel);
+    f.wait();
+    CHECK(differenceResultCurrent(f.runtime, f.state, f.id));
+    REQUIRE(f.runtime.result);
+    CHECK(f.runtime.result->volumes == std::array<double, 2>{.5, .5});
 }

@@ -1,0 +1,6672 @@
+{
+  "revision": "679ca030ebc3239aaf5afaf493b6f9181256c0f5",
+  "scene": "D:\\temp\\GM-data\\test.woby",
+  "manifest": {
+    "D:\\temp\\GM-data\\test.woby": {
+      "sha256": "2bdbfd97611a65a4ac2da3e4a1e3357c33b067c82d06967e4da1090170658d41",
+      "bytes": 102673
+    },
+    "D:\\temp\\GM-data\\original\\object.json": {
+      "sha256": "8fa55868981a0ffb0150a9ff66fd741cfbefcf2b0e8c2f11af8858f2742b17d0",
+      "bytes": 11511
+    },
+    "D:\\temp\\GM-data\\plaxis\\data.db": {
+      "sha256": "246048c113d52f7f1a9da13abdfdc18dbf90e06fb089529d7f7f0e0135a72f6c",
+      "bytes": 8437760
+    },
+    "D:\\temp\\GM-data\\importers\\geosim_parquet\\woby_geosim_parquet_importer.dll": {
+      "sha256": "3ef0ffc38764b8fa2391a217b3f17988f4fe8d2c3f4a36d89bd35ded829488ae",
+      "bytes": 445952
+    },
+    "D:\\temp\\GM-data\\importers\\plaxis_sqlite\\woby_plaxis_sqlite_importer.dll": {
+      "sha256": "59431660c7868eb8ad7057ff2fed7b5351a5e591305f43262d7a69efa788d41e",
+      "bytes": 1089536
+    },
+    "C:\\Users\\tuncb\\.t3\\worktrees\\woby\\t3-02e73cf6\\src\\difference_mesh.cpp": {
+      "sha256": "df09bdf609d410fda068356aea3af3c788b92f057c4efaabfa72b830a1227fb2",
+      "bytes": 29582
+    },
+    "C:\\Users\\tuncb\\.t3\\worktrees\\woby\\t3-02e73cf6\\src\\comparison_placement.cpp": {
+      "sha256": "800451e47560c37218f08b1b4951bffb57ec44f7b46b03356a51e247439e3d31",
+      "bytes": 11258
+    }
+  },
+  "grid": {
+    "extent": [
+      3267.5646124837876,
+      5637.435706013039,
+      321.86454345842964
+    ],
+    "low": [
+      -1.0532325752513157e-12,
+      0.0,
+      -1.4210854715202004e-14
+    ],
+    "high": [
+      3267.5646124837867,
+      5637.435706013039,
+      321.86454345842964
+    ],
+    "minimum_cell": 22.731595588762254,
+    "rows": [
+      {
+        "cell_size": 0.5,
+        "size": [
+          6540,
+          11279,
+          648
+        ],
+        "padded_axes": [
+          8192,
+          16384,
+          1024
+        ],
+        "guard_count": 274877906944,
+        "accepted": false,
+        "lattice_callbacks_per_side": 95855025820,
+        "voxel_buffer_slots": 219569755415
+      },
+      {
+        "cell_size": 1,
+        "size": [
+          3272,
+          5642,
+          326
+        ],
+        "padded_axes": [
+          4096,
+          8192,
+          512
+        ],
+        "guard_count": 34359738368,
+        "accepted": false,
+        "lattice_callbacks_per_side": 12100472821,
+        "voxel_buffer_slots": 27478472339
+      },
+      {
+        "cell_size": 5,
+        "size": [
+          658,
+          1132,
+          69
+        ],
+        "padded_axes": [
+          1024,
+          2048,
+          128
+        ],
+        "guard_count": 536870912,
+        "accepted": false,
+        "lattice_callbacks_per_side": 105404530,
+        "voxel_buffer_slots": 346845073
+      },
+      {
+        "cell_size": 10,
+        "size": [
+          331,
+          568,
+          37
+        ],
+        "padded_axes": [
+          512,
+          1024,
+          64
+        ],
+        "guard_count": 67108864,
+        "accepted": false,
+        "lattice_callbacks_per_side": 14581094,
+        "voxel_buffer_slots": 43851217
+      },
+      {
+        "cell_size": 20,
+        "size": [
+          168,
+          286,
+          21
+        ],
+        "padded_axes": [
+          256,
+          512,
+          32
+        ],
+        "guard_count": 8388608,
+        "accepted": false,
+        "lattice_callbacks_per_side": 2193146,
+        "voxel_buffer_slots": 5621873
+      },
+      {
+        "cell_size": 22.7316,
+        "size": [
+          148,
+          252,
+          19
+        ],
+        "padded_axes": [
+          256,
+          256,
+          32
+        ],
+        "guard_count": 4194304,
+        "accepted": true,
+        "lattice_callbacks_per_side": 1554040,
+        "voxel_buffer_slots": 2490349
+      },
+      {
+        "cell_size": 25,
+        "size": [
+          135,
+          230,
+          17
+        ],
+        "padded_axes": [
+          256,
+          256,
+          32
+        ],
+        "guard_count": 4194304,
+        "accepted": true,
+        "lattice_callbacks_per_side": 1169384,
+        "voxel_buffer_slots": 2275945
+      },
+      {
+        "cell_size": 50,
+        "size": [
+          70,
+          117,
+          11
+        ],
+        "padded_axes": [
+          128,
+          128,
+          16
+        ],
+        "guard_count": 524288,
+        "accepted": true,
+        "lattice_callbacks_per_side": 211920,
+        "voxel_buffer_slots": 302877
+      },
+      {
+        "cell_size": 100,
+        "size": [
+          37,
+          61,
+          8
+        ],
+        "padded_axes": [
+          64,
+          128,
+          16
+        ],
+        "guard_count": 262144,
+        "accepted": true,
+        "lattice_callbacks_per_side": 45774,
+        "voxel_buffer_slots": 165911
+      },
+      {
+        "cell_size": 500,
+        "size": [
+          11,
+          16,
+          5
+        ],
+        "padded_axes": [
+          16,
+          32,
+          16
+        ],
+        "guard_count": 16384,
+        "accepted": true,
+        "lattice_callbacks_per_side": 2862,
+        "voxel_buffer_slots": 14961
+      }
+    ]
+  },
+  "runs": [
+    {
+      "run": "full-cell5",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                3267.5646124714403,
+                2773.744779843837,
+                224.34413653491544
+              ],
+              "min": [
+                2282.7454268761794,
+                0.0,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Unknown",
+              "signed_triangle_volume": 204577641.03584433,
+              "triangles": 95060
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5203.242794122547,
+                234.98044117896222
+              ],
+              "min": [
+                0.0,
+                0.0,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pdag-Gyarran Volcanics",
+              "signed_triangle_volume": 1123399549.418985,
+              "triangles": 182890
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                274.3668273644105
+              ],
+              "min": [
+                0.0,
+                1328.8514288756996,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgs-Skeletar Formation",
+              "signed_triangle_volume": 549980622.7102381,
+              "triangles": 62226
+            },
+            {
+              "max": [
+                2963.106259573309,
+                5637.435706000775,
+                153.9044013641767
+              ],
+              "min": [
+                0.0,
+                2904.5243821032345,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pmtb - Branxton Formation__1",
+              "signed_triangle_volume": 184031008.6509926,
+              "triangles": 99078
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                205.47110215897283
+              ],
+              "min": [
+                0.0,
+                1968.03490283899,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr5 - Rowan Formation__1",
+              "signed_triangle_volume": 190555149.59318453,
+              "triangles": 44086
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                152.27216547052114
+              ],
+              "min": [
+                0.0,
+                2250.8802428543568,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__1",
+              "signed_triangle_volume": 117557233.36328682,
+              "triangles": 42966
+            },
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                181.43862341136514
+              ],
+              "min": [
+                0.0,
+                2536.5899759652093,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr1 - Rowan Formation",
+              "signed_triangle_volume": 142418974.9351579,
+              "triangles": 96206
+            },
+            {
+              "max": [
+                827.0517296764883,
+                5637.435706000775,
+                104.50961781467214
+              ],
+              "min": [
+                0.0,
+                5306.099208620377,
+                38.46443637812257
+              ],
+              "name": "Geological Model - Pmtm - Mulbring Siltstone",
+              "signed_triangle_volume": 2891051.488527787,
+              "triangles": 5480
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000776,
+                321.86454345842964
+              ],
+              "min": [
+                -1.0532325752513157e-12,
+                0.0,
+                55.17029522822884
+              ],
+              "name": "External",
+              "signed_triangle_volume": 3412749983.584046,
+              "triangles": 531694
+            }
+          ],
+          "triangles": 1161720,
+          "vertices": 580878
+        },
+        "assembly_seconds": 0.0955674,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                827.0517296853296,
+                5637.435706011887,
+                128.22766756057254
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                5306.099208628735,
+                62.54457554303412
+              ],
+              "name": "Soil_1_1",
+              "signed_triangle_volume": 2882609.5359758227,
+              "triangles": 952
+            },
+            {
+              "max": [
+                2963.1062595781686,
+                5637.435706013039,
+                177.33118961518042
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                2904.5243821119,
+                24.08013916015626
+              ],
+              "name": "Soil_2_1",
+              "signed_triangle_volume": 184239682.9096619,
+              "triangles": 10192
+            },
+            {
+              "max": [
+                3267.564612481394,
+                5637.435706012011,
+                229.39155333108835
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1968.0349028402768,
+                24.08013916015625
+              ],
+              "name": "Soil_3_1",
+              "signed_triangle_volume": 190766592.9920643,
+              "triangles": 19752
+            },
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                204.0391858573713
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                159.86252337037755
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613307497,
+              "triangles": 1592
+            },
+            {
+              "max": [
+                3267.5646124815253,
+                5637.4357060117345,
+                176.22166544270357
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                2250.8802428634967,
+                24.08013916015625
+              ],
+              "name": "Soil_5_1",
+              "signed_triangle_volume": 117398141.3177001,
+              "triangles": 15672
+            },
+            {
+              "max": [
+                3267.56461247863,
+                5637.4357060117345,
+                205.2481697057137
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                2536.589975970967,
+                24.08013916015625
+              ],
+              "name": "Soil_6_1",
+              "signed_triangle_volume": 142623084.078756,
+              "triangles": 15872
+            },
+            {
+              "max": [
+                3267.5646124837867,
+                5203.242794124369,
+                259.0116451847889
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                0.0,
+                24.080139160156254
+              ],
+              "name": "Soil_7_1",
+              "signed_triangle_volume": 1124053572.0782518,
+              "triangles": 19216
+            },
+            {
+              "max": [
+                3267.564612483227,
+                2773.6046025978535,
+                248.20492063678688
+              ],
+              "min": [
+                2284.5523884444956,
+                0.0,
+                24.080139160156257
+              ],
+              "name": "Soil_8_1",
+              "signed_triangle_volume": 204504685.12860814,
+              "triangles": 5952
+            },
+            {
+              "max": [
+                3267.564612480602,
+                5637.435706009969,
+                297.7843993409787
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1328.8514288806728,
+                24.08013916015625
+              ],
+              "name": "Soil_9_1",
+              "signed_triangle_volume": 549112047.5869569,
+              "triangles": 19432
+            }
+          ],
+          "triangles": 108632,
+          "vertices": 54331
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.3621293,
+        "mode": "full"
+      },
+      "result": {
+        "cell_size": 5.0,
+        "error": "Approximate volume exceeds the grid limit (8 million samples). Use larger cells or smaller input groups.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "full",
+        "seconds": 1.161334,
+        "status": "error"
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "5",
+          "30",
+          "full"
+        ],
+        "exe_sha256": "206534bfc9aaf698256347d70758088591328179c3e0b03c384e027ab5f5b845",
+        "start_utc": "2026-10-18T13:19:56Z",
+        "exit_code": 0,
+        "process_wall_seconds": 5.099433100000169,
+        "samples": [
+          {
+            "wall_seconds": 0.09559029999945778,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.5962097999981779,
+            "process_cpu_seconds": 0.515625
+          },
+          {
+            "wall_seconds": 1.0964263999994728,
+            "process_cpu_seconds": 1.03125
+          },
+          {
+            "wall_seconds": 1.5970039999992878,
+            "process_cpu_seconds": 1.53125
+          },
+          {
+            "wall_seconds": 2.0974681000006967,
+            "process_cpu_seconds": 2.03125
+          },
+          {
+            "wall_seconds": 2.597681499999453,
+            "process_cpu_seconds": 2.53125
+          },
+          {
+            "wall_seconds": 3.097952100000839,
+            "process_cpu_seconds": 3.015625
+          },
+          {
+            "wall_seconds": 3.5984800000005635,
+            "process_cpu_seconds": 3.515625
+          },
+          {
+            "wall_seconds": 4.098701799997798,
+            "process_cpu_seconds": 3.984375
+          },
+          {
+            "wall_seconds": 4.599245199999132,
+            "process_cpu_seconds": 4.484375
+          }
+        ]
+      },
+      "stages": []
+    },
+    {
+      "run": "full-cell500",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                3267.5646124714403,
+                2773.744779843837,
+                224.34413653491544
+              ],
+              "min": [
+                2282.7454268761794,
+                0.0,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Unknown",
+              "signed_triangle_volume": 204577641.03584433,
+              "triangles": 95060
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5203.242794122547,
+                234.98044117896222
+              ],
+              "min": [
+                0.0,
+                0.0,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pdag-Gyarran Volcanics",
+              "signed_triangle_volume": 1123399549.418985,
+              "triangles": 182890
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                274.3668273644105
+              ],
+              "min": [
+                0.0,
+                1328.8514288756996,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgs-Skeletar Formation",
+              "signed_triangle_volume": 549980622.7102381,
+              "triangles": 62226
+            },
+            {
+              "max": [
+                2963.106259573309,
+                5637.435706000775,
+                153.9044013641767
+              ],
+              "min": [
+                0.0,
+                2904.5243821032345,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pmtb - Branxton Formation__1",
+              "signed_triangle_volume": 184031008.6509926,
+              "triangles": 99078
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                205.47110215897283
+              ],
+              "min": [
+                0.0,
+                1968.03490283899,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr5 - Rowan Formation__1",
+              "signed_triangle_volume": 190555149.59318453,
+              "triangles": 44086
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                152.27216547052114
+              ],
+              "min": [
+                0.0,
+                2250.8802428543568,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__1",
+              "signed_triangle_volume": 117557233.36328682,
+              "triangles": 42966
+            },
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                181.43862341136514
+              ],
+              "min": [
+                0.0,
+                2536.5899759652093,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr1 - Rowan Formation",
+              "signed_triangle_volume": 142418974.9351579,
+              "triangles": 96206
+            },
+            {
+              "max": [
+                827.0517296764883,
+                5637.435706000775,
+                104.50961781467214
+              ],
+              "min": [
+                0.0,
+                5306.099208620377,
+                38.46443637812257
+              ],
+              "name": "Geological Model - Pmtm - Mulbring Siltstone",
+              "signed_triangle_volume": 2891051.488527787,
+              "triangles": 5480
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000776,
+                321.86454345842964
+              ],
+              "min": [
+                -1.0532325752513157e-12,
+                0.0,
+                55.17029522822884
+              ],
+              "name": "External",
+              "signed_triangle_volume": 3412749983.584046,
+              "triangles": 531694
+            }
+          ],
+          "triangles": 1161720,
+          "vertices": 580878
+        },
+        "assembly_seconds": 0.0970533,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                827.0517296853296,
+                5637.435706011887,
+                128.22766756057254
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                5306.099208628735,
+                62.54457554303412
+              ],
+              "name": "Soil_1_1",
+              "signed_triangle_volume": 2882609.5359758227,
+              "triangles": 952
+            },
+            {
+              "max": [
+                2963.1062595781686,
+                5637.435706013039,
+                177.33118961518042
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                2904.5243821119,
+                24.08013916015626
+              ],
+              "name": "Soil_2_1",
+              "signed_triangle_volume": 184239682.9096619,
+              "triangles": 10192
+            },
+            {
+              "max": [
+                3267.564612481394,
+                5637.435706012011,
+                229.39155333108835
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1968.0349028402768,
+                24.08013916015625
+              ],
+              "name": "Soil_3_1",
+              "signed_triangle_volume": 190766592.9920643,
+              "triangles": 19752
+            },
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                204.0391858573713
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                159.86252337037755
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613307497,
+              "triangles": 1592
+            },
+            {
+              "max": [
+                3267.5646124815253,
+                5637.4357060117345,
+                176.22166544270357
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                2250.8802428634967,
+                24.08013916015625
+              ],
+              "name": "Soil_5_1",
+              "signed_triangle_volume": 117398141.3177001,
+              "triangles": 15672
+            },
+            {
+              "max": [
+                3267.56461247863,
+                5637.4357060117345,
+                205.2481697057137
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                2536.589975970967,
+                24.08013916015625
+              ],
+              "name": "Soil_6_1",
+              "signed_triangle_volume": 142623084.078756,
+              "triangles": 15872
+            },
+            {
+              "max": [
+                3267.5646124837867,
+                5203.242794124369,
+                259.0116451847889
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                0.0,
+                24.080139160156254
+              ],
+              "name": "Soil_7_1",
+              "signed_triangle_volume": 1124053572.0782518,
+              "triangles": 19216
+            },
+            {
+              "max": [
+                3267.564612483227,
+                2773.6046025978535,
+                248.20492063678688
+              ],
+              "min": [
+                2284.5523884444956,
+                0.0,
+                24.080139160156257
+              ],
+              "name": "Soil_8_1",
+              "signed_triangle_volume": 204504685.12860814,
+              "triangles": 5952
+            },
+            {
+              "max": [
+                3267.564612480602,
+                5637.435706009969,
+                297.7843993409787
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1328.8514288806728,
+                24.08013916015625
+              ],
+              "name": "Soil_9_1",
+              "signed_triangle_volume": 549112047.5869569,
+              "triangles": 19432
+            }
+          ],
+          "triangles": 108632,
+          "vertices": 54331
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.4285929,
+        "mode": "full"
+      },
+      "result": {
+        "cell_size": 500.0,
+        "error": "Difference mesh canceled.",
+        "event": "result",
+        "limit_seconds": 90.0,
+        "mode": "full",
+        "seconds": 90.0105089,
+        "status": "canceled"
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "500",
+          "90",
+          "full"
+        ],
+        "exe_sha256": "206534bfc9aaf698256347d70758088591328179c3e0b03c384e027ab5f5b845",
+        "start_utc": "2026-10-18T13:20:07Z",
+        "exit_code": 0,
+        "process_wall_seconds": 93.60117419999733,
+        "samples": [
+          {
+            "wall_seconds": 0.01077669999722275,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.5111605999991298,
+            "process_cpu_seconds": 0.546875
+          },
+          {
+            "wall_seconds": 1.0117310999994515,
+            "process_cpu_seconds": 1.0625
+          },
+          {
+            "wall_seconds": 1.5121991999985767,
+            "process_cpu_seconds": 1.5625
+          },
+          {
+            "wall_seconds": 2.0129725000006147,
+            "process_cpu_seconds": 2.0625
+          },
+          {
+            "wall_seconds": 2.5135171999972954,
+            "process_cpu_seconds": 2.53125
+          },
+          {
+            "wall_seconds": 3.0136886999971466,
+            "process_cpu_seconds": 3.03125
+          },
+          {
+            "wall_seconds": 3.5139901000002283,
+            "process_cpu_seconds": 3.515625
+          },
+          {
+            "wall_seconds": 4.014531999997416,
+            "process_cpu_seconds": 4.015625
+          },
+          {
+            "wall_seconds": 4.514893699997629,
+            "process_cpu_seconds": 4.515625
+          },
+          {
+            "wall_seconds": 5.015204399998765,
+            "process_cpu_seconds": 5.0
+          },
+          {
+            "wall_seconds": 5.515545700000075,
+            "process_cpu_seconds": 5.5
+          },
+          {
+            "wall_seconds": 6.01602709999861,
+            "process_cpu_seconds": 6.0
+          },
+          {
+            "wall_seconds": 6.516900099999475,
+            "process_cpu_seconds": 6.5
+          },
+          {
+            "wall_seconds": 7.017410299999028,
+            "process_cpu_seconds": 7.0
+          },
+          {
+            "wall_seconds": 7.517704099998809,
+            "process_cpu_seconds": 7.5
+          },
+          {
+            "wall_seconds": 8.01802250000037,
+            "process_cpu_seconds": 8.0
+          },
+          {
+            "wall_seconds": 8.518324999997276,
+            "process_cpu_seconds": 8.5
+          },
+          {
+            "wall_seconds": 9.0185324999984,
+            "process_cpu_seconds": 9.0
+          },
+          {
+            "wall_seconds": 9.518941499998618,
+            "process_cpu_seconds": 9.484375
+          },
+          {
+            "wall_seconds": 10.01926850000018,
+            "process_cpu_seconds": 9.984375
+          },
+          {
+            "wall_seconds": 10.51978269999745,
+            "process_cpu_seconds": 10.46875
+          },
+          {
+            "wall_seconds": 11.020167399998172,
+            "process_cpu_seconds": 10.96875
+          },
+          {
+            "wall_seconds": 11.520406999999977,
+            "process_cpu_seconds": 11.46875
+          },
+          {
+            "wall_seconds": 12.020579799998814,
+            "process_cpu_seconds": 11.96875
+          },
+          {
+            "wall_seconds": 12.521049200000562,
+            "process_cpu_seconds": 12.484375
+          },
+          {
+            "wall_seconds": 13.021605899997667,
+            "process_cpu_seconds": 12.984375
+          },
+          {
+            "wall_seconds": 13.522110899997642,
+            "process_cpu_seconds": 13.46875
+          },
+          {
+            "wall_seconds": 14.022385599997506,
+            "process_cpu_seconds": 13.96875
+          },
+          {
+            "wall_seconds": 14.522835199997644,
+            "process_cpu_seconds": 14.46875
+          },
+          {
+            "wall_seconds": 15.023425399998814,
+            "process_cpu_seconds": 14.96875
+          },
+          {
+            "wall_seconds": 15.52395709999837,
+            "process_cpu_seconds": 15.46875
+          },
+          {
+            "wall_seconds": 16.024242699997558,
+            "process_cpu_seconds": 15.96875
+          },
+          {
+            "wall_seconds": 16.524787300000753,
+            "process_cpu_seconds": 16.453125
+          },
+          {
+            "wall_seconds": 17.02540389999922,
+            "process_cpu_seconds": 16.9375
+          },
+          {
+            "wall_seconds": 17.525764300000446,
+            "process_cpu_seconds": 17.4375
+          },
+          {
+            "wall_seconds": 18.026126400000066,
+            "process_cpu_seconds": 17.9375
+          },
+          {
+            "wall_seconds": 18.52631090000068,
+            "process_cpu_seconds": 18.390625
+          },
+          {
+            "wall_seconds": 19.026741999998194,
+            "process_cpu_seconds": 18.890625
+          },
+          {
+            "wall_seconds": 19.527368200000637,
+            "process_cpu_seconds": 19.390625
+          },
+          {
+            "wall_seconds": 20.02778489999764,
+            "process_cpu_seconds": 19.890625
+          },
+          {
+            "wall_seconds": 20.528322899997875,
+            "process_cpu_seconds": 20.390625
+          },
+          {
+            "wall_seconds": 21.028512999997474,
+            "process_cpu_seconds": 20.890625
+          },
+          {
+            "wall_seconds": 21.529086799997458,
+            "process_cpu_seconds": 21.390625
+          },
+          {
+            "wall_seconds": 22.030001200000697,
+            "process_cpu_seconds": 21.875
+          },
+          {
+            "wall_seconds": 22.534153599997808,
+            "process_cpu_seconds": 22.375
+          },
+          {
+            "wall_seconds": 23.0344073999986,
+            "process_cpu_seconds": 22.875
+          },
+          {
+            "wall_seconds": 23.534594999997353,
+            "process_cpu_seconds": 23.375
+          },
+          {
+            "wall_seconds": 24.03490099999908,
+            "process_cpu_seconds": 23.875
+          },
+          {
+            "wall_seconds": 24.535353100000066,
+            "process_cpu_seconds": 24.375
+          },
+          {
+            "wall_seconds": 25.03598570000031,
+            "process_cpu_seconds": 24.875
+          },
+          {
+            "wall_seconds": 25.53634349999993,
+            "process_cpu_seconds": 25.375
+          },
+          {
+            "wall_seconds": 26.036979699998483,
+            "process_cpu_seconds": 25.875
+          },
+          {
+            "wall_seconds": 26.537410199998703,
+            "process_cpu_seconds": 26.375
+          },
+          {
+            "wall_seconds": 27.037586499998724,
+            "process_cpu_seconds": 26.859375
+          },
+          {
+            "wall_seconds": 27.538148299998284,
+            "process_cpu_seconds": 27.359375
+          },
+          {
+            "wall_seconds": 28.038748799997848,
+            "process_cpu_seconds": 27.859375
+          },
+          {
+            "wall_seconds": 28.538894599998457,
+            "process_cpu_seconds": 28.359375
+          },
+          {
+            "wall_seconds": 29.039367299999867,
+            "process_cpu_seconds": 28.859375
+          },
+          {
+            "wall_seconds": 29.53970379999737,
+            "process_cpu_seconds": 29.359375
+          },
+          {
+            "wall_seconds": 30.039929200000188,
+            "process_cpu_seconds": 29.859375
+          },
+          {
+            "wall_seconds": 30.540414099999907,
+            "process_cpu_seconds": 30.359375
+          },
+          {
+            "wall_seconds": 31.04071389999808,
+            "process_cpu_seconds": 30.84375
+          },
+          {
+            "wall_seconds": 31.541075499997532,
+            "process_cpu_seconds": 31.34375
+          },
+          {
+            "wall_seconds": 32.04125339999882,
+            "process_cpu_seconds": 31.84375
+          },
+          {
+            "wall_seconds": 32.54184909999822,
+            "process_cpu_seconds": 32.34375
+          },
+          {
+            "wall_seconds": 33.04249969999728,
+            "process_cpu_seconds": 32.84375
+          },
+          {
+            "wall_seconds": 33.543120599999384,
+            "process_cpu_seconds": 33.34375
+          },
+          {
+            "wall_seconds": 34.043827800000145,
+            "process_cpu_seconds": 33.84375
+          },
+          {
+            "wall_seconds": 34.54430819999834,
+            "process_cpu_seconds": 34.25
+          },
+          {
+            "wall_seconds": 35.04477699999916,
+            "process_cpu_seconds": 34.734375
+          },
+          {
+            "wall_seconds": 35.544952000000194,
+            "process_cpu_seconds": 35.234375
+          },
+          {
+            "wall_seconds": 36.04519749999963,
+            "process_cpu_seconds": 35.734375
+          },
+          {
+            "wall_seconds": 36.54566469999918,
+            "process_cpu_seconds": 36.234375
+          },
+          {
+            "wall_seconds": 37.04606739999872,
+            "process_cpu_seconds": 36.734375
+          },
+          {
+            "wall_seconds": 37.54655149999962,
+            "process_cpu_seconds": 37.21875
+          },
+          {
+            "wall_seconds": 38.04697429999942,
+            "process_cpu_seconds": 37.734375
+          },
+          {
+            "wall_seconds": 38.55040029999873,
+            "process_cpu_seconds": 38.125
+          },
+          {
+            "wall_seconds": 39.05082729999776,
+            "process_cpu_seconds": 38.625
+          },
+          {
+            "wall_seconds": 39.55105659999754,
+            "process_cpu_seconds": 39.125
+          },
+          {
+            "wall_seconds": 40.051430999999866,
+            "process_cpu_seconds": 39.625
+          },
+          {
+            "wall_seconds": 40.551791899997625,
+            "process_cpu_seconds": 40.125
+          },
+          {
+            "wall_seconds": 41.05241709999973,
+            "process_cpu_seconds": 40.625
+          },
+          {
+            "wall_seconds": 41.55295639999895,
+            "process_cpu_seconds": 41.125
+          },
+          {
+            "wall_seconds": 42.05355879999843,
+            "process_cpu_seconds": 41.625
+          },
+          {
+            "wall_seconds": 42.55385469999965,
+            "process_cpu_seconds": 42.109375
+          },
+          {
+            "wall_seconds": 43.0542334999991,
+            "process_cpu_seconds": 42.578125
+          },
+          {
+            "wall_seconds": 43.55457939999906,
+            "process_cpu_seconds": 43.078125
+          },
+          {
+            "wall_seconds": 44.05508759999793,
+            "process_cpu_seconds": 43.578125
+          },
+          {
+            "wall_seconds": 44.55543409999882,
+            "process_cpu_seconds": 44.0625
+          },
+          {
+            "wall_seconds": 45.05607819999932,
+            "process_cpu_seconds": 44.5625
+          },
+          {
+            "wall_seconds": 45.55665969999973,
+            "process_cpu_seconds": 45.0625
+          },
+          {
+            "wall_seconds": 46.056863099998736,
+            "process_cpu_seconds": 45.5625
+          },
+          {
+            "wall_seconds": 46.557167999999365,
+            "process_cpu_seconds": 46.046875
+          },
+          {
+            "wall_seconds": 47.05742129999999,
+            "process_cpu_seconds": 46.53125
+          },
+          {
+            "wall_seconds": 47.55794599999717,
+            "process_cpu_seconds": 47.03125
+          },
+          {
+            "wall_seconds": 48.058392200000526,
+            "process_cpu_seconds": 47.53125
+          },
+          {
+            "wall_seconds": 48.55899729999874,
+            "process_cpu_seconds": 48.03125
+          },
+          {
+            "wall_seconds": 49.05929499999911,
+            "process_cpu_seconds": 48.53125
+          },
+          {
+            "wall_seconds": 49.55976009999722,
+            "process_cpu_seconds": 49.03125
+          },
+          {
+            "wall_seconds": 50.06010899999819,
+            "process_cpu_seconds": 49.53125
+          },
+          {
+            "wall_seconds": 50.56072700000004,
+            "process_cpu_seconds": 50.03125
+          },
+          {
+            "wall_seconds": 51.06104679999771,
+            "process_cpu_seconds": 50.53125
+          },
+          {
+            "wall_seconds": 51.561386099998344,
+            "process_cpu_seconds": 51.03125
+          },
+          {
+            "wall_seconds": 52.06179749999865,
+            "process_cpu_seconds": 51.53125
+          },
+          {
+            "wall_seconds": 52.562378999999055,
+            "process_cpu_seconds": 52.03125
+          },
+          {
+            "wall_seconds": 53.06299249999938,
+            "process_cpu_seconds": 52.546875
+          },
+          {
+            "wall_seconds": 53.563711999999214,
+            "process_cpu_seconds": 53.046875
+          },
+          {
+            "wall_seconds": 54.0640413000001,
+            "process_cpu_seconds": 53.546875
+          },
+          {
+            "wall_seconds": 54.56634750000012,
+            "process_cpu_seconds": 54.015625
+          },
+          {
+            "wall_seconds": 55.066748400000506,
+            "process_cpu_seconds": 54.5
+          },
+          {
+            "wall_seconds": 55.566996099998505,
+            "process_cpu_seconds": 55.0
+          },
+          {
+            "wall_seconds": 56.06753159999789,
+            "process_cpu_seconds": 55.484375
+          },
+          {
+            "wall_seconds": 56.568131100000755,
+            "process_cpu_seconds": 55.96875
+          },
+          {
+            "wall_seconds": 57.06843909999952,
+            "process_cpu_seconds": 56.46875
+          },
+          {
+            "wall_seconds": 57.56900119999773,
+            "process_cpu_seconds": 56.96875
+          },
+          {
+            "wall_seconds": 58.06950859999779,
+            "process_cpu_seconds": 57.46875
+          },
+          {
+            "wall_seconds": 58.57017260000066,
+            "process_cpu_seconds": 57.96875
+          },
+          {
+            "wall_seconds": 59.07043859999976,
+            "process_cpu_seconds": 58.4375
+          },
+          {
+            "wall_seconds": 59.57111029999942,
+            "process_cpu_seconds": 58.9375
+          },
+          {
+            "wall_seconds": 60.07127309999851,
+            "process_cpu_seconds": 59.421875
+          },
+          {
+            "wall_seconds": 60.571911799997906,
+            "process_cpu_seconds": 59.921875
+          },
+          {
+            "wall_seconds": 61.07251909999832,
+            "process_cpu_seconds": 60.421875
+          },
+          {
+            "wall_seconds": 61.572719899999356,
+            "process_cpu_seconds": 60.921875
+          },
+          {
+            "wall_seconds": 62.07299839999905,
+            "process_cpu_seconds": 61.421875
+          },
+          {
+            "wall_seconds": 62.57351170000038,
+            "process_cpu_seconds": 61.859375
+          },
+          {
+            "wall_seconds": 63.073713800000405,
+            "process_cpu_seconds": 62.34375
+          },
+          {
+            "wall_seconds": 63.574316300000646,
+            "process_cpu_seconds": 62.84375
+          },
+          {
+            "wall_seconds": 64.07446639999762,
+            "process_cpu_seconds": 63.34375
+          },
+          {
+            "wall_seconds": 64.57493199999954,
+            "process_cpu_seconds": 63.84375
+          },
+          {
+            "wall_seconds": 65.0751268999993,
+            "process_cpu_seconds": 64.328125
+          },
+          {
+            "wall_seconds": 65.57540739999968,
+            "process_cpu_seconds": 64.828125
+          },
+          {
+            "wall_seconds": 66.07570909999777,
+            "process_cpu_seconds": 65.328125
+          },
+          {
+            "wall_seconds": 66.57629359999919,
+            "process_cpu_seconds": 65.828125
+          },
+          {
+            "wall_seconds": 67.0764840999982,
+            "process_cpu_seconds": 66.328125
+          },
+          {
+            "wall_seconds": 67.57708479999928,
+            "process_cpu_seconds": 66.828125
+          },
+          {
+            "wall_seconds": 68.07733019999796,
+            "process_cpu_seconds": 67.328125
+          },
+          {
+            "wall_seconds": 68.57781260000047,
+            "process_cpu_seconds": 67.8125
+          },
+          {
+            "wall_seconds": 69.07809279999856,
+            "process_cpu_seconds": 68.3125
+          },
+          {
+            "wall_seconds": 69.57833589999791,
+            "process_cpu_seconds": 68.8125
+          },
+          {
+            "wall_seconds": 70.07874409999931,
+            "process_cpu_seconds": 69.3125
+          },
+          {
+            "wall_seconds": 70.57917889999953,
+            "process_cpu_seconds": 69.8125
+          },
+          {
+            "wall_seconds": 71.07958359999975,
+            "process_cpu_seconds": 70.265625
+          },
+          {
+            "wall_seconds": 71.5800393999998,
+            "process_cpu_seconds": 70.765625
+          },
+          {
+            "wall_seconds": 72.08038079999824,
+            "process_cpu_seconds": 71.265625
+          },
+          {
+            "wall_seconds": 72.5809291000005,
+            "process_cpu_seconds": 71.75
+          },
+          {
+            "wall_seconds": 73.08130750000055,
+            "process_cpu_seconds": 72.25
+          },
+          {
+            "wall_seconds": 73.58183139999892,
+            "process_cpu_seconds": 72.75
+          },
+          {
+            "wall_seconds": 74.08249950000027,
+            "process_cpu_seconds": 73.25
+          },
+          {
+            "wall_seconds": 74.58273890000055,
+            "process_cpu_seconds": 73.75
+          },
+          {
+            "wall_seconds": 75.08307199999763,
+            "process_cpu_seconds": 74.25
+          },
+          {
+            "wall_seconds": 75.58335309999893,
+            "process_cpu_seconds": 74.75
+          },
+          {
+            "wall_seconds": 76.08360819999871,
+            "process_cpu_seconds": 75.25
+          },
+          {
+            "wall_seconds": 76.58391269999993,
+            "process_cpu_seconds": 75.75
+          },
+          {
+            "wall_seconds": 77.08436459999939,
+            "process_cpu_seconds": 76.25
+          },
+          {
+            "wall_seconds": 77.5846887000007,
+            "process_cpu_seconds": 76.75
+          },
+          {
+            "wall_seconds": 78.08507589999863,
+            "process_cpu_seconds": 77.234375
+          },
+          {
+            "wall_seconds": 78.58552419999978,
+            "process_cpu_seconds": 77.734375
+          },
+          {
+            "wall_seconds": 79.08608809999714,
+            "process_cpu_seconds": 78.1875
+          },
+          {
+            "wall_seconds": 79.58652040000015,
+            "process_cpu_seconds": 78.6875
+          },
+          {
+            "wall_seconds": 80.08679579999807,
+            "process_cpu_seconds": 79.1875
+          },
+          {
+            "wall_seconds": 80.58739819999755,
+            "process_cpu_seconds": 79.6875
+          },
+          {
+            "wall_seconds": 81.08777749999717,
+            "process_cpu_seconds": 80.1875
+          },
+          {
+            "wall_seconds": 81.58835829999953,
+            "process_cpu_seconds": 80.6875
+          },
+          {
+            "wall_seconds": 82.08850359999997,
+            "process_cpu_seconds": 81.1875
+          },
+          {
+            "wall_seconds": 82.59109469999748,
+            "process_cpu_seconds": 81.609375
+          },
+          {
+            "wall_seconds": 83.09164880000026,
+            "process_cpu_seconds": 82.109375
+          },
+          {
+            "wall_seconds": 83.59210510000048,
+            "process_cpu_seconds": 82.609375
+          },
+          {
+            "wall_seconds": 84.0924629000001,
+            "process_cpu_seconds": 83.109375
+          },
+          {
+            "wall_seconds": 84.59288100000049,
+            "process_cpu_seconds": 83.59375
+          },
+          {
+            "wall_seconds": 85.09325949999766,
+            "process_cpu_seconds": 84.109375
+          },
+          {
+            "wall_seconds": 85.59369999999763,
+            "process_cpu_seconds": 84.609375
+          },
+          {
+            "wall_seconds": 86.09423529999913,
+            "process_cpu_seconds": 85.109375
+          },
+          {
+            "wall_seconds": 86.59480789999725,
+            "process_cpu_seconds": 85.609375
+          },
+          {
+            "wall_seconds": 87.09522259999721,
+            "process_cpu_seconds": 86.109375
+          },
+          {
+            "wall_seconds": 87.59568450000006,
+            "process_cpu_seconds": 86.609375
+          },
+          {
+            "wall_seconds": 88.09587969999848,
+            "process_cpu_seconds": 87.109375
+          },
+          {
+            "wall_seconds": 88.5964098000004,
+            "process_cpu_seconds": 87.609375
+          },
+          {
+            "wall_seconds": 89.09676389999731,
+            "process_cpu_seconds": 88.109375
+          },
+          {
+            "wall_seconds": 89.5973333999973,
+            "process_cpu_seconds": 88.609375
+          },
+          {
+            "wall_seconds": 90.09778439999718,
+            "process_cpu_seconds": 89.109375
+          },
+          {
+            "wall_seconds": 90.59841139999844,
+            "process_cpu_seconds": 89.609375
+          },
+          {
+            "wall_seconds": 91.09868339999957,
+            "process_cpu_seconds": 90.109375
+          },
+          {
+            "wall_seconds": 91.59902180000063,
+            "process_cpu_seconds": 90.609375
+          },
+          {
+            "wall_seconds": 92.09948789999908,
+            "process_cpu_seconds": 91.109375
+          },
+          {
+            "wall_seconds": 92.59997069999736,
+            "process_cpu_seconds": 91.609375
+          },
+          {
+            "wall_seconds": 93.10059329999785,
+            "process_cpu_seconds": 92.109375
+          }
+        ]
+      },
+      "stages": [],
+      "timing_caveat": "These two captures overlapped for approximately 25 seconds. Do not use them as clean baseline timings."
+    },
+    {
+      "run": "full-direct",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                3267.5646124714403,
+                2773.744779843837,
+                224.34413653491544
+              ],
+              "min": [
+                2282.7454268761794,
+                0.0,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Unknown",
+              "signed_triangle_volume": 204577641.03584433,
+              "triangles": 95060
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5203.242794122547,
+                234.98044117896222
+              ],
+              "min": [
+                0.0,
+                0.0,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pdag-Gyarran Volcanics",
+              "signed_triangle_volume": 1123399549.418985,
+              "triangles": 182890
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                274.3668273644105
+              ],
+              "min": [
+                0.0,
+                1328.8514288756996,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgs-Skeletar Formation",
+              "signed_triangle_volume": 549980622.7102381,
+              "triangles": 62226
+            },
+            {
+              "max": [
+                2963.106259573309,
+                5637.435706000775,
+                153.9044013641767
+              ],
+              "min": [
+                0.0,
+                2904.5243821032345,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pmtb - Branxton Formation__1",
+              "signed_triangle_volume": 184031008.6509926,
+              "triangles": 99078
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                205.47110215897283
+              ],
+              "min": [
+                0.0,
+                1968.03490283899,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr5 - Rowan Formation__1",
+              "signed_triangle_volume": 190555149.59318453,
+              "triangles": 44086
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                152.27216547052114
+              ],
+              "min": [
+                0.0,
+                2250.8802428543568,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__1",
+              "signed_triangle_volume": 117557233.36328682,
+              "triangles": 42966
+            },
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                181.43862341136514
+              ],
+              "min": [
+                0.0,
+                2536.5899759652093,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr1 - Rowan Formation",
+              "signed_triangle_volume": 142418974.9351579,
+              "triangles": 96206
+            },
+            {
+              "max": [
+                827.0517296764883,
+                5637.435706000775,
+                104.50961781467214
+              ],
+              "min": [
+                0.0,
+                5306.099208620377,
+                38.46443637812257
+              ],
+              "name": "Geological Model - Pmtm - Mulbring Siltstone",
+              "signed_triangle_volume": 2891051.488527787,
+              "triangles": 5480
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000776,
+                321.86454345842964
+              ],
+              "min": [
+                -1.0532325752513157e-12,
+                0.0,
+                55.17029522822884
+              ],
+              "name": "External",
+              "signed_triangle_volume": 3412749983.584046,
+              "triangles": 531694
+            }
+          ],
+          "triangles": 1161720,
+          "vertices": 580878
+        },
+        "assembly_seconds": 0.0962912,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                827.0517296853296,
+                5637.435706011887,
+                128.22766756057254
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                5306.099208628735,
+                62.54457554303412
+              ],
+              "name": "Soil_1_1",
+              "signed_triangle_volume": 2882609.5359758227,
+              "triangles": 952
+            },
+            {
+              "max": [
+                2963.1062595781686,
+                5637.435706013039,
+                177.33118961518042
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                2904.5243821119,
+                24.08013916015626
+              ],
+              "name": "Soil_2_1",
+              "signed_triangle_volume": 184239682.9096619,
+              "triangles": 10192
+            },
+            {
+              "max": [
+                3267.564612481394,
+                5637.435706012011,
+                229.39155333108835
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1968.0349028402768,
+                24.08013916015625
+              ],
+              "name": "Soil_3_1",
+              "signed_triangle_volume": 190766592.9920643,
+              "triangles": 19752
+            },
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                204.0391858573713
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                159.86252337037755
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613307497,
+              "triangles": 1592
+            },
+            {
+              "max": [
+                3267.5646124815253,
+                5637.4357060117345,
+                176.22166544270357
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                2250.8802428634967,
+                24.08013916015625
+              ],
+              "name": "Soil_5_1",
+              "signed_triangle_volume": 117398141.3177001,
+              "triangles": 15672
+            },
+            {
+              "max": [
+                3267.56461247863,
+                5637.4357060117345,
+                205.2481697057137
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                2536.589975970967,
+                24.08013916015625
+              ],
+              "name": "Soil_6_1",
+              "signed_triangle_volume": 142623084.078756,
+              "triangles": 15872
+            },
+            {
+              "max": [
+                3267.5646124837867,
+                5203.242794124369,
+                259.0116451847889
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                0.0,
+                24.080139160156254
+              ],
+              "name": "Soil_7_1",
+              "signed_triangle_volume": 1124053572.0782518,
+              "triangles": 19216
+            },
+            {
+              "max": [
+                3267.564612483227,
+                2773.6046025978535,
+                248.20492063678688
+              ],
+              "min": [
+                2284.5523884444956,
+                0.0,
+                24.080139160156257
+              ],
+              "name": "Soil_8_1",
+              "signed_triangle_volume": 204504685.12860814,
+              "triangles": 5952
+            },
+            {
+              "max": [
+                3267.564612480602,
+                5637.435706009969,
+                297.7843993409787
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1328.8514288806728,
+                24.08013916015625
+              ],
+              "name": "Soil_9_1",
+              "signed_triangle_volume": 549112047.5869569,
+              "triangles": 19432
+            }
+          ],
+          "triangles": 108632,
+          "vertices": 54331
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.3207123,
+        "mode": "direct"
+      },
+      "result": {
+        "cell_size": 5.0,
+        "error": "Input A: Non-manifold edges or inconsistent triangle winding. Check the input topology.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "direct",
+        "seconds": 1.150094,
+        "status": "error"
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "5",
+          "30",
+          "direct"
+        ],
+        "exe_sha256": "206534bfc9aaf698256347d70758088591328179c3e0b03c384e027ab5f5b845",
+        "start_utc": "2026-10-18T13:20:01Z",
+        "exit_code": 0,
+        "process_wall_seconds": 5.015333299998019,
+        "samples": [
+          {
+            "wall_seconds": 0.011131200000818353,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.5116791000000376,
+            "process_cpu_seconds": 0.515625
+          },
+          {
+            "wall_seconds": 1.012348899999779,
+            "process_cpu_seconds": 1.046875
+          },
+          {
+            "wall_seconds": 1.5128684000010253,
+            "process_cpu_seconds": 1.546875
+          },
+          {
+            "wall_seconds": 2.0133875999999873,
+            "process_cpu_seconds": 2.046875
+          },
+          {
+            "wall_seconds": 2.51357569999891,
+            "process_cpu_seconds": 2.546875
+          },
+          {
+            "wall_seconds": 3.013875199998438,
+            "process_cpu_seconds": 3.046875
+          },
+          {
+            "wall_seconds": 3.5144130999979097,
+            "process_cpu_seconds": 3.546875
+          },
+          {
+            "wall_seconds": 4.0145530000008876,
+            "process_cpu_seconds": 4.046875
+          },
+          {
+            "wall_seconds": 4.5149597999989055,
+            "process_cpu_seconds": 4.546875
+          }
+        ]
+      },
+      "stages": []
+    },
+    {
+      "run": "native-full-cell100",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                3267.5646124714403,
+                2773.744779843837,
+                224.34413653491544
+              ],
+              "min": [
+                2282.7454268761794,
+                0.0,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Unknown",
+              "signed_triangle_volume": 204577641.03584433,
+              "triangles": 95060
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5203.242794122547,
+                234.98044117896222
+              ],
+              "min": [
+                0.0,
+                0.0,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pdag-Gyarran Volcanics",
+              "signed_triangle_volume": 1123399549.418985,
+              "triangles": 182890
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                274.3668273644105
+              ],
+              "min": [
+                0.0,
+                1328.8514288756996,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgs-Skeletar Formation",
+              "signed_triangle_volume": 549980622.7102381,
+              "triangles": 62226
+            },
+            {
+              "max": [
+                2963.106259573309,
+                5637.435706000775,
+                153.9044013641767
+              ],
+              "min": [
+                0.0,
+                2904.5243821032345,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pmtb - Branxton Formation__1",
+              "signed_triangle_volume": 184031008.6509926,
+              "triangles": 99078
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                205.47110215897283
+              ],
+              "min": [
+                0.0,
+                1968.03490283899,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr5 - Rowan Formation__1",
+              "signed_triangle_volume": 190555149.59318453,
+              "triangles": 44086
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                152.27216547052114
+              ],
+              "min": [
+                0.0,
+                2250.8802428543568,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__1",
+              "signed_triangle_volume": 117557233.36328682,
+              "triangles": 42966
+            },
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                181.43862341136514
+              ],
+              "min": [
+                0.0,
+                2536.5899759652093,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr1 - Rowan Formation",
+              "signed_triangle_volume": 142418974.9351579,
+              "triangles": 96206
+            },
+            {
+              "max": [
+                827.0517296764883,
+                5637.435706000775,
+                104.50961781467214
+              ],
+              "min": [
+                0.0,
+                5306.099208620377,
+                38.46443637812257
+              ],
+              "name": "Geological Model - Pmtm - Mulbring Siltstone",
+              "signed_triangle_volume": 2891051.488527787,
+              "triangles": 5480
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000776,
+                321.86454345842964
+              ],
+              "min": [
+                -1.0532325752513157e-12,
+                0.0,
+                55.17029522822884
+              ],
+              "name": "External",
+              "signed_triangle_volume": 3412749983.584046,
+              "triangles": 531694
+            }
+          ],
+          "triangles": 1161720,
+          "vertices": 580878
+        },
+        "assembly_seconds": 0.0764813,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                827.0517296853296,
+                5637.435706011887,
+                128.22766756057254
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                5306.099208628735,
+                62.54457554303412
+              ],
+              "name": "Soil_1_1",
+              "signed_triangle_volume": 2882609.5359758227,
+              "triangles": 952
+            },
+            {
+              "max": [
+                2963.1062595781686,
+                5637.435706013039,
+                177.33118961518042
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                2904.5243821119,
+                24.08013916015626
+              ],
+              "name": "Soil_2_1",
+              "signed_triangle_volume": 184239682.9096619,
+              "triangles": 10192
+            },
+            {
+              "max": [
+                3267.564612481394,
+                5637.435706012011,
+                229.39155333108835
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1968.0349028402768,
+                24.08013916015625
+              ],
+              "name": "Soil_3_1",
+              "signed_triangle_volume": 190766592.9920643,
+              "triangles": 19752
+            },
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                204.0391858573713
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                159.86252337037755
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613307497,
+              "triangles": 1592
+            },
+            {
+              "max": [
+                3267.5646124815253,
+                5637.4357060117345,
+                176.22166544270357
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                2250.8802428634967,
+                24.08013916015625
+              ],
+              "name": "Soil_5_1",
+              "signed_triangle_volume": 117398141.3177001,
+              "triangles": 15672
+            },
+            {
+              "max": [
+                3267.56461247863,
+                5637.4357060117345,
+                205.2481697057137
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                2536.589975970967,
+                24.08013916015625
+              ],
+              "name": "Soil_6_1",
+              "signed_triangle_volume": 142623084.078756,
+              "triangles": 15872
+            },
+            {
+              "max": [
+                3267.5646124837867,
+                5203.242794124369,
+                259.0116451847889
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                0.0,
+                24.080139160156254
+              ],
+              "name": "Soil_7_1",
+              "signed_triangle_volume": 1124053572.0782518,
+              "triangles": 19216
+            },
+            {
+              "max": [
+                3267.564612483227,
+                2773.6046025978535,
+                248.20492063678688
+              ],
+              "min": [
+                2284.5523884444956,
+                0.0,
+                24.080139160156257
+              ],
+              "name": "Soil_8_1",
+              "signed_triangle_volume": 204504685.12860814,
+              "triangles": 5952
+            },
+            {
+              "max": [
+                3267.564612480602,
+                5637.435706009969,
+                297.7843993409787
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1328.8514288806728,
+                24.08013916015625
+              ],
+              "name": "Soil_9_1",
+              "signed_triangle_volume": 549112047.5869569,
+              "triangles": 19432
+            }
+          ],
+          "triangles": 108632,
+          "vertices": 54331
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.12696,
+        "mode": "full"
+      },
+      "result": {
+        "cell_size": 100.0,
+        "error": "Difference mesh canceled.",
+        "event": "result",
+        "limit_seconds": 60.0,
+        "mode": "full",
+        "seconds": 60.0239787,
+        "status": "canceled"
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "100",
+          "60",
+          "full"
+        ],
+        "exe_sha256": "6f01e8e48d01389be43e000d74ac46881806030e72946b791dc4b9fe4082b72f",
+        "start_utc": "2026-10-18T13:24:13Z",
+        "exit_code": 0,
+        "process_wall_seconds": 63.669681699997454,
+        "samples": [
+          {
+            "wall_seconds": 0.10932390000016312,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.6097374999990279,
+            "process_cpu_seconds": 0.546875
+          },
+          {
+            "wall_seconds": 1.1103370999990148,
+            "process_cpu_seconds": 0.953125
+          },
+          {
+            "wall_seconds": 1.6133009000004677,
+            "process_cpu_seconds": 1.40625
+          },
+          {
+            "wall_seconds": 2.115322199999355,
+            "process_cpu_seconds": 1.671875
+          },
+          {
+            "wall_seconds": 2.616211500000645,
+            "process_cpu_seconds": 2.171875
+          },
+          {
+            "wall_seconds": 3.116608099997393,
+            "process_cpu_seconds": 2.671875
+          },
+          {
+            "wall_seconds": 3.6171245000005,
+            "process_cpu_seconds": 3.1875
+          },
+          {
+            "wall_seconds": 4.117528899998433,
+            "process_cpu_seconds": 3.6875
+          },
+          {
+            "wall_seconds": 4.617942900000344,
+            "process_cpu_seconds": 4.1875
+          },
+          {
+            "wall_seconds": 5.118541299998469,
+            "process_cpu_seconds": 4.6875
+          },
+          {
+            "wall_seconds": 5.619155599997612,
+            "process_cpu_seconds": 5.1875
+          },
+          {
+            "wall_seconds": 6.119558599999436,
+            "process_cpu_seconds": 5.6875
+          },
+          {
+            "wall_seconds": 6.620205799998075,
+            "process_cpu_seconds": 6.1875
+          },
+          {
+            "wall_seconds": 7.120534999998199,
+            "process_cpu_seconds": 6.6875
+          },
+          {
+            "wall_seconds": 7.621121699998184,
+            "process_cpu_seconds": 7.1875
+          },
+          {
+            "wall_seconds": 8.121720799998002,
+            "process_cpu_seconds": 7.6875
+          },
+          {
+            "wall_seconds": 8.622022600000491,
+            "process_cpu_seconds": 8.1875
+          },
+          {
+            "wall_seconds": 9.122423999997409,
+            "process_cpu_seconds": 8.6875
+          },
+          {
+            "wall_seconds": 9.622836499998812,
+            "process_cpu_seconds": 9.1875
+          },
+          {
+            "wall_seconds": 10.123343399998703,
+            "process_cpu_seconds": 9.671875
+          },
+          {
+            "wall_seconds": 10.623900700000377,
+            "process_cpu_seconds": 10.171875
+          },
+          {
+            "wall_seconds": 11.124087399999553,
+            "process_cpu_seconds": 10.671875
+          },
+          {
+            "wall_seconds": 11.624430199997732,
+            "process_cpu_seconds": 11.171875
+          },
+          {
+            "wall_seconds": 12.12490269999762,
+            "process_cpu_seconds": 11.671875
+          },
+          {
+            "wall_seconds": 12.62536519999776,
+            "process_cpu_seconds": 12.15625
+          },
+          {
+            "wall_seconds": 13.125632700001006,
+            "process_cpu_seconds": 12.65625
+          },
+          {
+            "wall_seconds": 13.626132599998527,
+            "process_cpu_seconds": 13.15625
+          },
+          {
+            "wall_seconds": 14.126567100000102,
+            "process_cpu_seconds": 13.65625
+          },
+          {
+            "wall_seconds": 14.62708879999991,
+            "process_cpu_seconds": 14.125
+          },
+          {
+            "wall_seconds": 15.12748659999852,
+            "process_cpu_seconds": 14.59375
+          },
+          {
+            "wall_seconds": 15.627978900000016,
+            "process_cpu_seconds": 15.09375
+          },
+          {
+            "wall_seconds": 16.12828869999794,
+            "process_cpu_seconds": 15.59375
+          },
+          {
+            "wall_seconds": 16.628925499997422,
+            "process_cpu_seconds": 16.09375
+          },
+          {
+            "wall_seconds": 17.129139900000155,
+            "process_cpu_seconds": 16.609375
+          },
+          {
+            "wall_seconds": 17.62952640000003,
+            "process_cpu_seconds": 17.09375
+          },
+          {
+            "wall_seconds": 18.1299016999983,
+            "process_cpu_seconds": 17.609375
+          },
+          {
+            "wall_seconds": 18.630353399999876,
+            "process_cpu_seconds": 18.109375
+          },
+          {
+            "wall_seconds": 19.130816900000355,
+            "process_cpu_seconds": 18.59375
+          },
+          {
+            "wall_seconds": 19.631400499998563,
+            "process_cpu_seconds": 19.078125
+          },
+          {
+            "wall_seconds": 20.13184999999794,
+            "process_cpu_seconds": 19.578125
+          },
+          {
+            "wall_seconds": 20.632202900000266,
+            "process_cpu_seconds": 20.078125
+          },
+          {
+            "wall_seconds": 21.132533500000136,
+            "process_cpu_seconds": 20.578125
+          },
+          {
+            "wall_seconds": 21.633079799998086,
+            "process_cpu_seconds": 21.078125
+          },
+          {
+            "wall_seconds": 22.133550799997465,
+            "process_cpu_seconds": 21.578125
+          },
+          {
+            "wall_seconds": 22.63373320000028,
+            "process_cpu_seconds": 22.0625
+          },
+          {
+            "wall_seconds": 23.13433470000018,
+            "process_cpu_seconds": 22.5625
+          },
+          {
+            "wall_seconds": 23.63473349999913,
+            "process_cpu_seconds": 23.0625
+          },
+          {
+            "wall_seconds": 24.13514170000053,
+            "process_cpu_seconds": 23.53125
+          },
+          {
+            "wall_seconds": 24.635555599998042,
+            "process_cpu_seconds": 24.03125
+          },
+          {
+            "wall_seconds": 25.135797799997817,
+            "process_cpu_seconds": 24.5
+          },
+          {
+            "wall_seconds": 25.636365399997885,
+            "process_cpu_seconds": 24.984375
+          },
+          {
+            "wall_seconds": 26.137087700000848,
+            "process_cpu_seconds": 25.484375
+          },
+          {
+            "wall_seconds": 26.63771579999957,
+            "process_cpu_seconds": 25.984375
+          },
+          {
+            "wall_seconds": 27.138158999998268,
+            "process_cpu_seconds": 26.484375
+          },
+          {
+            "wall_seconds": 27.638789099997666,
+            "process_cpu_seconds": 26.984375
+          },
+          {
+            "wall_seconds": 28.13924539999789,
+            "process_cpu_seconds": 27.484375
+          },
+          {
+            "wall_seconds": 28.639442299998336,
+            "process_cpu_seconds": 27.984375
+          },
+          {
+            "wall_seconds": 29.139619199999288,
+            "process_cpu_seconds": 28.390625
+          },
+          {
+            "wall_seconds": 29.640196500000457,
+            "process_cpu_seconds": 28.875
+          },
+          {
+            "wall_seconds": 30.140843599998334,
+            "process_cpu_seconds": 29.375
+          },
+          {
+            "wall_seconds": 30.64132029999746,
+            "process_cpu_seconds": 29.875
+          },
+          {
+            "wall_seconds": 31.141721699998016,
+            "process_cpu_seconds": 30.375
+          },
+          {
+            "wall_seconds": 31.641982299999654,
+            "process_cpu_seconds": 30.859375
+          },
+          {
+            "wall_seconds": 32.14255459999913,
+            "process_cpu_seconds": 31.34375
+          },
+          {
+            "wall_seconds": 32.64320139999836,
+            "process_cpu_seconds": 31.84375
+          },
+          {
+            "wall_seconds": 33.14369309999893,
+            "process_cpu_seconds": 32.328125
+          },
+          {
+            "wall_seconds": 33.644257500000094,
+            "process_cpu_seconds": 32.828125
+          },
+          {
+            "wall_seconds": 34.14485749999949,
+            "process_cpu_seconds": 33.328125
+          },
+          {
+            "wall_seconds": 34.64527309999903,
+            "process_cpu_seconds": 33.828125
+          },
+          {
+            "wall_seconds": 35.14570889999959,
+            "process_cpu_seconds": 34.34375
+          },
+          {
+            "wall_seconds": 35.64593149999928,
+            "process_cpu_seconds": 34.828125
+          },
+          {
+            "wall_seconds": 36.14609829999972,
+            "process_cpu_seconds": 35.34375
+          },
+          {
+            "wall_seconds": 36.64671180000005,
+            "process_cpu_seconds": 35.84375
+          },
+          {
+            "wall_seconds": 37.14724819999901,
+            "process_cpu_seconds": 36.34375
+          },
+          {
+            "wall_seconds": 37.647419199998694,
+            "process_cpu_seconds": 36.84375
+          },
+          {
+            "wall_seconds": 38.14778739999747,
+            "process_cpu_seconds": 37.34375
+          },
+          {
+            "wall_seconds": 38.64813569999751,
+            "process_cpu_seconds": 37.84375
+          },
+          {
+            "wall_seconds": 39.1485208999984,
+            "process_cpu_seconds": 38.34375
+          },
+          {
+            "wall_seconds": 39.64875219999885,
+            "process_cpu_seconds": 38.84375
+          },
+          {
+            "wall_seconds": 40.1490238999977,
+            "process_cpu_seconds": 39.328125
+          },
+          {
+            "wall_seconds": 40.649481299999024,
+            "process_cpu_seconds": 39.828125
+          },
+          {
+            "wall_seconds": 41.149771899999905,
+            "process_cpu_seconds": 40.265625
+          },
+          {
+            "wall_seconds": 41.65021749999869,
+            "process_cpu_seconds": 40.765625
+          },
+          {
+            "wall_seconds": 42.15053640000042,
+            "process_cpu_seconds": 41.25
+          },
+          {
+            "wall_seconds": 42.65082939999775,
+            "process_cpu_seconds": 41.734375
+          },
+          {
+            "wall_seconds": 43.151166299998295,
+            "process_cpu_seconds": 42.21875
+          },
+          {
+            "wall_seconds": 43.65163599999869,
+            "process_cpu_seconds": 42.703125
+          },
+          {
+            "wall_seconds": 44.15226690000054,
+            "process_cpu_seconds": 43.203125
+          },
+          {
+            "wall_seconds": 44.6528658999996,
+            "process_cpu_seconds": 43.703125
+          },
+          {
+            "wall_seconds": 45.15332149999813,
+            "process_cpu_seconds": 44.125
+          },
+          {
+            "wall_seconds": 45.653897100000904,
+            "process_cpu_seconds": 44.625
+          },
+          {
+            "wall_seconds": 46.15417489999891,
+            "process_cpu_seconds": 45.109375
+          },
+          {
+            "wall_seconds": 46.65479729999788,
+            "process_cpu_seconds": 45.609375
+          },
+          {
+            "wall_seconds": 47.15525589999743,
+            "process_cpu_seconds": 46.09375
+          },
+          {
+            "wall_seconds": 47.65565609999976,
+            "process_cpu_seconds": 46.59375
+          },
+          {
+            "wall_seconds": 48.15584880000097,
+            "process_cpu_seconds": 47.09375
+          },
+          {
+            "wall_seconds": 48.65636539999832,
+            "process_cpu_seconds": 47.59375
+          },
+          {
+            "wall_seconds": 49.15664819999802,
+            "process_cpu_seconds": 48.09375
+          },
+          {
+            "wall_seconds": 49.65695929999856,
+            "process_cpu_seconds": 48.578125
+          },
+          {
+            "wall_seconds": 50.15738869999768,
+            "process_cpu_seconds": 49.078125
+          },
+          {
+            "wall_seconds": 50.6577455000006,
+            "process_cpu_seconds": 49.578125
+          },
+          {
+            "wall_seconds": 51.15829269999813,
+            "process_cpu_seconds": 50.078125
+          },
+          {
+            "wall_seconds": 51.65865909999775,
+            "process_cpu_seconds": 50.5625
+          },
+          {
+            "wall_seconds": 52.15899879999779,
+            "process_cpu_seconds": 51.0625
+          },
+          {
+            "wall_seconds": 52.659577599999466,
+            "process_cpu_seconds": 51.5625
+          },
+          {
+            "wall_seconds": 53.16018659999827,
+            "process_cpu_seconds": 51.984375
+          },
+          {
+            "wall_seconds": 53.66071910000028,
+            "process_cpu_seconds": 52.484375
+          },
+          {
+            "wall_seconds": 54.16134889999739,
+            "process_cpu_seconds": 53.0
+          },
+          {
+            "wall_seconds": 54.66190709999864,
+            "process_cpu_seconds": 53.5
+          },
+          {
+            "wall_seconds": 55.16245259999778,
+            "process_cpu_seconds": 53.984375
+          },
+          {
+            "wall_seconds": 55.662582900000416,
+            "process_cpu_seconds": 54.484375
+          },
+          {
+            "wall_seconds": 56.16308659999777,
+            "process_cpu_seconds": 54.984375
+          },
+          {
+            "wall_seconds": 56.663365699998394,
+            "process_cpu_seconds": 55.484375
+          },
+          {
+            "wall_seconds": 57.16400290000092,
+            "process_cpu_seconds": 55.90625
+          },
+          {
+            "wall_seconds": 57.6645380000009,
+            "process_cpu_seconds": 56.40625
+          },
+          {
+            "wall_seconds": 58.164881500000774,
+            "process_cpu_seconds": 56.90625
+          },
+          {
+            "wall_seconds": 58.665133599999535,
+            "process_cpu_seconds": 57.40625
+          },
+          {
+            "wall_seconds": 59.16529620000074,
+            "process_cpu_seconds": 57.890625
+          },
+          {
+            "wall_seconds": 59.66559309999866,
+            "process_cpu_seconds": 58.390625
+          },
+          {
+            "wall_seconds": 60.16611829999965,
+            "process_cpu_seconds": 58.890625
+          },
+          {
+            "wall_seconds": 60.66674720000083,
+            "process_cpu_seconds": 59.390625
+          },
+          {
+            "wall_seconds": 61.16706329999943,
+            "process_cpu_seconds": 59.734375
+          },
+          {
+            "wall_seconds": 61.66740629999913,
+            "process_cpu_seconds": 60.234375
+          },
+          {
+            "wall_seconds": 62.16792290000012,
+            "process_cpu_seconds": 60.734375
+          },
+          {
+            "wall_seconds": 62.668508899998415,
+            "process_cpu_seconds": 61.234375
+          },
+          {
+            "wall_seconds": 63.16912429999866,
+            "process_cpu_seconds": 61.734375
+          }
+        ]
+      },
+      "stages": []
+    },
+    {
+      "run": "pair-mulbring-direct",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                827.0517296764883,
+                5637.435706000775,
+                104.50961781467214
+              ],
+              "min": [
+                0.0,
+                5306.099208620377,
+                38.46443637812257
+              ],
+              "name": "Geological Model - Pmtm - Mulbring Siltstone",
+              "signed_triangle_volume": 2891051.488527787,
+              "triangles": 5480
+            }
+          ],
+          "triangles": 5480,
+          "vertices": 2742
+        },
+        "assembly_seconds": 0.0018063,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                827.0517296853296,
+                5637.435706011887,
+                104.14752840041629
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                5306.099208628735,
+                38.46443638287787
+              ],
+              "name": "Soil_1_1",
+              "signed_triangle_volume": 2882609.535975914,
+              "triangles": 952
+            }
+          ],
+          "triangles": 952,
+          "vertices": 478
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 4.5822106,
+        "mode": "pair-direct"
+      },
+      "result": {
+        "cell_size": 5.0,
+        "error": "Non-manifold edges or inconsistent triangle winding. Check the input topology.",
+        "event": "result",
+        "limit_seconds": 45.0,
+        "mode": "pair-direct",
+        "seconds": 0.2292968,
+        "status": "error"
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "5",
+          "45",
+          "pair-direct",
+          "8",
+          "0"
+        ],
+        "exe_sha256": "6f01e8e48d01389be43e000d74ac46881806030e72946b791dc4b9fe4082b72f",
+        "start_utc": "2026-10-18T13:25:17Z",
+        "exit_code": 0,
+        "process_wall_seconds": 5.030778899999859,
+        "samples": [
+          {
+            "wall_seconds": 0.01302909999867552,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.5134450999976252,
+            "process_cpu_seconds": 0.5
+          },
+          {
+            "wall_seconds": 1.0140086999999767,
+            "process_cpu_seconds": 1.015625
+          },
+          {
+            "wall_seconds": 1.5278985999975703,
+            "process_cpu_seconds": 1.453125
+          },
+          {
+            "wall_seconds": 2.0285782999999356,
+            "process_cpu_seconds": 1.890625
+          },
+          {
+            "wall_seconds": 2.5287476999983483,
+            "process_cpu_seconds": 2.375
+          },
+          {
+            "wall_seconds": 3.0293958999973256,
+            "process_cpu_seconds": 2.875
+          },
+          {
+            "wall_seconds": 3.529745899999398,
+            "process_cpu_seconds": 3.359375
+          },
+          {
+            "wall_seconds": 4.03016260000004,
+            "process_cpu_seconds": 3.859375
+          },
+          {
+            "wall_seconds": 4.530428599999141,
+            "process_cpu_seconds": 4.359375
+          }
+        ]
+      },
+      "stages": []
+    },
+    {
+      "run": "pair-rowan2-cell10",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            }
+          ],
+          "triangles": 2034,
+          "vertices": 1019
+        },
+        "assembly_seconds": 0.0017737,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                179.95904669721506
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                135.7823842102213
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613300043,
+              "triangles": 1592
+            }
+          ],
+          "triangles": 1592,
+          "vertices": 798
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.4497896,
+        "mode": "pair"
+      },
+      "result": {
+        "cell_size": 10.0,
+        "event": "result",
+        "limit_seconds": 60.0,
+        "message": "Approximate volume. Missing surfaces are inferred from triangle orientation. Thin features can be lost. Source meshes are unchanged.",
+        "mode": "pair",
+        "removed_collapsed": [
+          0,
+          0
+        ],
+        "seconds": 12.3613101,
+        "status": "success",
+        "triangles": [
+          1940,
+          1128
+        ],
+        "volumes": [
+          21666.66666666667,
+          12499.999999999998
+        ]
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "10",
+          "60",
+          "pair",
+          "6",
+          "3"
+        ],
+        "exe_sha256": "6f01e8e48d01389be43e000d74ac46881806030e72946b791dc4b9fe4082b72f",
+        "start_utc": "2026-10-18T13:26:02Z",
+        "exit_code": 0,
+        "process_wall_seconds": 16.025703300001624,
+        "samples": [
+          {
+            "wall_seconds": 0.012404099998093443,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.5128406000003451,
+            "process_cpu_seconds": 0.5
+          },
+          {
+            "wall_seconds": 1.013063800000964,
+            "process_cpu_seconds": 1.015625
+          },
+          {
+            "wall_seconds": 1.5134361999989778,
+            "process_cpu_seconds": 1.515625
+          },
+          {
+            "wall_seconds": 2.0138110000007146,
+            "process_cpu_seconds": 2.015625
+          },
+          {
+            "wall_seconds": 2.5141737000012654,
+            "process_cpu_seconds": 2.515625
+          },
+          {
+            "wall_seconds": 3.0145756999991136,
+            "process_cpu_seconds": 3.0
+          },
+          {
+            "wall_seconds": 3.515181800001301,
+            "process_cpu_seconds": 3.5
+          },
+          {
+            "wall_seconds": 4.0156725000015285,
+            "process_cpu_seconds": 3.984375
+          },
+          {
+            "wall_seconds": 4.516393400001107,
+            "process_cpu_seconds": 4.484375
+          },
+          {
+            "wall_seconds": 5.016651900001307,
+            "process_cpu_seconds": 4.984375
+          },
+          {
+            "wall_seconds": 5.5172300999984145,
+            "process_cpu_seconds": 5.484375
+          },
+          {
+            "wall_seconds": 6.0175502999991295,
+            "process_cpu_seconds": 5.984375
+          },
+          {
+            "wall_seconds": 6.517791499998566,
+            "process_cpu_seconds": 6.46875
+          },
+          {
+            "wall_seconds": 7.018298800001503,
+            "process_cpu_seconds": 6.96875
+          },
+          {
+            "wall_seconds": 7.518482100000256,
+            "process_cpu_seconds": 7.46875
+          },
+          {
+            "wall_seconds": 8.0190505999999,
+            "process_cpu_seconds": 7.9375
+          },
+          {
+            "wall_seconds": 8.519561500001146,
+            "process_cpu_seconds": 8.4375
+          },
+          {
+            "wall_seconds": 9.02013309999893,
+            "process_cpu_seconds": 8.9375
+          },
+          {
+            "wall_seconds": 9.520490200000495,
+            "process_cpu_seconds": 9.4375
+          },
+          {
+            "wall_seconds": 10.02101279999988,
+            "process_cpu_seconds": 9.9375
+          },
+          {
+            "wall_seconds": 10.521308600000339,
+            "process_cpu_seconds": 10.4375
+          },
+          {
+            "wall_seconds": 11.021736200000305,
+            "process_cpu_seconds": 10.9375
+          },
+          {
+            "wall_seconds": 11.52196130000084,
+            "process_cpu_seconds": 11.4375
+          },
+          {
+            "wall_seconds": 12.02241910000157,
+            "process_cpu_seconds": 11.921875
+          },
+          {
+            "wall_seconds": 12.522868100000778,
+            "process_cpu_seconds": 12.421875
+          },
+          {
+            "wall_seconds": 13.023473900000681,
+            "process_cpu_seconds": 12.921875
+          },
+          {
+            "wall_seconds": 13.523873599999206,
+            "process_cpu_seconds": 13.421875
+          },
+          {
+            "wall_seconds": 14.024222200001532,
+            "process_cpu_seconds": 13.90625
+          },
+          {
+            "wall_seconds": 14.52465139999913,
+            "process_cpu_seconds": 14.40625
+          },
+          {
+            "wall_seconds": 15.025001099998917,
+            "process_cpu_seconds": 14.90625
+          },
+          {
+            "wall_seconds": 15.525401899998542,
+            "process_cpu_seconds": 15.390625
+          }
+        ]
+      },
+      "stages": []
+    },
+    {
+      "run": "pair-rowan2-cell5",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            }
+          ],
+          "triangles": 2034,
+          "vertices": 1019
+        },
+        "assembly_seconds": 0.0019971,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                179.95904669721506
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                135.7823842102213
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613300043,
+              "triangles": 1592
+            }
+          ],
+          "triangles": 1592,
+          "vertices": 798
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.7772315,
+        "mode": "pair"
+      },
+      "result": {
+        "cell_size": 5.0,
+        "error": "Difference mesh canceled.",
+        "event": "result",
+        "limit_seconds": 60.0,
+        "mode": "pair",
+        "seconds": 60.0233557,
+        "status": "canceled"
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "5",
+          "60",
+          "pair",
+          "6",
+          "3"
+        ],
+        "exe_sha256": "6f01e8e48d01389be43e000d74ac46881806030e72946b791dc4b9fe4082b72f",
+        "start_utc": "2026-10-18T13:26:18Z",
+        "exit_code": 0,
+        "process_wall_seconds": 64.08408490000147,
+        "samples": [
+          {
+            "wall_seconds": 0.011157600001752144,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.5115347999999358,
+            "process_cpu_seconds": 0.53125
+          },
+          {
+            "wall_seconds": 1.0121500999994169,
+            "process_cpu_seconds": 1.046875
+          },
+          {
+            "wall_seconds": 1.512302400002227,
+            "process_cpu_seconds": 1.53125
+          },
+          {
+            "wall_seconds": 2.0124813000002177,
+            "process_cpu_seconds": 2.03125
+          },
+          {
+            "wall_seconds": 2.5127666000007594,
+            "process_cpu_seconds": 2.53125
+          },
+          {
+            "wall_seconds": 3.0132770000018354,
+            "process_cpu_seconds": 3.03125
+          },
+          {
+            "wall_seconds": 3.513590900001873,
+            "process_cpu_seconds": 3.46875
+          },
+          {
+            "wall_seconds": 4.014230600001611,
+            "process_cpu_seconds": 3.96875
+          },
+          {
+            "wall_seconds": 4.514485700001387,
+            "process_cpu_seconds": 4.46875
+          },
+          {
+            "wall_seconds": 5.014784999999392,
+            "process_cpu_seconds": 4.96875
+          },
+          {
+            "wall_seconds": 5.515052300001116,
+            "process_cpu_seconds": 5.46875
+          },
+          {
+            "wall_seconds": 6.015381699999125,
+            "process_cpu_seconds": 5.96875
+          },
+          {
+            "wall_seconds": 6.515968800002156,
+            "process_cpu_seconds": 6.46875
+          },
+          {
+            "wall_seconds": 7.0161875000012515,
+            "process_cpu_seconds": 6.9375
+          },
+          {
+            "wall_seconds": 7.516880300001503,
+            "process_cpu_seconds": 7.3125
+          },
+          {
+            "wall_seconds": 8.017038500001945,
+            "process_cpu_seconds": 7.8125
+          },
+          {
+            "wall_seconds": 8.51766520000092,
+            "process_cpu_seconds": 8.3125
+          },
+          {
+            "wall_seconds": 9.018171300001995,
+            "process_cpu_seconds": 8.8125
+          },
+          {
+            "wall_seconds": 9.5183457000021,
+            "process_cpu_seconds": 9.3125
+          },
+          {
+            "wall_seconds": 10.018558899999334,
+            "process_cpu_seconds": 9.8125
+          },
+          {
+            "wall_seconds": 10.51907349999965,
+            "process_cpu_seconds": 10.3125
+          },
+          {
+            "wall_seconds": 11.019499099998939,
+            "process_cpu_seconds": 10.8125
+          },
+          {
+            "wall_seconds": 11.519847300001857,
+            "process_cpu_seconds": 11.296875
+          },
+          {
+            "wall_seconds": 12.020478500002355,
+            "process_cpu_seconds": 11.796875
+          },
+          {
+            "wall_seconds": 12.521022699998866,
+            "process_cpu_seconds": 12.296875
+          },
+          {
+            "wall_seconds": 13.021612200001982,
+            "process_cpu_seconds": 12.796875
+          },
+          {
+            "wall_seconds": 13.521974400002364,
+            "process_cpu_seconds": 13.28125
+          },
+          {
+            "wall_seconds": 14.022243399998843,
+            "process_cpu_seconds": 13.75
+          },
+          {
+            "wall_seconds": 14.522859500000777,
+            "process_cpu_seconds": 14.25
+          },
+          {
+            "wall_seconds": 15.023463500001526,
+            "process_cpu_seconds": 14.75
+          },
+          {
+            "wall_seconds": 15.523814899999707,
+            "process_cpu_seconds": 15.15625
+          },
+          {
+            "wall_seconds": 16.02419600000212,
+            "process_cpu_seconds": 15.65625
+          },
+          {
+            "wall_seconds": 16.524376699999266,
+            "process_cpu_seconds": 16.140625
+          },
+          {
+            "wall_seconds": 17.024887300001865,
+            "process_cpu_seconds": 16.625
+          },
+          {
+            "wall_seconds": 17.52525930000047,
+            "process_cpu_seconds": 17.109375
+          },
+          {
+            "wall_seconds": 18.025752100002137,
+            "process_cpu_seconds": 17.609375
+          },
+          {
+            "wall_seconds": 18.526110300001164,
+            "process_cpu_seconds": 18.109375
+          },
+          {
+            "wall_seconds": 19.026302700000087,
+            "process_cpu_seconds": 18.609375
+          },
+          {
+            "wall_seconds": 19.52684170000066,
+            "process_cpu_seconds": 19.09375
+          },
+          {
+            "wall_seconds": 20.027120900002046,
+            "process_cpu_seconds": 19.59375
+          },
+          {
+            "wall_seconds": 20.527581300000747,
+            "process_cpu_seconds": 20.09375
+          },
+          {
+            "wall_seconds": 21.02857270000095,
+            "process_cpu_seconds": 20.390625
+          },
+          {
+            "wall_seconds": 21.528977699999814,
+            "process_cpu_seconds": 20.734375
+          },
+          {
+            "wall_seconds": 22.02932570000121,
+            "process_cpu_seconds": 21.234375
+          },
+          {
+            "wall_seconds": 22.52975409999999,
+            "process_cpu_seconds": 21.71875
+          },
+          {
+            "wall_seconds": 23.03009899999961,
+            "process_cpu_seconds": 22.21875
+          },
+          {
+            "wall_seconds": 23.53060800000094,
+            "process_cpu_seconds": 22.65625
+          },
+          {
+            "wall_seconds": 24.031264699999156,
+            "process_cpu_seconds": 23.15625
+          },
+          {
+            "wall_seconds": 24.53178939999998,
+            "process_cpu_seconds": 23.65625
+          },
+          {
+            "wall_seconds": 25.037538200002018,
+            "process_cpu_seconds": 24.09375
+          },
+          {
+            "wall_seconds": 25.538104300001578,
+            "process_cpu_seconds": 24.53125
+          },
+          {
+            "wall_seconds": 26.046695299999556,
+            "process_cpu_seconds": 24.953125
+          },
+          {
+            "wall_seconds": 26.54767340000035,
+            "process_cpu_seconds": 25.171875
+          },
+          {
+            "wall_seconds": 27.047981300001993,
+            "process_cpu_seconds": 25.625
+          },
+          {
+            "wall_seconds": 27.54848060000222,
+            "process_cpu_seconds": 26.0625
+          },
+          {
+            "wall_seconds": 28.049063900001784,
+            "process_cpu_seconds": 26.53125
+          },
+          {
+            "wall_seconds": 28.551482200000464,
+            "process_cpu_seconds": 27.03125
+          },
+          {
+            "wall_seconds": 29.0519005999995,
+            "process_cpu_seconds": 27.5
+          },
+          {
+            "wall_seconds": 29.552156699999614,
+            "process_cpu_seconds": 27.953125
+          },
+          {
+            "wall_seconds": 30.052333600000566,
+            "process_cpu_seconds": 28.4375
+          },
+          {
+            "wall_seconds": 30.55278030000045,
+            "process_cpu_seconds": 28.9375
+          },
+          {
+            "wall_seconds": 31.053427300001204,
+            "process_cpu_seconds": 29.40625
+          },
+          {
+            "wall_seconds": 31.55404289999933,
+            "process_cpu_seconds": 29.8125
+          },
+          {
+            "wall_seconds": 32.05419669999901,
+            "process_cpu_seconds": 30.3125
+          },
+          {
+            "wall_seconds": 32.55433429999903,
+            "process_cpu_seconds": 30.8125
+          },
+          {
+            "wall_seconds": 33.05465770000228,
+            "process_cpu_seconds": 31.296875
+          },
+          {
+            "wall_seconds": 33.55487229999926,
+            "process_cpu_seconds": 31.796875
+          },
+          {
+            "wall_seconds": 34.0557575999992,
+            "process_cpu_seconds": 32.296875
+          },
+          {
+            "wall_seconds": 34.559619499999826,
+            "process_cpu_seconds": 32.609375
+          },
+          {
+            "wall_seconds": 35.059771700001875,
+            "process_cpu_seconds": 33.109375
+          },
+          {
+            "wall_seconds": 35.560049899999285,
+            "process_cpu_seconds": 33.609375
+          },
+          {
+            "wall_seconds": 36.06035849999898,
+            "process_cpu_seconds": 34.109375
+          },
+          {
+            "wall_seconds": 36.56065370000215,
+            "process_cpu_seconds": 34.59375
+          },
+          {
+            "wall_seconds": 37.06101639999906,
+            "process_cpu_seconds": 35.078125
+          },
+          {
+            "wall_seconds": 37.561564499999804,
+            "process_cpu_seconds": 35.578125
+          },
+          {
+            "wall_seconds": 38.06187399999908,
+            "process_cpu_seconds": 36.0625
+          },
+          {
+            "wall_seconds": 38.56226470000183,
+            "process_cpu_seconds": 36.515625
+          },
+          {
+            "wall_seconds": 39.06257320000077,
+            "process_cpu_seconds": 36.984375
+          },
+          {
+            "wall_seconds": 39.56282049999936,
+            "process_cpu_seconds": 37.421875
+          },
+          {
+            "wall_seconds": 40.066509700001916,
+            "process_cpu_seconds": 37.921875
+          },
+          {
+            "wall_seconds": 40.56684039999891,
+            "process_cpu_seconds": 38.421875
+          },
+          {
+            "wall_seconds": 41.06705090000105,
+            "process_cpu_seconds": 38.90625
+          },
+          {
+            "wall_seconds": 41.56740830000126,
+            "process_cpu_seconds": 39.390625
+          },
+          {
+            "wall_seconds": 42.06784379999954,
+            "process_cpu_seconds": 39.890625
+          },
+          {
+            "wall_seconds": 42.56822359999933,
+            "process_cpu_seconds": 40.390625
+          },
+          {
+            "wall_seconds": 43.06882690000202,
+            "process_cpu_seconds": 40.890625
+          },
+          {
+            "wall_seconds": 43.569104099999095,
+            "process_cpu_seconds": 41.390625
+          },
+          {
+            "wall_seconds": 44.06955780000135,
+            "process_cpu_seconds": 41.875
+          },
+          {
+            "wall_seconds": 44.569770599999174,
+            "process_cpu_seconds": 42.359375
+          },
+          {
+            "wall_seconds": 45.07036309999967,
+            "process_cpu_seconds": 42.859375
+          },
+          {
+            "wall_seconds": 45.57099260000177,
+            "process_cpu_seconds": 43.34375
+          },
+          {
+            "wall_seconds": 46.071489400001155,
+            "process_cpu_seconds": 43.828125
+          },
+          {
+            "wall_seconds": 46.571783700001106,
+            "process_cpu_seconds": 44.328125
+          },
+          {
+            "wall_seconds": 47.07205310000063,
+            "process_cpu_seconds": 44.828125
+          },
+          {
+            "wall_seconds": 47.57232590000058,
+            "process_cpu_seconds": 45.3125
+          },
+          {
+            "wall_seconds": 48.072539299999335,
+            "process_cpu_seconds": 45.8125
+          },
+          {
+            "wall_seconds": 48.572947399999975,
+            "process_cpu_seconds": 46.3125
+          },
+          {
+            "wall_seconds": 49.07340119999935,
+            "process_cpu_seconds": 46.8125
+          },
+          {
+            "wall_seconds": 49.57402070000171,
+            "process_cpu_seconds": 47.296875
+          },
+          {
+            "wall_seconds": 50.074647299999924,
+            "process_cpu_seconds": 47.796875
+          },
+          {
+            "wall_seconds": 50.57486509999944,
+            "process_cpu_seconds": 48.296875
+          },
+          {
+            "wall_seconds": 51.07518110000092,
+            "process_cpu_seconds": 48.796875
+          },
+          {
+            "wall_seconds": 51.575426600000355,
+            "process_cpu_seconds": 49.25
+          },
+          {
+            "wall_seconds": 52.075586300001305,
+            "process_cpu_seconds": 49.75
+          },
+          {
+            "wall_seconds": 52.57591030000185,
+            "process_cpu_seconds": 50.234375
+          },
+          {
+            "wall_seconds": 53.0761061000012,
+            "process_cpu_seconds": 50.71875
+          },
+          {
+            "wall_seconds": 53.576636800000415,
+            "process_cpu_seconds": 51.21875
+          },
+          {
+            "wall_seconds": 54.077253100000235,
+            "process_cpu_seconds": 51.71875
+          },
+          {
+            "wall_seconds": 54.577885499998956,
+            "process_cpu_seconds": 52.21875
+          },
+          {
+            "wall_seconds": 55.07817580000119,
+            "process_cpu_seconds": 52.71875
+          },
+          {
+            "wall_seconds": 55.57860780000192,
+            "process_cpu_seconds": 53.203125
+          },
+          {
+            "wall_seconds": 56.078965299999254,
+            "process_cpu_seconds": 53.6875
+          },
+          {
+            "wall_seconds": 56.57954690000042,
+            "process_cpu_seconds": 54.1875
+          },
+          {
+            "wall_seconds": 57.07978770000045,
+            "process_cpu_seconds": 54.6875
+          },
+          {
+            "wall_seconds": 57.58018280000033,
+            "process_cpu_seconds": 55.171875
+          },
+          {
+            "wall_seconds": 58.08064329999979,
+            "process_cpu_seconds": 55.671875
+          },
+          {
+            "wall_seconds": 58.58096350000051,
+            "process_cpu_seconds": 56.171875
+          },
+          {
+            "wall_seconds": 59.081161000001885,
+            "process_cpu_seconds": 56.6875
+          },
+          {
+            "wall_seconds": 59.581422100000054,
+            "process_cpu_seconds": 57.0625
+          },
+          {
+            "wall_seconds": 60.08168750000186,
+            "process_cpu_seconds": 57.5625
+          },
+          {
+            "wall_seconds": 60.582016500000464,
+            "process_cpu_seconds": 58.046875
+          },
+          {
+            "wall_seconds": 61.08220520000032,
+            "process_cpu_seconds": 58.5625
+          },
+          {
+            "wall_seconds": 61.5823913000022,
+            "process_cpu_seconds": 59.0625
+          },
+          {
+            "wall_seconds": 62.082613099999435,
+            "process_cpu_seconds": 59.546875
+          },
+          {
+            "wall_seconds": 62.582744999999704,
+            "process_cpu_seconds": 60.03125
+          },
+          {
+            "wall_seconds": 63.08311600000161,
+            "process_cpu_seconds": 60.53125
+          },
+          {
+            "wall_seconds": 63.58361409999998,
+            "process_cpu_seconds": 61.015625
+          }
+        ]
+      },
+      "stages": []
+    },
+    {
+      "run": "pair-rowan2-direct",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            }
+          ],
+          "triangles": 2034,
+          "vertices": 1019
+        },
+        "assembly_seconds": 0.00232,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                179.95904669721506
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                135.7823842102213
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613300043,
+              "triangles": 1592
+            }
+          ],
+          "triangles": 1592,
+          "vertices": 798
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.5673198,
+        "mode": "pair-direct"
+      },
+      "result": {
+        "cell_size": 5.0,
+        "error": "Non-manifold edges or inconsistent triangle winding. Check the input topology.",
+        "event": "result",
+        "limit_seconds": 45.0,
+        "mode": "pair-direct",
+        "seconds": 0.1302482,
+        "status": "error"
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "5",
+          "45",
+          "pair-direct",
+          "6",
+          "3"
+        ],
+        "exe_sha256": "6f01e8e48d01389be43e000d74ac46881806030e72946b791dc4b9fe4082b72f",
+        "start_utc": "2026-10-18T13:25:22Z",
+        "exit_code": 0,
+        "process_wall_seconds": 4.03294779999851,
+        "samples": [
+          {
+            "wall_seconds": 0.013454100000672042,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.5139999999992142,
+            "process_cpu_seconds": 0.484375
+          },
+          {
+            "wall_seconds": 1.0146057999991172,
+            "process_cpu_seconds": 1.0
+          },
+          {
+            "wall_seconds": 1.5150571999984095,
+            "process_cpu_seconds": 1.5
+          },
+          {
+            "wall_seconds": 2.015512800000579,
+            "process_cpu_seconds": 2.0
+          },
+          {
+            "wall_seconds": 2.516025900000386,
+            "process_cpu_seconds": 2.46875
+          },
+          {
+            "wall_seconds": 3.0163348999994923,
+            "process_cpu_seconds": 2.96875
+          },
+          {
+            "wall_seconds": 3.532552900000155,
+            "process_cpu_seconds": 3.484375
+          }
+        ]
+      },
+      "stages": []
+    },
+    {
+      "run": "pair-rowan5-direct",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                205.47110215897283
+              ],
+              "min": [
+                0.0,
+                1968.03490283899,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr5 - Rowan Formation__1",
+              "signed_triangle_volume": 190555149.59318453,
+              "triangles": 44086
+            }
+          ],
+          "triangles": 44086,
+          "vertices": 22045
+        },
+        "assembly_seconds": 0.0098695,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                3267.564612481394,
+                5637.435706012011,
+                205.3114141709321
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1968.0349028402768,
+                4.822978659896048e-16
+              ],
+              "name": "Soil_3_1",
+              "signed_triangle_volume": 190766592.99206433,
+              "triangles": 19752
+            }
+          ],
+          "triangles": 19752,
+          "vertices": 9878
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.6590862,
+        "mode": "pair-direct"
+      },
+      "result": {
+        "cell_size": 5.0,
+        "error": "Input A: Intersection validation exceeded its work limit. Use smaller input meshes.",
+        "event": "result",
+        "limit_seconds": 45.0,
+        "mode": "pair-direct",
+        "seconds": 2.7035679,
+        "status": "error"
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_probe.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "5",
+          "45",
+          "pair-direct",
+          "4",
+          "2"
+        ],
+        "exe_sha256": "6f01e8e48d01389be43e000d74ac46881806030e72946b791dc4b9fe4082b72f",
+        "start_utc": "2026-10-18T13:25:26Z",
+        "exit_code": 0,
+        "process_wall_seconds": 6.516509500001121,
+        "samples": [
+          {
+            "wall_seconds": 0.011999000002106186,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.5125767999998061,
+            "process_cpu_seconds": 0.546875
+          },
+          {
+            "wall_seconds": 1.012904900002468,
+            "process_cpu_seconds": 1.0625
+          },
+          {
+            "wall_seconds": 1.513256199999887,
+            "process_cpu_seconds": 1.5625
+          },
+          {
+            "wall_seconds": 2.0136801000007836,
+            "process_cpu_seconds": 2.046875
+          },
+          {
+            "wall_seconds": 2.51381179999953,
+            "process_cpu_seconds": 2.546875
+          },
+          {
+            "wall_seconds": 3.0140874999997322,
+            "process_cpu_seconds": 3.046875
+          },
+          {
+            "wall_seconds": 3.5143408000003546,
+            "process_cpu_seconds": 3.484375
+          },
+          {
+            "wall_seconds": 4.014780900000915,
+            "process_cpu_seconds": 3.96875
+          },
+          {
+            "wall_seconds": 4.515046000000439,
+            "process_cpu_seconds": 4.46875
+          },
+          {
+            "wall_seconds": 5.0153621999997995,
+            "process_cpu_seconds": 4.96875
+          },
+          {
+            "wall_seconds": 5.515814800000953,
+            "process_cpu_seconds": 5.46875
+          },
+          {
+            "wall_seconds": 6.016298900001857,
+            "process_cpu_seconds": 5.96875
+          }
+        ]
+      },
+      "stages": []
+    },
+    {
+      "run": "profile-full-cell100",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                3267.5646124714403,
+                2773.744779843837,
+                224.34413653491544
+              ],
+              "min": [
+                2282.7454268761794,
+                0.0,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Unknown",
+              "signed_triangle_volume": 204577641.03584433,
+              "triangles": 95060
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5203.242794122547,
+                234.98044117896222
+              ],
+              "min": [
+                0.0,
+                0.0,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pdag-Gyarran Volcanics",
+              "signed_triangle_volume": 1123399549.418985,
+              "triangles": 182890
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                274.3668273644105
+              ],
+              "min": [
+                0.0,
+                1328.8514288756996,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgs-Skeletar Formation",
+              "signed_triangle_volume": 549980622.7102381,
+              "triangles": 62226
+            },
+            {
+              "max": [
+                2963.106259573309,
+                5637.435706000775,
+                153.9044013641767
+              ],
+              "min": [
+                0.0,
+                2904.5243821032345,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pmtb - Branxton Formation__1",
+              "signed_triangle_volume": 184031008.6509926,
+              "triangles": 99078
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                205.47110215897283
+              ],
+              "min": [
+                0.0,
+                1968.03490283899,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr5 - Rowan Formation__1",
+              "signed_triangle_volume": 190555149.59318453,
+              "triangles": 44086
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                152.27216547052114
+              ],
+              "min": [
+                0.0,
+                2250.8802428543568,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__1",
+              "signed_triangle_volume": 117557233.36328682,
+              "triangles": 42966
+            },
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                181.43862341136514
+              ],
+              "min": [
+                0.0,
+                2536.5899759652093,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr1 - Rowan Formation",
+              "signed_triangle_volume": 142418974.9351579,
+              "triangles": 96206
+            },
+            {
+              "max": [
+                827.0517296764883,
+                5637.435706000775,
+                104.50961781467214
+              ],
+              "min": [
+                0.0,
+                5306.099208620377,
+                38.46443637812257
+              ],
+              "name": "Geological Model - Pmtm - Mulbring Siltstone",
+              "signed_triangle_volume": 2891051.488527787,
+              "triangles": 5480
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000776,
+                321.86454345842964
+              ],
+              "min": [
+                -1.0532325752513157e-12,
+                0.0,
+                55.17029522822884
+              ],
+              "name": "External",
+              "signed_triangle_volume": 3412749983.584046,
+              "triangles": 531694
+            }
+          ],
+          "triangles": 1161720,
+          "vertices": 580878
+        },
+        "assembly_seconds": 0.1073004,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                827.0517296853296,
+                5637.435706011887,
+                128.22766756057254
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                5306.099208628735,
+                62.54457554303412
+              ],
+              "name": "Soil_1_1",
+              "signed_triangle_volume": 2882609.5359758227,
+              "triangles": 952
+            },
+            {
+              "max": [
+                2963.1062595781686,
+                5637.435706013039,
+                177.33118961518042
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                2904.5243821119,
+                24.08013916015626
+              ],
+              "name": "Soil_2_1",
+              "signed_triangle_volume": 184239682.9096619,
+              "triangles": 10192
+            },
+            {
+              "max": [
+                3267.564612481394,
+                5637.435706012011,
+                229.39155333108835
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1968.0349028402768,
+                24.08013916015625
+              ],
+              "name": "Soil_3_1",
+              "signed_triangle_volume": 190766592.9920643,
+              "triangles": 19752
+            },
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                204.0391858573713
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                159.86252337037755
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613307497,
+              "triangles": 1592
+            },
+            {
+              "max": [
+                3267.5646124815253,
+                5637.4357060117345,
+                176.22166544270357
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                2250.8802428634967,
+                24.08013916015625
+              ],
+              "name": "Soil_5_1",
+              "signed_triangle_volume": 117398141.3177001,
+              "triangles": 15672
+            },
+            {
+              "max": [
+                3267.56461247863,
+                5637.4357060117345,
+                205.2481697057137
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                2536.589975970967,
+                24.08013916015625
+              ],
+              "name": "Soil_6_1",
+              "signed_triangle_volume": 142623084.078756,
+              "triangles": 15872
+            },
+            {
+              "max": [
+                3267.5646124837867,
+                5203.242794124369,
+                259.0116451847889
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                0.0,
+                24.080139160156254
+              ],
+              "name": "Soil_7_1",
+              "signed_triangle_volume": 1124053572.0782518,
+              "triangles": 19216
+            },
+            {
+              "max": [
+                3267.564612483227,
+                2773.6046025978535,
+                248.20492063678688
+              ],
+              "min": [
+                2284.5523884444956,
+                0.0,
+                24.080139160156257
+              ],
+              "name": "Soil_8_1",
+              "signed_triangle_volume": 204504685.12860814,
+              "triangles": 5952
+            },
+            {
+              "max": [
+                3267.564612480602,
+                5637.435706009969,
+                297.7843993409787
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1328.8514288806728,
+                24.08013916015625
+              ],
+              "name": "Soil_9_1",
+              "signed_triangle_volume": 549112047.5869569,
+              "triangles": 19432
+            }
+          ],
+          "triangles": 108632,
+          "vertices": 54331
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.3818738,
+        "mode": "full"
+      },
+      "result": {
+        "cell_size": 100.0,
+        "error": "Difference mesh canceled.",
+        "event": "result",
+        "limit_seconds": 60.0,
+        "mode": "full",
+        "seconds": 60.0198427,
+        "status": "canceled"
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_profile.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "100",
+          "60",
+          "full"
+        ],
+        "exe_sha256": "ce5b9b05e075e247cb7211bcd52ba3032008a73eb0b92cdcb8bff212e5e73824",
+        "start_utc": "2026-10-18T13:22:16Z",
+        "exit_code": 0,
+        "process_wall_seconds": 63.58010750000176,
+        "samples": [
+          {
+            "wall_seconds": 0.010934800000541145,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.5113419000008435,
+            "process_cpu_seconds": 0.5
+          },
+          {
+            "wall_seconds": 1.0118212000015774,
+            "process_cpu_seconds": 1.015625
+          },
+          {
+            "wall_seconds": 1.512372699999105,
+            "process_cpu_seconds": 1.515625
+          },
+          {
+            "wall_seconds": 2.0125351999995473,
+            "process_cpu_seconds": 2.0
+          },
+          {
+            "wall_seconds": 2.5129718000025605,
+            "process_cpu_seconds": 2.5
+          },
+          {
+            "wall_seconds": 3.013532100001612,
+            "process_cpu_seconds": 3.015625
+          },
+          {
+            "wall_seconds": 3.514041800000996,
+            "process_cpu_seconds": 3.515625
+          },
+          {
+            "wall_seconds": 4.014391700002307,
+            "process_cpu_seconds": 4.015625
+          },
+          {
+            "wall_seconds": 4.5147175999991305,
+            "process_cpu_seconds": 4.53125
+          },
+          {
+            "wall_seconds": 5.015104000001884,
+            "process_cpu_seconds": 5.03125
+          },
+          {
+            "wall_seconds": 5.515476399999898,
+            "process_cpu_seconds": 5.53125
+          },
+          {
+            "wall_seconds": 6.015751700000692,
+            "process_cpu_seconds": 6.03125
+          },
+          {
+            "wall_seconds": 6.516115900001751,
+            "process_cpu_seconds": 6.53125
+          },
+          {
+            "wall_seconds": 7.01665309999953,
+            "process_cpu_seconds": 7.03125
+          },
+          {
+            "wall_seconds": 7.516836200000398,
+            "process_cpu_seconds": 7.515625
+          },
+          {
+            "wall_seconds": 8.017018300000927,
+            "process_cpu_seconds": 8.0
+          },
+          {
+            "wall_seconds": 8.517431700001907,
+            "process_cpu_seconds": 8.5
+          },
+          {
+            "wall_seconds": 9.017862000000605,
+            "process_cpu_seconds": 9.0
+          },
+          {
+            "wall_seconds": 9.518213999999716,
+            "process_cpu_seconds": 9.5
+          },
+          {
+            "wall_seconds": 10.018734200002655,
+            "process_cpu_seconds": 9.984375
+          },
+          {
+            "wall_seconds": 10.519349800000782,
+            "process_cpu_seconds": 10.484375
+          },
+          {
+            "wall_seconds": 11.01960180000242,
+            "process_cpu_seconds": 10.96875
+          },
+          {
+            "wall_seconds": 11.520194900000206,
+            "process_cpu_seconds": 11.46875
+          },
+          {
+            "wall_seconds": 12.020640200000344,
+            "process_cpu_seconds": 11.96875
+          },
+          {
+            "wall_seconds": 12.520817600001465,
+            "process_cpu_seconds": 12.46875
+          },
+          {
+            "wall_seconds": 13.021341100000427,
+            "process_cpu_seconds": 12.96875
+          },
+          {
+            "wall_seconds": 13.521635500001139,
+            "process_cpu_seconds": 13.46875
+          },
+          {
+            "wall_seconds": 14.021790200000396,
+            "process_cpu_seconds": 13.96875
+          },
+          {
+            "wall_seconds": 14.52200670000093,
+            "process_cpu_seconds": 14.46875
+          },
+          {
+            "wall_seconds": 15.02224600000045,
+            "process_cpu_seconds": 14.96875
+          },
+          {
+            "wall_seconds": 15.52280360000077,
+            "process_cpu_seconds": 15.46875
+          },
+          {
+            "wall_seconds": 16.023299500000576,
+            "process_cpu_seconds": 15.96875
+          },
+          {
+            "wall_seconds": 16.52386470000056,
+            "process_cpu_seconds": 16.46875
+          },
+          {
+            "wall_seconds": 17.024016100000154,
+            "process_cpu_seconds": 16.96875
+          },
+          {
+            "wall_seconds": 17.52433849999943,
+            "process_cpu_seconds": 17.46875
+          },
+          {
+            "wall_seconds": 18.0246733999993,
+            "process_cpu_seconds": 17.953125
+          },
+          {
+            "wall_seconds": 18.525117400000454,
+            "process_cpu_seconds": 18.453125
+          },
+          {
+            "wall_seconds": 19.025608200001443,
+            "process_cpu_seconds": 18.953125
+          },
+          {
+            "wall_seconds": 19.526130599999306,
+            "process_cpu_seconds": 19.453125
+          },
+          {
+            "wall_seconds": 20.026291800000763,
+            "process_cpu_seconds": 19.953125
+          },
+          {
+            "wall_seconds": 20.526416400000016,
+            "process_cpu_seconds": 20.453125
+          },
+          {
+            "wall_seconds": 21.028860700000223,
+            "process_cpu_seconds": 20.953125
+          },
+          {
+            "wall_seconds": 21.52945600000021,
+            "process_cpu_seconds": 21.453125
+          },
+          {
+            "wall_seconds": 22.029623400001583,
+            "process_cpu_seconds": 21.953125
+          },
+          {
+            "wall_seconds": 22.529893700000684,
+            "process_cpu_seconds": 22.453125
+          },
+          {
+            "wall_seconds": 23.030469100001937,
+            "process_cpu_seconds": 22.953125
+          },
+          {
+            "wall_seconds": 23.53113189999931,
+            "process_cpu_seconds": 23.453125
+          },
+          {
+            "wall_seconds": 24.03147760000138,
+            "process_cpu_seconds": 23.953125
+          },
+          {
+            "wall_seconds": 24.531988999999157,
+            "process_cpu_seconds": 24.453125
+          },
+          {
+            "wall_seconds": 25.04816380000193,
+            "process_cpu_seconds": 24.953125
+          },
+          {
+            "wall_seconds": 25.54844050000247,
+            "process_cpu_seconds": 25.453125
+          },
+          {
+            "wall_seconds": 26.048873399999138,
+            "process_cpu_seconds": 25.953125
+          },
+          {
+            "wall_seconds": 26.54910700000255,
+            "process_cpu_seconds": 26.453125
+          },
+          {
+            "wall_seconds": 27.049525900001754,
+            "process_cpu_seconds": 26.953125
+          },
+          {
+            "wall_seconds": 27.54991599999994,
+            "process_cpu_seconds": 27.453125
+          },
+          {
+            "wall_seconds": 28.050406199999998,
+            "process_cpu_seconds": 27.9375
+          },
+          {
+            "wall_seconds": 28.550775700001395,
+            "process_cpu_seconds": 28.4375
+          },
+          {
+            "wall_seconds": 29.0510675000005,
+            "process_cpu_seconds": 28.9375
+          },
+          {
+            "wall_seconds": 29.55129180000222,
+            "process_cpu_seconds": 29.4375
+          },
+          {
+            "wall_seconds": 30.051672600002348,
+            "process_cpu_seconds": 29.9375
+          },
+          {
+            "wall_seconds": 30.552041300001292,
+            "process_cpu_seconds": 30.4375
+          },
+          {
+            "wall_seconds": 31.05224459999954,
+            "process_cpu_seconds": 30.9375
+          },
+          {
+            "wall_seconds": 31.55241179999939,
+            "process_cpu_seconds": 31.4375
+          },
+          {
+            "wall_seconds": 32.05303869999989,
+            "process_cpu_seconds": 31.9375
+          },
+          {
+            "wall_seconds": 32.55352219999986,
+            "process_cpu_seconds": 32.4375
+          },
+          {
+            "wall_seconds": 33.05398730000161,
+            "process_cpu_seconds": 32.9375
+          },
+          {
+            "wall_seconds": 33.5545200000015,
+            "process_cpu_seconds": 33.4375
+          },
+          {
+            "wall_seconds": 34.05485190000036,
+            "process_cpu_seconds": 33.9375
+          },
+          {
+            "wall_seconds": 34.55518970000048,
+            "process_cpu_seconds": 34.4375
+          },
+          {
+            "wall_seconds": 35.05577330000233,
+            "process_cpu_seconds": 34.921875
+          },
+          {
+            "wall_seconds": 35.555964800001675,
+            "process_cpu_seconds": 35.421875
+          },
+          {
+            "wall_seconds": 36.05665489999956,
+            "process_cpu_seconds": 35.921875
+          },
+          {
+            "wall_seconds": 36.55701760000011,
+            "process_cpu_seconds": 36.421875
+          },
+          {
+            "wall_seconds": 37.0573237000026,
+            "process_cpu_seconds": 36.921875
+          },
+          {
+            "wall_seconds": 37.55774290000045,
+            "process_cpu_seconds": 37.40625
+          },
+          {
+            "wall_seconds": 38.058001100002,
+            "process_cpu_seconds": 37.90625
+          },
+          {
+            "wall_seconds": 38.55816810000033,
+            "process_cpu_seconds": 38.390625
+          },
+          {
+            "wall_seconds": 39.05853280000156,
+            "process_cpu_seconds": 38.875
+          },
+          {
+            "wall_seconds": 39.559067800000776,
+            "process_cpu_seconds": 39.375
+          },
+          {
+            "wall_seconds": 40.05945000000065,
+            "process_cpu_seconds": 39.875
+          },
+          {
+            "wall_seconds": 40.559595000002446,
+            "process_cpu_seconds": 40.375
+          },
+          {
+            "wall_seconds": 41.059881200002565,
+            "process_cpu_seconds": 40.875
+          },
+          {
+            "wall_seconds": 41.56004960000064,
+            "process_cpu_seconds": 41.375
+          },
+          {
+            "wall_seconds": 42.06041090000144,
+            "process_cpu_seconds": 41.875
+          },
+          {
+            "wall_seconds": 42.560776800000895,
+            "process_cpu_seconds": 42.375
+          },
+          {
+            "wall_seconds": 43.06143789999987,
+            "process_cpu_seconds": 42.875
+          },
+          {
+            "wall_seconds": 43.56168030000117,
+            "process_cpu_seconds": 43.390625
+          },
+          {
+            "wall_seconds": 44.06221039999946,
+            "process_cpu_seconds": 43.890625
+          },
+          {
+            "wall_seconds": 44.563100600000325,
+            "process_cpu_seconds": 44.375
+          },
+          {
+            "wall_seconds": 45.06376749999981,
+            "process_cpu_seconds": 44.875
+          },
+          {
+            "wall_seconds": 45.56435070000225,
+            "process_cpu_seconds": 45.375
+          },
+          {
+            "wall_seconds": 46.06466,
+            "process_cpu_seconds": 45.875
+          },
+          {
+            "wall_seconds": 46.56518800000049,
+            "process_cpu_seconds": 46.375
+          },
+          {
+            "wall_seconds": 47.06564100000105,
+            "process_cpu_seconds": 46.875
+          },
+          {
+            "wall_seconds": 47.56604490000245,
+            "process_cpu_seconds": 47.375
+          },
+          {
+            "wall_seconds": 48.06646069999988,
+            "process_cpu_seconds": 47.859375
+          },
+          {
+            "wall_seconds": 48.56715679999979,
+            "process_cpu_seconds": 48.359375
+          },
+          {
+            "wall_seconds": 49.06785289999971,
+            "process_cpu_seconds": 48.859375
+          },
+          {
+            "wall_seconds": 49.568382600002224,
+            "process_cpu_seconds": 49.359375
+          },
+          {
+            "wall_seconds": 50.068886299999576,
+            "process_cpu_seconds": 49.859375
+          },
+          {
+            "wall_seconds": 50.569120800002565,
+            "process_cpu_seconds": 50.359375
+          },
+          {
+            "wall_seconds": 51.06972859999951,
+            "process_cpu_seconds": 50.859375
+          },
+          {
+            "wall_seconds": 51.57017959999939,
+            "process_cpu_seconds": 51.359375
+          },
+          {
+            "wall_seconds": 52.07050060000256,
+            "process_cpu_seconds": 51.859375
+          },
+          {
+            "wall_seconds": 52.570774800002255,
+            "process_cpu_seconds": 52.359375
+          },
+          {
+            "wall_seconds": 53.07136630000241,
+            "process_cpu_seconds": 52.859375
+          },
+          {
+            "wall_seconds": 53.571874400000524,
+            "process_cpu_seconds": 53.34375
+          },
+          {
+            "wall_seconds": 54.0724424,
+            "process_cpu_seconds": 53.859375
+          },
+          {
+            "wall_seconds": 54.57262730000002,
+            "process_cpu_seconds": 54.34375
+          },
+          {
+            "wall_seconds": 55.07289230000242,
+            "process_cpu_seconds": 54.84375
+          },
+          {
+            "wall_seconds": 55.57354580000174,
+            "process_cpu_seconds": 55.359375
+          },
+          {
+            "wall_seconds": 56.07418189999953,
+            "process_cpu_seconds": 55.859375
+          },
+          {
+            "wall_seconds": 56.57448230000227,
+            "process_cpu_seconds": 56.359375
+          },
+          {
+            "wall_seconds": 57.074946900000214,
+            "process_cpu_seconds": 56.84375
+          },
+          {
+            "wall_seconds": 57.575217800000246,
+            "process_cpu_seconds": 57.34375
+          },
+          {
+            "wall_seconds": 58.07554270000037,
+            "process_cpu_seconds": 57.828125
+          },
+          {
+            "wall_seconds": 58.57608690000052,
+            "process_cpu_seconds": 58.328125
+          },
+          {
+            "wall_seconds": 59.07643160000225,
+            "process_cpu_seconds": 58.828125
+          },
+          {
+            "wall_seconds": 59.57682240000213,
+            "process_cpu_seconds": 59.3125
+          },
+          {
+            "wall_seconds": 60.07738579999932,
+            "process_cpu_seconds": 59.8125
+          },
+          {
+            "wall_seconds": 60.57797570000184,
+            "process_cpu_seconds": 60.3125
+          },
+          {
+            "wall_seconds": 61.07841760000156,
+            "process_cpu_seconds": 60.796875
+          },
+          {
+            "wall_seconds": 61.57877670000016,
+            "process_cpu_seconds": 61.296875
+          },
+          {
+            "wall_seconds": 62.07891319999908,
+            "process_cpu_seconds": 61.796875
+          },
+          {
+            "wall_seconds": 62.579179500000464,
+            "process_cpu_seconds": 62.296875
+          },
+          {
+            "wall_seconds": 63.07962250000128,
+            "process_cpu_seconds": 62.796875
+          }
+        ]
+      },
+      "stages": [
+        {
+          "event": "begin",
+          "stage": "read"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 1.0795131,
+          "stage": "read"
+        },
+        {
+          "event": "begin",
+          "stage": "read"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.1013237,
+          "stage": "read"
+        },
+        {
+          "event": "begin",
+          "stage": "approximate"
+        },
+        {
+          "cell_size": 100.0,
+          "event": "grid",
+          "padded_samples": 262144.0,
+          "size": [
+            37.0,
+            61.0,
+            8.0
+          ]
+        },
+        {
+          "event": "begin",
+          "stage": "reconstruct_A"
+        },
+        {
+          "event": "begin",
+          "stage": "build_winding_tree"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 1.5019735,
+          "stage": "build_winding_tree"
+        },
+        {
+          "event": "begin",
+          "stage": "level_set"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 502,
+            "inside_queries": 0,
+            "queries": 502,
+            "sampled_angles": 1165629,
+            "sampled_far": 567,
+            "sampled_nodes": 264160,
+            "sampled_queries": 1
+          },
+          "event": "end",
+          "seconds": 57.3271444,
+          "stage": "level_set"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 502,
+            "inside_queries": 0,
+            "queries": 502,
+            "sampled_angles": 1165629,
+            "sampled_far": 567,
+            "sampled_nodes": 264160,
+            "sampled_queries": 1
+          },
+          "event": "end",
+          "seconds": 58.8294753,
+          "stage": "reconstruct_A"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 502,
+            "inside_queries": 0,
+            "queries": 502,
+            "sampled_angles": 1165629,
+            "sampled_far": 567,
+            "sampled_nodes": 264160,
+            "sampled_queries": 1
+          },
+          "event": "end",
+          "seconds": 58.8381245,
+          "stage": "approximate"
+        }
+      ]
+    },
+    {
+      "run": "profile-full-cell500",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                3267.5646124714403,
+                2773.744779843837,
+                224.34413653491544
+              ],
+              "min": [
+                2282.7454268761794,
+                0.0,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Unknown",
+              "signed_triangle_volume": 204577641.03584433,
+              "triangles": 95060
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5203.242794122547,
+                234.98044117896222
+              ],
+              "min": [
+                0.0,
+                0.0,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pdag-Gyarran Volcanics",
+              "signed_triangle_volume": 1123399549.418985,
+              "triangles": 182890
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                274.3668273644105
+              ],
+              "min": [
+                0.0,
+                1328.8514288756996,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgs-Skeletar Formation",
+              "signed_triangle_volume": 549980622.7102381,
+              "triangles": 62226
+            },
+            {
+              "max": [
+                2963.106259573309,
+                5637.435706000775,
+                153.9044013641767
+              ],
+              "min": [
+                0.0,
+                2904.5243821032345,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pmtb - Branxton Formation__1",
+              "signed_triangle_volume": 184031008.6509926,
+              "triangles": 99078
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                205.47110215897283
+              ],
+              "min": [
+                0.0,
+                1968.03490283899,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr5 - Rowan Formation__1",
+              "signed_triangle_volume": 190555149.59318453,
+              "triangles": 44086
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                152.27216547052114
+              ],
+              "min": [
+                0.0,
+                2250.8802428543568,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__1",
+              "signed_triangle_volume": 117557233.36328682,
+              "triangles": 42966
+            },
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000775,
+                181.43862341136514
+              ],
+              "min": [
+                0.0,
+                2536.5899759652093,
+                -1.4210854715202004e-14
+              ],
+              "name": "Geological Model - Pgr1 - Rowan Formation",
+              "signed_triangle_volume": 142418974.9351579,
+              "triangles": 96206
+            },
+            {
+              "max": [
+                827.0517296764883,
+                5637.435706000775,
+                104.50961781467214
+              ],
+              "min": [
+                0.0,
+                5306.099208620377,
+                38.46443637812257
+              ],
+              "name": "Geological Model - Pmtm - Mulbring Siltstone",
+              "signed_triangle_volume": 2891051.488527787,
+              "triangles": 5480
+            },
+            {
+              "max": [
+                3267.5646124714403,
+                5637.435706000776,
+                321.86454345842964
+              ],
+              "min": [
+                -1.0532325752513157e-12,
+                0.0,
+                55.17029522822884
+              ],
+              "name": "External",
+              "signed_triangle_volume": 3412749983.584046,
+              "triangles": 531694
+            }
+          ],
+          "triangles": 1161720,
+          "vertices": 580878
+        },
+        "assembly_seconds": 0.1046485,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                827.0517296853296,
+                5637.435706011887,
+                128.22766756057254
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                5306.099208628735,
+                62.54457554303412
+              ],
+              "name": "Soil_1_1",
+              "signed_triangle_volume": 2882609.5359758227,
+              "triangles": 952
+            },
+            {
+              "max": [
+                2963.1062595781686,
+                5637.435706013039,
+                177.33118961518042
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                2904.5243821119,
+                24.08013916015626
+              ],
+              "name": "Soil_2_1",
+              "signed_triangle_volume": 184239682.9096619,
+              "triangles": 10192
+            },
+            {
+              "max": [
+                3267.564612481394,
+                5637.435706012011,
+                229.39155333108835
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1968.0349028402768,
+                24.08013916015625
+              ],
+              "name": "Soil_3_1",
+              "signed_triangle_volume": 190766592.9920643,
+              "triangles": 19752
+            },
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                204.0391858573713
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                159.86252337037755
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613307497,
+              "triangles": 1592
+            },
+            {
+              "max": [
+                3267.5646124815253,
+                5637.4357060117345,
+                176.22166544270357
+              ],
+              "min": [
+                1.0532325752513157e-12,
+                2250.8802428634967,
+                24.08013916015625
+              ],
+              "name": "Soil_5_1",
+              "signed_triangle_volume": 117398141.3177001,
+              "triangles": 15672
+            },
+            {
+              "max": [
+                3267.56461247863,
+                5637.4357060117345,
+                205.2481697057137
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                2536.589975970967,
+                24.08013916015625
+              ],
+              "name": "Soil_6_1",
+              "signed_triangle_volume": 142623084.078756,
+              "triangles": 15872
+            },
+            {
+              "max": [
+                3267.5646124837867,
+                5203.242794124369,
+                259.0116451847889
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                0.0,
+                24.080139160156254
+              ],
+              "name": "Soil_7_1",
+              "signed_triangle_volume": 1124053572.0782518,
+              "triangles": 19216
+            },
+            {
+              "max": [
+                3267.564612483227,
+                2773.6046025978535,
+                248.20492063678688
+              ],
+              "min": [
+                2284.5523884444956,
+                0.0,
+                24.080139160156257
+              ],
+              "name": "Soil_8_1",
+              "signed_triangle_volume": 204504685.12860814,
+              "triangles": 5952
+            },
+            {
+              "max": [
+                3267.564612480602,
+                5637.435706009969,
+                297.7843993409787
+              ],
+              "min": [
+                1.0532325752513155e-12,
+                1328.8514288806728,
+                24.08013916015625
+              ],
+              "name": "Soil_9_1",
+              "signed_triangle_volume": 549112047.5869569,
+              "triangles": 19432
+            }
+          ],
+          "triangles": 108632,
+          "vertices": 54331
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.4527953,
+        "mode": "full"
+      },
+      "result": {
+        "cell_size": 500.0,
+        "error": "Difference mesh canceled.",
+        "event": "result",
+        "limit_seconds": 60.0,
+        "mode": "full",
+        "seconds": 60.0073402,
+        "status": "canceled"
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_profile.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "500",
+          "60",
+          "full"
+        ],
+        "exe_sha256": "ce5b9b05e075e247cb7211bcd52ba3032008a73eb0b92cdcb8bff212e5e73824",
+        "start_utc": "2026-10-18T13:21:12Z",
+        "exit_code": 0,
+        "process_wall_seconds": 64.15231110000241,
+        "samples": [
+          {
+            "wall_seconds": 0.09797180000168737,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.5981635000025562,
+            "process_cpu_seconds": 0.484375
+          },
+          {
+            "wall_seconds": 1.0987029999996594,
+            "process_cpu_seconds": 1.015625
+          },
+          {
+            "wall_seconds": 1.5990988000012294,
+            "process_cpu_seconds": 1.515625
+          },
+          {
+            "wall_seconds": 2.099335800001427,
+            "process_cpu_seconds": 2.015625
+          },
+          {
+            "wall_seconds": 2.5995951000004425,
+            "process_cpu_seconds": 2.515625
+          },
+          {
+            "wall_seconds": 3.1001075000021956,
+            "process_cpu_seconds": 3.015625
+          },
+          {
+            "wall_seconds": 3.6004632000003767,
+            "process_cpu_seconds": 3.53125
+          },
+          {
+            "wall_seconds": 4.10069360000125,
+            "process_cpu_seconds": 4.03125
+          },
+          {
+            "wall_seconds": 4.601278900001489,
+            "process_cpu_seconds": 4.53125
+          },
+          {
+            "wall_seconds": 5.101611500002036,
+            "process_cpu_seconds": 5.046875
+          },
+          {
+            "wall_seconds": 5.602195800001937,
+            "process_cpu_seconds": 5.546875
+          },
+          {
+            "wall_seconds": 6.102713000000222,
+            "process_cpu_seconds": 6.046875
+          },
+          {
+            "wall_seconds": 6.602943000001687,
+            "process_cpu_seconds": 6.546875
+          },
+          {
+            "wall_seconds": 7.1033807000021625,
+            "process_cpu_seconds": 7.046875
+          },
+          {
+            "wall_seconds": 7.603736799999751,
+            "process_cpu_seconds": 7.546875
+          },
+          {
+            "wall_seconds": 8.104008700000122,
+            "process_cpu_seconds": 8.03125
+          },
+          {
+            "wall_seconds": 8.604511400000774,
+            "process_cpu_seconds": 8.53125
+          },
+          {
+            "wall_seconds": 9.104697099999612,
+            "process_cpu_seconds": 9.03125
+          },
+          {
+            "wall_seconds": 9.605160200000682,
+            "process_cpu_seconds": 9.53125
+          },
+          {
+            "wall_seconds": 10.105625399999553,
+            "process_cpu_seconds": 10.015625
+          },
+          {
+            "wall_seconds": 10.606199100002414,
+            "process_cpu_seconds": 10.515625
+          },
+          {
+            "wall_seconds": 11.106608599999163,
+            "process_cpu_seconds": 11.015625
+          },
+          {
+            "wall_seconds": 11.606768900001043,
+            "process_cpu_seconds": 11.515625
+          },
+          {
+            "wall_seconds": 12.107007300000987,
+            "process_cpu_seconds": 12.015625
+          },
+          {
+            "wall_seconds": 12.607671400000982,
+            "process_cpu_seconds": 12.515625
+          },
+          {
+            "wall_seconds": 13.108213700001215,
+            "process_cpu_seconds": 13.015625
+          },
+          {
+            "wall_seconds": 13.608636100001604,
+            "process_cpu_seconds": 13.515625
+          },
+          {
+            "wall_seconds": 14.108811599999171,
+            "process_cpu_seconds": 14.015625
+          },
+          {
+            "wall_seconds": 14.609443800000008,
+            "process_cpu_seconds": 14.515625
+          },
+          {
+            "wall_seconds": 15.110069000002113,
+            "process_cpu_seconds": 15.015625
+          },
+          {
+            "wall_seconds": 15.610510300000897,
+            "process_cpu_seconds": 15.515625
+          },
+          {
+            "wall_seconds": 16.111069999999017,
+            "process_cpu_seconds": 16.0
+          },
+          {
+            "wall_seconds": 16.61164429999917,
+            "process_cpu_seconds": 16.5
+          },
+          {
+            "wall_seconds": 17.111874700000044,
+            "process_cpu_seconds": 17.0
+          },
+          {
+            "wall_seconds": 17.61271520000082,
+            "process_cpu_seconds": 17.390625
+          },
+          {
+            "wall_seconds": 18.112877100000333,
+            "process_cpu_seconds": 17.890625
+          },
+          {
+            "wall_seconds": 18.613391999999294,
+            "process_cpu_seconds": 18.375
+          },
+          {
+            "wall_seconds": 19.113794400000188,
+            "process_cpu_seconds": 18.875
+          },
+          {
+            "wall_seconds": 19.613995399999112,
+            "process_cpu_seconds": 19.375
+          },
+          {
+            "wall_seconds": 20.114581500001805,
+            "process_cpu_seconds": 19.859375
+          },
+          {
+            "wall_seconds": 20.61509930000102,
+            "process_cpu_seconds": 20.359375
+          },
+          {
+            "wall_seconds": 21.11528460000045,
+            "process_cpu_seconds": 20.859375
+          },
+          {
+            "wall_seconds": 21.615516599998955,
+            "process_cpu_seconds": 21.359375
+          },
+          {
+            "wall_seconds": 22.1156876999994,
+            "process_cpu_seconds": 21.859375
+          },
+          {
+            "wall_seconds": 22.61619789999895,
+            "process_cpu_seconds": 22.359375
+          },
+          {
+            "wall_seconds": 23.11658560000069,
+            "process_cpu_seconds": 22.859375
+          },
+          {
+            "wall_seconds": 23.616995899999893,
+            "process_cpu_seconds": 23.375
+          },
+          {
+            "wall_seconds": 24.117377900001884,
+            "process_cpu_seconds": 23.875
+          },
+          {
+            "wall_seconds": 24.61788610000076,
+            "process_cpu_seconds": 24.375
+          },
+          {
+            "wall_seconds": 25.118249499999365,
+            "process_cpu_seconds": 24.875
+          },
+          {
+            "wall_seconds": 25.618813900000532,
+            "process_cpu_seconds": 25.359375
+          },
+          {
+            "wall_seconds": 26.119155799999135,
+            "process_cpu_seconds": 25.859375
+          },
+          {
+            "wall_seconds": 26.619353000001865,
+            "process_cpu_seconds": 26.359375
+          },
+          {
+            "wall_seconds": 27.11980290000065,
+            "process_cpu_seconds": 26.859375
+          },
+          {
+            "wall_seconds": 27.619985199999064,
+            "process_cpu_seconds": 27.359375
+          },
+          {
+            "wall_seconds": 28.12026479999986,
+            "process_cpu_seconds": 27.84375
+          },
+          {
+            "wall_seconds": 28.620665099999314,
+            "process_cpu_seconds": 28.34375
+          },
+          {
+            "wall_seconds": 29.120929600001546,
+            "process_cpu_seconds": 28.84375
+          },
+          {
+            "wall_seconds": 29.621609300000273,
+            "process_cpu_seconds": 29.359375
+          },
+          {
+            "wall_seconds": 30.122023300002184,
+            "process_cpu_seconds": 29.859375
+          },
+          {
+            "wall_seconds": 30.62225120000221,
+            "process_cpu_seconds": 30.359375
+          },
+          {
+            "wall_seconds": 31.122681200002262,
+            "process_cpu_seconds": 30.84375
+          },
+          {
+            "wall_seconds": 31.62308320000011,
+            "process_cpu_seconds": 31.34375
+          },
+          {
+            "wall_seconds": 32.123431100000744,
+            "process_cpu_seconds": 31.84375
+          },
+          {
+            "wall_seconds": 32.623666800001956,
+            "process_cpu_seconds": 32.328125
+          },
+          {
+            "wall_seconds": 33.12413809999998,
+            "process_cpu_seconds": 32.828125
+          },
+          {
+            "wall_seconds": 33.6243624000017,
+            "process_cpu_seconds": 33.296875
+          },
+          {
+            "wall_seconds": 34.124952699999994,
+            "process_cpu_seconds": 33.796875
+          },
+          {
+            "wall_seconds": 34.625471899998956,
+            "process_cpu_seconds": 34.296875
+          },
+          {
+            "wall_seconds": 35.125770500002545,
+            "process_cpu_seconds": 34.796875
+          },
+          {
+            "wall_seconds": 35.62636140000177,
+            "process_cpu_seconds": 35.296875
+          },
+          {
+            "wall_seconds": 36.12689600000158,
+            "process_cpu_seconds": 35.796875
+          },
+          {
+            "wall_seconds": 36.627788199999486,
+            "process_cpu_seconds": 36.296875
+          },
+          {
+            "wall_seconds": 37.12814200000139,
+            "process_cpu_seconds": 36.796875
+          },
+          {
+            "wall_seconds": 37.62859609999941,
+            "process_cpu_seconds": 37.296875
+          },
+          {
+            "wall_seconds": 38.12899780000225,
+            "process_cpu_seconds": 37.796875
+          },
+          {
+            "wall_seconds": 38.629583800000546,
+            "process_cpu_seconds": 38.296875
+          },
+          {
+            "wall_seconds": 39.129919599999994,
+            "process_cpu_seconds": 38.796875
+          },
+          {
+            "wall_seconds": 39.630249199999525,
+            "process_cpu_seconds": 39.296875
+          },
+          {
+            "wall_seconds": 40.13046430000031,
+            "process_cpu_seconds": 39.796875
+          },
+          {
+            "wall_seconds": 40.63109859999895,
+            "process_cpu_seconds": 40.296875
+          },
+          {
+            "wall_seconds": 41.131532899999,
+            "process_cpu_seconds": 40.796875
+          },
+          {
+            "wall_seconds": 41.63205369999923,
+            "process_cpu_seconds": 41.28125
+          },
+          {
+            "wall_seconds": 42.132536100001744,
+            "process_cpu_seconds": 41.765625
+          },
+          {
+            "wall_seconds": 42.63279490000059,
+            "process_cpu_seconds": 42.265625
+          },
+          {
+            "wall_seconds": 43.1331190000019,
+            "process_cpu_seconds": 42.78125
+          },
+          {
+            "wall_seconds": 43.63358359999984,
+            "process_cpu_seconds": 43.28125
+          },
+          {
+            "wall_seconds": 44.13381600000139,
+            "process_cpu_seconds": 43.78125
+          },
+          {
+            "wall_seconds": 44.63420020000194,
+            "process_cpu_seconds": 44.28125
+          },
+          {
+            "wall_seconds": 45.13481949999914,
+            "process_cpu_seconds": 44.78125
+          },
+          {
+            "wall_seconds": 45.635389700000815,
+            "process_cpu_seconds": 45.28125
+          },
+          {
+            "wall_seconds": 46.13580379999985,
+            "process_cpu_seconds": 45.78125
+          },
+          {
+            "wall_seconds": 46.63638050000009,
+            "process_cpu_seconds": 46.28125
+          },
+          {
+            "wall_seconds": 47.13686420000158,
+            "process_cpu_seconds": 46.78125
+          },
+          {
+            "wall_seconds": 47.6371973000023,
+            "process_cpu_seconds": 47.28125
+          },
+          {
+            "wall_seconds": 48.13747990000047,
+            "process_cpu_seconds": 47.765625
+          },
+          {
+            "wall_seconds": 48.638104000001476,
+            "process_cpu_seconds": 48.234375
+          },
+          {
+            "wall_seconds": 49.13855870000043,
+            "process_cpu_seconds": 48.734375
+          },
+          {
+            "wall_seconds": 49.63909400000193,
+            "process_cpu_seconds": 49.234375
+          },
+          {
+            "wall_seconds": 50.139294299999165,
+            "process_cpu_seconds": 49.71875
+          },
+          {
+            "wall_seconds": 50.639907500000845,
+            "process_cpu_seconds": 50.21875
+          },
+          {
+            "wall_seconds": 51.140360299999884,
+            "process_cpu_seconds": 50.703125
+          },
+          {
+            "wall_seconds": 51.640994400000636,
+            "process_cpu_seconds": 51.203125
+          },
+          {
+            "wall_seconds": 52.141549200001464,
+            "process_cpu_seconds": 51.703125
+          },
+          {
+            "wall_seconds": 52.64204679999966,
+            "process_cpu_seconds": 52.203125
+          },
+          {
+            "wall_seconds": 53.142241400000785,
+            "process_cpu_seconds": 52.703125
+          },
+          {
+            "wall_seconds": 53.64244619999954,
+            "process_cpu_seconds": 53.203125
+          },
+          {
+            "wall_seconds": 54.14287790000162,
+            "process_cpu_seconds": 53.6875
+          },
+          {
+            "wall_seconds": 54.6432515000015,
+            "process_cpu_seconds": 54.1875
+          },
+          {
+            "wall_seconds": 55.14357999999993,
+            "process_cpu_seconds": 54.6875
+          },
+          {
+            "wall_seconds": 55.64413720000084,
+            "process_cpu_seconds": 55.1875
+          },
+          {
+            "wall_seconds": 56.14428670000052,
+            "process_cpu_seconds": 55.6875
+          },
+          {
+            "wall_seconds": 56.64494670000204,
+            "process_cpu_seconds": 56.171875
+          },
+          {
+            "wall_seconds": 57.14554019999923,
+            "process_cpu_seconds": 56.671875
+          },
+          {
+            "wall_seconds": 57.645892299999105,
+            "process_cpu_seconds": 57.171875
+          },
+          {
+            "wall_seconds": 58.14610080000057,
+            "process_cpu_seconds": 57.671875
+          },
+          {
+            "wall_seconds": 58.646615500001644,
+            "process_cpu_seconds": 58.171875
+          },
+          {
+            "wall_seconds": 59.14723570000206,
+            "process_cpu_seconds": 58.671875
+          },
+          {
+            "wall_seconds": 59.64784259999942,
+            "process_cpu_seconds": 59.171875
+          },
+          {
+            "wall_seconds": 60.14845770000102,
+            "process_cpu_seconds": 59.671875
+          },
+          {
+            "wall_seconds": 60.648786100002326,
+            "process_cpu_seconds": 60.171875
+          },
+          {
+            "wall_seconds": 61.14929160000247,
+            "process_cpu_seconds": 60.6875
+          },
+          {
+            "wall_seconds": 61.649776199999906,
+            "process_cpu_seconds": 61.171875
+          },
+          {
+            "wall_seconds": 62.150446999999986,
+            "process_cpu_seconds": 61.671875
+          },
+          {
+            "wall_seconds": 62.650852400001895,
+            "process_cpu_seconds": 62.171875
+          },
+          {
+            "wall_seconds": 63.15116119999948,
+            "process_cpu_seconds": 62.671875
+          },
+          {
+            "wall_seconds": 63.65173760000107,
+            "process_cpu_seconds": 63.171875
+          }
+        ]
+      },
+      "stages": [
+        {
+          "event": "begin",
+          "stage": "read"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 1.1297256,
+          "stage": "read"
+        },
+        {
+          "event": "begin",
+          "stage": "read"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.1013766,
+          "stage": "read"
+        },
+        {
+          "event": "begin",
+          "stage": "approximate"
+        },
+        {
+          "cell_size": 500.0,
+          "event": "grid",
+          "padded_samples": 16384.0,
+          "size": [
+            11.0,
+            16.0,
+            5.0
+          ]
+        },
+        {
+          "event": "begin",
+          "stage": "reconstruct_A"
+        },
+        {
+          "event": "begin",
+          "stage": "build_winding_tree"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 1.5499215,
+          "stage": "build_winding_tree"
+        },
+        {
+          "event": "begin",
+          "stage": "level_set"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 496,
+            "inside_queries": 0,
+            "queries": 650,
+            "sampled_angles": 1895,
+            "sampled_far": 204,
+            "sampled_nodes": 835,
+            "sampled_queries": 1
+          },
+          "event": "end",
+          "seconds": 57.2161212,
+          "stage": "level_set"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 496,
+            "inside_queries": 0,
+            "queries": 650,
+            "sampled_angles": 1895,
+            "sampled_far": 204,
+            "sampled_nodes": 835,
+            "sampled_queries": 1
+          },
+          "event": "end",
+          "seconds": 58.7664599,
+          "stage": "reconstruct_A"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 496,
+            "inside_queries": 0,
+            "queries": 650,
+            "sampled_angles": 1895,
+            "sampled_far": 204,
+            "sampled_nodes": 835,
+            "sampled_queries": 1
+          },
+          "event": "end",
+          "seconds": 58.7752884,
+          "stage": "approximate"
+        }
+      ],
+      "timing_caveat": "These two captures overlapped for approximately 25 seconds. Do not use them as clean baseline timings."
+    },
+    {
+      "run": "profile-pair-rowan2-direct",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            }
+          ],
+          "triangles": 2034,
+          "vertices": 1019
+        },
+        "assembly_seconds": 0.0017626,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                179.95904669721506
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                135.7823842102213
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613300043,
+              "triangles": 1592
+            }
+          ],
+          "triangles": 1592,
+          "vertices": 798
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 3.5973174,
+        "mode": "pair-direct"
+      },
+      "result": {
+        "cell_size": 5.0,
+        "error": "Non-manifold edges or inconsistent triangle winding. Check the input topology.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "pair-direct",
+        "seconds": 0.1029497,
+        "status": "error"
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_profile.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "5",
+          "30",
+          "pair-direct",
+          "6",
+          "3"
+        ],
+        "exe_sha256": "55e29ee1cee0a9d9d9554978c61d4a58e60f825a2bfd1aa1b3d0321935209305",
+        "start_utc": "2026-10-18T13:25:57Z",
+        "exit_code": 0,
+        "process_wall_seconds": 4.117377700000361,
+        "samples": [
+          {
+            "wall_seconds": 0.11438750000161235,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.6148885000002338,
+            "process_cpu_seconds": 0.5
+          },
+          {
+            "wall_seconds": 1.1151294999981474,
+            "process_cpu_seconds": 1.015625
+          },
+          {
+            "wall_seconds": 1.615428900000552,
+            "process_cpu_seconds": 1.5
+          },
+          {
+            "wall_seconds": 2.116126599998097,
+            "process_cpu_seconds": 2.0
+          },
+          {
+            "wall_seconds": 2.616391700001259,
+            "process_cpu_seconds": 2.5
+          },
+          {
+            "wall_seconds": 3.116551700000855,
+            "process_cpu_seconds": 3.0
+          },
+          {
+            "wall_seconds": 3.6167548000012175,
+            "process_cpu_seconds": 3.5
+          }
+        ]
+      },
+      "stages": [
+        {
+          "event": "begin",
+          "stage": "read"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0014685,
+          "stage": "read"
+        },
+        {
+          "event": "begin",
+          "stage": "validate"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0134832,
+          "stage": "validate"
+        },
+        {
+          "event": "begin",
+          "stage": "read"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0010415,
+          "stage": "read"
+        },
+        {
+          "event": "begin",
+          "stage": "validate"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0066841,
+          "stage": "validate"
+        },
+        {
+          "event": "begin",
+          "stage": "solid"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0043266,
+          "stage": "solid"
+        },
+        {
+          "event": "begin",
+          "stage": "solid"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.00298,
+          "stage": "solid"
+        },
+        {
+          "event": "begin",
+          "stage": "output"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0688447,
+          "stage": "output"
+        },
+        {
+          "event": "begin",
+          "stage": "validate"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0026669,
+          "stage": "validate"
+        }
+      ]
+    },
+    {
+      "run": "profile-pair-rowan2-output",
+      "inputs": {
+        "a": {
+          "groups": [
+            {
+              "max": [
+                2180.2985101767117,
+                3195.5252884328365,
+                180.6673258649385
+              ],
+              "min": [
+                1392.4411507999757,
+                2755.982263139449,
+                122.88777601947868
+              ],
+              "name": "Geological Model - Pgr3 - Rowan Formation__2",
+              "signed_triangle_volume": 804287.4792694867,
+              "triangles": 2034
+            }
+          ],
+          "triangles": 2034,
+          "vertices": 1019
+        },
+        "assembly_seconds": 0.0013214,
+        "b": {
+          "groups": [
+            {
+              "max": [
+                2178.9616420538705,
+                3195.395914921942,
+                179.95904669721506
+              ],
+              "min": [
+                1394.5572403193398,
+                2756.1107163501865,
+                135.7823842102213
+              ],
+              "name": "Soil_4_1",
+              "signed_triangle_volume": 795098.8613300043,
+              "triangles": 1592
+            }
+          ],
+          "triangles": 1592,
+          "vertices": 798
+        },
+        "event": "inputs",
+        "load_and_assembly_seconds": 4.3889754,
+        "mode": "pair-direct"
+      },
+      "result": {
+        "cell_size": 5.0,
+        "error": "Non-manifold edges or inconsistent triangle winding. Check the input topology.",
+        "event": "result",
+        "limit_seconds": 30.0,
+        "mode": "pair-direct",
+        "seconds": 0.0990479,
+        "status": "error"
+      },
+      "capture": {
+        "command": [
+          "D:\\woby-builds\\gm-difference-20261018\\bin\\Release\\gm_difference_profile.exe",
+          "D:/temp/GM-data/test.woby",
+          "D:/temp/GM-data/importers",
+          "5",
+          "30",
+          "pair-direct",
+          "6",
+          "3"
+        ],
+        "exe_sha256": "a76fb07a8cd83a608576ed30eeac1d5244cf77b0f3a7474d0563f4696d074058",
+        "start_utc": "2026-10-18T13:31:11Z",
+        "exit_code": 0,
+        "process_wall_seconds": 5.111529900001187,
+        "samples": [
+          {
+            "wall_seconds": 0.10718020000058459,
+            "process_cpu_seconds": 0.0
+          },
+          {
+            "wall_seconds": 0.6076584000002185,
+            "process_cpu_seconds": 0.53125
+          },
+          {
+            "wall_seconds": 1.1078678999983822,
+            "process_cpu_seconds": 1.046875
+          },
+          {
+            "wall_seconds": 1.6082681000007142,
+            "process_cpu_seconds": 1.546875
+          },
+          {
+            "wall_seconds": 2.108818600001541,
+            "process_cpu_seconds": 2.015625
+          },
+          {
+            "wall_seconds": 2.60922489999939,
+            "process_cpu_seconds": 2.5
+          },
+          {
+            "wall_seconds": 3.1094927999984066,
+            "process_cpu_seconds": 2.953125
+          },
+          {
+            "wall_seconds": 3.609975299998041,
+            "process_cpu_seconds": 3.4375
+          },
+          {
+            "wall_seconds": 4.110369499998342,
+            "process_cpu_seconds": 3.9375
+          },
+          {
+            "wall_seconds": 4.610920999999507,
+            "process_cpu_seconds": 4.4375
+          }
+        ]
+      },
+      "stages": [
+        {
+          "event": "begin",
+          "stage": "read"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0012762,
+          "stage": "read"
+        },
+        {
+          "event": "begin",
+          "stage": "validate"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0151215,
+          "stage": "validate"
+        },
+        {
+          "event": "begin",
+          "stage": "read"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0008841,
+          "stage": "read"
+        },
+        {
+          "event": "begin",
+          "stage": "validate"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0065355,
+          "stage": "validate"
+        },
+        {
+          "event": "begin",
+          "stage": "solid"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0047117,
+          "stage": "solid"
+        },
+        {
+          "event": "begin",
+          "stage": "solid"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.003969,
+          "stage": "solid"
+        },
+        {
+          "event": "begin",
+          "stage": "output"
+        },
+        {
+          "event": "manifold_output",
+          "status": 0,
+          "triangles": 6388,
+          "vertices": 3174
+        },
+        {
+          "after": 3128,
+          "before": 3174,
+          "event": "output_welding"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0628356,
+          "stage": "output"
+        },
+        {
+          "event": "begin",
+          "stage": "validate"
+        },
+        {
+          "counts": {
+            "exact_fallbacks": 0,
+            "inside_queries": 0,
+            "queries": 0,
+            "sampled_angles": 0,
+            "sampled_far": 0,
+            "sampled_nodes": 0,
+            "sampled_queries": 0
+          },
+          "event": "end",
+          "seconds": 0.0023084,
+          "stage": "validate"
+        }
+      ]
+    }
+  ],
+  "candidate_mapping": [
+    {
+      "input": "Geological Model - Unknown",
+      "plaxis": "Soil_8_1",
+      "input_member": 0,
+      "plaxis_member": 7,
+      "a_triangles": 95060,
+      "b_triangles": 5952,
+      "a_signed_triangle_volume": 204577641.03584433,
+      "b_signed_triangle_volume": 204504685.12860814,
+      "minimum_cell_scene_alignment": 9.347672355621476,
+      "extent": [
+        984.8191856070475,
+        2773.744779843837,
+        224.34413653491544
+      ],
+      "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+    },
+    {
+      "input": "Geological Model - Pdag-Gyarran Volcanics",
+      "plaxis": "Soil_7_1",
+      "input_member": 1,
+      "plaxis_member": 6,
+      "a_triangles": 182890,
+      "b_triangles": 19216,
+      "a_signed_triangle_volume": 1123399549.418985,
+      "b_signed_triangle_volume": 1124053572.0782518,
+      "minimum_cell_scene_alignment": 20.980817718243422,
+      "extent": [
+        3267.5646124837867,
+        5203.242794124369,
+        234.98044117896222
+      ],
+      "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+    },
+    {
+      "input": "Geological Model - Pgs-Skeletar Formation",
+      "plaxis": "Soil_9_1",
+      "input_member": 2,
+      "plaxis_member": 8,
+      "a_triangles": 62226,
+      "b_triangles": 19432,
+      "a_signed_triangle_volume": 549980622.7102381,
+      "b_signed_triangle_volume": 549112047.5869569,
+      "minimum_cell_scene_alignment": 17.373323698122057,
+      "extent": [
+        3267.564612480602,
+        4308.5842771342695,
+        274.3668273644105
+      ],
+      "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+    },
+    {
+      "input": "Geological Model - Pmtb - Branxton Formation__1",
+      "plaxis": "Soil_2_1",
+      "input_member": 3,
+      "plaxis_member": 1,
+      "a_triangles": 99078,
+      "b_triangles": 10192,
+      "a_signed_triangle_volume": 184031008.6509926,
+      "b_signed_triangle_volume": 184239682.9096619,
+      "minimum_cell_scene_alignment": 11.948009111202293,
+      "extent": [
+        2963.1062595781686,
+        2732.911323909804,
+        153.9044013641767
+      ],
+      "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+    },
+    {
+      "input": "Geological Model - Pgr5 - Rowan Formation__1",
+      "plaxis": "Soil_3_1",
+      "input_member": 4,
+      "plaxis_member": 2,
+      "a_triangles": 44086,
+      "b_triangles": 19752,
+      "a_signed_triangle_volume": 190555149.59318453,
+      "b_signed_triangle_volume": 190766592.9920643,
+      "minimum_cell_scene_alignment": 14.795970980536374,
+      "extent": [
+        3267.564612481394,
+        3669.400803173021,
+        205.47110215897283
+      ],
+      "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+    },
+    {
+      "input": "Geological Model - Pgr3 - Rowan Formation__1",
+      "plaxis": "Soil_5_1",
+      "input_member": 5,
+      "plaxis_member": 4,
+      "a_triangles": 42966,
+      "b_triangles": 15672,
+      "a_signed_triangle_volume": 117557233.36328682,
+      "b_signed_triangle_volume": 117398141.3177001,
+      "minimum_cell_scene_alignment": 13.65546557724749,
+      "extent": [
+        3267.5646124815253,
+        3386.5554631573777,
+        152.27216547052114
+      ],
+      "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+    },
+    {
+      "input": "Geological Model - Pgr3 - Rowan Formation__2",
+      "plaxis": "Soil_4_1",
+      "input_member": 6,
+      "plaxis_member": 3,
+      "a_triangles": 2034,
+      "b_triangles": 1592,
+      "a_signed_triangle_volume": 804287.4792694867,
+      "b_signed_triangle_volume": 795098.8613307497,
+      "minimum_cell_scene_alignment": 3.176844191035226,
+      "extent": [
+        787.857359376736,
+        439.5430252933875,
+        57.779549845459826
+      ],
+      "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+    },
+    {
+      "input": "Geological Model - Pgr1 - Rowan Formation",
+      "plaxis": "Soil_6_1",
+      "input_member": 7,
+      "plaxis_member": 5,
+      "a_triangles": 96206,
+      "b_triangles": 15872,
+      "a_signed_triangle_volume": 142418974.9351579,
+      "b_signed_triangle_volume": 142623084.078756,
+      "minimum_cell_scene_alignment": 13.175663759994476,
+      "extent": [
+        3267.56461247863,
+        3100.845730046525,
+        181.43862341136514
+      ],
+      "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+    },
+    {
+      "input": "Geological Model - Pmtm - Mulbring Siltstone",
+      "plaxis": "Soil_1_1",
+      "input_member": 8,
+      "plaxis_member": 0,
+      "a_triangles": 5480,
+      "b_triangles": 952,
+      "a_signed_triangle_volume": 2891051.488527787,
+      "b_signed_triangle_volume": 2882609.5359758227,
+      "minimum_cell_scene_alignment": 2.761137478262587,
+      "extent": [
+        827.0517296853296,
+        331.3364973915104,
+        66.04518143654957
+      ],
+      "mapping_status": "Inferred from spatial extents and volume; database has no geological material names."
+    }
+  ],
+  "direct_output_capture_caveat": "The final output-count capture ran during an external build. Use it for topology counts, not timing comparisons."
+}

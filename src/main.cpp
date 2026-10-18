@@ -3521,15 +3521,11 @@ int main(int argc, char** argv)
                     if (ui.sceneGeneration != it->generation || !item) { throw std::runtime_error("Difference command canceled because the scene changed."); }
                     auto& runtime = comparison.objects.at(it->objectId).difference;
                     const bool exporting = it->action == woby::ControlAction::differenceExport;
-                    const bool checking = it->action == woby::ControlAction::differenceCheckResolution;
-                    const auto request = checking ? item->differenceResolutionRequest.revision : item->differenceRequest.revision;
+                    const auto request = item->differenceRequest.revision;
                     if (!exporting && request != it->request) { throw std::runtime_error("Difference command canceled or superseded."); }
-                    if (checking && (!woby::differenceResultCurrent(runtime, ui, it->objectId) || runtime.resolution.base != runtime.result)) {
-                        throw std::runtime_error("Resolution check is out of date. Rebuild the approximate difference and check again.");
-                    }
-                    const auto phase = exporting ? runtime.exportState : checking ? runtime.resolution.phase : runtime.phase;
+                    const auto phase = exporting ? runtime.exportState : runtime.phase;
                     if (phase == "failed" || phase == "outdated" || phase == "canceled" || phase == "not_created") {
-                        const auto& error = exporting ? runtime.exportError : checking ? runtime.resolution.error : runtime.error;
+                        const auto& error = exporting ? runtime.exportError : runtime.error;
                         throw std::runtime_error(error.empty() ? "Difference job is " + phase : error);
                     }
                     if (phase == "ready" || phase == "complete") {
@@ -3602,7 +3598,7 @@ int main(int argc, char** argv)
                                 }
                             }
                             if (busy && payload.action != A::comparisonCancel && payload.action != A::differenceCancel
-                                && payload.action != A::differenceCancelCheck && payload.action != A::performanceEnd
+                                && payload.action != A::performanceEnd
                                 && (woby::controlMethod(payload.action).mutating || (payload.action == A::comparisonResults || payload.action == A::comparisonExport))) {
                                 woby::completeAutomationCommand(*automation, command->id,
                                     woby::AutomationCommandError{"Scene is busy loading, capturing, displaying a dialog, or editing a widget.", -32014});
@@ -3650,10 +3646,10 @@ int main(int argc, char** argv)
                                 result = woby::controlDifference(ui, runtime, payload);
                                 woby::updateSceneDirty(ui, cleanSceneDocument);
                                 if (payload.action == A::differenceCreate || payload.action == A::differenceRebuild
-                                    || payload.action == A::differenceExport || payload.action == A::differenceCheckResolution) {
+                                    || payload.action == A::differenceExport) {
                                     const auto* item = woby::findComparison(ui, payload.objectId);
                                     automationDifferences.push_back({command->id, payload.objectId, ui.sceneGeneration,
-                                        payload.action == A::differenceCheckResolution ? item->differenceResolutionRequest.revision : item->differenceRequest.revision,
+                                        item->differenceRequest.revision,
                                         payload.action});
                                     woby::deferAutomationCommand(*automation, command->id);
                                     return;
@@ -3701,6 +3697,15 @@ int main(int argc, char** argv)
                             } else if (payload.action == A::comparisonResults || payload.action == A::comparisonExport) {
                                 const auto* source = woby::findComparison(ui, payload.objectId);
                                 if (!source) { throw std::invalid_argument("analysis.results requires an analysis ID."); }
+                                if (source->settings.type == woby::AnalysisType::differenceMesh) {
+                                    if (payload.action == A::comparisonExport) {
+                                        throw std::invalid_argument("Use analysis difference-export for a Difference mesh analysis.");
+                                    }
+                                    result = {{"target", payload.target}, {"difference", woby::differenceStatus(
+                                        comparison.objects[payload.objectId].difference, ui, payload.objectId)}};
+                                    woby::completeAutomationCommand(*automation, command->id, woby::AutomationControlResult{std::move(result)});
+                                    return;
+                                }
                                 if (!woby::canInspectComparison(ui, payload.objectId)) {
                                     throw std::invalid_argument("Analysis needs at least one populated input and no missing references.");
                                 }

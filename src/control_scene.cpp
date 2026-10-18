@@ -85,6 +85,15 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
     if (id != invalidSceneObjectId) {
         if (const auto* comparison = findComparison(state, id)) {
             const auto& settings = comparison->settings;
+            if (settings.type == AnalysisType::differenceMesh) {
+                return {{"settings", {{"visible", settings.enabled}, {"translation", comparison->translation},
+                    {"type", analysisTypeKey(settings.type)}, {"alignment", settings.alignOrigins ? "origins" : "scene"},
+                    {"lockPlacement", settings.lockPlacement}, {"created", settings.difference.created},
+                    {"showAOnly", settings.difference.showA}, {"showBOnly", settings.difference.showB},
+                    {"opacity", settings.difference.opacity}}},
+                    {"valid", canInspectComparison(state, id)}, {"missingPartCount", missingComparisonPartCount(state, id)},
+                    {"aPartCount", comparison->a.size()}, {"bPartCount", comparison->b.size()}};
+            }
             const char* mode = settings.mode == ComparisonMode::distance ? "distance"
                 : settings.mode == ComparisonMode::original ? "a" : settings.mode == ComparisonMode::repaired ? "b" : settings.mode == ComparisonMode::surfaceQuality ? "surface_quality" : "overlay";
             return {{"settings", {{"visible", settings.enabled}, {"translation", comparison->translation},
@@ -413,7 +422,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         const bool placementOptions = command.alignment || command.lockPlacement || command.originA || command.originB;
         if (placementOptions && ((command.action == A::comparisonCreate && (command.type == "uv" || command.type == "uv_quality"))
             || (command.action != A::comparisonCreate && isUvAnalysis(comparisonSettings(state, id).type)))) {
-            throw std::invalid_argument("Placement options require a surface comparison.");
+            throw std::invalid_argument("Placement options require a surface comparison or difference mesh analysis.");
         }
         for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
             const auto& supplied = side == ComparisonSide::a ? command.originA : command.originB;
@@ -442,6 +451,9 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             throw std::invalid_argument("UV analysis has one source input and no mesh detectors.");
         }
         if (command.action == A::comparisonRun || command.action == A::comparisonCancel) {
+            if (comparisonSettings(state, id).type == AnalysisType::differenceMesh) {
+                throw std::invalid_argument("Use difference-rebuild or difference-cancel for a Difference mesh analysis.");
+            }
             if (command.action == A::comparisonRun && !canInspectComparison(state, id)) { throw std::invalid_argument("Analysis needs valid input before running a check."); }
             const auto detector = std::find(diagnosticCategoryKeys.begin(), diagnosticCategoryKeys.end(), command.detector.value_or(""));
             if (detector == diagnosticCategoryKeys.end()) { throw std::invalid_argument("Unknown detector."); }
@@ -455,7 +467,11 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             return {{"target", formatId(id)}, {"detector", *detector}, {"status", command.action == A::comparisonCancel ? "cancel_requested" : "queued"}};
         }
         if (command.action == A::comparisonCreate) {
-            id = createComparison(state, command.type == "surface_comparison" ? AnalysisType::surfaceComparison
+            if (command.type == "difference_mesh" && command.distanceOnA) {
+                throw std::invalid_argument("Difference mesh computes both directions; distanceOnA is not applicable.");
+            }
+            id = createComparison(state, command.type == "difference_mesh" ? AnalysisType::differenceMesh
+                : command.type == "surface_comparison" ? AnalysisType::surfaceComparison
                 : command.type == "uv_quality" ? AnalysisType::uvQuality : command.type == "uv" ? AnalysisType::uv : AnalysisType::mesh);
             auto placementSettings = comparisonSettings(state, id);
             if (command.alignment) { placementSettings.alignOrigins = *command.alignment == "origins"; }
@@ -470,12 +486,25 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.originA) { setComparisonOrigin(state, id, ComparisonSide::a, command.originAId); }
             if (command.originB) { setComparisonOrigin(state, id, ComparisonSide::b, command.originBId); }
             setComparisonSettings(state, placementSettings, id);
+            if (placementSettings.type == AnalysisType::differenceMesh && command.a && command.b) {
+                requestDifferenceMesh(state, id);
+            }
         } else if (command.action == A::comparisonDelete) {
             removeComparison(state, id);
             updateSceneDirty(state, cleanDocument);
             return {{"removed", command.target}, {"dirty", state.isDirty}};
         } else if (command.action == A::comparisonSet) {
             auto settings = comparisonSettings(state, id);
+            if (settings.type == AnalysisType::differenceMesh) {
+                const auto params = controlOperationParams(command);
+                for (auto it = params.begin(); it != params.end(); ++it) {
+                    if (it.key() != "target" && it.key() != "name" && it.key() != "visible"
+                        && it.key() != "alignment" && it.key() != "lockPlacement"
+                        && it.key() != "originA" && it.key() != "originB") {
+                        throw std::invalid_argument("Difference mesh supports name, visibility, and placement controls; use difference-set for result display.");
+                    }
+                }
+            }
             if (isUvAnalysis(settings.type)) {
                 const auto params = controlOperationParams(command);
                 for (auto it = params.begin(); it != params.end(); ++it) {
@@ -735,7 +764,6 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     case A::performanceBegin: case A::performanceEnd:
     case A::differenceCreate: case A::differenceGet: case A::differenceSet: case A::differenceRebuild:
     case A::differenceCancel: case A::differenceExport: case A::differenceDelete:
-    case A::differenceCheckResolution: case A::differenceCancelCheck:
     case A::annotationList: case A::annotationGet: case A::annotationCreate: case A::annotationSet:
     case A::annotationReshape: case A::annotationMove: case A::annotationDelete:
     case A::comparisonFindings: case A::comparisonExport: case A::comparisonExportStatus: case A::comparisonExportCancel:

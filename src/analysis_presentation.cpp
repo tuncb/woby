@@ -6,6 +6,7 @@ namespace woby {
 
 AnalysisTask analysisTask(const ComparisonSettings& settings, bool bothInputs)
 {
+    if (settings.type == AnalysisType::differenceMesh) { return AnalysisTask::differenceMesh; }
     if (isUvAnalysis(settings.type)) { return AnalysisTask::uvInspection; }
     if (settings.type == AnalysisType::surfaceComparison) { return AnalysisTask::surfaceComparison; }
     if (settings.task != AnalysisTask::automatic) { return settings.task; }
@@ -22,6 +23,7 @@ const char* analysisTaskLabel(AnalysisTask task)
     case AnalysisTask::meshChecks: return "Mesh checks";
     case AnalysisTask::meshQuality: return "Mesh quality";
     case AnalysisTask::surfaceComparison: return "Surface comparison";
+    case AnalysisTask::differenceMesh: return "Difference mesh";
     case AnalysisTask::uvInspection: return "UV inspection";
     case AnalysisTask::automatic: default: return "Analysis";
     }
@@ -33,6 +35,7 @@ const char* analysisTaskKey(AnalysisTask task)
     case AnalysisTask::meshChecks: return "mesh_checks";
     case AnalysisTask::meshQuality: return "mesh_quality";
     case AnalysisTask::surfaceComparison: return "surface_comparison";
+    case AnalysisTask::differenceMesh: return "difference_mesh";
     case AnalysisTask::uvInspection: return "uv_inspection";
     case AnalysisTask::automatic: default: return "automatic";
     }
@@ -40,7 +43,7 @@ const char* analysisTaskKey(AnalysisTask task)
 
 ComparisonSettings settingsForAnalysisTask(ComparisonSettings settings, AnalysisTask task)
 {
-    if (task < AnalysisTask::meshChecks || task > AnalysisTask::uvInspection) { return settings; }
+    if (task < AnalysisTask::meshChecks || task > AnalysisTask::differenceMesh) { return settings; }
     settings.task = task;
     if (task == AnalysisTask::uvInspection) {
         if (!isUvAnalysis(settings.type)) { settings.type = AnalysisType::uv; }
@@ -54,6 +57,10 @@ ComparisonSettings settingsForAnalysisTask(ComparisonSettings settings, Analysis
         case AnalysisTask::meshQuality:
             settings.mode = ComparisonMode::surfaceQuality;
             settings.quality.onOriginal = true;
+            break;
+        case AnalysisTask::differenceMesh:
+            settings.type = AnalysisType::differenceMesh;
+            settings.mode = ComparisonMode::original;
             break;
         case AnalysisTask::surfaceComparison:
             settings.type = AnalysisType::surfaceComparison;

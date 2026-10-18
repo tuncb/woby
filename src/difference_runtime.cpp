@@ -11,65 +11,13 @@ namespace woby
 bool differenceResultCurrent(const DifferenceRuntime &r, const UiState &state, SceneObjectId id)
 {
     const auto *item = findComparison(state, id);
-    return item && item->settings.difference.created && r.phase == "ready" && r.result &&
+    return item && item->settings.type == AnalysisType::differenceMesh && item->settings.difference.created && r.phase == "ready" && r.result &&
            r.signature == comparisonGeometrySignature(state, id) &&
-           sameDifferenceConstruction(r.result->construction, item->settings.difference) &&
            r.workerRequest == item->differenceRequest.revision;
 }
-namespace {
-void updateResolution(DifferenceRuntime &difference, const UiState &state, SceneObjectId id)
-{
-    auto &r = difference.resolution;
-    const auto *item = findComparison(state, id);
-    if (!item) { return; }
-    const auto request = item->differenceResolutionRequest;
-    if (request.revision != r.consumedRequest) {
-        r.stop.request_stop();
-        r.consumedRequest = request.revision;
-        r.phase = request.cancel ? (r.worker.valid() ? "canceled" : "idle") : "queued";
-        r.error.clear();
-        if (!request.cancel) { r.base = difference.result; }
-    }
-    const bool current = differenceResultCurrent(difference, state, id) && r.base == difference.result;
-    if (!current && r.phase != "queued" && r.phase != "idle" && r.phase != "canceled") {
-        r.stop.request_stop();
-        r.phase = "outdated";
-    }
-    if (r.worker.valid() && r.worker.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-        const bool publish = current && !r.stop.stop_requested() && r.workerRequest == request.revision;
-        try {
-            const auto volumes = r.worker.get();
-            if (publish) { r.volumes = volumes; r.phase = "ready"; r.error.clear(); }
-        } catch (const std::exception &e) {
-            if (publish) { r.phase = "failed"; r.error = e.what(); }
-        }
-    }
-    if (r.phase == "queued" && !r.worker.valid()) {
-        try {
-            if (!differenceResultCurrent(difference, state, id) ||
-                item->settings.difference.method != DifferenceMethod::approximate) {
-                throw std::runtime_error("Rebuild the approximate difference before checking resolution.");
-            }
-            auto snapshot = snapshotComparisonInputs(state, id);
-            auto settings = item->settings.difference;
-            settings.cellSize *= .5;
-            r.cellSize = settings.cellSize;
-            r.stop = std::stop_source{};
-            r.workerRequest = request.revision;
-            r.phase = "running";
-            r.worker = std::async(std::launch::async, [snapshot = std::move(snapshot), settings, stop = r.stop.get_token()] {
-                const auto a = comparisonWorldMesh(snapshot, ComparisonSide::a, stop),
-                           b = comparisonWorldMesh(snapshot, ComparisonSide::b, stop);
-                return buildDifferenceMesh(a, b, settings, stop).volumes;
-            });
-        } catch (const std::exception &e) { r.phase = "failed"; r.error = e.what(); }
-    }
-}
-} // namespace
 void destroyDifferenceRuntime(DifferenceRuntime &r)
 {
     r.stop.request_stop();
-    r.resolution.stop.request_stop();
     if (r.worker.valid()) {
         r.worker.wait();
     }
@@ -79,7 +27,6 @@ void destroyDifferenceRuntime(DifferenceRuntime &r)
     if (r.exportWorker.valid()) {
         r.exportWorker.wait();
     }
-    if (r.resolution.worker.valid()) { r.resolution.worker.wait(); }
 }
 void updateDifferenceRuntime(DifferenceRuntime &r, const UiState &state, SceneObjectId id, uint64_t signature)
 {
@@ -91,8 +38,9 @@ void updateDifferenceRuntime(DifferenceRuntime &r, const UiState &state, SceneOb
         r.exportError = r.exportWorker.get();
         r.exportState = r.exportError.empty() ? "complete" : "failed";
     }
+    const bool created = item->settings.type == AnalysisType::differenceMesh && item->settings.difference.created;
     const auto request = item->differenceRequest;
-    if (!item->settings.difference.created) {
+    if (!created) {
         r.stop.request_stop();
         r.phase = "not_created";
         r.initialized = false;
@@ -107,15 +55,14 @@ void updateDifferenceRuntime(DifferenceRuntime &r, const UiState &state, SceneOb
     if (changed) {
         r.stop.request_stop();
         r.consumedRequest = request.revision;
-        r.phase = !item->settings.difference.created ? "not_created" : request.cancel ? "canceled" : "queued";
+        r.phase = !created ? "not_created" : request.cancel ? "canceled" : "queued";
         r.error.clear();
     }
-    if (item->settings.difference.created && !r.initialized) {
+    if (created && !r.initialized) {
         r.initialized = true;
         r.phase = request.cancel ? "canceled" : "queued";
     }
-    if (r.worker.valid() && (r.workerSignature != signature || !item->settings.difference.created ||
-                            !sameDifferenceConstruction(r.workerSettings, item->settings.difference))) {
+    if (r.worker.valid() && (r.workerSignature != signature || !created)) {
         r.stop.request_stop();
         if (r.phase == "running") {
             r.phase = "outdated";
@@ -123,8 +70,7 @@ void updateDifferenceRuntime(DifferenceRuntime &r, const UiState &state, SceneOb
     }
     if (r.worker.valid() && r.worker.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
         const bool current = !r.stop.stop_requested() && signature == r.workerSignature &&
-                             r.workerRequest == request.revision && item->settings.difference.created &&
-                             sameDifferenceConstruction(r.workerSettings, item->settings.difference);
+                             r.workerRequest == request.revision && created;
         try {
             auto result = r.worker.get();
             if (current) {
@@ -147,39 +93,35 @@ void updateDifferenceRuntime(DifferenceRuntime &r, const UiState &state, SceneOb
     if (r.phase == "ready" && !differenceResultCurrent(r, state, id)) {
         r.phase = "outdated";
     }
-    if (r.phase == "failed" && (r.workerSignature != signature ||
-        !sameDifferenceConstruction(r.workerSettings, item->settings.difference))) {
+    if (r.phase == "failed" && r.workerSignature != signature) {
         r.phase = "outdated";
         r.error.clear();
     }
     if (r.phase == "queued" && !r.worker.valid()) {
         r.workerSignature = signature;
         r.workerRequest = request.revision;
-        r.workerSettings = item->settings.difference;
         try {
             auto snapshot = snapshotComparisonInputs(state, id);
             r.stop = std::stop_source{};
             auto stop = r.stop.get_token();
             r.phase = "running";
-            r.worker = std::async(std::launch::async, [snapshot = std::move(snapshot), settings = r.workerSettings, stop] {
+            r.worker = std::async(std::launch::async, [snapshot = std::move(snapshot), stop] {
                 const auto a = comparisonWorldMesh(snapshot, ComparisonSide::a, stop),
                            b = comparisonWorldMesh(snapshot, ComparisonSide::b, stop);
-                return std::make_shared<const DifferenceMesh>(buildDifferenceMesh(a, b, settings, stop));
+                return std::make_shared<const DifferenceMesh>(buildDifferenceMesh(a, b, stop));
             });
         } catch (const std::exception &e) {
             r.phase = "failed";
             r.error = e.what();
         }
     }
-    // No backend work in unit tests or before graphics initialization.
-    updateResolution(r, state, id);
 }
 nlohmann::json differenceStatus(const DifferenceRuntime &r, const UiState &state, SceneObjectId id)
 {
     using Json = nlohmann::json;
     const auto *item = findComparison(state, id);
-    if (!item) {
-        throw std::invalid_argument("Difference mesh requires an analysis ID.");
+    if (!item || item->settings.type != AnalysisType::differenceMesh) {
+        throw std::invalid_argument("Difference mesh requires a difference_mesh analysis ID.");
     }
     const bool current = differenceResultCurrent(r, state, id);
     const auto &s = item->settings.difference;
@@ -188,13 +130,10 @@ nlohmann::json differenceStatus(const DifferenceRuntime &r, const UiState &state
                    {"current", current},
                    {"settings",
                     {{"created", s.created},
-                     {"visible", s.visible},
+                     {"visible", item->settings.enabled},
                      {"showAOnly", s.showA},
                      {"showBOnly", s.showB},
-                     {"showWalls", s.showWalls},
-                     {"opacity", s.opacity},
-                     {"method", differenceMethodName(s.method)},
-                     {"cellSize", s.cellSize}}},
+                     {"opacity", s.opacity}}},
                    {"volumeA", nullptr},
                    {"volumeB", nullptr},
                    {"totalVolume", nullptr},
@@ -203,42 +142,18 @@ nlohmann::json differenceStatus(const DifferenceRuntime &r, const UiState &state
                    {"exportError", r.exportError}};
     if (current && r.result) {
         const auto &v = *r.result;
-        result["kind"] = v.construction.method == DifferenceMethod::approximate ? "approximate_volume" :
-                         v.constructed ? "constructed_gap" : "solid_difference";
-        result["method"] = differenceMethodName(v.construction.method);
-        if (v.construction.method == DifferenceMethod::approximate) { result["cellSize"] = v.construction.cellSize; }
+        result["kind"] = "approximate_mesh";
         result["message"] = v.message;
         result["totalVolume"] = v.volumes[0] + v.volumes[1];
-        if (!v.constructed) {
-            result["volumeA"] = v.volumes[0];
-            result["volumeB"] = v.volumes[1];
-            result["netVolume"] = v.volumes[1] - v.volumes[0];
-        }
+        result["volumeA"] = v.volumes[0];
+        result["volumeB"] = v.volumes[1];
+        result["netVolume"] = v.volumes[1] - v.volumes[0];
         result["triangles"] = Json::array();
         for (const auto &m : v.parts) {
             result["triangles"].push_back(meshGeometry(m).indices.size() / 3);
         }
-        result["closureTriangles"] = v.closureTriangles;
         result["removedCollapsedTriangles"] = {{"a", v.removedCollapsedTriangles[0]},
                                                 {"b", v.removedCollapsedTriangles[1]}};
-    }
-    const auto &resolution = r.resolution;
-    const bool checkCurrent = current && resolution.base == r.result;
-    result["resolutionCheck"] = {{"state", checkCurrent ? resolution.phase : "idle"}};
-    if (checkCurrent) {
-        result["resolutionCheck"]["error"] = resolution.error;
-        if (resolution.phase == "ready") {
-            const auto baseTotal = r.result->volumes[0] + r.result->volumes[1];
-            const auto refinedTotal = resolution.volumes[0] + resolution.volumes[1];
-            result["resolutionCheck"]["baseCellSize"] = r.result->construction.cellSize;
-            result["resolutionCheck"]["cellSize"] = resolution.cellSize;
-            result["resolutionCheck"]["volumeA"] = resolution.volumes[0];
-            result["resolutionCheck"]["volumeB"] = resolution.volumes[1];
-            result["resolutionCheck"]["totalVolume"] = refinedTotal;
-            result["resolutionCheck"]["netVolume"] = resolution.volumes[1] - resolution.volumes[0];
-            result["resolutionCheck"]["totalVolumeChange"] = refinedTotal - baseTotal;
-            result["resolutionCheck"]["relativeChangePercent"] = baseTotal > 0 ? Json(100 * (refinedTotal - baseTotal) / baseTotal) : Json(nullptr);
-        }
     }
     return result;
 }
@@ -247,7 +162,7 @@ void uploadDifferenceMesh(DifferenceRuntime &r)
     if (r.phase != "ready" || !r.result || r.uploaded) {
         return;
     }
-    for (size_t i = 0; i < 3; ++i) {
+    for (size_t i = 0; i < r.result->parts.size(); ++i) {
         SurfaceComparison s;
         s.source = r.result->parts[i];
         PreparedComparisonSource p;
@@ -279,41 +194,28 @@ nlohmann::json controlDifference(UiState &state, DifferenceRuntime &r, const Con
     using A = ControlAction;
     const auto id = command.objectId;
     const auto *item = findComparison(state, id);
-    if (!item || isUvAnalysis(item->settings.type)) {
-        throw std::invalid_argument("Difference mesh requires a mesh comparison ID.");
+    if (!item || item->settings.type != AnalysisType::differenceMesh) {
+        throw std::invalid_argument("Difference mesh requires a difference_mesh analysis ID.");
     }
     auto settings = item->settings;
     auto &d = settings.difference;
     if (command.action == A::differenceCreate || command.action == A::differenceRebuild) {
-        if (command.method) { d.method = parseDifferenceMethod(*command.method); }
-        if (command.cellSize) { d.cellSize = *command.cellSize; }
-        setComparisonSettings(state, settings, id);
         requestDifferenceMesh(state, id);
     } else if (command.action == A::differenceCancel) {
         requestDifferenceMesh(state, id, true);
-    } else if (command.action == A::differenceCheckResolution || command.action == A::differenceCancelCheck) {
-        if (command.action == A::differenceCheckResolution && !differenceResultCurrent(r, state, id)) {
-            throw std::invalid_argument("Rebuild the approximate difference before checking resolution.");
-        }
-        requestDifferenceResolutionCheck(state, id, command.action == A::differenceCancelCheck);
     } else if (command.action == A::differenceDelete) {
         requestDifferenceMesh(state, id, true);
         d = {};
         setComparisonSettings(state, settings, id);
     } else if (command.action == A::differenceSet) {
-        if (command.method) { d.method = parseDifferenceMethod(*command.method); }
-        if (command.cellSize) { d.cellSize = *command.cellSize; }
         if (command.visible) {
-            d.visible = *command.visible;
+            settings.enabled = *command.visible;
         }
         if (command.showAOnly) {
             d.showA = *command.showAOnly;
         }
         if (command.showBOnly) {
             d.showB = *command.showBOnly;
-        }
-        if (command.showWalls) {
-            d.showWalls = *command.showWalls;
         }
         if (command.opacity) {
             d.opacity = *command.opacity;
