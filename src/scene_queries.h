@@ -76,6 +76,22 @@ struct AnnotationInspectorQuery {
     std::optional<double> length, straightLength, area;
 };
 
+struct CrossSectionSourceNode {
+    SceneObjectId objectId = invalidSceneObjectId;
+    std::string name;
+    // Keep the captured index for contour colors, visibility and results.
+    std::optional<size_t> sourceIndex;
+    bool missing = false;
+    std::vector<CrossSectionSourceNode> children;
+};
+struct CrossSectionSourceTree {
+    const UiState* owner = nullptr;
+    SceneObjectId id = invalidSceneObjectId;
+    uint64_t generation = 0, geometry = 0, labels = 0, builds = 0;
+    std::vector<SceneObjectId> sources;
+    std::vector<CrossSectionSourceNode> roots;
+};
+
 struct ComparisonQuery {
     ComparisonInspectorCache inputs;
     uint64_t boundsSignature = 0, boundsBuilds = 0;
@@ -103,6 +119,7 @@ struct SceneQueryRuntime {
     ScenePartQueries parts;
     SceneAnnotationQueries annotations;
     AnnotationInspectorQuery annotationInspector;
+    CrossSectionSourceTree sectionSources;
     SceneSelectionQueries selection;
     boost::unordered_flat_map<SceneObjectId, ComparisonQuery> comparisons;
     const UiState* comparisonOwner = nullptr;
@@ -119,6 +136,8 @@ void resolveSceneParts(SceneQueryRuntime& runtime, const UiState& state,
     std::vector<ScenePickPart>& parts, bool includeHidden = false);
 void updateSceneAnnotationQueries(SceneQueryRuntime& runtime, const UiState& state);
 const AnnotationInspectorQuery& updateAnnotationInspectorQuery(SceneQueryRuntime& runtime,
+    const UiState& state, const UiAnnotation& item);
+const CrossSectionSourceTree& updateCrossSectionSourceTree(CrossSectionSourceTree& cache,
     const UiState& state, const UiAnnotation& item);
 void updateAnnotationProjection(AnnotationQuery& cache, const UiAnnotation& item,
     std::span<const ScenePickPart> parts, const ScenePickView& view);

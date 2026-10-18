@@ -18,6 +18,8 @@ Select the annotation to show its Properties panel and handles:
 - Drag an endpoint to rotate the plane. Drag the line to move the plane.
 - Drag the square **Lift** handle to raise or lower all contours together.
 - Use **Position**, **Start**, and **End** for numeric plane edits.
+- **Cut meshes** uses the same folder, file, and mesh tree as **Models**. Expand
+  or collapse branches to find the captured sources.
 - Use the eye beside a source to hide its contour. Hiding the source model does
   not remove it from the section. Draw another section to capture a different set.
 - Enable **Face-on 2D** to inspect all contours in one plot with equal axis scales.

@@ -21,6 +21,35 @@ std::string sourceLabel(const UiState& state, SceneObjectId id)
     const auto file = findSceneObject(state, object->fileId);
     return file ? file->name + " / " + object->name : object->name;
 }
+bool drawSectionSourceNode(const CrossSectionSourceNode& node, CrossSectionSettings& settings,
+                           const CrossSectionResult* result)
+{
+    ImGui::PushID(static_cast<int>(node.objectId));
+    bool changed = false;
+    if (node.sourceIndex) {
+        const size_t i = *node.sourceIndex;
+        if (drawVisibilityButton("contour", settings.sourceVisible[i], "Contour")) {
+            settings.sourceVisible[i] = !settings.sourceVisible[i];
+            changed = true;
+        }
+        ImGui::SameLine();
+        const auto color = sectionSourceColor(i);
+        ImGui::ColorButton("source_color", {color[0], color[1], color[2], 1}, ImGuiColorEditFlags_NoTooltip,
+                           ImVec2(uiSize(12), uiSize(12)));
+        ImGui::SameLine();
+        const char* status = node.missing                         ? "Missing source"
+                             : !result                           ? "Updating"
+                             : result->contours[i].lines.empty() ? "No cut"
+                                                                 : "Cut";
+        ImGui::TextWrapped("%s | %s", node.name.c_str(), status);
+    } else if (ImGui::TreeNodeEx("source", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth
+            | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick, "%s", node.name.c_str())) {
+        for (const auto& child : node.children) { changed |= drawSectionSourceNode(child, settings, result); }
+        ImGui::TreePop();
+    }
+    ImGui::PopID();
+    return changed;
+}
 std::optional<PickPoint> screenPoint(const ScenePickView& view, const std::array<float, 3>& p)
 {
     const auto clip = annotationTransform(annotationCompose(view.view, view.projection), {p[0], p[1], p[2], 1});
@@ -144,25 +173,11 @@ void drawCrossSectionInspector(UiState& state, SceneQueryRuntime* queries)
     }
     ImGui::SeparatorText("Cut meshes");
     ImGui::TextWrapped("Captured sources. Source visibility does not change this set.");
-    for (size_t i = 0; i < item->targetIds.size(); ++i) {
-        ImGui::PushID(static_cast<int>(i));
-        if (drawVisibilityButton("contour", s.sourceVisible[i], "Contour")) {
-            s.sourceVisible[i] = !s.sourceVisible[i];
-            changed = true;
-        }
-        ImGui::SameLine();
-        const auto color = sectionSourceColor(i);
-        ImGui::ColorButton("source_color", {color[0], color[1], color[2], 1}, ImGuiColorEditFlags_NoTooltip,
-                           ImVec2(uiSize(12), uiSize(12)));
-        ImGui::SameLine();
-        const auto object = findSceneObject(state, item->targetIds[i]);
-        const char* status = !object                             ? "Missing source"
-                             : !result                           ? "Updating"
-                             : result->contours[i].lines.empty() ? "No cut"
-                                                                 : "Cut";
-        ImGui::TextWrapped("%s | %s", sourceLabel(state, item->targetIds[i]).c_str(), status);
-        ImGui::PopID();
-    }
+    CrossSectionSourceTree localSources;
+    const auto& sources = updateCrossSectionSourceTree(queries ? queries->sectionSources : localSources, state, *item);
+    ImGui::PushID("cut_meshes");
+    for (const auto& root : sources.roots) { changed |= drawSectionSourceNode(root, s, result.get()); }
+    ImGui::PopID();
     if (!result && queries) {
         const auto error = crossSectionError(*queries);
         if (!error.empty()) {

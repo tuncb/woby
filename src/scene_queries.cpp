@@ -69,6 +69,63 @@ bool sceneTreeMember(const SceneTreeQueries& cache, SceneObjectId id, Comparison
     return id && cache.members[side == ComparisonSide::a ? 0 : 1].contains(id);
 }
 
+const CrossSectionSourceTree& updateCrossSectionSourceTree(CrossSectionSourceTree& cache,
+    const UiState& state, const UiAnnotation& item)
+{
+    if (cache.owner == &state && cache.id == item.objectId && cache.generation == state.sceneGeneration
+        && cache.geometry == state.revisions.geometry && cache.labels == state.revisions.labels
+        && cache.sources == item.targetIds) { return cache; }
+
+    CrossSectionSourceTree next;
+    next.owner = &state; next.id = item.objectId; next.generation = state.sceneGeneration;
+    next.geometry = state.revisions.geometry; next.labels = state.revisions.labels;
+    next.builds = cache.builds + 1; next.sources = item.targetIds;
+    boost::unordered_flat_map<SceneObjectId, size_t> remaining;
+    for (size_t i = 0; i < item.targetIds.size(); ++i) { remaining.emplace(item.targetIds[i], i); }
+    const auto append = [&](auto&& self, const UiSceneNode& source, std::vector<CrossSectionSourceNode>& nodes) -> void {
+        CrossSectionSourceNode node;
+        node.objectId = source.objectId;
+        if (source.kind == UiSceneNodeKind::group) {
+            if (source.fileIndex >= state.files.size()) { return; }
+            const auto& file = state.files[source.fileIndex];
+            if (source.groupIndex >= file.groupSettings.size()
+                || source.groupIndex >= meshGeometry(file.mesh).nodes.size()) { return; }
+            node.objectId = file.groupSettings[source.groupIndex].objectId;
+            const auto found = remaining.find(node.objectId);
+            if (found == remaining.end()) { return; }
+            node.sourceIndex = found->second;
+            remaining.erase(found);
+        } else {
+            if (source.kind == UiSceneNodeKind::file && source.children.empty() && source.fileIndex < state.files.size()) {
+                const auto file = createFileSceneNode(state.files[source.fileIndex], source.fileIndex);
+                for (const auto& child : file.children) { self(self, child, node.children); }
+            } else {
+                for (const auto& child : source.children) { self(self, child, node.children); }
+            }
+            if (node.children.empty()) { return; }
+        }
+        node.name = sceneNodeDisplayName(state, source);
+        nodes.push_back(std::move(node));
+    };
+    if (state.sceneNodes.empty()) {
+        for (size_t i = 0; i < state.files.size(); ++i) { append(append, createFileSceneNode(state.files[i], i), next.roots); }
+    } else {
+        for (const auto& source : state.sceneNodes) { append(append, source, next.roots); }
+    }
+    // Removed sources must retain their contour controls and captured indices.
+    for (size_t i = 0; i < item.targetIds.size(); ++i) {
+        const auto id = item.targetIds[i];
+        if (!remaining.contains(id)) { continue; }
+        const auto object = findSceneObject(state, id);
+        CrossSectionSourceNode node;
+        node.objectId = id; node.name = object ? object->name : "Missing source";
+        node.sourceIndex = i; node.missing = !object;
+        next.roots.push_back(std::move(node));
+    }
+    cache = std::move(next);
+    return cache;
+}
+
 void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
 {
     const auto stamp = sceneQueryStamp(state);

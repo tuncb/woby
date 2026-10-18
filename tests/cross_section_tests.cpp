@@ -530,7 +530,11 @@ TEST_CASE("cross section pointer creates a shared section and edits endpoints wi
 TEST_CASE("cross section inspector displays all sources and the common face on profile")
 {
     Fixture f;
-    const auto id = f.add();
+    f.state.sceneNodes.clear();
+    appendFolderTreeSceneNode(f.state, f.root, 0, f.state.files.size());
+    REQUIRE(renameSceneObject(f.state, f.state.sceneNodes[0].objectId, "Section models"));
+    const auto sources = f.sources();
+    const auto id = createCrossSection(f.state, f.settings(), {sources[1], sources[0]});
     auto s = *findAnnotation(f.state, id)->section;
     s.faceOn = true;
     setCrossSectionSettings(f.state, id, s);
@@ -546,24 +550,175 @@ TEST_CASE("cross section inspector displays all sources and the common face on p
     int width = 0, height = 0;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     std::string content;
-    for (int frame = 0; frame < 2; ++frame) {
+    ImGuiID folderToggle = 0, contourToggle = 0;
+    const auto frame = [&] {
         ImGui::NewFrame();
         ImGui::SetNextWindowPos({0, 0});
         ImGui::SetNextWindowSize({500, 1350});
         ImGui::Begin("Section properties");
-        ImGui::LogToBuffer();
+        ImGui::PushID(static_cast<int>(id));
+        ImGui::PushID("cut_meshes");
+        ImGui::PushID(static_cast<int>(f.state.sceneNodes[0].objectId));
+        folderToggle = ImGui::GetID("source");
+        ImGui::PushID("source");
+        ImGui::PushID(static_cast<int>(f.state.files[0].objectId));
+        ImGui::PushID("source");
+        ImGui::PushID(static_cast<int>(sources[0]));
+        contourToggle = ImGui::GetID("##contour");
+        for (int i = 0; i < 7; ++i) { ImGui::PopID(); }
+        ImGui::LogToBuffer(0); // Do not force closed tree branches open while logging.
         drawCrossSectionInspector(f.state, &queries);
         content = context->LogBuffer.c_str();
         ImGui::LogFinish();
         ImGui::End();
         ImGui::EndFrame();
-    }
+    };
+    frame(); frame();
     CHECK(content.find("a.obj / sheet") != std::string::npos);
     CHECK(content.find("b.obj / sheet") != std::string::npos);
+    const auto cutContent = [&] {
+        const auto start = content.find("Cut meshes");
+        CHECK(start != std::string::npos);
+        return start == std::string::npos ? std::string{} : content.substr(start, content.find("Display", start) - start);
+    };
+    const auto cutMeshes = cutContent();
+    CHECK(cutMeshes.find("Section models") != std::string::npos);
+    CHECK(cutMeshes.find("a.obj") != std::string::npos);
+    CHECK(cutMeshes.find("b.obj") != std::string::npos);
+    CHECK(cutMeshes.find("sheet | Cut") != std::string::npos);
+    CHECK(cutMeshes.find("a.obj / sheet") == std::string::npos);
+    CHECK(cutMeshes.find("b.obj / sheet") == std::string::npos);
     CHECK(content.find("Largest sampled 2D gap") != std::string::npos);
     CHECK(content.find("Face-on 2D | equal axis scale") != std::string::npos);
+    ImGui::ActivateItemByID(folderToggle); frame();
+    CHECK(cutContent().find("Section models") != std::string::npos);
+    CHECK(cutContent().find("a.obj") == std::string::npos);
+    CHECK(cutContent().find("b.obj") == std::string::npos);
+    ImGui::ActivateItemByID(folderToggle); frame();
+    CHECK(cutContent().find("sheet | Cut") != std::string::npos);
+    ImGui::ActivateItemByID(contourToggle); frame();
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{true, false});
+    CHECK(f.state.files[0].groupSettings[0].visible);
+    CHECK(findAnnotation(f.state, id)->targetIds == std::vector<SceneObjectId>{sources[1], sources[0]});
     ImGui::DestroyContext(context);
     ImGui::SetCurrentContext(previous);
+}
+TEST_CASE("cross section source tree preserves nested model order and captured source indices")
+{
+    Fixture f;
+    auto mesh = sheet(0);
+    auto& geometry = editMeshGeometry(mesh);
+    geometry.nodes = {{"first", 0, 6}, {"second", 0, 6}, {"uncaptured", 0, 6}};
+    geometry.hierarchy = {{"Assembly", UINT32_MAX, UINT32_MAX}, {"Nested", 0, UINT32_MAX},
+        {"second", 1, 1}, {"first", 0, 0}, {"Unused", 0, UINT32_MAX}, {"uncaptured", 4, 2}};
+    f.state.files[0] = createUiFileState(f.root / "a.obj", std::move(mesh), 0);
+    f.state.sceneNodes.clear();
+    appendFolderTreeSceneNode(f.state, f.root, 0, f.state.files.size());
+    const auto& groups = f.state.files[0].groupSettings;
+    const std::vector<SceneObjectId> sources{groups[0].objectId, groups[1].objectId};
+    const auto id = createCrossSection(f.state, f.settings(), sources);
+    auto settings = *findAnnotation(f.state, id)->section;
+    settings.sourceVisible = {false, true};
+    setCrossSectionSettings(f.state, id, settings);
+    setSceneNodeSubtreeVisible(f.state, f.state.sceneNodes[0], false);
+    REQUIRE(renameSceneObject(f.state, f.state.files[0].objectId, "Model"));
+    REQUIRE(renameSceneObject(f.state, sources[1], "Second mesh"));
+
+    CrossSectionSourceTree tree;
+    updateCrossSectionSourceTree(tree, f.state, *findAnnotation(f.state, id));
+    REQUIRE(tree.roots.size() == 1);
+    const auto& folder = tree.roots[0];
+    CHECK(folder.objectId == f.state.sceneNodes[0].objectId);
+    REQUIRE(folder.children.size() == 1); // The uncaptured file has no branch.
+    const auto& file = folder.children[0];
+    CHECK(file.name == "Model");
+    REQUIRE(file.children.size() == 1);
+    const auto& assembly = file.children[0];
+    CHECK(assembly.name == "Assembly");
+    REQUIRE(assembly.children.size() == 2); // The unused imported folder is omitted.
+    const auto& nested = assembly.children[0];
+    CHECK(nested.name == "Nested");
+    CHECK_FALSE(nested.sourceIndex);
+    REQUIRE(nested.children.size() == 1);
+    CHECK(nested.children[0].name == "Second mesh");
+    CHECK(nested.children[0].objectId == sources[1]);
+    CHECK(nested.children[0].sourceIndex == 1);
+    CHECK(assembly.children[1].objectId == sources[0]);
+    CHECK(assembly.children[1].sourceIndex == 0);
+    CHECK(findAnnotation(f.state, id)->targetIds == sources);
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{false, true});
+}
+TEST_CASE("cross section source tree refreshes labels and removed sources without rebuilding for display edits")
+{
+    Fixture f;
+    const auto sources = f.sources();
+    const auto id = f.add();
+    CrossSectionSourceTree tree;
+    const auto update = [&] { updateCrossSectionSourceTree(tree, f.state, *findAnnotation(f.state, id)); };
+    update();
+    const auto builds = tree.builds;
+    update();
+    setGroupVisible(f.state, f.state.files[0], f.state.files[0].groupSettings[0], false);
+    auto settings = *findAnnotation(f.state, id)->section;
+    settings.sourceVisible[0] = false;
+    settings.lift += 1;
+    setCrossSectionSettings(f.state, id, settings);
+    update();
+    CHECK(tree.builds == builds);
+    REQUIRE(tree.roots.size() == 2);
+    REQUIRE(renameSceneObject(f.state, sources[0], "Renamed mesh"));
+    update();
+    CHECK(tree.builds == builds + 1);
+    REQUIRE(tree.roots[0].children.size() == 1);
+    CHECK(tree.roots[0].children[0].name == "Renamed mesh");
+
+    removeFileFromState(f.state, 0);
+    update();
+    CHECK(tree.builds == builds + 2);
+    REQUIRE(tree.roots.size() == 2);
+    CHECK(tree.roots[0].name == "b.obj");
+    REQUIRE(tree.roots[0].children.size() == 1);
+    CHECK(tree.roots[0].children[0].sourceIndex == 1);
+    CHECK(tree.roots[1].objectId == sources[0]);
+    CHECK(tree.roots[1].sourceIndex == 0);
+    CHECK(tree.roots[1].missing);
+    CHECK(tree.roots[1].name == "Missing source");
+    CHECK(findAnnotation(f.state, id)->targetIds == sources);
+
+    auto replacement = f.state;
+    updateCrossSectionSourceTree(tree, replacement, *findAnnotation(replacement, id));
+    CHECK(tree.builds == builds + 3);
+    ++replacement.sceneGeneration;
+    updateCrossSectionSourceTree(tree, replacement, *findAnnotation(replacement, id));
+    CHECK(tree.builds == builds + 4);
+}
+TEST_CASE("cross section source tree handles implicit file trees and changed captures")
+{
+    Fixture f;
+    SUBCASE("implicit scene roots") { f.state.sceneNodes.clear(); }
+    SUBCASE("implicit file children") {
+        for (auto& node : f.state.sceneNodes) { node.children.clear(); }
+    }
+    const auto sources = f.sources();
+    const auto id = f.add();
+    CrossSectionSourceTree tree;
+    updateCrossSectionSourceTree(tree, f.state, *findAnnotation(f.state, id));
+    REQUIRE(tree.roots.size() == 2);
+    for (size_t i = 0; i < tree.roots.size(); ++i) {
+        REQUIRE(tree.roots[i].children.size() == 1);
+        CHECK(tree.roots[i].children[0].objectId == sources[i]);
+        CHECK(tree.roots[i].children[0].sourceIndex == i);
+        CHECK_FALSE(tree.roots[i].children[0].missing);
+    }
+    auto capture = *findAnnotation(f.state, id);
+    capture.targetIds = {sources[1]};
+    updateCrossSectionSourceTree(tree, f.state, capture);
+    REQUIRE(tree.roots.size() == 1);
+    CHECK(tree.roots[0].name == "b.obj");
+    CHECK(tree.roots[0].children[0].sourceIndex == 0);
+    capture.targetIds.clear();
+    updateCrossSectionSourceTree(tree, f.state, capture);
+    CHECK(tree.roots.empty());
 }
 TEST_CASE("cross section lift handle changes display only and the line moves the plane")
 {
