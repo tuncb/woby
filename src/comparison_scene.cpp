@@ -86,7 +86,9 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
     for (const auto& member : members) { if (member.enabled) { selected.emplace(member.objectId, &member); } }
     if (selected.empty()) { return; }
     const auto transforms = comparisonSourceTransforms(state);
-    const auto offset = comparisonAlignmentOffset(*comparison, side, transforms);
+    const auto offset = comparison->settings.lockPlacement ? Coordinate{} : comparison->settings.alignOrigins && comparison->settings.alignEnabledParts
+        ? (side == ComparisonSide::a ? enabledPartsAlignmentOffset(state, *comparison, transforms, false) : Coordinate{})
+        : comparisonAlignmentOffset(*comparison, side, transforms);
     for (const auto& transform : transforms) {
         if (transform.groupIndex == invalidSceneNodeIndex) { continue; }
         const auto found = selected.find(transform.objectId);
@@ -343,6 +345,29 @@ const ComparisonInspectorCache& updateComparisonInspectorCache(ComparisonInspect
         : comparison && comparison->settings.type == AnalysisType::uvQuality ? comparisonPreparationSignature(state, id) : next.signature;
     next.measurementSignature = reuseSignature ? cache.measurementSignature
         : comparison && comparison->settings.type == AnalysisType::uvQuality ? comparisonMeasurementSignature(state, id) : 0;
+    if (comparison) {
+        next.sourcePlacementsKnown = comparisonHasSourcePlacements(*comparison);
+        if (reuseSignature) { next.alignmentOffsets = cache.alignmentOffsets; }
+        else if (!comparison->settings.alignOrigins) { next.alignmentOffsets = {Coordinate{}, Coordinate{}}; }
+        else if (comparison->settings.lockPlacement) {
+            for (size_t side = 0; side < 2; ++side) {
+                const auto& members = side == 0 ? comparison->a : comparison->b;
+                std::optional<Coordinate> offset = Coordinate{};
+                for (const auto& part : members) {
+                    if (!part.enabled) { continue; }
+                    if (!part.placement || !part.placement->alignmentOffset) { offset.reset(); break; }
+                    offset = part.placement->alignmentOffset;
+                }
+                next.alignmentOffsets[side] = offset;
+            }
+        } else {
+            const auto transforms = comparisonSourceTransforms(state);
+            next.alignmentOffsets = comparison->settings.alignEnabledParts
+                ? std::array<std::optional<Coordinate>, 2>{enabledPartsAlignmentOffset(state, *comparison, transforms, false), Coordinate{}}
+                : std::array<std::optional<Coordinate>, 2>{comparisonAlignmentOffset(*comparison, ComparisonSide::a, transforms),
+                    comparisonAlignmentOffset(*comparison, ComparisonSide::b, transforms)};
+        }
+    }
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         auto& input = next.inputs[side == ComparisonSide::a ? 0 : 1];
         input.roots = comparisonTree(state, side, id);

@@ -288,7 +288,10 @@ TEST_CASE("distance inspector applies maximum percentages without numeric range 
         CHECK(settings.colorRange == doctest::Approx(expected[choice - 1]));
         CHECK(settings.tolerance == before.comparisons[0].settings.tolerance);
     }
-    CHECK(f.frame(true).find("All sampled distances are covered") != std::string::npos);
+    const auto rangeContents = f.frame(true);
+    CHECK(rangeContents.find("Gray: within acceptance tolerance") == std::string::npos);
+    CHECK(rangeContents.find("Drag triangles for color limits") == std::string::npos);
+    CHECK(rangeContents.find("All sampled distances are covered") == std::string::npos);
     f.frame(); f.frame();
     // Direction buttons use the maximum of the selected measured surface.
     runtime.results.value.original.maximum = .3;
@@ -356,13 +359,33 @@ TEST_CASE("surface placement controls are visible in all views without changing 
         const auto document = createSceneDocument(f.state);
         f.frame(); f.frame();
         const auto contents = f.frame(true);
-        CHECK(contents.find("Align origins") != std::string::npos);
-        CHECK(contents.find("Lock placement") != std::string::npos);
+        CHECK(contents.find("Scene coordinates") != std::string::npos);
+        CHECK(contents.find("Enabled bounds") != std::string::npos);
+        CHECK(contents.find("Lock source placement") != std::string::npos);
         CHECK(contents.find("Result display") != std::string::npos);
         CHECK(contents.find("Display offset only") == std::string::npos);
         CHECK(createSceneDocument(f.state) == document);
         CHECK(comparisonSettings(f.state, f.id).alignOrigins);
         CHECK(comparisonSettings(f.state, f.id).lockPlacement);
+    }
+    // Change alignment through the actual controls without unlocking the sources.
+    f.frame(); f.frame();
+    ImGuiWindow* properties = nullptr;
+    for (auto* window : f.context->Windows) {
+        if (std::string_view(window->Name).find("comparison_properties") != std::string_view::npos) { properties = window; break; }
+    }
+    REQUIRE(properties);
+    auto& io = ImGui::GetIO();
+    for (const char* label : {"Scene coordinates", "Enabled bounds"}) {
+        f.frame(false, properties, properties->GetID(label));
+        REQUIRE(f.context->NavIdIsAlive);
+        const auto center = properties->NavRectRel[ImGuiNavLayer_Main].GetCenter();
+        io.AddMousePosEvent(properties->Pos.x + center.x, properties->Pos.y + center.y); f.frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); f.frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); f.frame(); f.frame();
+        CHECK(comparisonSettings(f.state, f.id).alignOrigins == (std::string_view(label) == "Enabled bounds"));
+        CHECK(comparisonSettings(f.state, f.id).lockPlacement);
+        CHECK(comparisonSettings(f.state, f.id).alignEnabledParts);
     }
 }
 
@@ -381,6 +404,9 @@ TEST_CASE("input context menu retains bulk actions and selects one unlocked orig
     SUBCASE("locked placement") { locked = true; }
     SUBCASE("multiple selected models") { multiple = true; }
     auto settings = comparisonSettings(f.state, f.id);
+    settings.lockPlacement = false;
+    settings.alignEnabledParts = false;
+    setComparisonSettings(f.state, settings, f.id);
     settings.lockPlacement = locked;
     setComparisonSettings(f.state, settings, f.id);
     selectSceneObject(f.state, f.id);

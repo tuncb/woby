@@ -154,7 +154,7 @@ TEST_CASE("analysis section sources match analysis geometry with nested transfor
         }
     }
 }
-TEST_CASE("analysis section cuts obey locked and unlocked origin alignment")
+TEST_CASE("analysis section cuts obey locked and unlocked enabled bounds alignment")
 {
     Fixture f;
     f.state.files[0].fileSettings.translation[2] = 2;
@@ -170,12 +170,12 @@ TEST_CASE("analysis section cuts obey locked and unlocked origin alignment")
     REQUIRE(result->largestGap);
     CHECK(result->gap == doctest::Approx(0));
     REQUIRE_FALSE(result->contours[0].lines.empty());
-    CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(32));
+    CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(39.25));
     f.state.files[0].fileSettings.translation[2] = 50;
     notifySceneEdit(f.state, SceneChange::geometry);
     result = waitResult(runtime, f.state, id);
     REQUIRE(result);
-    CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(32));
+    CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(39.25));
     auto settings = comparisonSettings(f.state, analysis);
     settings.lockPlacement = false;
     settings.alignOrigins = false;
@@ -196,6 +196,9 @@ TEST_CASE("analysis section keeps two placements of the same source in separate 
 {
     Fixture f;
     const auto analysis = f.analysis(true);
+    auto settings = comparisonSettings(f.state, analysis);
+    settings.alignOrigins = false;
+    setComparisonSettings(f.state, settings, analysis);
     f.state.files[0].fileSettings.translation[2] = 5;
     notifySceneEdit(f.state, SceneChange::geometry);
     setComparisonObjects(f.state, {f.sources()[0]}, ComparisonSide::b, false, analysis);
@@ -241,7 +244,7 @@ TEST_CASE("analysis display moves carry section planes and saved views restore t
     CHECK(result->gap == doctest::Approx(0));
     REQUIRE_FALSE(result->contours[0].lines.empty());
     CHECK(result->contours[0].lines[0].a[1] == doctest::Approx(20));
-    CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(30));
+    CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(30.25));
     applyView(f.state, view);
     CHECK(findAnnotation(f.state, id)->section == initial);
     result = waitResult(runtime, f.state, id);
@@ -408,12 +411,12 @@ TEST_CASE("cross section drawing detects the comparison view without prior selec
     CHECK(item.sectionAnalysis.value_or(0) == expected);
     if (expected) {
         CHECK(item.sectionSides == std::vector<ComparisonSide>{ComparisonSide::a, ComparisonSide::b});
-        CHECK(item.section->a[2] == doctest::Approx(findComparison(f.state, expected)->translation[2]));
+        CHECK(item.section->a[2] == doctest::Approx(findComparison(f.state, expected)->translation[2] + .25));
         SceneQueryRuntime runtime;
         const auto result = waitResult(runtime, f.state, item.objectId);
         REQUIRE(result);
         REQUIRE_FALSE(result->contours[0].lines.empty());
-        CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(findComparison(f.state, expected)->translation[2]));
+        CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(findComparison(f.state, expected)->translation[2] + .25));
     }
 }
 TEST_CASE("cross section gesture scopes respect visibility depth and camera clipping")

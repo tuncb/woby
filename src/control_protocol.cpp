@@ -410,8 +410,8 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     STRING_FIELD(uvOverlapScope)
     STRING_FIELD(uvColor) STRING_FIELD(uvMetric) STRING_FIELD(uvNormalization) STRING_FIELD(type) STRING_FIELD(uvView)
 #undef STRING_FIELD
-    if (command.alignment && *command.alignment != "scene" && *command.alignment != "origins") {
-        throw std::invalid_argument("alignment must be scene or origins.");
+    if (command.alignment && *command.alignment != "scene" && *command.alignment != "origins" && *command.alignment != "enabled_bounds") {
+        throw std::invalid_argument("alignment must be scene, origins or enabled_bounds.");
     }
     if (command.type && *command.type != "mesh" && *command.type != "surface_comparison" && *command.type != "difference_mesh" && *command.type != "uv" && *command.type != "uv_quality") { throw std::invalid_argument("type must be mesh, surface_comparison, difference_mesh, uv or uv_quality."); }
     if (command.uvColor && *command.uvColor != "grid" && *command.uvColor != "u" && *command.uvColor != "v") { throw std::invalid_argument("uvColor must be grid, u or v."); }

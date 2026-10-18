@@ -87,7 +87,7 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
             const auto& settings = comparison->settings;
             if (settings.type == AnalysisType::differenceMesh) {
                 return {{"settings", {{"visible", settings.enabled}, {"translation", comparison->translation},
-                    {"type", analysisTypeKey(settings.type)}, {"alignment", settings.alignOrigins ? "origins" : "scene"},
+                    {"type", analysisTypeKey(settings.type)}, {"alignment", settings.alignOrigins ? (settings.alignEnabledParts ? "enabled_bounds" : "origins") : "scene"},
                     {"lockPlacement", settings.lockPlacement}, {"created", settings.difference.created},
                     {"showAOnly", settings.difference.showA}, {"showBOnly", settings.difference.showB},
                     {"opacity", settings.difference.opacity}}},
@@ -107,7 +107,7 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"uvView", settings.uvView == UvView::layout ? "layout" : "surface"},
                 {"uvGrid", settings.uvGrid.enabled}, {"uvDensityU", settings.uvGrid.densityU}, {"uvDensityV", settings.uvGrid.densityV},
                 {"mode", mode}, {"distanceOnA", settings.distanceOnOriginal}, {"tolerance", settings.tolerance},
-                {"alignment", settings.alignOrigins ? "origins" : "scene"}, {"lockPlacement", settings.lockPlacement},
+                {"alignment", settings.alignOrigins ? (settings.alignEnabledParts ? "enabled_bounds" : "origins") : "scene"}, {"lockPlacement", settings.lockPlacement},
                 {"colorRange", settings.colorRange}, {"colorMinimum", settings.colorMinimum},
                 {"colorRangeMode", comparisonColorRangeKeys[static_cast<size_t>(settings.colorRangeMode)]}, {"showEdges", settings.showEdges},
                 {"nonManifoldVertices", settings.topologyInspection.nonManifoldVertices},
@@ -416,10 +416,18 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             }
         }
         auto id = command.objectId;
-        if (command.alignment && *command.alignment != "scene" && *command.alignment != "origins") {
-            throw std::invalid_argument("alignment must be scene or origins.");
+        if (command.alignment && *command.alignment != "scene" && *command.alignment != "origins" && *command.alignment != "enabled_bounds") {
+            throw std::invalid_argument("alignment must be scene, origins or enabled_bounds.");
         }
         const bool placementOptions = command.alignment || command.lockPlacement || command.originA || command.originB;
+        if (command.alignment == std::optional<std::string>{"enabled_bounds"}
+            && ((command.action == A::comparisonCreate && command.type != "surface_comparison")
+                || (command.action != A::comparisonCreate && comparisonSettings(state, id).type != AnalysisType::surfaceComparison))) {
+            throw std::invalid_argument("Enabled bounds alignment requires a surface comparison.");
+        }
+        if (command.alignment == std::optional<std::string>{"enabled_bounds"} && (command.originA || command.originB)) {
+            throw std::invalid_argument("Enabled bounds alignment does not use selected origins.");
+        }
         if (placementOptions && ((command.action == A::comparisonCreate && (command.type == "uv" || command.type == "uv_quality"))
             || (command.action != A::comparisonCreate && isUvAnalysis(comparisonSettings(state, id).type)))) {
             throw std::invalid_argument("Placement options require a surface comparison or difference mesh analysis.");
@@ -474,7 +482,12 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
                 : command.type == "surface_comparison" ? AnalysisType::surfaceComparison
                 : command.type == "uv_quality" ? AnalysisType::uvQuality : command.type == "uv" ? AnalysisType::uv : AnalysisType::mesh);
             auto placementSettings = comparisonSettings(state, id);
-            if (command.alignment) { placementSettings.alignOrigins = *command.alignment == "origins"; }
+            if (command.originA || command.originB) { placementSettings.alignEnabledParts = false; }
+            if (command.alignment) {
+                placementSettings.alignOrigins = *command.alignment != "scene";
+                placementSettings.alignEnabledParts = *command.alignment == "enabled_bounds"
+                    || (*command.alignment == "scene" && placementSettings.alignEnabledParts);
+            }
             if (command.lockPlacement) { placementSettings.lockPlacement = *command.lockPlacement; }
             if (command.distanceOnA) { placementSettings.distanceOnOriginal = *command.distanceOnA; }
             auto unlocked = placementSettings;
@@ -578,7 +591,12 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.qualityMinimumSize) { settings.quality.minimumSize = *command.qualityMinimumSize; }
             if (command.qualityMaximumSize) { settings.quality.maximumSize = *command.qualityMaximumSize; }
             if (command.distanceOnA) { settings.distanceOnOriginal = *command.distanceOnA; }
-            if (command.alignment) { settings.alignOrigins = *command.alignment == "origins"; }
+            if (command.originA || command.originB) { settings.alignEnabledParts = false; }
+            if (command.alignment) {
+                settings.alignOrigins = *command.alignment != "scene";
+                settings.alignEnabledParts = *command.alignment == "enabled_bounds"
+                    || (*command.alignment == "scene" && settings.alignEnabledParts);
+            }
             if (command.lockPlacement) { settings.lockPlacement = *command.lockPlacement; }
             if (command.tolerance) { settings.tolerance = *command.tolerance; }
             if (command.colorRange) { settings.colorRange = *command.colorRange; settings.colorRangeMode = ComparisonColorRange::custom; }

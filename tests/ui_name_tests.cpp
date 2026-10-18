@@ -190,7 +190,7 @@ TEST_CASE("source name load defaults validate new fields and old scenes") {
     writeSceneDocument(path, document);
     std::string text;
     { std::ifstream input(path); text.assign(std::istreambuf_iterator<char>(input), {}); }
-    text.replace(text.find("version = 26"), 12, "version = 24");
+    text.replace(text.find("version = 27"), 12, "version = 24");
     { std::ofstream output(path); output << text; }
     const auto legacy = readSceneDocument(path);
     CHECK(legacy.files[0].customName.empty()); CHECK(legacy.files[0].groups[0].customName.empty());

@@ -222,18 +222,22 @@ Surface placement options are available on `analysis create` and `analysis set`:
 
 | CLI option | RPC field | Behavior |
 | --- | --- | --- |
-| `--alignment scene\|origins` | `alignment` | Use scene placement, or align input origins for analysis only. |
+| `--alignment scene\|enabled_bounds\|origins` | `alignment` | Use scene placement, match enabled-part bounds, or align selected origins. |
 | `--lock-placement BOOL` | `lockPlacement` | Capture analysis placements when enabled. Source moves and rotations then leave measurements unchanged. |
 | `--origin-a OBJECT_ID` / `--origin-b OBJECT_ID` | `originA` / `originB` | Select the origin from a member model, folder, or part on that side. |
 | `--distance-on-a BOOL` | `distanceOnA` | `true` measures A to B; `false` measures B to A. While unlocked, origin alignment uses the destination as its reference. |
 
-New `surface_comparison` analyses use `alignment: "origins"` and
-`lockPlacement: true`. Old scene files keep their saved scene placement.
+New `surface_comparison` analyses use `alignment: "enabled_bounds"` and
+`lockPlacement: true`. Enabled bounds keeps B fixed and translates A. Input
+inclusion changes update alignment from the enabled parts. The lock retains
+captured source positions, including when parts are disabled and enabled again.
+Scene visibility does not affect inclusion. Old scenes keep their saved placement
+until their inputs change. The `origins` mode retains explicit origin alignment.
 A folder input uses the folder origin. Other inputs use the first added model.
 All models on a side receive one translation, so their arrangement is retained.
 Source geometry changes still update the analysis.
 
-Unlock before changing alignment or origins. Disable the lock and enable it
+New captures can switch between scene coordinates and enabled bounds while locked. Older captures without a stored alignment offset must be unlocked before changing alignment modes. Unlock before changing selected origins. Disable the lock and enable it
 again to capture current placements. Setting `true` again keeps the existing
 capture. Direction changes while locked keep the captured placements.
 Scene files and undo history retain the origin choices and captured transforms.

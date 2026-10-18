@@ -1,5 +1,6 @@
 #include "comparison_placement.h"
 #include "comparison_scene.h"
+#include "comparison_runtime.h"
 #include "mesh_comparison.h"
 #include "ui_operations.h"
 #include "scene_history.h"
@@ -13,6 +14,7 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <thread>
 
 namespace {
 using namespace woby;
@@ -53,19 +55,25 @@ struct PlacementFixture {
             : multi ? std::vector{state.files[0].objectId, state.files[1].objectId}
             : std::vector{state.files[0].objectId}, ComparisonSide::a, true, id);
         setComparisonObjects(state, {state.files[2].objectId}, ComparisonSide::b, true, id);
+        // Retain coverage of explicit origin alignment used by older scenes.
+        auto settings = comparisonSettings(state, id);
+        settings.lockPlacement = false; settings.alignEnabledParts = false;
+        setComparisonSettings(state, settings, id);
+        settings.lockPlacement = true;
+        setComparisonSettings(state, settings, id);
         return id;
     }
 };
 
-std::vector<Coordinate> points(const Mesh& mesh)
+std::vector<Coordinate> placementPoints(const Mesh& mesh)
 {
     std::vector<Coordinate> result;
     for (size_t i = 0; i < meshGeometry(mesh).vertices.size(); ++i) { result.push_back(meshPosition(mesh, i)); }
     return result;
 }
-std::vector<Coordinate> points(const UiState& state, SceneObjectId id, ComparisonSide side = ComparisonSide::a)
+std::vector<Coordinate> placementPoints(const UiState& state, SceneObjectId id, ComparisonSide side = ComparisonSide::a)
 {
-    return points(comparisonWorldMesh(state, side, id));
+    return placementPoints(comparisonWorldMesh(state, side, id));
 }
 void checkPoint(const Coordinate& actual, const Coordinate& expected)
 {
@@ -126,8 +134,8 @@ TEST_CASE("new surface comparisons align and lock while source transforms remain
     CHECK(comparisonSettings(state, id).alignOrigins);
     CHECK(comparisonSettings(state, id).lockPlacement);
     CHECK(state.files[0].fileSettings.translation == sourceSettings.translation);
-    const auto a = points(state, id);
-    const auto b = points(state, id, ComparisonSide::b);
+    const auto a = placementPoints(state, id);
+    const auto b = placementPoints(state, id, ComparisonSide::b);
     checkPoints(a, b);
     const auto signature = comparisonGeometrySignature(state, id);
     const auto bounds = comparisonDisplayBounds(state, id);
@@ -137,10 +145,10 @@ TEST_CASE("new surface comparisons align and lock while source transforms remain
     setSceneObjectProperty(state, state.files[0].objectId, UiObjectProperty::scale, 2);
     setSceneObjectProperty(state, state.sceneNodes[0].objectId, UiObjectProperty::rotationY, 20);
     setSceneObjectProperty(state, state.files[2].objectId, UiObjectProperty::translationZ, 400);
-    checkPoints(points(state, id), a);
-    checkPoints(points(state, id, ComparisonSide::b), b);
-    checkPoints(points(comparisonWorldMesh(snapshot, ComparisonSide::a)), a);
-    checkPoints(points(comparisonWorldMesh(snapshotComparisonInputs(state, id), ComparisonSide::b)), b);
+    checkPoints(placementPoints(state, id), a);
+    checkPoints(placementPoints(state, id, ComparisonSide::b), b);
+    checkPoints(placementPoints(comparisonWorldMesh(snapshot, ComparisonSide::a)), a);
+    checkPoints(placementPoints(comparisonWorldMesh(snapshotComparisonInputs(state, id), ComparisonSide::b)), b);
     CHECK(comparisonGeometrySignature(state, id) == signature);
     REQUIRE(bounds);
     CHECK(comparisonDisplayBounds(state, id)->min == bounds->min);
@@ -150,17 +158,17 @@ TEST_CASE("new surface comparisons align and lock while source transforms remain
     settings.distanceOnOriginal = !settings.distanceOnOriginal;
     setComparisonSettings(state, settings, id);
     CHECK(comparisonGeometrySignature(state, id) == signature);
-    checkPoints(points(state, id), a);
+    checkPoints(placementPoints(state, id), a);
     setComparisonTranslation(state, id, {400, 0, 0});
     CHECK(comparisonGeometrySignature(state, id) == signature);
-    checkPoints(points(state, id), a);
+    checkPoints(placementPoints(state, id), a);
     // Geometry stays live at the captured transform; only placement is frozen.
     auto& mesh = state.files[0].mesh;
     editMeshGeometry(mesh).vertices[0].position[2] = .25f;
     mesh.contentRevision = nextMeshContentRevision();
     CHECK(comparisonGeometrySignature(state, id) != signature);
-    checkPoint(points(state, id)[0], {10, 0, .25});
-    checkPoints(points(comparisonWorldMesh(snapshot, ComparisonSide::a)), a);
+    checkPoint(placementPoints(state, id)[0], {10, 0, .25});
+    checkPoints(placementPoints(comparisonWorldMesh(snapshot, ComparisonSide::a)), a);
 }
 
 TEST_CASE("origin alignment translates each input as a unit and direction chooses the reference")
@@ -173,25 +181,25 @@ TEST_CASE("origin alignment translates each input as a unit and direction choose
     auto settings = comparisonSettings(state, id);
     settings.distanceOnOriginal = true;
     setComparisonSettings(state, settings, id);
-    const auto aligned = points(state, id);
+    const auto aligned = placementPoints(state, id);
     REQUIRE(aligned.size() == 8);
     checkPoint(aligned[0], {30, 10, 2});
     checkPoint(aligned[4], {35, 13, 2});
-    checkPoint(points(state, id, ComparisonSide::b)[0], {30, 10, 2});
+    checkPoint(placementPoints(state, id, ComparisonSide::b)[0], {30, 10, 2});
     const auto signature = comparisonGeometrySignature(state, id);
     REQUIRE(setComparisonOrigin(state, id, ComparisonSide::a, state.files[1].objectId));
-    checkPoint(points(state, id)[0], {25, 7, 2});
-    checkPoint(points(state, id)[4], {30, 10, 2});
+    checkPoint(placementPoints(state, id)[0], {25, 7, 2});
+    checkPoint(placementPoints(state, id)[4], {30, 10, 2});
     CHECK(comparisonGeometrySignature(state, id) != signature);
     CHECK_FALSE(setComparisonOrigin(state, id, ComparisonSide::a, state.files[2].objectId));
     settings.distanceOnOriginal = false;
     setComparisonSettings(state, settings, id);
-    checkPoint(points(state, id)[0], {10, 0, 0});
-    checkPoint(points(state, id, ComparisonSide::b)[0], {15, 3, 0});
+    checkPoint(placementPoints(state, id)[0], {10, 0, 0});
+    checkPoint(placementPoints(state, id, ComparisonSide::b)[0], {15, 3, 0});
     // Tree reordering must not choose a different origin.
     std::reverse(state.sceneNodes[0].children.begin(), state.sceneNodes[0].children.end());
     CHECK(findComparison(state, id)->origins[0] == state.files[1].objectId);
-    checkPoint(points(state, id, ComparisonSide::b)[0], {15, 3, 0});
+    checkPoint(placementPoints(state, id, ComparisonSide::b)[0], {15, 3, 0});
     swapComparisonGroups(state, id);
     CHECK(findComparison(state, id)->origins[1] == state.files[1].objectId);
 }
@@ -211,11 +219,11 @@ TEST_CASE("folder inputs use the same origin as the transform alignment action")
     const auto expected = transformCoordinate(transform.data(), {folder.center[0], folder.center[1], folder.center[2]});
     const auto b = comparisonWorldMesh(state, ComparisonSide::b, id);
     checkPoint({b.bounds.center[0], b.bounds.center[1], b.bounds.center[2]}, expected);
-    const auto before = points(state, id);
+    const auto before = placementPoints(state, id);
     auto settings = comparisonSettings(state, id);
     settings.distanceOnOriginal = true;
     setComparisonSettings(state, settings, id);
-    const auto after = points(state, id);
+    const auto after = placementPoints(state, id);
     for (size_t i = 1; i < before.size(); ++i) {
         for (size_t k = 0; k < 3; ++k) {
             CHECK(after[i][k] - after[0][k] == doctest::Approx(before[i][k] - before[0][k]).epsilon(1e-9).scale(1));
@@ -228,30 +236,30 @@ TEST_CASE("unlock and relock captures current placements without an update actio
     PlacementFixture fixture;
     auto& state = fixture.state;
     const auto id = fixture.create();
-    const auto original = points(state, id);
+    const auto original = placementPoints(state, id);
     setSceneObjectProperty(state, state.files[0].objectId, UiObjectProperty::translationX, 100);
     auto settings = comparisonSettings(state, id);
     setComparisonSettings(state, settings, id); // Idempotent lock=true.
-    checkPoints(points(state, id), original);
+    checkPoints(placementPoints(state, id), original);
     settings.alignOrigins = false;
     CHECK_THROWS_AS(setComparisonSettings(state, settings, id), std::invalid_argument);
     CHECK_FALSE(setComparisonOrigin(state, id, ComparisonSide::a, state.files[0].objectId));
     unlock(state, id, false);
-    checkPoint(points(state, id)[0], {100, 0, 0});
+    checkPoint(placementPoints(state, id)[0], {100, 0, 0});
     settings = comparisonSettings(state, id);
     settings.lockPlacement = true;
     setComparisonSettings(state, settings, id);
-    const auto captured = points(state, id);
+    const auto captured = placementPoints(state, id);
     setSceneObjectProperty(state, state.files[0].objectId, UiObjectProperty::translationX, 200);
-    checkPoints(points(state, id), captured);
+    checkPoints(placementPoints(state, id), captured);
     const auto duplicate = duplicateComparison(state, id);
-    checkPoints(points(state, duplicate), captured);
+    checkPoints(placementPoints(state, duplicate), captured);
     CHECK(findComparison(state, duplicate)->origins == findComparison(state, id)->origins);
     // Disabled members also retain their placement when re-enabled.
     setComparisonObjectsEnabled(state, {}, ComparisonSide::a, false, id);
     setSceneObjectProperty(state, state.files[0].objectId, UiObjectProperty::scale, 0);
     setComparisonObjectsEnabled(state, {}, ComparisonSide::a, true, id);
-    checkPoints(points(state, id), captured);
+    checkPoints(placementPoints(state, id), captured);
 }
 
 TEST_CASE("locked placements survive origin rebasing without losing small coordinates")
@@ -262,15 +270,15 @@ TEST_CASE("locked placements survive origin rebasing without losing small coordi
     for (auto& file : state.files) { file.mesh.origin = *state.coordinateOrigin; }
     synchronizeCoordinateFrames(state);
     const auto id = fixture.create();
-    const auto before = points(state, id);
+    const auto before = placementPoints(state, id);
     const Coordinate offset{1024, -2048, 512};
     auto sourceOrigin = state.files[0].mesh.origin;
     for (size_t k = 0; k < 3; ++k) { sourceOrigin[k] += offset[k]; }
     rebaseMesh(state.files[0].mesh, sourceOrigin);
-    checkPoints(points(state, id), before);
+    checkPoints(placementPoints(state, id), before);
     for (size_t k = 0; k < 3; ++k) { (*state.coordinateOrigin)[k] += offset[k]; }
     synchronizeCoordinateFrames(state);
-    const auto after = points(state, id);
+    const auto after = placementPoints(state, id);
     for (size_t i = 0; i < before.size(); ++i) {
         Coordinate expected;
         for (size_t k = 0; k < 3; ++k) { expected[k] = before[i][k] - offset[k]; }
@@ -283,7 +291,7 @@ TEST_CASE("scene files preserve origin references and captured transforms with f
     PlacementFixture fixture;
     auto& state = fixture.state;
     const auto id = fixture.create(true, true);
-    const auto captured = points(state, id);
+    const auto captured = placementPoints(state, id);
     setSceneObjectProperty(state, state.files[0].objectId, UiObjectProperty::translationX, 100);
     const auto document = createSceneDocument(state);
     const auto path = fixture.root / "comparison.woby";
@@ -297,7 +305,7 @@ TEST_CASE("scene files preserve origin references and captured transforms with f
     CHECK(loadedId != id);
     CHECK(loaded.comparisons[0].origins[0] == loaded.sceneNodes[0].objectId);
     CHECK(loaded.comparisons[0].origins[1] == loaded.files[2].objectId);
-    checkPoints(points(loaded, loadedId), captured);
+    checkPoints(placementPoints(loaded, loadedId), captured);
     CHECK(createSceneDocument(loaded).comparisons == document.comparisons);
     auto invalid = document;
     invalid.comparisons[0].a[0].placement->model[15] = 0;
@@ -318,7 +326,7 @@ TEST_CASE("undo and redo restore captured placement instead of recapturing moved
     PlacementFixture fixture;
     auto& state = fixture.state;
     const auto id = fixture.create();
-    const auto captured = points(state, id);
+    const auto captured = placementPoints(state, id);
     SceneHistory history;
     resetSceneHistory(history, state);
     const auto clean = createSceneDocument(state);
@@ -330,12 +338,12 @@ TEST_CASE("undo and redo restore captured placement instead of recapturing moved
     REQUIRE(restored);
     CHECK(comparisonSettings(*restored, id).lockPlacement);
     CHECK(restored->files[0].fileSettings.translation[0] == 100);
-    checkPoints(points(*restored, id), captured);
+    checkPoints(placementPoints(*restored, id), captured);
     commitSceneHistoryStep(history, state, std::move(*restored), false);
     auto redone = prepareSceneHistoryStep(history, state, clean, true);
     REQUIRE(redone);
     CHECK_FALSE(comparisonSettings(*redone, id).lockPlacement);
-    checkPoint(points(*redone, id)[0], {100, 0, 0});
+    checkPoint(placementPoints(*redone, id)[0], {100, 0, 0});
 }
 
 TEST_CASE("CLI placement options share defaults validation and relock behavior with the GUI")
@@ -351,21 +359,21 @@ TEST_CASE("CLI placement options share defaults validation and relock behavior w
     CHECK(comparisonSettings(state, id).alignOrigins);
     CHECK(comparisonSettings(state, id).lockPlacement);
     CHECK(findComparison(state, id)->origins[0] == state.files[1].objectId);
-    checkPoint(points(state, id)[0], {25, 7, 2});
+    checkPoint(placementPoints(state, id)[0], {25, 7, 2});
     const auto before = createSceneDocument(state);
     CHECK_THROWS(command(state, "analysis.set", {{"alignment", "invalid"}}, id));
     CHECK_THROWS(command(state, "analysis.set", {{"alignment", "scene"}}, id));
     CHECK_THROWS(command(state, "analysis.set", {{"originA", b}, {"lockPlacement", false}}, id));
     CHECK(createSceneDocument(state) == before);
     command(state, "analysis.set", {{"lockPlacement", false}, {"alignment", "scene"}, {"originA", a}}, id);
-    checkPoint(points(state, id)[0], {10, 0, 0});
+    checkPoint(placementPoints(state, id)[0], {10, 0, 0});
     command(state, "analysis.set", {{"lockPlacement", true}}, id);
     setSceneObjectProperty(state, state.files[0].objectId, UiObjectProperty::translationX, 200);
     command(state, "analysis.set", {{"lockPlacement", true}}, id);
-    checkPoint(points(state, id)[0], {10, 0, 0});
+    checkPoint(placementPoints(state, id)[0], {10, 0, 0});
     command(state, "analysis.set", {{"lockPlacement", false}}, id);
     command(state, "analysis.set", {{"lockPlacement", true}}, id);
-    checkPoint(points(state, id)[0], {200, 0, 0});
+    checkPoint(placementPoints(state, id)[0], {200, 0, 0});
     std::vector<std::string> args = {"woby", "ctl", "--instance", "test", "analysis", "set", "test-id",
         "--alignment", "origins", "--lock-placement", "false", "--origin-a", "model-a", "--origin-b", "model-b"};
     std::vector<char*> argv;
@@ -380,7 +388,7 @@ TEST_CASE("saved views keep the current lock and geometry edits remain independe
     PlacementFixture fixture;
     auto& state = fixture.state;
     const auto first = fixture.create();
-    const auto firstPoints = points(state, first);
+    const auto firstPoints = placementPoints(state, first);
     const auto view = createView(state);
     unlock(state, first, false);
     applyView(state, view);
@@ -388,16 +396,244 @@ TEST_CASE("saved views keep the current lock and geometry edits remain independe
     CHECK_FALSE(comparisonSettings(state, first).alignOrigins);
     setSceneObjectProperty(state, state.files[0].objectId, UiObjectProperty::translationX, 100);
     const auto second = fixture.create();
-    const auto secondPoints = points(state, second);
+    const auto secondPoints = placementPoints(state, second);
     CHECK(secondPoints != firstPoints);
     CHECK(comparisonSettings(state, second).lockPlacement);
     setSceneObjectProperty(state, state.files[0].objectId, UiObjectProperty::translationX, 200);
-    checkPoint(points(state, first)[0], {200, 0, 0});
-    checkPoints(points(state, second), secondPoints);
-    // A removed origin has a deterministic replacement. Existing captures stay intact.
+    checkPoint(placementPoints(state, first)[0], {200, 0, 0});
+    checkPoints(placementPoints(state, second), secondPoints);
+    // Removing a part also updates alignment from the remaining captured inputs.
     const auto multi = fixture.create(true);
-    const auto multiPoints = points(state, multi);
     setComparisonObjects(state, {state.files[0].objectId}, ComparisonSide::a, false, multi);
     CHECK(findComparison(state, multi)->origins[0] == state.files[1].objectId);
-    checkPoints(points(state, multi), std::vector<Coordinate>(multiPoints.begin() + 4, multiPoints.end()));
+    checkPoints(placementPoints(state, multi), placementPoints(state, multi, ComparisonSide::b));
+}
+
+namespace {
+struct EnabledBoundsFixture {
+    PlacementFixture fixture;
+    SceneObjectId id = 0, external = 0, geological = 0;
+    EnabledBoundsFixture() {
+        auto& state = fixture.state;
+        state = {};
+        Mesh a;
+        auto& ag = editMeshGeometry(a);
+        ag.vertices = {{{0,0,0},{},{}}, {{2,0,0},{},{}}, {{2,2,0},{},{}}, {{0,2,0},{},{}}};
+        ag.indices = {0,1,2,0,2,3}; ag.nodes = {{"Soil",0,6}};
+        a.bounds = calculateBounds(ag.vertices);
+        Mesh b = a;
+        auto& bg = editMeshGeometry(b);
+        bg.nodes[0].name = "Geology";
+        for (size_t i = 0; i < 4; ++i) { auto v = bg.vertices[i]; v.position[2] = 20; bg.vertices.push_back(v); }
+        bg.indices.insert(bg.indices.end(), {4,5,6,4,6,7}); bg.nodes.push_back({"External",6,6});
+        b.bounds = calculateBounds(bg.vertices);
+        state.files.push_back(createUiFileState(fixture.root / "a.obj", a, 0));
+        state.files.push_back(createUiFileState(fixture.root / "b.obj", b, 1));
+        appendDefaultSceneNodesForFiles(state, 0); recalculateSceneBounds(state);
+        id = createComparison(state, AnalysisType::surfaceComparison);
+        setComparisonObjects(state, {state.files[0].objectId}, ComparisonSide::a, true, id);
+        setComparisonObjects(state, {state.files[1].objectId}, ComparisonSide::b, true, id);
+        geological = state.files[1].groupSettings[0].objectId;
+        external = state.files[1].groupSettings[1].objectId;
+    }
+};
+}
+
+TEST_CASE("enabled part alignment updates while source placement stays locked")
+{
+    EnabledBoundsFixture f; auto& state = f.fixture.state;
+    CHECK(comparisonSettings(state, f.id).alignEnabledParts);
+    CHECK(comparisonSettings(state, f.id).lockPlacement);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,10});
+    const auto signature = comparisonGeometrySignature(state, f.id);
+    setGroupVisible(state, state.files[1], state.files[1].groupSettings[1], false);
+    CHECK(comparisonGeometrySignature(state, f.id) == signature);
+    setSceneObjectProperty(state, state.files[0].objectId, UiObjectProperty::translationZ, 400);
+    setSceneObjectProperty(state, state.files[1].objectId, UiObjectProperty::rotationX, 45);
+    setComparisonObjectsEnabled(state, {f.external}, ComparisonSide::b, false, f.id);
+    CHECK(comparisonGeometrySignature(state, f.id) != signature);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,0});
+    checkPoints(placementPoints(state, f.id), placementPoints(state, f.id, ComparisonSide::b));
+    const auto measured = compareMeshes(comparisonWorldMesh(state, ComparisonSide::a, f.id), comparisonWorldMesh(state, ComparisonSide::b, f.id));
+    CHECK(measured.original.maximum == doctest::Approx(0));
+    const auto snapshot = snapshotComparisonInputs(state, f.id);
+    checkPoints(placementPoints(comparisonWorldMesh(snapshot, ComparisonSide::a)), placementPoints(state, f.id));
+    ComparisonInspectorCache cache;
+    updateComparisonInspectorCache(cache, state, f.id);
+    CHECK(cache.alignmentOffsets[0] == std::optional<Coordinate>{Coordinate{}});
+    const auto builds = cache.builds;
+    updateComparisonInspectorCache(cache, state, f.id); CHECK(cache.builds == builds);
+    setComparisonObjectsEnabled(state, {f.external}, ComparisonSide::b, true, f.id);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,10});
+    CHECK(comparisonGeometrySignature(state, f.id) == signature);
+    auto settings = comparisonSettings(state, f.id); settings.distanceOnOriginal = !settings.distanceOnOriginal;
+    setComparisonSettings(state, settings, f.id);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,10});
+}
+
+TEST_CASE("enabled bounds supports isolate remove add and empty sides without losing captures")
+{
+    EnabledBoundsFixture f; auto& state = f.fixture.state;
+    isolateComparisonObjects(state, {f.geological}, ComparisonSide::b, f.id);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,0});
+    setComparisonObjectsEnabled(state, {}, ComparisonSide::b, false, f.id);
+    CHECK(enabledComparisonPartCount(state, ComparisonSide::b, f.id) == 0);
+    setComparisonObjectsEnabled(state, {f.external}, ComparisonSide::b, true, f.id);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,20});
+    setComparisonObjectsEnabled(state, {}, ComparisonSide::b, true, f.id);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,10});
+    setComparisonObjects(state, {f.external}, ComparisonSide::b, false, f.id);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,0});
+    setComparisonObjects(state, {f.external}, ComparisonSide::b, true, f.id);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,10});
+    const auto before = createSceneDocument(state);
+    setComparisonObjects(state, {f.external}, ComparisonSide::b, true, f.id);
+    CHECK(createSceneDocument(state) == before);
+}
+
+TEST_CASE("scene and enabled bounds modes use captured sources without unlocking")
+{
+    EnabledBoundsFixture f; auto& state = f.fixture.state;
+    setSceneObjectProperty(state, state.files[0].objectId, UiObjectProperty::translationZ, 400);
+    command(state, "analysis.set", {{"alignment", "scene"}}, f.id);
+    CHECK(comparisonSettings(state, f.id).lockPlacement);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,0});
+    setComparisonObjectsEnabled(state, {f.external}, ComparisonSide::b, false, f.id);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,0});
+    command(state, "analysis.set", {{"alignment", "enabled_bounds"}}, f.id);
+    setComparisonObjectsEnabled(state, {f.external}, ComparisonSide::b, true, f.id);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,10});
+    command(state, "analysis.set", {{"alignment", "scene"}, {"lockPlacement", false}}, f.id);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,400});
+}
+
+TEST_CASE("distance color range follows fresh aligned results without drawing the inspector")
+{
+    EnabledBoundsFixture f; auto& state = f.fixture.state;
+    struct RuntimeFixture {
+        ComparisonRuntimes runtimes;
+        bool initialized = false;
+        ~RuntimeFixture() {
+            destroyComparisonRuntimes(runtimes);
+            if (initialized) { graphics::shutdown(); }
+        }
+    } renderer;
+    graphics::Init init;
+    init.type = graphics::RendererType::Noop;
+    renderer.initialized = graphics::init(init);
+    REQUIRE(renderer.initialized);
+    auto settings = comparisonSettings(state, f.id);
+    REQUIRE(settings.colorRangeMode == ComparisonColorRange::allSamples);
+    settings.distanceOnOriginal = true;
+    for (size_t i = 0; i < diagnosticCategoryCount; ++i) {
+        setDiagnosticAutoUpdate(settings, static_cast<DiagnosticCategory>(i), false);
+    }
+    setComparisonSettings(state, settings, f.id);
+    auto& runtime = renderer.runtimes.objects[f.id];
+    const auto wait = [&] {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        do {
+            updateComparisonRuntimes(renderer.runtimes, state);
+            if (comparisonStagesReady(runtime, state, f.id, comparisonSource | comparisonDistance)) { return true; }
+            std::this_thread::yield();
+        } while (runtime.jobs.error.empty() && std::chrono::steady_clock::now() < deadline);
+        return false;
+    };
+    REQUIRE(wait());
+    CHECK(comparisonSettings(state, f.id).colorRange == doctest::Approx(10));
+    auto mode = ComparisonColorRange::allSamples;
+    float fraction = 1;
+    SUBCASE("default covers the full maximum") {}
+    SUBCASE("selected percentage follows the new maximum") { mode = ComparisonColorRange::max95; fraction = .95f; }
+    SUBCASE("explicit custom limits remain fixed") { mode = ComparisonColorRange::custom; }
+    settings = comparisonSettings(state, f.id);
+    settings.colorRangeMode = mode;
+    if (mode == ComparisonColorRange::custom) { settings.colorMinimum = 2; settings.colorRange = 4; }
+    setComparisonSettings(state, settings, f.id);
+    // A pending frame can leave a zero sample maximum with the previous large scale.
+    runtime.inspector.rangeDrag.axisMaximum = 1000;
+    runtime.inspector.rangeDrag.lastSampleMaximum = 0;
+    setComparisonObjectsEnabled(state, {f.external}, ComparisonSide::b, false, f.id);
+    REQUIRE(wait());
+    CHECK(runtime.results.value.original.maximum == doctest::Approx(0));
+    CHECK(comparisonSettings(state, f.id).lockPlacement);
+    CHECK(comparisonSettings(state, f.id).colorRangeMode == mode);
+    CHECK(comparisonSettings(state, f.id).colorMinimum == (mode == ComparisonColorRange::custom ? 2 : 0));
+    CHECK(comparisonSettings(state, f.id).colorRange == (mode == ComparisonColorRange::custom ? 4 : 1e-6f));
+    CHECK(runtime.inspector.rangeDrag.axisMaximum == 0);
+    CHECK(runtime.inspector.rangeDrag.lastSampleMaximum == -1);
+    setComparisonObjectsEnabled(state, {f.external}, ComparisonSide::b, true, f.id);
+    REQUIRE(wait());
+    CHECK(comparisonSettings(state, f.id).colorRange == doctest::Approx(mode == ComparisonColorRange::custom ? 4 : 10 * fraction));
+    settings = comparisonSettings(state, f.id);
+    settings.alignOrigins = false;
+    setComparisonSettings(state, settings, f.id);
+    REQUIRE(wait());
+    CHECK(comparisonSettings(state, f.id).colorRange == (mode == ComparisonColorRange::custom ? 4 : 1e-6f));
+    settings = comparisonSettings(state, f.id);
+    settings.distanceOnOriginal = false;
+    setComparisonSettings(state, settings, f.id);
+    updateComparisonRuntimes(renderer.runtimes, state);
+    CHECK(comparisonSettings(state, f.id).colorRange == doctest::Approx(mode == ComparisonColorRange::custom ? 4 : 20 * fraction));
+    const auto document = createSceneDocument(state);
+    updateComparisonRuntimes(renderer.runtimes, state);
+    CHECK(createSceneDocument(state) == document);
+}
+
+TEST_CASE("enabled bounds captures survive save load undo redo and view selection")
+{
+    EnabledBoundsFixture f; auto& state = f.fixture.state;
+    const auto view = createView(state);
+    SceneHistory history; resetSceneHistory(history, state);
+    const auto clean = createSceneDocument(state);
+    setComparisonObjectsEnabled(state, {f.external}, ComparisonSide::b, false, f.id);
+    recordSceneHistory(history, state);
+    auto undo = prepareSceneHistoryStep(history, state, clean, false);
+    REQUIRE(undo);
+    checkPoint(placementPoints(*undo, undo->comparisons[0].objectId)[0], {0,0,10});
+    commitSceneHistoryStep(history, state, std::move(*undo), false);
+    auto redo = prepareSceneHistoryStep(history, state, clean, true);
+    REQUIRE(redo);
+    checkPoint(placementPoints(*redo, redo->comparisons[0].objectId)[0], {0,0,0});
+    const auto document = createSceneDocument(*redo);
+    const auto path = f.fixture.root / "enabled.woby";
+    writeSceneDocument(path, document);
+    const auto read = readSceneDocument(path);
+    CHECK(read.comparisons == document.comparisons);
+    auto loaded = prepareSceneReplacement(*redo, redo->files, read);
+    const auto id = loaded.comparisons[0].objectId;
+    checkPoint(placementPoints(loaded, id)[0], {0,0,0});
+    REQUIRE(findComparison(loaded, id)->a[0].placement->alignmentOffset.has_value());
+    setComparisonObjectsEnabled(loaded, {}, ComparisonSide::b, true, id);
+    checkPoint(placementPoints(loaded, id)[0], {0,0,10});
+    // A view may change inclusion, but it must not replace locked source positions.
+    setComparisonObjectsEnabled(state, {}, ComparisonSide::b, false, f.id);
+    applyView(state, view);
+    checkPoint(placementPoints(state, f.id)[0], {0,0,10});
+    CHECK(comparisonSettings(state, f.id).alignEnabledParts);
+}
+
+TEST_CASE("legacy captures retain saved placement until input membership changes")
+{
+    EnabledBoundsFixture f; auto& state = f.fixture.state;
+    auto document = createSceneDocument(state);
+    auto& record = document.comparisons[0]; record.settings.alignEnabledParts = false;
+    record.b[1].enabled = false;
+    for (auto* parts : {&record.a, &record.b}) { for (auto& part : *parts) { part.placement->alignmentOffset.reset(); } }
+    auto loaded = prepareSceneReplacement(state, state.files, document);
+    const auto id = loaded.comparisons[0].objectId;
+    checkPoint(placementPoints(loaded, id)[0], {0,0,10});
+    const auto external = loaded.files[1].groupSettings[1].objectId;
+    setComparisonObjectsEnabled(loaded, {external}, ComparisonSide::b, true, id);
+    setComparisonObjectsEnabled(loaded, {external}, ComparisonSide::b, false, id);
+    checkPoint(placementPoints(loaded, id)[0], {0,0,0});
+    CHECK(comparisonSettings(loaded, id).lockPlacement);
+    CHECK(comparisonSettings(loaded, id).alignEnabledParts);
+    CHECK_FALSE(comparisonHasSourcePlacements(*findComparison(loaded, id)));
+    command(loaded, "analysis.set", {{"lockPlacement", false}}, id);
+    command(loaded, "analysis.set", {{"lockPlacement", true}}, id);
+    CHECK(comparisonHasSourcePlacements(*findComparison(loaded, id)));
+    auto invalid = createSceneDocument(loaded);
+    (*invalid.comparisons[0].a[0].placement->alignmentOffset)[0] = NAN;
+    CHECK_THROWS_AS((void)prepareSceneReplacement(loaded, loaded.files, invalid), std::invalid_argument);
 }

@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <boost/unordered/unordered_flat_map.hpp>
 
 namespace woby {
@@ -105,12 +106,103 @@ Coordinate comparisonAlignmentOffset(const UiComparison& comparison, ComparisonS
     return offset;
 }
 
+Coordinate enabledPartsAlignmentOffset(const UiState& state, const UiComparison& comparison,
+    const std::vector<ComparisonSourceTransform>& transforms, bool captured)
+{
+    std::array<Coordinate, 2> centers{};
+    boost::unordered_flat_map<SceneObjectId, const ComparisonSourceTransform*> byId;
+    for (const auto& transform : transforms) { byId.emplace(transform.objectId, &transform); }
+    for (size_t side = 0; side < 2; ++side) {
+        Coordinate minimum, maximum;
+        minimum.fill(std::numeric_limits<double>::infinity());
+        maximum.fill(-std::numeric_limits<double>::infinity());
+        bool any = false;
+        for (const auto& part : side == 0 ? comparison.a : comparison.b) {
+            if (!part.enabled) { continue; }
+            const auto found = byId.find(part.objectId);
+            if (found == byId.end() || found->second->groupIndex == invalidSceneNodeIndex) { return {}; }
+            const auto& transform = *found->second;
+            const auto& file = state.files[transform.fileIndex];
+            const auto& node = meshGeometry(file.mesh).nodes[transform.groupIndex];
+            if (node.indexCount < 3) { continue; }
+            auto parent = transform.parent, model = transform.model;
+            if (captured && part.placement) { resolveComparisonPlacement(state, file, *part.placement, parent, model); }
+            const auto& group = file.groupSettings[transform.groupIndex];
+            std::array<Coordinate, 2> bounds;
+            const auto& cache = file.mesh.annotationCache;
+            if (cache && transform.groupIndex < cache->localBounds.size() && cache->localBounds[transform.groupIndex]) {
+                bounds = *cache->localBounds[transform.groupIndex];
+            } else {
+                const auto& local = group.localBoundsValid ? group.localBounds : file.mesh.bounds;
+                for (size_t k = 0; k < 3; ++k) { bounds[0][k] = local.min[k]; bounds[1][k] = local.max[k]; }
+            }
+            for (unsigned corner = 0; corner < 8; ++corner) {
+                Coordinate point;
+                for (size_t k = 0; k < 3; ++k) { point[k] = bounds[(corner >> k) & 1][k]; }
+                point = transformCoordinate(model.data(), point);
+                for (size_t k = 0; k < 3; ++k) {
+                    minimum[k] = std::min(minimum[k], point[k]);
+                    maximum[k] = std::max(maximum[k], point[k]);
+                }
+                any = true;
+            }
+        }
+        if (!any) { return {}; }
+        for (size_t k = 0; k < 3; ++k) { centers[side][k] = minimum[k] + (maximum[k] - minimum[k]) * .5; }
+    }
+    Coordinate offset;
+    for (size_t k = 0; k < 3; ++k) { offset[k] = centers[1][k] - centers[0][k]; }
+    return offset;
+}
+
+bool comparisonHasSourcePlacements(const UiComparison& comparison)
+{
+    const auto known = [](const auto& members) {
+        return std::all_of(members.begin(), members.end(), [](const auto& part) {
+            return !part.placement || part.placement->alignmentOffset.has_value();
+        });
+    };
+    return known(comparison.a) && known(comparison.b);
+}
+
+void clearComparisonAlignment(UiComparison& comparison)
+{
+    for (auto* members : {&comparison.a, &comparison.b}) {
+        for (auto& part : *members) {
+            if (!part.placement || !part.placement->alignmentOffset) { continue; }
+            auto& placement = *part.placement;
+            Coordinate offset;
+            for (size_t k = 0; k < 3; ++k) { offset[k] = -(*placement.alignmentOffset)[k]; }
+            translate(placement.parent, offset); translate(placement.model, offset);
+            placement.alignmentOffset = Coordinate{};
+        }
+    }
+}
+
+void realignComparisonInputs(UiState& state, UiComparison& comparison)
+{
+    if (comparison.settings.type != AnalysisType::surfaceComparison || !comparison.settings.alignOrigins) { return; }
+    comparison.settings.alignEnabledParts = true;
+    if (!comparison.settings.lockPlacement) { return; }
+    const auto offset = enabledPartsAlignmentOffset(state, comparison, comparisonSourceTransforms(state), true);
+    // Keep B fixed. A receives one translation, including its disabled parts.
+    for (auto& part : comparison.a) {
+        if (!part.placement) { continue; }
+        auto& placement = *part.placement;
+        translate(placement.parent, offset); translate(placement.model, offset);
+        if (placement.alignmentOffset) {
+            for (size_t k = 0; k < 3; ++k) { (*placement.alignmentOffset)[k] += offset[k]; }
+        }
+    }
+}
+
 SceneComparisonPartRecord::Placement comparisonPartPlacement(const UiState& state,
     const ComparisonSourceTransform& transform, const Coordinate& offset)
 {
     SceneComparisonPartRecord::Placement placement;
     placement.parent = transform.parent;
     placement.model = transform.model;
+    placement.alignmentOffset = offset;
     translate(placement.parent, offset);
     translate(placement.model, offset);
     placement.sourceOrigin = state.files.at(transform.fileIndex).mesh.origin;
@@ -141,7 +233,8 @@ bool validComparisonPlacement(const SceneComparisonPartRecord::Placement& placem
     const auto affine = [&](const auto& m) {
         return finite(m) && m[3] == 0 && m[7] == 0 && m[11] == 0 && m[15] == 1;
     };
-    return affine(placement.parent) && affine(placement.model) && finite(placement.sourceOrigin) && finite(placement.sceneOrigin);
+    return affine(placement.parent) && affine(placement.model) && finite(placement.sourceOrigin) && finite(placement.sceneOrigin)
+        && (!placement.alignmentOffset || finite(*placement.alignmentOffset));
 }
 
 bool comparisonOriginCandidate(const UiState& state, const UiComparison& comparison, ComparisonSide side, SceneObjectId id)
@@ -184,7 +277,13 @@ void synchronizeComparisonPlacement(UiState& state, UiComparison& comparison)
     boost::unordered_flat_map<SceneObjectId, const ComparisonSourceTransform*> byId;
     for (const auto& transform : transforms) { byId.emplace(transform.objectId, &transform); }
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
-        const auto offset = comparisonAlignmentOffset(comparison, side, transforms);
+        auto offset = comparison.settings.alignEnabledParts ? Coordinate{} : comparisonAlignmentOffset(comparison, side, transforms);
+        if (comparison.settings.alignEnabledParts) {
+            const auto& members = side == ComparisonSide::a ? comparison.a : comparison.b;
+            for (const auto& part : members) {
+                if (part.placement && part.placement->alignmentOffset) { offset = *part.placement->alignmentOffset; break; }
+            }
+        }
         for (auto& part : side == ComparisonSide::a ? comparison.a : comparison.b) {
             if (part.placement) { continue; }
             if (const auto found = byId.find(part.objectId); found != byId.end()
@@ -193,6 +292,7 @@ void synchronizeComparisonPlacement(UiState& state, UiComparison& comparison)
             }
         }
     }
+    if (comparison.settings.alignEnabledParts) { realignComparisonInputs(state, comparison); }
 }
 
 SceneComparisonOriginRecord comparisonOriginReference(const UiState& state, SceneObjectId id)

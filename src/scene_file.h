@@ -106,6 +106,8 @@ struct SceneComparisonPartRecord {
     struct Placement {
         std::array<double, 16> parent{}, model{};
         std::array<double, 3> sourceOrigin{}, sceneOrigin{};
+        // Translation already included in parent/model. Absent in older scenes.
+        std::optional<std::array<double, 3>> alignmentOffset;
         friend bool operator==(const Placement&, const Placement&) = default;
     };
     std::optional<Placement> placement;

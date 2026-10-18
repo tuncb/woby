@@ -15,6 +15,11 @@ struct ComparisonSourceTransform {
 std::vector<ComparisonSourceTransform> comparisonSourceTransforms(const UiState& state);
 Coordinate comparisonAlignmentOffset(const UiComparison& comparison, ComparisonSide side,
     const std::vector<ComparisonSourceTransform>& transforms);
+Coordinate enabledPartsAlignmentOffset(const UiState& state, const UiComparison& comparison,
+    const std::vector<ComparisonSourceTransform>& transforms, bool captured);
+bool comparisonHasSourcePlacements(const UiComparison& comparison);
+void realignComparisonInputs(UiState& state, UiComparison& comparison);
+void clearComparisonAlignment(UiComparison& comparison);
 SceneComparisonPartRecord::Placement comparisonPartPlacement(const UiState& state,
     const ComparisonSourceTransform& transform, const Coordinate& offset);
 void resolveComparisonPlacement(const UiState& state, const UiFileState& file,

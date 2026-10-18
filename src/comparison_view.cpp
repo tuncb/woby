@@ -254,7 +254,8 @@ void membershipTree(UiState& state, ComparisonRuntime& runtime, ComparisonSide s
             return std::binary_search(partIds.begin(), partIds.end(), group.objectId);
         });
     });
-    const bool originChoice = models > 1 && isTwoInputAnalysisTask(comparisonTask(state, id));
+    const bool originChoice = models > 1 && isTwoInputAnalysisTask(comparisonTask(state, id))
+        && !comparisonSettings(state, id).alignEnabledParts;
     static std::array<UiSelectionRows, 2> selectionRows;
     auto& rows = selectionRows[sideIndex];
     if (rows.scope != id) { rows = {}; }
@@ -1310,6 +1311,7 @@ void drawDistanceInspector(UiState& state, ComparisonRuntime& runtime, SceneObje
                 ImGui::BeginDisabled(i != 0 && !ready);
                 if (ImGui::Selectable(comparisonColorRangeLabels[i], preset == static_cast<int>(i))) {
                     settings.colorRangeMode = static_cast<ComparisonColorRange>(i);
+                    if (ready) { settings = fittedComparisonSettings(settings, surface); }
                 }
                 ImGui::EndDisabled();
             }
@@ -1318,15 +1320,7 @@ void drawDistanceInspector(UiState& state, ComparisonRuntime& runtime, SceneObje
         setLastItemTooltip("Each percentage sets the color limits from zero to that percentage of the largest sampled distance. Acceptance tolerance is separate.");
         ImGui::EndTable();
     }
-    if (ready) { settings = fittedComparisonSettings(settings, surface); }
     drawComparisonRangeControl(settings, runtime.inspector.rangeDrag, ready ? surface.maximum : 0);
-    ImGui::TextWrapped("Gray: within acceptance tolerance.");
-    ImGui::TextWrapped("Drag triangles for color limits; drag the diamond for tolerance.");
-    if (ready) {
-        if (surface.maximum > settings.colorRange || settings.colorMinimum > settings.tolerance) {
-            ImGui::TextWrapped("Distances outside the color range use the end colors. Measurements are unchanged.");
-        } else { ImGui::TextWrapped("All sampled distances are covered by this scale."); }
-    }
     if (ImGui::BeginTable("distance_edges", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings)) {
         ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch, .6f);
         ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, .4f);
@@ -1429,10 +1423,37 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             setLastItemTooltip("Measure distances on B to reference surface A.");
             ImGui::EndTable();
         }
-        ImGui::BeginDisabled(settings.lockPlacement);
-        ImGui::Checkbox("Align origins", &settings.alignOrigins);
+        if (resultReady && settings.distanceOnOriginal != initial.distanceOnOriginal) {
+            const auto& surface = settings.distanceOnOriginal ? runtime.results.value.original : runtime.results.value.repaired;
+            settings = fittedComparisonSettings(settings, surface);
+        }
+        ImGui::SeparatorText("Alignment");
+        const bool legacyCapture = settings.lockPlacement && !runtime.inspector.queries.sourcePlacementsKnown;
+        ImGui::BeginDisabled(legacyCapture);
+        if (ImGui::RadioButton("Scene coordinates", !settings.alignOrigins)) { settings.alignOrigins = false; settings.alignEnabledParts = true; }
+        if (legacyCapture) { setLastItemTooltip("Unlock this saved placement before changing its alignment mode."); }
+        if (ImGui::GetContentRegionAvail().x > ImGui::CalcTextSize("Scene coordinates  Enabled bounds").x + 60) { ImGui::SameLine(); }
+        if (ImGui::RadioButton("Enabled bounds", settings.alignOrigins && settings.alignEnabledParts)) { settings.alignOrigins = true; settings.alignEnabledParts = true; }
+        if (legacyCapture) { setLastItemTooltip("Unlock this saved placement before changing its alignment mode."); }
         ImGui::EndDisabled();
-        ImGui::Checkbox("Lock placement", &settings.lockPlacement);
+        if (settings.alignOrigins && !settings.alignEnabledParts) {
+            ImGui::BeginDisabled(); ImGui::RadioButton("Saved origins", true); ImGui::EndDisabled();
+        }
+        if (both && ImGui::BeginTable("alignment_offsets", 4, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings)) {
+            const auto& offsets = runtime.inspector.queries.alignmentOffsets;
+            for (size_t side = 0; side < 2; ++side) {
+                if (side == 1 && offsets[side] == std::optional<Coordinate>{Coordinate{}}) { continue; }
+                ImGui::TableNextRow(); ImGui::TableNextColumn();
+                ImGui::TextUnformatted(side == 0 ? "Offset A" : "Offset B");
+                for (size_t k = 0; k < 3; ++k) {
+                    ImGui::TableNextColumn();
+                    if (offsets[side]) { ImGui::Text("%c %.4f", "XYZ"[k], (*offsets[side])[k]); }
+                    else { ImGui::Text("%c --", "XYZ"[k]); }
+                }
+            }
+            ImGui::EndTable();
+        }
+        ImGui::Checkbox("Lock source placement", &settings.lockPlacement);
         if (settings != initial) { setComparisonSettings(state, settings, id); return; }
     }
     const bool valid = (runtime.inspector.queries.signature != 0);

@@ -317,6 +317,8 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                 for (size_t i = 0; i < backgroundDetectorCount; ++i) { if (workerParticipates(i)) { participants |= 1u << i; } }
                 if (applyComparisonStages(runtime.results.value, runtime.results.cache, std::move(update), runtime.jobs.workerSignature, runtime.jobs.workerStages)) {
                     recordResultPublication(runtime.results, runtime.jobs.workerStages);
+                    // A new distance result must also replace the previous slider scale.
+                    if (runtime.jobs.workerStages & comparisonDistance) { runtime.inspector.rangeDrag = {}; }
                     invalidateGpu(runtime.jobs.workerStages);
                     runtime.results.signature = wanted; runtime.jobs.failedStages &= ~runtime.jobs.workerStages;
                     for (size_t i = 0; i < backgroundDetectorCount; ++i) {

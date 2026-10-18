@@ -498,6 +498,7 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
     if (key == "name") { record.name = parseTomlString(value);
     } else if (key == "translation") { record.translation = parseTomlFloat3(value);
     } else if (key == "analysis_align_origins") { record.settings.alignOrigins = parseTomlBool(value);
+    } else if (key == "analysis_align_enabled_parts") { record.settings.alignEnabledParts = parseTomlBool(value);
     } else if (key == "analysis_lock_placement") { record.settings.lockPlacement = parseTomlBool(value);
     } else if (key == "origin_a_node") { record.origins[0].nodeIndex = parseTomlInteger(value);
     } else if (key == "origin_a_file") { record.origins[0].fileIndex = parseTomlInteger(value);
@@ -659,6 +660,7 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
 {
     const auto comparison = normalizedComparisonSettings(settings);
     stream << "analysis_align_origins = " << (comparison.alignOrigins ? "true" : "false") << "\n";
+    stream << "analysis_align_enabled_parts = " << (comparison.alignEnabledParts ? "true" : "false") << "\n";
     stream << "analysis_lock_placement = " << (comparison.lockPlacement ? "true" : "false") << "\n";
     const char* mode = "distance";
     switch (comparison.mode) {
@@ -973,7 +975,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21 && version != 22 && version != 23 && version != 24 && version != 25 && version != 26) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21 && version != 22 && version != 23 && version != 24 && version != 25 && version != 26 && version != 27) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "coordinate_origin") {
@@ -1193,11 +1195,16 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 else if (key == "placement") {
                     const auto values = parseTomlFloatArray<double>(value);
                     if (values.size() != 38) { throw std::runtime_error("Analysis placement needs 38 values."); }
-                    auto& placement = part.placement.emplace();
+                    auto& placement = part.placement ? *part.placement : part.placement.emplace();
                     std::copy_n(values.begin(), 16, placement.parent.begin());
                     std::copy_n(values.begin() + 16, 16, placement.model.begin());
                     std::copy_n(values.begin() + 32, 3, placement.sourceOrigin.begin());
                     std::copy_n(values.begin() + 35, 3, placement.sceneOrigin.begin());
+                } else if (key == "placement_alignment_offset") {
+                    const auto values = parseTomlFloatArray<double>(value);
+                    if (values.size() != 3) { throw std::runtime_error("Analysis alignment offset needs 3 values."); }
+                    auto& placement = part.placement ? *part.placement : part.placement.emplace();
+                    placement.alignmentOffset = std::array<double, 3>{values[0], values[1], values[2]};
                 }
             } else if (section == Section::file) {
                 assignSceneFileValue(document.files.back(), key, value);
@@ -1335,7 +1342,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 26\n";
+    stream << "version = 27\n";
     if (document.coordinateOrigin) {
         for (double v : *document.coordinateOrigin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite scene origin."); } }
         stream << "coordinate_origin = "; writeTomlFloat3(stream, *document.coordinateOrigin); stream << '\n';
@@ -1535,6 +1542,11 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
                     write(part.placement->parent); write(part.placement->model);
                     write(part.placement->sourceOrigin); write(part.placement->sceneOrigin);
                     stream << "]\n";
+                    if (part.placement->alignmentOffset) {
+                        stream << "placement_alignment_offset = [";
+                        first = true; write(*part.placement->alignmentOffset);
+                        stream << "]\n";
+                    }
                 }
             }
         }

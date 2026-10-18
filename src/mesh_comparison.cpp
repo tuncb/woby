@@ -659,6 +659,7 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     settings.intersections.limits.pairs = std::min(settings.intersections.limits.pairs, size_t{2147483647});
     settings.intersections.limits.candidateTests = std::min(settings.intersections.limits.candidateTests, size_t{2147483647});
     if (settings.type == AnalysisType::differenceMesh) {
+        settings.alignEnabledParts = false;
         settings.task = AnalysisTask::differenceMesh;
         settings.mode = ComparisonMode::original;
         settings.distanceOnOriginal = false; // Align B to A when origin alignment is enabled.
@@ -683,6 +684,7 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
             settings.type = settings.task == AnalysisTask::surfaceComparison ? AnalysisType::surfaceComparison : AnalysisType::mesh;
         }
     }
+    if (settings.type != AnalysisType::surfaceComparison) { settings.alignEnabledParts = false; }
     return settings;
 }
 

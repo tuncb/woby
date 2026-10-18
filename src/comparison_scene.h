@@ -52,6 +52,8 @@ struct ComparisonInspectorCache {
     uint64_t signature = 0, preparationSignature = 0, measurementSignature = 0, boundsSignature = 0;
     std::array<ComparisonInspectorInput, 2> inputs;
     std::string sources;
+    std::array<std::optional<Coordinate>, 2> alignmentOffsets;
+    bool sourcePlacementsKnown = true;
 };
 [[nodiscard]] bool comparisonInspectorCacheCurrent(const ComparisonInspectorCache& cache,
     const UiState& state, SceneObjectId id);

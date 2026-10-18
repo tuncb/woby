@@ -86,6 +86,7 @@ struct ComparisonSettings
 {
     // Legacy documents retain scene placement. Creation sets the surface defaults.
     bool alignOrigins = false;
+    bool alignEnabledParts = false;
     bool lockPlacement = false;
     DifferenceSettings difference;
     AnalysisType type = AnalysisType::mesh;

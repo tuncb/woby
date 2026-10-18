@@ -1,4 +1,5 @@
 #include "ui_operations.h"
+#include "comparison_placement.h"
 #include "comparison_scene.h"
 
 #include <algorithm>
@@ -279,10 +280,14 @@ void applyView(UiState& state, ViewId id)
     const auto& view = *findView(state, id);
     // Validate the camera before mutating any display properties.
     const auto camera = normalizedSceneCamera(view.scene.camera);
+    std::vector<SceneObjectId> changedInputs;
     for (const auto& saved : view.parts) {
         if (auto* comparison = findComparison(state, saved.comparisonId)) {
             for (auto& part : saved.side == ComparisonSide::a ? comparison->a : comparison->b) {
-                if (part.objectId == saved.partId) { part.enabled = saved.enabled; }
+                if (part.objectId == saved.partId && part.enabled != saved.enabled) {
+                    part.enabled = saved.enabled;
+                    changedInputs.push_back(comparison->objectId);
+                }
             }
         }
     }
@@ -323,6 +328,7 @@ void applyView(UiState& state, ViewId id)
             auto comparisonSettings = normalizedComparisonSettings(object.settings.comparison);
             // Views restore presentation, never replace captured analysis placement.
             comparisonSettings.alignOrigins = comparison->settings.alignOrigins;
+            comparisonSettings.alignEnabledParts = comparison->settings.alignEnabledParts;
             comparisonSettings.lockPlacement = comparison->settings.lockPlacement;
             if (comparisonSettings.type == AnalysisType::differenceMesh
                 && comparisonSettings.difference.created != comparison->settings.difference.created) {
@@ -334,6 +340,11 @@ void applyView(UiState& state, ViewId id)
         }
     }
     for (const auto& comparison : state.comparisons) { normalizeAnalysisSources(state, comparison.objectId); }
+    std::sort(changedInputs.begin(), changedInputs.end());
+    changedInputs.erase(std::unique(changedInputs.begin(), changedInputs.end()), changedInputs.end());
+    for (auto comparisonId : changedInputs) {
+        if (auto* comparison = findComparison(state, comparisonId)) { realignComparisonInputs(state, *comparison); }
+    }
     state.showOrigin = view.scene.showOrigin;
     state.showGrid = view.scene.showGrid;
     state.triangleEdgeXray = view.scene.triangleEdgeXray;
