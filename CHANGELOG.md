@@ -2,6 +2,15 @@
 
 Notable changes by release tag. Versions with no notable changes are omitted.
 
+## v0.33.0
+
+- Added approximate and standalone difference mesh analysis.
+- Added scene text annotations with camera-facing display.
+- Added cross-section source visibility and color controls.
+- Improved detector performance and added performance probes.
+- Improved surface alignment, transformed annotations, and object pivot transforms.
+- Added support for loading packages from explicit importer folders.
+
 ## v0.32.1
 
 - Fixed a crash when creating approximate difference volumes.
