@@ -1,5 +1,6 @@
 #include "comparison_scene.h"
 #include "comparison_placement.h"
+#include "scene_pick.h"
 #include "mesh_comparison.h"
 #include "hash_utils.h"
 #include "utf8_path.h"
@@ -104,6 +105,29 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
     }
 }
 } // namespace
+
+std::vector<ScenePickPart> comparisonSectionParts(const UiState& state, SceneObjectId id)
+{
+    std::vector<ScenePickPart> parts;
+    const auto* comparison = id ? findComparison(state, id) : nullptr;
+    if (!comparison || isUvAnalysis(comparison->settings.type)) { return parts; }
+    for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
+        visitParts(state, side, id, [&](const UiFileState& file, size_t index, const double*, const double* model) {
+            const auto& node = meshGeometry(file.mesh).nodes[index];
+            ScenePickPart part;
+            part.objectId = file.groupSettings[index].objectId;
+            part.analysisId = id; part.analysisSide = side; part.mesh = &file.mesh;
+            part.indexOffset = node.indexOffset; part.indexCount = node.indexCount;
+            part.coordinateModel.emplace();
+            std::copy_n(model, 16, part.coordinateModel->begin());
+            for (size_t k = 0; k < 3; ++k) { (*part.coordinateModel)[12 + k] += comparison->translation[k]; }
+            std::transform(part.coordinateModel->begin(), part.coordinateModel->end(), part.model.begin(),
+                [](double value) { return static_cast<float>(value); });
+            parts.push_back(part);
+        });
+    }
+    return parts;
+}
 
 std::optional<std::array<Coordinate, 3>> comparisonSourceTriangle(
     const UiState& state, SceneObjectId analysisId, SceneObjectId partId, size_t triangle)

@@ -44,6 +44,7 @@ struct ScenePickPart {
     bool annotationOverlay = false;
     size_t pointIndexOffset = 0, pointIndexCount = 0;
     SceneObjectId analysisId = 0; // Linked analysis copy; zero for source geometry.
+    ComparisonSide analysisSide = ComparisonSide::a;
     size_t fileIndex = 0, groupIndex = 0; // Source parts only; never used for analysis copies.
     const points::Cloud* pointCloud = nullptr;
     bool sourceMesh = false; // Source passes precede analysis overlays and imported lines.

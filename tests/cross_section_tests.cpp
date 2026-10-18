@@ -83,6 +83,22 @@ struct Fixture {
     {
         return createCrossSection(state, settings(), sources());
     }
+    SceneObjectId analysis(bool sameSource = false)
+    {
+        const auto id = createComparison(state, AnalysisType::surfaceComparison);
+        setComparisonObjects(state, {sources()[0]}, ComparisonSide::a, true, id);
+        setComparisonObjects(state, {sources()[sameSource ? 0 : 1]}, ComparisonSide::b, true, id);
+        setComparisonTranslation(state, id, {});
+        return id;
+    }
+    SceneObjectId analysisSection(SceneObjectId analysisId)
+    {
+        auto definition = comparisonSectionDefinition(state, analysisId);
+        auto s = settings();
+        const auto& translation = findComparison(state, analysisId)->translation;
+        for (size_t k = 0; k < 3; ++k) { s.a[k] += translation[k]; s.b[k] += translation[k]; }
+        return createCrossSection(state, s, definition.targetIds, definition.sectionAnalysis, definition.sectionSides);
+    }
 };
 std::shared_ptr<const CrossSectionResult> waitResult(SceneQueryRuntime& runtime, const UiState& state, SceneObjectId id)
 {
@@ -97,6 +113,336 @@ std::shared_ptr<const CrossSectionResult> waitResult(SceneQueryRuntime& runtime,
     return {};
 }
 } // namespace
+TEST_CASE("analysis section sources match analysis geometry with nested transforms and display translation")
+{
+    Fixture f;
+    f.state.files[0].fileSettings.translation = {12, 4, 7};
+    f.state.files[0].fileSettings.rotationDegrees = {17, 25, 39};
+    f.state.files[0].fileSettings.scale = 2;
+    f.state.files[1].groupSettings[0].rotationDegrees = {-12, 9, 28};
+    f.state.sceneNodes.clear();
+    appendFolderTreeSceneNode(f.state, f.root, 0, f.state.files.size());
+    f.state.sceneNodes[0].settings.rotationDegrees = {9, 11, 31};
+    const auto analysis = f.analysis();
+    setComparisonTranslation(f.state, analysis, {100, 200, 300});
+    SUBCASE("locked placement ignores later source transforms") {
+        f.state.files[0].fileSettings.translation = {800, 900, 700};
+        f.state.sceneNodes[0].settings.scale = 5;
+        notifySceneEdit(f.state, SceneChange::geometry);
+    }
+    SUBCASE("unlocked placement follows source transforms") {
+        auto settings = comparisonSettings(f.state, analysis);
+        settings.lockPlacement = false;
+        setComparisonSettings(f.state, settings, analysis);
+    }
+    const auto parts = comparisonSectionParts(f.state, analysis);
+    REQUIRE(parts.size() == 2);
+    for (size_t i = 0; i < 2; ++i) {
+        const auto side = i == 0 ? ComparisonSide::a : ComparisonSide::b;
+        const auto mesh = comparisonWorldMesh(f.state, side, analysis);
+        CHECK(parts[i].objectId == f.sources()[i]);
+        CHECK(parts[i].analysisSide == side);
+        REQUIRE(parts[i].coordinateModel);
+        for (size_t v = 0; v < meshGeometry(mesh).vertices.size(); ++v) {
+            const auto actual = transformCoordinate(parts[i].coordinateModel->data(), meshPosition(*parts[i].mesh, v));
+            const auto expected = meshPosition(mesh, v);
+            for (size_t k = 0; k < 3; ++k) {
+                CHECK(actual[k] == doctest::Approx(expected[k] + findComparison(f.state, analysis)->translation[k]));
+            }
+        }
+    }
+}
+TEST_CASE("analysis section cuts obey locked and unlocked origin alignment")
+{
+    Fixture f;
+    f.state.files[0].fileSettings.translation[2] = 2;
+    f.state.files[1].fileSettings.translation[2] = 9;
+    const auto analysis = f.analysis();
+    setComparisonTranslation(f.state, analysis, {10, 20, 30});
+    setAllModelsVisible(f.state, false);
+    const auto id = f.analysisSection(analysis);
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{true, true});
+    SceneQueryRuntime runtime;
+    auto result = waitResult(runtime, f.state, id);
+    REQUIRE(result);
+    REQUIRE(result->largestGap);
+    CHECK(result->gap == doctest::Approx(0));
+    REQUIRE_FALSE(result->contours[0].lines.empty());
+    CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(32));
+    f.state.files[0].fileSettings.translation[2] = 50;
+    notifySceneEdit(f.state, SceneChange::geometry);
+    result = waitResult(runtime, f.state, id);
+    REQUIRE(result);
+    CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(32));
+    auto settings = comparisonSettings(f.state, analysis);
+    settings.lockPlacement = false;
+    settings.alignOrigins = false;
+    setComparisonSettings(f.state, settings, analysis);
+    result = waitResult(runtime, f.state, id);
+    REQUIRE(result);
+    REQUIRE(result->largestGap);
+    CHECK(result->gap == doctest::Approx(40.75));
+    CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(80));
+    settings.alignOrigins = true;
+    setComparisonSettings(f.state, settings, analysis);
+    result = waitResult(runtime, f.state, id);
+    REQUIRE(result);
+    REQUIRE(result->largestGap);
+    CHECK(result->gap == doctest::Approx(0));
+}
+TEST_CASE("analysis section keeps two placements of the same source in separate A and B branches")
+{
+    Fixture f;
+    const auto analysis = f.analysis(true);
+    f.state.files[0].fileSettings.translation[2] = 5;
+    notifySceneEdit(f.state, SceneChange::geometry);
+    setComparisonObjects(f.state, {f.sources()[0]}, ComparisonSide::b, false, analysis);
+    setComparisonObjects(f.state, {f.sources()[0]}, ComparisonSide::b, true, analysis);
+    const auto id = f.analysisSection(analysis);
+    const auto* item = findAnnotation(f.state, id);
+    CHECK(item->targetIds == std::vector<SceneObjectId>{f.sources()[0], f.sources()[0]});
+    CHECK(item->sectionSides == std::vector<ComparisonSide>{ComparisonSide::a, ComparisonSide::b});
+    CrossSectionSourceTree tree;
+    updateCrossSectionSourceTree(tree, f.state, *item);
+    REQUIRE(tree.roots.size() == 2);
+    for (size_t i = 0; i < 2; ++i) {
+        CHECK(tree.roots[i].name == (i == 0 ? "A" : "B"));
+        REQUIRE(tree.roots[i].children.size() == 1);
+        REQUIRE(tree.roots[i].children[0].children.size() == 1);
+        CHECK(tree.roots[i].children[0].children[0].sourceIndex == i);
+    }
+    SceneQueryRuntime runtime;
+    const auto result = waitResult(runtime, f.state, id);
+    REQUIRE(result);
+    REQUIRE(result->largestGap);
+    CHECK(result->gap == doctest::Approx(5));
+    CHECK_THROWS(createCrossSection(f.state, f.settings(), {f.sources()[0], f.sources()[0]}, analysis,
+        {ComparisonSide::a, ComparisonSide::a}));
+}
+TEST_CASE("analysis display moves carry section planes and saved views restore their placement")
+{
+    Fixture f;
+    const auto analysis = f.analysis();
+    const auto id = f.analysisSection(analysis);
+    const auto initial = *findAnnotation(f.state, id)->section;
+    const auto view = createView(f.state);
+    auto style = findAnnotation(f.state, id)->settings;
+    style.locked = true;
+    setAnnotationSettings(f.state, id, style);
+    setComparisonTranslation(f.state, analysis, {10, 20, 30});
+    CHECK(findAnnotation(f.state, id)->section->a == std::array<float, 3>{8, 20, 30});
+    CHECK(findAnnotation(f.state, id)->section->b == std::array<float, 3>{12, 20, 30});
+    SceneQueryRuntime runtime;
+    auto result = waitResult(runtime, f.state, id);
+    REQUIRE(result);
+    REQUIRE(result->largestGap);
+    CHECK(result->gap == doctest::Approx(0));
+    REQUIRE_FALSE(result->contours[0].lines.empty());
+    CHECK(result->contours[0].lines[0].a[1] == doctest::Approx(20));
+    CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(30));
+    applyView(f.state, view);
+    CHECK(findAnnotation(f.state, id)->section == initial);
+    result = waitResult(runtime, f.state, id);
+    REQUIRE(result);
+    CHECK(result->contours[0].lines[0].a[1] == doctest::Approx(0));
+    // Reject a move that would collapse the plane endpoints at float precision.
+    const auto revision = f.state.revisions.presentation;
+    setComparisonTranslation(f.state, analysis, {std::numeric_limits<float>::max(), 0, 0});
+    CHECK(findComparison(f.state, analysis)->translation == std::array<float, 3>{});
+    CHECK(findAnnotation(f.state, id)->section == initial);
+    CHECK(f.state.revisions.presentation == revision);
+}
+TEST_CASE("analysis section links survive save load duplication undo and missing analyses")
+{
+    Fixture f;
+    const auto analysis = f.analysis(true);
+    const auto id = f.analysisSection(analysis);
+    const auto copy = duplicateAnnotation(f.state, id);
+    CHECK(findAnnotation(f.state, copy)->sectionAnalysis == analysis);
+    const auto path = f.root / "analysis-section.woby";
+    writeSceneDocument(path, createSceneDocument(f.state));
+    const auto document = readSceneDocument(path);
+    const auto restored = prepareSceneReplacement(f.state, f.state.files, document);
+    REQUIRE(restored.comparisons.size() == 1);
+    REQUIRE(restored.annotations.size() == 2);
+    CHECK(restored.annotations[0].sectionAnalysis == restored.comparisons[0].objectId);
+    CHECK(restored.annotations[0].sectionSides == std::vector<ComparisonSide>{ComparisonSide::a, ComparisonSide::b});
+    SceneQueryRuntime runtime;
+    REQUIRE(waitResult(runtime, restored, restored.annotations[0].objectId));
+    SceneHistory history;
+    resetSceneHistory(history, f.state);
+    setComparisonTranslation(f.state, analysis, {10, 20, 30});
+    REQUIRE(recordSceneHistory(history, f.state));
+    const auto previous = prepareSceneHistoryStep(history, f.state, document, false);
+    REQUIRE(previous);
+    CHECK(findAnnotation(*previous, id)->sectionAnalysis == analysis);
+    CHECK(findAnnotation(*previous, id)->section->a == f.settings().a);
+    removeComparison(f.state, analysis);
+    const auto missing = waitResult(runtime, f.state, id);
+    REQUIRE(missing);
+    CHECK(missing->contours[0].missing);
+    CHECK(missing->contours[1].missing);
+    writeSceneDocument(path, createSceneDocument(f.state));
+    const auto missingState = prepareSceneReplacement(f.state, f.state.files, readSceneDocument(path));
+    REQUIRE(missingState.annotations[0].sectionAnalysis);
+    CHECK(*missingState.annotations[0].sectionAnalysis == 0);
+    const auto stillMissing = waitResult(runtime, missingState, missingState.annotations[0].objectId);
+    REQUIRE(stillMissing);
+    CHECK(stillMissing->contours[0].missing);
+    auto invalid = document;
+    invalid.annotations[0].sectionSides.clear();
+    CHECK_THROWS(loadSceneAnnotations(f.state, invalid));
+    invalid = document;
+    invalid.annotations[0].sectionAnalysis = 100;
+    CHECK_THROWS(writeSceneDocument(f.root / "invalid.woby", invalid));
+}
+TEST_CASE("analysis sections use only enabled inputs and invalidate pending cuts after membership edits")
+{
+    Fixture f;
+    const auto analysis = f.analysis();
+    const auto id = f.analysisSection(analysis);
+    SceneQueryRuntime runtime;
+    updateSceneAnnotationQueries(runtime, f.state);
+    setComparisonObjectsEnabled(f.state, {f.sources()[1]}, ComparisonSide::b, false, analysis);
+    const auto result = waitResult(runtime, f.state, id);
+    REQUIRE(result);
+    CHECK_FALSE(result->contours[0].missing);
+    CHECK(result->contours[1].missing);
+    const auto definition = comparisonSectionDefinition(f.state, analysis);
+    CHECK(definition.targetIds == std::vector<SceneObjectId>{f.sources()[0]});
+    const auto sceneId = f.add();
+    const auto sceneResult = waitResult(runtime, f.state, sceneId);
+    REQUIRE(sceneResult);
+    CHECK_FALSE(sceneResult->contours[1].missing);
+}
+TEST_CASE("analysis section mouse creation captures the selected analysis and rejects placement changes during drawing")
+{
+    Fixture f;
+    const auto analysis = f.analysis();
+    f.state.files.push_back(createUiFileState(f.root / "unrelated.obj", sheet(3), 2));
+    appendDefaultSceneNodesForFiles(f.state, 2);
+    setAllModelsVisible(f.state, false);
+    selectSceneObject(f.state, analysis);
+    CHECK(crossSectionAnalysisScope(f.state) == analysis);
+    ScenePickView view;
+    view.view = view.projection = view.renderProjection = identityMatrix();
+    view.width = view.height = 1000;
+    view.homogeneousDepth = true;
+    AnnotationInteraction interaction;
+    interaction.sectionTool = true;
+    REQUIRE(beginAnnotationPointer(f.state, interaction, view, {100, 500}));
+    REQUIRE(interaction.dragging);
+    CHECK(interaction.preview.targetIds == f.sources());
+    CHECK(interaction.preview.sectionAnalysis == analysis);
+    CHECK(interaction.preview.section->sourceVisible == std::vector<bool>{true, true});
+    moveAnnotationPointer(f.state, interaction, {900, 500});
+    SUBCASE("commit") {
+        endAnnotationPointer(f.state, interaction, true);
+        REQUIRE(f.state.annotations.size() == 1);
+        CHECK(f.state.annotations[0].sectionAnalysis == analysis);
+        CHECK(crossSectionAnalysisScope(f.state) == analysis);
+    }
+    SUBCASE("analysis moves before release") {
+        setComparisonTranslation(f.state, analysis, {20, 0, 0});
+        endAnnotationPointer(f.state, interaction, true);
+        CHECK(f.state.annotations.empty());
+    }
+    selectSceneObject(f.state, f.sources()[0]);
+    CHECK(crossSectionAnalysisScope(f.state) == 0);
+}
+TEST_CASE("analysis sections can be created through the CLI with formatted analysis identities")
+{
+    Fixture f;
+    const auto analysis = f.analysis();
+    const auto result = runSectionCommand(f.state, "annotation.create", {{"shape", "section"},
+        {"planeStart", {-2, 0, 0}}, {"planeEnd", {2, 0, 0}}, {"sourceIndex", 1}, {"sourceVisible", false}}, analysis);
+    CHECK(result["object"]["analysisId"] == std::to_string(analysis));
+    CHECK(result["object"]["sourceSides"] == Json::array({0, 1}));
+    CHECK(result["object"]["sourceVisible"] == Json::array({true, false}));
+    const auto details = controlObjectDetails(f.state, f.state.annotations[0].objectId,
+        [](SceneObjectId id) { return "object-" + std::to_string(id); });
+    CHECK(details["analysisId"] == "object-" + std::to_string(analysis));
+    const auto uv = createComparison(f.state, AnalysisType::uv);
+    CHECK_THROWS((void)comparisonSectionDefinition(f.state, uv));
+}
+TEST_CASE("cross section drawing detects the comparison view without prior selection")
+{
+    Fixture f;
+    const auto analysis = f.analysis();
+    const auto other = f.analysis();
+    setComparisonTranslation(f.state, analysis, {5, 0, .4f});
+    setComparisonTranslation(f.state, other, {-5, 0, .6f});
+    clearSceneSelection(f.state);
+    ScenePickView view;
+    view.view = view.projection = view.renderProjection = identityMatrix();
+    view.projection[0] = view.renderProjection[0] = .1f;
+    view.width = view.height = 1000;
+    view.homogeneousDepth = true;
+    PickPoint start{725, 500}, end{775, 500};
+    SceneObjectId expected = analysis;
+    SUBCASE("start on an unselected analysis") {}
+    SUBCASE("start and end in empty space") { start[0] = 650; end[0] = 850; }
+    SUBCASE("a source model was selected") { selectSceneObject(f.state, f.sources()[0]); }
+    SUBCASE("another analysis was selected") { selectSceneObject(f.state, other); }
+    SUBCASE("an unsupported analysis was selected before starting in empty space") {
+        const auto uv = createComparison(f.state, AnalysisType::uv);
+        selectSceneObject(f.state, uv); start[0] = 650; end[0] = 850;
+    }
+    SUBCASE("the first analysis crossed wins") { start[0] = 150; end[0] = 850; expected = other; }
+    SUBCASE("drawing on models overrides a selected analysis") {
+        selectSceneObject(f.state, analysis); start[0] = 475; end[0] = 525; expected = 0;
+    }
+    SUBCASE("crossing models first keeps a normal section") { start[0] = 350; end[0] = 850; expected = 0; }
+    AnnotationInteraction interaction;
+    interaction.sectionTool = true;
+    REQUIRE(beginAnnotationPointer(f.state, interaction, view, start));
+    REQUIRE(interaction.dragging);
+    moveAnnotationPointer(f.state, interaction, end);
+    CHECK(interaction.preview.sectionAnalysis.value_or(0) == expected);
+    CHECK(interaction.preview.targetIds == f.sources());
+    endAnnotationPointer(f.state, interaction, true);
+    REQUIRE(f.state.annotations.size() == 1);
+    const auto& item = f.state.annotations[0];
+    CHECK(item.sectionAnalysis.value_or(0) == expected);
+    if (expected) {
+        CHECK(item.sectionSides == std::vector<ComparisonSide>{ComparisonSide::a, ComparisonSide::b});
+        CHECK(item.section->a[2] == doctest::Approx(findComparison(f.state, expected)->translation[2]));
+        SceneQueryRuntime runtime;
+        const auto result = waitResult(runtime, f.state, item.objectId);
+        REQUIRE(result);
+        REQUIRE_FALSE(result->contours[0].lines.empty());
+        CHECK(result->contours[0].lines[0].a[2] == doctest::Approx(findComparison(f.state, expected)->translation[2]));
+    }
+}
+TEST_CASE("cross section gesture scopes respect visibility depth and camera clipping")
+{
+    Fixture f;
+    const auto analysis = f.analysis();
+    clearSceneSelection(f.state);
+    ScenePickView view;
+    view.view = view.projection = view.renderProjection = identityMatrix();
+    view.width = view.height = 1000;
+    view.homogeneousDepth = true;
+    SceneObjectId expected = analysis;
+    setComparisonTranslation(f.state, analysis, {0, 0, -.5f});
+    SUBCASE("front comparison wins over visible models") {}
+    SUBCASE("models in front win") { setComparisonTranslation(f.state, analysis, {0, 0, .5f}); expected = 0; }
+    SUBCASE("hidden comparison is ignored") {
+        auto settings = comparisonSettings(f.state, analysis);
+        settings.enabled = false;
+        setComparisonSettings(f.state, settings, analysis);
+        // Keep another visible analysis so model targets are still needed.
+        const auto other = f.analysis();
+        setComparisonTranslation(f.state, other, {5, 0, 0});
+        expected = 0;
+    }
+    SUBCASE("comparison before the near plane is ignored") { setComparisonTranslation(f.state, analysis, {0, 0, -2}); expected = 0; }
+    SUBCASE("comparison beyond the far plane is ignored") { setComparisonTranslation(f.state, analysis, {0, 0, 2}); expected = 0; }
+    const auto targets = crossSectionDrawTargets(f.state, view);
+    const auto scope = crossSectionDrawScope(targets, {500, 500}, {500, 500});
+    REQUIRE(scope);
+    CHECK(*scope == expected);
+}
 TEST_CASE("cross section CLI parses world controls and preserves all options through the protocol")
 {
     for (auto words : std::vector<std::vector<std::string>>{

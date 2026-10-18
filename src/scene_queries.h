@@ -89,6 +89,8 @@ struct CrossSectionSourceTree {
     SceneObjectId id = invalidSceneObjectId;
     uint64_t generation = 0, geometry = 0, labels = 0, builds = 0;
     std::vector<SceneObjectId> sources;
+    std::optional<SceneObjectId> analysis;
+    std::vector<ComparisonSide> sides;
     std::vector<CrossSectionSourceNode> roots;
 };
 

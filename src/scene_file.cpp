@@ -1,5 +1,6 @@
 #include "uv_quality.h"
 #include "scene_file.h"
+#include "cross_section.h"
 #include "analysis_presentation.h"
 #include "utf8_path.h"
 
@@ -1066,6 +1067,14 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     else if (key == "section_face_on") { s.faceOn = parseTomlBool(value); }
                     else if (key == "section_reference") { s.reference = parseTomlInteger(value); }
                     else if (key == "section_compared") { s.compared = parseTomlInteger(value); }
+                    else if (key == "section_analysis") { item.sectionAnalysis = parseTomlInteger(value); }
+                    else if (key == "section_sides") {
+                        item.sectionSides.clear();
+                        for (auto v : parseTomlFloatArray(value)) {
+                            if (v != 0 && v != 1) { throw std::runtime_error("Section sides must be 0 (A) or 1 (B)."); }
+                            item.sectionSides.push_back(v == 0 ? ComparisonSide::a : ComparisonSide::b);
+                        }
+                    }
                     else if (key == "section_visibility") {
                         s.sourceVisible.clear();
                         for (auto v : parseTomlFloatArray(value)) { s.sourceVisible.push_back(v != 0); }
@@ -1245,6 +1254,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
 
     for (size_t i = 0; i < document.annotations.size(); ++i) {
         auto& item = document.annotations[i];
+        validateSectionAnalysis(item, document.comparisons.size());
         if (item.text && item.section) { throw std::runtime_error("An annotation cannot be both text and a section."); }
         if (item.text) { item.text = normalizedTextAnnotationSettings(*item.text); }
         else if (item.section) { item.section = normalizedCrossSectionSettings(*item.section, item.targets.size()); }
@@ -1426,6 +1436,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             continue;
         }
         if (item.section) {
+            validateSectionAnalysis(item, document.comparisons.size());
             const auto s = normalizedCrossSectionSettings(*item.section, item.targets.size());
             stream << "shape = \"section\"\nsection_a = "; writeTomlFloat3(stream, s.a);
             stream << "\nsection_b = "; writeTomlFloat3(stream, s.b);
@@ -1439,6 +1450,14 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             stream << "section_visibility = [";
             for (size_t i = 0; i < s.sourceVisible.size(); ++i) { if (i) { stream << ", "; } stream << (s.sourceVisible[i] ? 1 : 0); }
             stream << "]\n";
+            if (item.sectionAnalysis) {
+                stream << "section_analysis = " << *item.sectionAnalysis << "\nsection_sides = [";
+                for (size_t i = 0; i < item.sectionSides.size(); ++i) {
+                    if (i) { stream << ", "; }
+                    stream << (item.sectionSides[i] == ComparisonSide::a ? 0 : 1);
+                }
+                stream << "]\n";
+            }
             for (const auto& target : item.targets) {
                 stream << "\n[[annotations.sources]]\nfile_index = " << target.fileIndex << "\ngroup_index = " << target.groupIndex << "\n";
             }

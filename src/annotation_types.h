@@ -10,6 +10,7 @@
 #include "scene_up_axis.h"
 
 namespace woby {
+enum class ComparisonSide;
 
 enum class AnnotationShape { line, rectangle };
 
@@ -137,6 +138,9 @@ struct SceneAnnotationRecord {
     std::vector<SceneAnnotationTarget> targets;
     std::optional<CrossSectionSettings> section;
     std::optional<TextAnnotationSettings> text;
+    // Present only for analysis sections; -1 retains a removed analysis reference.
+    std::optional<int> sectionAnalysis;
+    std::vector<ComparisonSide> sectionSides;
     friend bool operator==(const SceneAnnotationRecord&, const SceneAnnotationRecord&) = default;
 };
 

@@ -325,7 +325,7 @@ void applyView(UiState& state, ViewId id)
             comparisonSettings.alignOrigins = comparison->settings.alignOrigins;
             comparisonSettings.lockPlacement = comparison->settings.lockPlacement;
             comparison->settings = comparisonSettings;
-            comparison->translation = settings.translation;
+            setComparisonTranslation(state, comparison->objectId, settings.translation);
         }
     }
     for (const auto& comparison : state.comparisons) { normalizeAnalysisSources(state, comparison.objectId); }

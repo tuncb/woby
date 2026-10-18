@@ -9,7 +9,7 @@ Hold **Shift** while drawing or dragging an endpoint to snap the direction to
 45-degree increments on the workplane. Release Shift to return to free drawing.
 The preview updates when Shift changes, even if the mouse does not move.
 
-One annotation contains the cuts of all triangle meshes when you draw the line.
+A model section contains the cuts of all scene triangle meshes when you draw the line.
 Each contour starts with its model-tree visibility, including the visibility of
 its parent folders and file. Hidden meshes stay in the section and can be shown
 with the section's eye controls. The plane extends beyond the line endpoints.
@@ -41,6 +41,26 @@ Names, comments, source visibility, plane settings, display settings, and the
 comparison pair are saved in `.woby` files. Annotation duplication, deletion,
 visibility, and Undo/Redo also apply to cross sections.
 
+## Analysis sections
+
+Choose **Tools > Cross section** and drag across a comparison view. You do not
+need to select the analysis first. You can start in empty space: the first model
+or analysis view crossed by the line sets the source. If the line misses all
+views, the selected analysis is used as a fallback.
+
+An analysis section captures the enabled mesh parts from both comparison inputs.
+Hidden source models and unrelated models
+do not affect this source set. The **Cut meshes** tree groups the sources under
+**A** and **B**. Each contour starts visible and has its own eye control.
+
+The section uses the analysis origin alignment and placement lock. When placement
+is locked, edits to source transforms do not move the cut meshes. When placement
+is unlocked, the section follows the analysis transforms. Geometry edits still
+update the cuts. Moving the analysis display also moves its cut plane and contours.
+Saved views, save/load, duplication of the section, and Undo/Redo retain this link.
+If the analysis is deleted, the section reports missing sources. UV layouts are
+not supported.
+
 ## Command line
 
 Create one section from all triangle meshes, with their current model-tree visibility:
@@ -54,6 +74,10 @@ in that object, including hidden parts. The captured source list stays fixed.
 Use `--source-index` and `--source-visible` to override a source's initial visibility.
 Endpoints use world coordinates. Lift uses model units. `--section-up-axis y|z`
 defaults to the scene up axis. The end height is set to the start height.
+
+Use a mesh analysis ID instead of `scene` to cut its placed A/B inputs. Plane
+endpoints use displayed world coordinates, including the analysis display offset.
+`annotation get` returns `analysisId` and `sourceSides` (0 for A, 1 for B).
 
 Use the returned annotation ID to read or change the section:
 

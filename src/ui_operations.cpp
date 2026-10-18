@@ -2,6 +2,7 @@
 #include "comparison_placement.h"
 #include "analysis_presentation.h"
 #include "comparison_scene.h"
+#include "cross_section.h"
 #include "mesh_comparison.h"
 #include "uv_quality.h"
 #include "utf8_path.h"
@@ -544,9 +545,30 @@ void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array
 {
     if (!finitePosition(translation)) { return; }
     if (auto* comparison = findComparison(state, id)) {
+        if (comparison->translation == translation) { return; }
+        for (auto& item : state.annotations) {
+            if (!item.section || item.sectionAnalysis != comparison->objectId) { continue; }
+            auto settings = *item.section;
+            for (size_t k = 0; k < 3; ++k) {
+                const double delta = double(translation[k]) - comparison->translation[k];
+                settings.a[k] = static_cast<float>(settings.a[k] + delta);
+                settings.b[k] = static_cast<float>(settings.b[k] + delta);
+            }
+            try { (void)normalizedCrossSectionSettings(std::move(settings), item.targetIds.size()); }
+            catch (const std::exception&) { return; }
+        }
+        for (auto& item : state.annotations) {
+            if (!item.section || item.sectionAnalysis != comparison->objectId) { continue; }
+            for (size_t k = 0; k < 3; ++k) {
+                const double delta = double(translation[k]) - comparison->translation[k];
+                item.section->a[k] = static_cast<float>(item.section->a[k] + delta);
+                item.section->b[k] = static_cast<float>(item.section->b[k] + delta);
+            }
+            ++item.geometryRevision;
+        }
         comparison->translation = translation;
         recalculateSceneBounds(state);
-        markSceneDirty(state, SceneChange::presentation);
+        markSceneDirty(state, SceneChange::presentation | SceneChange::annotations);
     }
 }
 

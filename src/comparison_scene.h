@@ -6,6 +6,10 @@
 
 namespace woby
 {
+struct ScenePickPart;
+// Borrow source geometry with the same placement used by analysis computation,
+// plus its display translation. A/B occurrences remain distinct.
+[[nodiscard]] std::vector<ScenePickPart> comparisonSectionParts(const UiState& state, SceneObjectId id);
 
 struct ComparisonTreeNode
 {

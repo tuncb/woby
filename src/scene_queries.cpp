@@ -74,12 +74,39 @@ const CrossSectionSourceTree& updateCrossSectionSourceTree(CrossSectionSourceTre
 {
     if (cache.owner == &state && cache.id == item.objectId && cache.generation == state.sceneGeneration
         && cache.geometry == state.revisions.geometry && cache.labels == state.revisions.labels
-        && cache.sources == item.targetIds) { return cache; }
+        && cache.sources == item.targetIds && cache.analysis == item.sectionAnalysis && cache.sides == item.sectionSides) { return cache; }
 
     CrossSectionSourceTree next;
     next.owner = &state; next.id = item.objectId; next.generation = state.sceneGeneration;
     next.geometry = state.revisions.geometry; next.labels = state.revisions.labels;
     next.builds = cache.builds + 1; next.sources = item.targetIds;
+    next.analysis = item.sectionAnalysis; next.sides = item.sectionSides;
+    if (item.sectionAnalysis) {
+        for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
+            UiAnnotation subset;
+            subset.objectId = item.objectId;
+            std::vector<size_t> indices;
+            for (size_t i = 0; i < item.targetIds.size(); ++i) {
+                if (i < item.sectionSides.size() && item.sectionSides[i] == side) {
+                    subset.targetIds.push_back(item.targetIds[i]); indices.push_back(i);
+                }
+            }
+            if (indices.empty()) { continue; }
+            CrossSectionSourceTree branch;
+            updateCrossSectionSourceTree(branch, state, subset);
+            const auto remap = [&](auto&& self, CrossSectionSourceNode& node) -> void {
+                if (node.sourceIndex) { node.sourceIndex = indices[*node.sourceIndex]; }
+                for (auto& child : node.children) { self(self, child); }
+            };
+            CrossSectionSourceNode root;
+            root.name = side == ComparisonSide::a ? "A" : "B";
+            root.children = std::move(branch.roots);
+            for (auto& node : root.children) { remap(remap, node); }
+            next.roots.push_back(std::move(root));
+        }
+        cache = std::move(next);
+        return cache;
+    }
     boost::unordered_flat_map<SceneObjectId, size_t> remaining;
     for (size_t i = 0; i < item.targetIds.size(); ++i) { remaining.emplace(item.targetIds[i], i); }
     const auto append = [&](auto&& self, const UiSceneNode& source, std::vector<CrossSectionSourceNode>& nodes) -> void {

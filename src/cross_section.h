@@ -20,7 +20,21 @@ struct CrossSectionResult {
     std::span<const SceneObjectId> sources);
 [[nodiscard]] CrossSectionResult cutCrossSection(const CrossSectionSettings& settings,
                                                  std::span<const SceneObjectId> sources,
-                                                 std::span<const ScenePickPart> parts, std::stop_token stop = {});
+                                                 std::span<const ScenePickPart> parts, std::stop_token stop = {},
+                                                 std::span<const ComparisonSide> sides = {});
+// A selected analysis (or its section) is the fallback when a gesture misses all views.
+[[nodiscard]] SceneObjectId crossSectionAnalysisScope(const UiState& state);
+struct CrossSectionDrawTarget {
+    SceneObjectId analysis = 0; // Zero identifies the model view.
+    std::array<std::array<double, 3>, 3> screen;
+};
+// Project coarse view bounds once per gesture; no mesh triangles are scanned.
+[[nodiscard]] std::vector<CrossSectionDrawTarget> crossSectionDrawTargets(const UiState& state, const ScenePickView& view);
+// The first view crossed by the line wins; depth resolves overlapping views.
+[[nodiscard]] std::optional<SceneObjectId> crossSectionDrawScope(std::span<const CrossSectionDrawTarget> targets,
+    PickPoint start, PickPoint end);
+[[nodiscard]] UiAnnotation comparisonSectionDefinition(const UiState& state, SceneObjectId analysisId);
+void validateSectionAnalysis(const SceneAnnotationRecord& record, size_t comparisonCount);
 [[nodiscard]] std::array<float, 3> sectionDirection(const CrossSectionSettings& settings);
 // Constrain an endpoint to the nearest 45-degree ray in the horizontal workplane.
 [[nodiscard]] std::array<float, 3> snapSectionEndpoint(const std::array<float, 3>& anchor,

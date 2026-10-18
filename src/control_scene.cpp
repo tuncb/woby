@@ -348,6 +348,10 @@ Json controlObjectDetails(const UiState& state, SceneObjectId id, const ObjectId
         const auto ids = item->text ? std::vector<SceneObjectId>{} : item->targetIds.empty() ? std::vector<SceneObjectId>{item->targetId} : item->targetIds;
         for (const auto source : ids) { sources.push_back(findSceneObject(state, source) ? Json(formatId(source)) : Json(nullptr)); }
         result["sourceIds"] = std::move(sources);
+        if (item->section) {
+            result["analysisId"] = item->sectionAnalysis && *item->sectionAnalysis && findComparison(state, *item->sectionAnalysis)
+                ? Json(formatId(*item->sectionAnalysis)) : Json(nullptr);
+        }
     }
     if (id != invalidSceneObjectId) {
         if (const auto* comparison = findComparison(state, id)) {

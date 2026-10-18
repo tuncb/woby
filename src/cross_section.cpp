@@ -1,5 +1,7 @@
 #include "cross_section.h"
 #include "surface_annotation.h"
+#include "comparison_scene.h"
+#include "ui_operations.h"
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <algorithm>
 #include <cmath>
@@ -10,6 +12,163 @@
 #include <stdexcept>
 
 namespace woby {
+SceneObjectId crossSectionAnalysisScope(const UiState& state)
+{
+    const auto visibleMeshAnalysis = [&](SceneObjectId id) {
+        const auto* comparison = id ? findComparison(state, id) : nullptr;
+        return comparison && comparison->settings.enabled && !isUvAnalysis(comparison->settings.type) ? id : SceneObjectId{0};
+    };
+    if (const auto* comparison = selectedComparison(state)) { return visibleMeshAnalysis(comparison->objectId); }
+    if (const auto* item = selectedAnnotation(state); item && item->sectionAnalysis) { return visibleMeshAnalysis(*item->sectionAnalysis); }
+    if (!state.selectedSceneObjects.empty() || !scenePickParts(state).empty()) { return 0; }
+    SceneObjectId scope = 0;
+    for (const auto& comparison : state.comparisons) {
+        if (!comparison.settings.enabled || isUvAnalysis(comparison.settings.type)) { continue; }
+        if (scope) { return 0; }
+        scope = comparison.objectId;
+    }
+    return scope;
+}
+std::vector<CrossSectionDrawTarget> crossSectionDrawTargets(const UiState& state, const ScenePickView& view)
+{
+    std::vector<CrossSectionDrawTarget> targets;
+    if (std::none_of(state.comparisons.begin(), state.comparisons.end(), [](const auto& item) {
+        return item.settings.enabled && !isUvAnalysis(item.settings.type);
+    })) { return targets; }
+    const auto append = [&](SceneObjectId analysis, const Bounds& bounds, const CoordinateMatrix& model) {
+        using Clip = std::array<double, 4>;
+        std::array<Clip, 8> corners;
+        const auto transform = [](const auto& matrix, const Clip& point) {
+            Clip result{};
+            for (size_t row = 0; row < 4; ++row) {
+                for (size_t col = 0; col < 4; ++col) { result[row] += matrix[col * 4 + row] * point[col]; }
+            }
+            return result;
+        };
+        for (size_t mask = 0; mask < 8; ++mask) {
+            Clip p{0, 0, 0, 1};
+            for (size_t k = 0; k < 3; ++k) { p[k] = (mask & (size_t{1} << k)) ? bounds.max[k] : bounds.min[k]; }
+            corners[mask] = transform(view.projection, transform(view.view, transform(model, p)));
+        }
+        constexpr std::array<std::array<size_t, 3>, 12> faces{{
+            {0, 1, 3}, {0, 3, 2}, {4, 6, 7}, {4, 7, 5}, {0, 4, 5}, {0, 5, 1},
+            {2, 3, 7}, {2, 7, 6}, {0, 2, 6}, {0, 6, 4}, {1, 5, 7}, {1, 7, 3}}};
+        for (const auto& face : faces) {
+            std::vector<Clip> polygon{corners[face[0]], corners[face[1]], corners[face[2]]};
+            // Clip before division, including boxes that cross the camera plane.
+            for (int plane = 0; plane < 3 && !polygon.empty(); ++plane) {
+                const auto distance = [&](const Clip& p) {
+                    return plane == 0 ? p[3] - 1e-7 : plane == 1 ? p[2] + (view.homogeneousDepth ? p[3] : 0) : p[3] - p[2];
+                };
+                std::vector<Clip> clipped;
+                auto previous = polygon.back();
+                double previousDistance = distance(previous);
+                for (const auto& current : polygon) {
+                    const double currentDistance = distance(current);
+                    if ((previousDistance >= 0) != (currentDistance >= 0)) {
+                        const double t = previousDistance / (previousDistance - currentDistance);
+                        Clip p;
+                        for (size_t k = 0; k < 4; ++k) { p[k] = previous[k] + t * (current[k] - previous[k]); }
+                        clipped.push_back(p);
+                    }
+                    if (currentDistance >= 0) { clipped.push_back(current); }
+                    previous = current; previousDistance = currentDistance;
+                }
+                polygon = std::move(clipped);
+            }
+            for (size_t i = 1; i + 1 < polygon.size(); ++i) {
+                CrossSectionDrawTarget target;
+                target.analysis = analysis;
+                const std::array<Clip, 3> triangle{polygon[0], polygon[i], polygon[i + 1]};
+                bool finite = true;
+                for (size_t j = 0; j < 3; ++j) {
+                    const auto& p = triangle[j];
+                    target.screen[j] = {(p[0] / p[3] + 1) * view.width * .5,
+                        (1 - p[1] / p[3]) * view.height * .5, p[2] / p[3]};
+                    for (const auto v : target.screen[j]) { finite &= std::isfinite(v); }
+                }
+                if (finite) { targets.push_back(target); }
+            }
+        }
+    };
+    for (const auto& part : scenePickParts(state)) {
+        if (!part.mesh || !part.indexCount) { continue; }
+        CoordinateMatrix model;
+        if (part.coordinateModel) { model = *part.coordinateModel; }
+        else { std::copy(part.model.begin(), part.model.end(), model.begin()); }
+        append(0, part.bounds.value_or(part.mesh->bounds), model);
+    }
+    CoordinateMatrix identity{};
+    identity[0] = identity[5] = identity[10] = identity[15] = 1;
+    for (const auto& comparison : state.comparisons) {
+        if (!comparison.settings.enabled || isUvAnalysis(comparison.settings.type)) { continue; }
+        if (const auto bounds = comparisonDisplayBounds(state, comparison.objectId)) { append(comparison.objectId, *bounds, identity); }
+    }
+    return targets;
+}
+std::optional<SceneObjectId> crossSectionDrawScope(std::span<const CrossSectionDrawTarget> targets, PickPoint start, PickPoint end)
+{
+    std::optional<SceneObjectId> result;
+    double first = std::numeric_limits<double>::infinity(), depth = first;
+    const auto cross = [](const auto& a, const auto& b, const auto& p) {
+        return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+    };
+    for (const auto& target : targets) {
+        const auto& p = target.screen;
+        const double area = cross(p[0], p[1], p[2]);
+        if (std::abs(area) < 1e-12) { continue; }
+        double enter = 0, leave = 1;
+        for (size_t i = 0; i < 3 && enter <= leave; ++i) {
+            const auto& a = p[(i + 1) % 3]; const auto& b = p[(i + 2) % 3];
+            const double from = cross(a, b, start) / area, to = cross(a, b, end) / area;
+            if (from < 0 && to < 0) { enter = 2; break; }
+            if (from < 0) { enter = std::max(enter, from / (from - to)); }
+            if (to < 0) { leave = std::min(leave, from / (from - to)); }
+        }
+        if (enter > leave) { continue; }
+        const std::array<double, 2> hit{start[0] + enter * (end[0] - start[0]), start[1] + enter * (end[1] - start[1])};
+        double z = 0;
+        for (size_t i = 0; i < 3; ++i) { z += p[i][2] * cross(p[(i + 1) % 3], p[(i + 2) % 3], hit) / area; }
+        if (enter < first - 1e-9 || (std::abs(enter - first) <= 1e-9 && z <= depth)) {
+            result = target.analysis; first = enter; depth = z;
+        }
+    }
+    return result;
+}
+UiAnnotation comparisonSectionDefinition(const UiState& state, SceneObjectId analysisId)
+{
+    const auto* comparison = analysisId ? findComparison(state, analysisId) : nullptr;
+    if (!comparison || isUvAnalysis(comparison->settings.type)) {
+        throw std::invalid_argument("Choose a mesh analysis for the cross section.");
+    }
+    UiAnnotation item;
+    item.sectionAnalysis = analysisId;
+    auto& settings = item.section.emplace();
+    settings.upAxis = state.upAxis;
+    for (const auto& part : comparisonSectionParts(state, analysisId)) {
+        item.targetIds.push_back(part.objectId);
+        item.sectionSides.push_back(part.analysisSide);
+        settings.sourceVisible.push_back(true);
+    }
+    if (item.targetIds.empty()) { throw std::invalid_argument("The analysis has no enabled triangle meshes."); }
+    const auto b = std::find(item.sectionSides.begin(), item.sectionSides.end(), ComparisonSide::b);
+    if (b != item.sectionSides.end()) { settings.compared = static_cast<int>(b - item.sectionSides.begin()); }
+    item.targetId = item.targetIds.front(); item.targetValid = true;
+    return item;
+}
+void validateSectionAnalysis(const SceneAnnotationRecord& record, size_t comparisonCount)
+{
+    if (!record.sectionAnalysis) {
+        if (!record.sectionSides.empty()) { throw std::invalid_argument("Section sides require an analysis."); }
+        return;
+    }
+    if (!record.section || *record.sectionAnalysis < -1
+        || (*record.sectionAnalysis >= 0 && static_cast<size_t>(*record.sectionAnalysis) >= comparisonCount)
+        || record.sectionSides.size() != record.targets.size()
+        || std::any_of(record.sectionSides.begin(), record.sectionSides.end(), [](auto side) {
+            return side != ComparisonSide::a && side != ComparisonSide::b;
+        })) { throw std::invalid_argument("Invalid section analysis reference."); }
+}
 std::vector<bool> crossSectionSourceVisibility(const UiState& state, std::span<const SceneObjectId> sources)
 {
     std::vector<bool> visible(sources.size(), false);
@@ -191,17 +350,22 @@ std::optional<std::array<float, 3>> sectionWorkplanePoint(const ScenePickView& v
     return p;
 }
 CrossSectionResult cutCrossSection(const CrossSectionSettings& input, std::span<const SceneObjectId> sources,
-                                   std::span<const ScenePickPart> parts, std::stop_token stop)
+                                   std::span<const ScenePickPart> parts, std::stop_token stop,
+                                   std::span<const ComparisonSide> sides)
 {
+    if (!sides.empty() && sides.size() != sources.size()) { throw std::invalid_argument("Invalid section source sides."); }
     const auto s = normalizedCrossSectionSettings(input, sources.size());
     const auto n = sectionNormal(s);
     CrossSectionResult result;
     using Key = std::array<double, 6>;
-    for (auto id : sources) {
+    for (size_t source = 0; source < sources.size(); ++source) {
+        const auto id = sources[source];
         CrossSectionContour contour;
         contour.source = id;
         const auto part =
-            std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == id && p.mesh; });
+            std::find_if(parts.begin(), parts.end(), [&](const auto& p) {
+                return p.objectId == id && p.mesh && (sides.empty() || p.analysisSide == sides[source]);
+            });
         if (part == parts.end()) {
             contour.missing = true;
             result.contours.push_back(std::move(contour));

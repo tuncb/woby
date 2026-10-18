@@ -1,6 +1,7 @@
 #include "ui_operations.h"
 #include "surface_annotation.h"
 #include "cross_section.h"
+#include "comparison_scene.h"
 #include "utf8_path.h"
 
 #include <algorithm>
@@ -227,23 +228,35 @@ void setTextAnnotationSettings(UiState& state, SceneObjectId id, TextAnnotationS
         return;
     }
 }
-SceneObjectId createCrossSection(UiState& state, CrossSectionSettings settings, std::vector<SceneObjectId> sources)
+SceneObjectId createCrossSection(UiState& state, CrossSectionSettings settings, std::vector<SceneObjectId> sources,
+    std::optional<SceneObjectId> analysis, std::vector<ComparisonSide> sides)
 {
     if (sources.empty()) { throw std::runtime_error("Choose triangle meshes for the section."); }
-    std::vector<SceneObjectId> unique;
-    for (auto id : sources) {
+    if ((analysis && sides.size() != sources.size()) || (!analysis && !sides.empty())) {
+        throw std::invalid_argument("Invalid section source sides.");
+    }
+    const auto parts = analysis ? comparisonSectionParts(state, *analysis) : std::vector<ScenePickPart>{};
+    std::vector<std::pair<SceneObjectId, ComparisonSide>> unique;
+    for (size_t i = 0; i < sources.size(); ++i) {
+        const auto id = sources[i];
+        const auto side = analysis ? sides[i] : ComparisonSide::a;
+        const auto key = std::pair{id, side};
         const auto object = findSceneObject(state, id);
-        if (!object || object->kind != SceneObjectKind::group || std::find(unique.begin(), unique.end(), id) != unique.end()) {
+        if (!object || object->kind != SceneObjectKind::group || std::find(unique.begin(), unique.end(), key) != unique.end()) {
             throw std::runtime_error("Section sources must be distinct model parts.");
         }
-        unique.push_back(id);
+        if (analysis && std::none_of(parts.begin(), parts.end(), [&](const auto& part) {
+            return part.objectId == id && part.analysisSide == side;
+        })) { throw std::invalid_argument("Section source is not enabled in the analysis."); }
+        unique.push_back(key);
     }
     if (settings.sourceVisible.size() < sources.size()) {
-        auto visible = crossSectionSourceVisibility(state, sources);
+        auto visible = analysis ? std::vector<bool>(sources.size(), true) : crossSectionSourceVisibility(state, sources);
         std::copy(settings.sourceVisible.begin(), settings.sourceVisible.end(), visible.begin());
         settings.sourceVisible = std::move(visible);
     }
     UiAnnotation item;
+    item.sectionAnalysis = analysis; item.sectionSides = std::move(sides);
     item.section = normalizedCrossSectionSettings(std::move(settings), sources.size());
     item.targetId = sources.front(); item.targetIds = std::move(sources); item.targetValid = true;
     item.settings.name = "Cross section " + std::to_string(state.annotations.size() + 1);
@@ -378,6 +391,13 @@ std::vector<SceneAnnotationRecord> sceneAnnotationRecords(const UiState& state)
         SceneAnnotationRecord record;
         record.targetName = item.targetName; record.settings = item.settings; record.geometry = item.geometry;
         record.section = item.section; record.text = item.text;
+        record.sectionSides = item.sectionSides;
+        if (item.sectionAnalysis) {
+            record.sectionAnalysis = -1;
+            for (size_t i = 0; i < state.comparisons.size(); ++i) {
+                if (state.comparisons[i].objectId == *item.sectionAnalysis) { record.sectionAnalysis = static_cast<int>(i); break; }
+            }
+        }
         const auto primary = savedTarget(state, item.targetId);
         record.fileIndex = primary.fileIndex; record.groupIndex = primary.groupIndex;
         for (const auto id : item.targetIds) { record.targets.push_back(savedTarget(state, id)); }
@@ -391,6 +411,7 @@ void loadSceneAnnotations(UiState& state, const SceneDocument& document)
     annotations.reserve(document.annotations.size());
     std::map<size_t, Mesh> legacyMeshes;
     for (const auto& record : document.annotations) {
+        validateSectionAnalysis(record, document.comparisons.size());
         if (!record.section && !record.text) { validateAnnotationGeometry(*record.geometry); }
         UiAnnotation item;
         item.targetName = record.targetName;
@@ -399,6 +420,12 @@ void loadSceneAnnotations(UiState& state, const SceneDocument& document)
         if (record.text && record.section) { throw std::runtime_error("An annotation cannot be both text and a section."); }
         if (record.text) { item.text = normalizedTextAnnotationSettings(*record.text); }
         if (record.section) { item.section = normalizedCrossSectionSettings(*record.section, record.targets.size()); }
+        item.sectionSides = record.sectionSides;
+        if (record.sectionAnalysis) {
+            const auto index = *record.sectionAnalysis;
+            item.sectionAnalysis = index >= 0 && static_cast<size_t>(index) < state.comparisons.size()
+                ? state.comparisons[static_cast<size_t>(index)].objectId : invalidSceneObjectId;
+        }
         if (!record.section && !record.text && record.targets.size() != record.geometry->sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
         item.targetId = loadedTarget(state, document, {record.fileIndex, record.groupIndex});
         for (const auto& target : record.targets) { item.targetIds.push_back(loadedTarget(state, document, target)); }

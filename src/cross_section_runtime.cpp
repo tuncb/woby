@@ -8,11 +8,13 @@ struct SectionRequest {
     SceneObjectId id = 0;
     CrossSectionSettings settings;
     std::vector<SceneObjectId> sources;
+    std::optional<SceneObjectId> analysis;
+    std::vector<ComparisonSide> sides;
     bool operator==(const SectionRequest&) const = default;
 };
 struct CrossSectionRuntime {
     const UiState* owner = nullptr;
-    uint64_t generation = 0, geometry = 0;
+    uint64_t generation = 0, geometry = 0, analysis = 0, presentation = 0;
     std::vector<SectionRequest> requests;
     std::map<SceneObjectId, std::shared_ptr<const CrossSectionResult>> results;
     std::shared_ptr<std::map<SceneObjectId, std::shared_ptr<const CrossSectionResult>>> pending;
@@ -23,6 +25,7 @@ struct CrossSectionRuntime {
 bool updateCrossSections(SceneQueryRuntime& runtime, const UiState& state)
 {
     std::vector<SectionRequest> requests;
+    bool analysisSections = false;
     for (const auto& item : state.annotations) {
         if (!item.section) {
             continue;
@@ -33,7 +36,8 @@ bool updateCrossSections(SceneQueryRuntime& runtime, const UiState& state)
         settings.showConnections = false;
         settings.faceOn = false;
         settings.sourceVisible.clear();
-        requests.push_back({item.objectId, std::move(settings), item.targetIds});
+        requests.push_back({item.objectId, std::move(settings), item.targetIds, item.sectionAnalysis, item.sectionSides});
+        analysisSections |= item.sectionAnalysis.has_value();
     }
     if (!runtime.sections && requests.empty()) {
         return false;
@@ -44,11 +48,13 @@ bool updateCrossSections(SceneQueryRuntime& runtime, const UiState& state)
     auto& cache = *runtime.sections;
     bool changed = false;
     if (cache.owner != &state || cache.generation != state.sceneGeneration ||
-        cache.geometry != state.revisions.geometry || cache.requests != requests) {
+        cache.geometry != state.revisions.geometry || cache.requests != requests
+        || (analysisSections && (cache.analysis != state.revisions.analysis || cache.presentation != state.revisions.presentation))) {
         cancelAnnotationWork(cache.work);
         cache.owner = &state;
         cache.generation = state.sceneGeneration;
         cache.geometry = state.revisions.geometry;
+        cache.analysis = state.revisions.analysis; cache.presentation = state.revisions.presentation;
         cache.requests = requests;
         cache.results.clear();
         cache.published = false;
@@ -58,18 +64,31 @@ bool updateCrossSections(SceneQueryRuntime& runtime, const UiState& state)
             cache.work.reset();
             return true;
         }
-        std::vector<ScenePickPart> parts;
-        resolveSceneParts(runtime, state, parts, true);
-        auto snapshot = snapshotAnnotationParts(parts);
+        std::map<SceneObjectId, AnnotationPartsSnapshot> snapshots;
+        for (const auto& request : requests) {
+            // Zero is reserved for ordinary scene sources. Missing analyses use
+            // an empty owned snapshot and cannot fall back to the source scene.
+            const auto key = request.analysis.value_or(0);
+            if (request.analysis && !key) { continue; }
+            if (snapshots.contains(key)) { continue; }
+            std::vector<ScenePickPart> parts;
+            if (request.analysis) { parts = comparisonSectionParts(state, key); }
+            else { resolveSceneParts(runtime, state, parts, true); }
+            snapshots.emplace(key, snapshotAnnotationParts(parts));
+        }
         auto output = cache.pending;
         cache.work = std::make_shared<AnnotationWork>();
-        cache.work->compute = [requests = std::move(requests), snapshot = std::move(snapshot),
+        cache.work->compute = [requests = std::move(requests), snapshots = std::move(snapshots),
                                output](std::stop_token stop) {
             for (const auto& request : requests) {
                 if (stop.stop_requested()) {
                     return;
                 }
-                auto result = cutCrossSection(request.settings, request.sources, snapshot.parts, stop);
+                std::span<const ScenePickPart> parts;
+                if (!request.analysis || *request.analysis) {
+                    if (const auto it = snapshots.find(request.analysis.value_or(0)); it != snapshots.end()) { parts = it->second.parts; }
+                }
+                auto result = cutCrossSection(request.settings, request.sources, parts, stop, request.sides);
                 if (stop.stop_requested()) {
                     return;
                 }

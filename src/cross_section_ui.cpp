@@ -12,19 +12,46 @@
 
 namespace woby {
 namespace {
-std::string sourceLabel(const UiState& state, SceneObjectId id)
+UiAnnotation sectionDrawDefinition(const UiState& state, SceneObjectId analysis)
 {
+    UiAnnotation item;
+    auto bounds = state.sceneBounds;
+    if (analysis) {
+        item = comparisonSectionDefinition(state, analysis);
+        if (const auto analysisBounds = comparisonDisplayBounds(state, analysis)) { bounds = *analysisBounds; }
+    } else {
+        item.section.emplace();
+        for (const auto& part : scenePickParts(state, true)) {
+            if (part.indexCount && part.mesh) { item.targetIds.push_back(part.objectId); }
+        }
+        item.section->sourceVisible = crossSectionSourceVisibility(state, item.targetIds);
+    }
+    if (item.targetIds.empty()) { throw std::invalid_argument("No triangle meshes."); }
+    item.targetId = item.targetIds.front(); item.targetValid = true;
+    auto& settings = *item.section;
+    settings.upAxis = state.upAxis;
+    const size_t up = settings.upAxis == SceneUpAxis::z ? 2 : 1;
+    settings.a = bounds.center;
+    settings.a[up] = bounds.min[up];
+    settings.lift = bounds.max[up] - settings.a[up] + bounds.radius * .3f;
+    return item;
+}
+std::string sourceLabel(const UiState& state, const UiAnnotation& item, size_t index)
+{
+    const auto id = item.targetIds[index];
+    const auto prefix = item.sectionAnalysis ? std::string(item.sectionSides[index] == ComparisonSide::a ? "A / " : "B / ") : std::string{};
     const auto object = findSceneObject(state, id);
     if (!object) {
-        return "Missing source";
+        return prefix + "Missing source";
     }
     const auto file = findSceneObject(state, object->fileId);
-    return file ? file->name + " / " + object->name : object->name;
+    return prefix + (file ? file->name + " / " + object->name : object->name);
 }
 bool drawSectionSourceNode(const CrossSectionSourceNode& node, CrossSectionSettings& settings,
                            const CrossSectionResult* result)
 {
-    ImGui::PushID(static_cast<int>(node.objectId));
+    if (node.objectId) { ImGui::PushID(static_cast<int>(node.objectId)); }
+    else { ImGui::PushID(node.name.c_str()); }
     bool changed = false;
     if (node.sourceIndex) {
         const size_t i = *node.sourceIndex;
@@ -37,7 +64,7 @@ bool drawSectionSourceNode(const CrossSectionSourceNode& node, CrossSectionSetti
         ImGui::ColorButton("source_color", {color[0], color[1], color[2], 1}, ImGuiColorEditFlags_NoTooltip,
                            ImVec2(uiSize(12), uiSize(12)));
         ImGui::SameLine();
-        const char* status = node.missing                         ? "Missing source"
+        const char* status = node.missing || (result && result->contours[i].missing) ? "Missing source"
                              : !result                           ? "Updating"
                              : result->contours[i].lines.empty() ? "No cut"
                                                                  : "Cut";
@@ -130,6 +157,10 @@ void drawCrossSectionInspector(UiState& state, SceneQueryRuntime* queries)
     auto settings = item->settings;
     ImGui::PushID(static_cast<int>(id));
     ImGui::TextUnformatted("Cross section");
+    if (item->sectionAnalysis) {
+        const auto* analysis = *item->sectionAnalysis ? findComparison(state, *item->sectionAnalysis) : nullptr;
+        ImGui::TextWrapped("Analysis: %s", analysis ? analysis->name.c_str() : "Missing analysis");
+    }
     bool style = ImGui::InputText("Name", &settings.name, ImGuiInputTextFlags_EnterReturnsTrue);
     style |= drawVisibilityField("Visible", settings.visible);
     style |= ImGui::Checkbox("Lock cut plane", &settings.locked);
@@ -172,7 +203,9 @@ void drawCrossSectionInspector(UiState& state, SceneQueryRuntime* queries)
         result = crossSectionResult(*queries, id);
     }
     ImGui::SeparatorText("Cut meshes");
-    ImGui::TextWrapped("Initial visibility comes from Models. Contour visibility is independent after creation.");
+    ImGui::TextWrapped(item->sectionAnalysis
+        ? "Captured analysis inputs. Contours use the analysis placement."
+        : "Initial visibility comes from Models. Contour visibility is independent after creation.");
     CrossSectionSourceTree localSources;
     const auto& sources = updateCrossSectionSourceTree(queries ? queries->sectionSources : localSources, state, *item);
     ImGui::PushID("cut_meshes");
@@ -197,11 +230,11 @@ void drawCrossSectionInspector(UiState& state, SceneQueryRuntime* queries)
             int& chosen = reference ? s.reference : s.compared;
             const auto label = item->targetIds.empty()
                                    ? std::string("Missing source")
-                                   : sourceLabel(state, item->targetIds[static_cast<size_t>(chosen)]);
+                                   : sourceLabel(state, *item, static_cast<size_t>(chosen));
             if (ImGui::BeginCombo(reference ? "Reference" : "Compare", label.c_str())) {
                 for (size_t i = 0; i < item->targetIds.size(); ++i) {
                     ImGui::PushID(static_cast<int>(i));
-                    if (ImGui::Selectable(sourceLabel(state, item->targetIds[i]).c_str(),
+                    if (ImGui::Selectable(sourceLabel(state, *item, i).c_str(),
                                           chosen == static_cast<int>(i))) {
                         chosen = static_cast<int>(i);
                         changed = true;
@@ -247,13 +280,19 @@ bool beginSectionPointer(UiState& state, AnnotationInteraction& interaction, con
         return false;
     }
     CrossSectionSettings s;
+    UiAnnotation definition;
     int handle = -1;
     if (creating) {
-        s.upAxis = state.upAxis;
-        const size_t up = s.upAxis == SceneUpAxis::z ? 2 : 1;
-        s.a = state.sceneBounds.center;
-        s.a[up] = state.sceneBounds.min[up];
-        s.lift = state.sceneBounds.max[up] - s.a[up] + state.sceneBounds.radius * .3f;
+        interaction.sectionTargets = crossSectionDrawTargets(state, view);
+        const auto scope = crossSectionDrawScope(interaction.sectionTargets, point, point);
+        interaction.sectionScopeResolved = scope.has_value();
+        try {
+            definition = sectionDrawDefinition(state, scope ? *scope : crossSectionAnalysisScope(state));
+            s = *definition.section;
+        } catch (const std::exception& error) {
+            interaction.error = error.what();
+            return true;
+        }
     } else {
         s = *selected->section;
         const auto positions = annotationControlWorldPositions(*selected, {});
@@ -290,22 +329,11 @@ bool beginSectionPointer(UiState& state, AnnotationInteraction& interaction, con
     interaction.handle = handle;
     interaction.editing = creating ? 0 : selected->objectId;
     interaction.error.clear();
-    interaction.preview = creating ? UiAnnotation{} : *selected;
+    interaction.preview = creating ? std::move(definition) : *selected;
     interaction.preview.targetValid = true;
     if (creating) {
         s.a = *world;
         s.b = *world;
-        for (const auto& part : scenePickParts(state, true)) {
-            if (part.indexCount && part.mesh) {
-                interaction.preview.targetIds.push_back(part.objectId);
-            }
-        }
-        if (interaction.preview.targetIds.empty()) {
-            interaction.error = "No triangle meshes.";
-            return true;
-        }
-        interaction.preview.targetId = interaction.preview.targetIds.front();
-        s.sourceVisible = crossSectionSourceVisibility(state, interaction.preview.targetIds);
     }
     interaction.sectionStart = s;
     interaction.sectionGrab = world.value_or(s.a);
@@ -313,12 +341,32 @@ bool beginSectionPointer(UiState& state, AnnotationInteraction& interaction, con
     interaction.dragging = true;
     return true;
 }
-void moveSectionPointer(const UiState&, AnnotationInteraction& interaction, PickPoint point, bool lockDirection)
+void moveSectionPointer(const UiState& state, AnnotationInteraction& interaction, PickPoint point, bool lockDirection)
 {
     if (!interaction.dragging || !interaction.sectionStart) {
         return;
     }
     interaction.pointerEnd = point;
+    if (!interaction.editing && !interaction.sectionScopeResolved
+        && interaction.identity.analysis == state.revisions.analysis && interaction.identity.presentation == state.revisions.presentation
+        && annotationWorkCurrent(interaction.identity, state, true)) {
+        if (const auto scope = crossSectionDrawScope(interaction.sectionTargets, interaction.pointerStart, point)) {
+            interaction.sectionScopeResolved = true;
+            if (*scope != interaction.preview.sectionAnalysis.value_or(0)) {
+                try {
+                    auto definition = sectionDrawDefinition(state, *scope);
+                    auto& settings = *definition.section;
+                    const auto start = sectionWorkplanePoint(interaction.view, interaction.pointerStart,
+                        settings.upAxis, settings.a[settings.upAxis == SceneUpAxis::z ? 2 : 1]);
+                    if (!start) { throw std::invalid_argument("Use an angled view or Top view to draw on the section workplane."); }
+                    settings.a = settings.b = *start;
+                    interaction.sectionStart = settings;
+                    interaction.sectionGrab = *start;
+                    interaction.preview = std::move(definition);
+                } catch (const std::exception& error) { interaction.error = error.what(); return; }
+            }
+        }
+    }
     auto s = *interaction.sectionStart;
     const size_t up = s.upAxis == SceneUpAxis::z ? 2 : 1;
     if (interaction.handle == 2) {
@@ -357,15 +405,18 @@ void endSectionPointer(UiState& state, AnnotationInteraction& interaction, bool 
     if (!interaction.preview.section) {
         return;
     }
-    std::string error;
-    if (allowed && annotationWorkCurrent(interaction.identity, state, true)) {
+    std::string error = interaction.error;
+    const bool analysisCurrent = !interaction.preview.sectionAnalysis
+        || (interaction.identity.analysis == state.revisions.analysis && interaction.identity.presentation == state.revisions.presentation);
+    if (allowed && interaction.error.empty() && analysisCurrent && annotationWorkCurrent(interaction.identity, state, true)) {
         try {
             if (interaction.editing) {
                 setCrossSectionSettings(state, interaction.editing, *interaction.preview.section);
             } else if (std::hypot(interaction.pointerEnd[0] - interaction.pointerStart[0],
                                   interaction.pointerEnd[1] - interaction.pointerStart[1]) >=
                        4 * interaction.view.pixelScale) {
-                createCrossSection(state, *interaction.preview.section, interaction.preview.targetIds);
+                createCrossSection(state, *interaction.preview.section, interaction.preview.targetIds,
+                    interaction.preview.sectionAnalysis, interaction.preview.sectionSides);
             }
         } catch (const std::exception& e) {
             error = e.what();

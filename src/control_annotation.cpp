@@ -66,6 +66,7 @@ Json controlAnnotationDetails(const UiState& state, const UiAnnotation& item)
             {"lift", s.lift}, {"upAxis", s.upAxis == SceneUpAxis::z ? "z" : "y"}, {"showPlane", s.showPlane},
             {"showConnections", s.showConnections}, {"showDifferences", s.showDifferences}, {"faceOn", s.faceOn},
             {"sourceVisible", s.sourceVisible}, {"referenceIndex", s.reference}, {"comparedIndex", s.compared},
+            {"sourceSides", item.sectionSides},
             {"targetValid", item.targetValid}, {"targetPending", false}, {"effectiveVisible", settings.visible},
             {"vertices", annotationOriginalVertices(state, item)}, {"vertexSpace", "world"}};
     }
@@ -113,23 +114,27 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
         for (const auto selected : selection) { selectSceneObject(state, selected, true); }
     } else if (command.action == A::annotationCreate && command.shape == "section") {
         std::vector<SceneObjectId> sources;
+        UiAnnotation definition;
         if (command.target == "scene") {
             for (const auto& part : scenePickParts(state, true)) {
                 if (part.mesh && part.indexCount) { sources.push_back(part.objectId); }
             }
+        } else if (id && findComparison(state, id)) {
+            definition = comparisonSectionDefinition(state, id);
+            sources = definition.targetIds;
         } else {
             const auto target = findSceneObject(state, id);
             if (!target || (target->kind != SceneObjectKind::group && target->kind != SceneObjectKind::file && target->kind != SceneObjectKind::folder)) {
-                throw std::invalid_argument("Section creation requires scene, a folder, file, or model group ID.");
+                throw std::invalid_argument("Section creation requires scene, a mesh analysis, folder, file, or model group ID.");
             }
             sources = comparisonObjectParts(state, {id});
         }
-        CrossSectionSettings s;
+        CrossSectionSettings s = definition.section.value_or(CrossSectionSettings{});
         s.upAxis = state.upAxis;
-        s.sourceVisible = crossSectionSourceVisibility(state, sources);
+        if (!definition.sectionAnalysis) { s.sourceVisible = crossSectionSourceVisibility(state, sources); }
         s = sectionOptions(std::move(s), command, sources.size());
         const auto selection = state.selectedSceneObjects;
-        id = createCrossSection(state, std::move(s), std::move(sources));
+        id = createCrossSection(state, std::move(s), std::move(sources), definition.sectionAnalysis, definition.sectionSides);
         clearSceneSelection(state);
         for (const auto selected : selection) { selectSceneObject(state, selected, true); }
     } else if (command.action == A::annotationCreate) {

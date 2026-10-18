@@ -97,6 +97,7 @@ AnnotationWorkIdentity annotationWorkIdentity(const UiState& state)
     result.owner = &state; result.generation = state.sceneGeneration;
     result.geometry = state.revisions.geometry; result.visibility = state.revisions.visibility;
     result.annotations = state.revisions.annotations; result.upAxis = state.upAxis;
+    result.analysis = state.revisions.analysis; result.presentation = state.revisions.presentation;
     result.camera = state.camera; result.bounds = state.sceneBounds; result.selection = state.selectedSceneObjects;
     for (const auto& file : state.files) {
         const auto& mesh = file.mesh;

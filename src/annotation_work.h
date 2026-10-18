@@ -31,7 +31,7 @@ struct AnnotationPartsSnapshot {
 [[nodiscard]] AnnotationPartsSnapshot snapshotAnnotationParts(std::span<const ScenePickPart> parts);
 struct AnnotationWorkIdentity {
     const UiState* owner = nullptr;
-    uint64_t generation = 0, geometry = 0, visibility = 0, annotations = 0;
+    uint64_t generation = 0, geometry = 0, visibility = 0, annotations = 0, analysis = 0, presentation = 0;
     SceneUpAxis upAxis = SceneUpAxis::z;
     SceneCamera camera;
     Bounds bounds;

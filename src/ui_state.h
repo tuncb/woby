@@ -225,6 +225,9 @@ struct UiAnnotation {
     AnnotationGeometryOwner geometry;
     std::optional<CrossSectionSettings> section;
     std::optional<TextAnnotationSettings> text;
+    // A present zero ID is a missing analysis, never an ordinary model section.
+    std::optional<SceneObjectId> sectionAnalysis;
+    std::vector<ComparisonSide> sectionSides;
     // Derived at load/geometry replacement boundaries, never serialized.
     uint64_t geometryRevision = 0; // Session-only attachment/outline identity.
     bool targetValid = false;

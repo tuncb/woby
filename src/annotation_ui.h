@@ -2,6 +2,7 @@
 
 #include "surface_annotation.h"
 #include "annotation_work.h"
+#include "cross_section.h"
 #include "scene_renderer.h"
 #include "text_annotation_ui.h"
 
@@ -20,6 +21,8 @@ struct AnnotationInteraction {
     bool sectionTool = false, textTool = false;
     std::optional<TextAnnotationSettings> textStart;
     std::optional<CrossSectionSettings> sectionStart;
+    std::vector<CrossSectionDrawTarget> sectionTargets;
+    bool sectionScopeResolved = false;
     std::array<float, 3> sectionGrab{};
     bool dragging = false;
     // Runtime-only coarse guide on dense meshes; commit resolves the full edge.
