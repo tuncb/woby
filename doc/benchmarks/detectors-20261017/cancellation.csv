@@ -1,0 +1,41 @@
+case,operation,run,status,requested_ms,response_ms,error
+bennu-difference-cancel,difference,0,error,30005.2983,1613.1036,Input A: Difference mesh canceled.
+bus-cancel-1500,quality,0,error,1513.1429,30.0382,Analysis canceled.
+bus-cancel-1500,quality,1,error,1511.0678,29.4894,Analysis canceled.
+bus-cancel-1500,quality,2,error,1506.3013,30.9769,Analysis canceled.
+bus-cancel-1500,distance,0,error,1506.6354,13.8894,Analysis canceled.
+bus-cancel-1500,distance,1,error,1504.5915,11.8195,Analysis canceled.
+bus-cancel-1500,distance,2,error,1502.7771,11.7627,Analysis canceled.
+bus-cancel-3000,distance,0,error,3010.2779,22.1802,Analysis canceled.
+bus-cancel-3000,distance,1,error,3006.0112,21.6458,Analysis canceled.
+bus-cancel-3000,distance,2,error,3003.4427,22.4634,Analysis canceled.
+bus-cancel-50,auto,0,error,52.3778,0.5601,Analysis canceled.
+bus-cancel-50,auto,1,error,61.3965,0.2013,Analysis canceled.
+bus-cancel-50,auto,2,error,62.1656,0.2014,Analysis canceled.
+bus-cancel-50,quality,0,error,63.0014,6.0526,Analysis canceled.
+bus-cancel-50,quality,1,error,54.7473,5.1767,Analysis canceled.
+bus-cancel-50,quality,2,error,56.3558,5.6728,Analysis canceled.
+bus-cancel-50,intersections,0,error,56.1398,3.2426,Analysis canceled.
+bus-cancel-50,intersections,1,error,58.7657,2.8908,Analysis canceled.
+bus-cancel-50,intersections,2,error,58.0706,3.0043,Analysis canceled.
+bus-cancel-50,distance,0,error,59.0215,5.0946,Analysis canceled.
+bus-cancel-50,distance,1,error,56.9895,5.0652,Analysis canceled.
+bus-cancel-50,distance,2,error,55.8232,5.1731,Analysis canceled.
+bus-cancel-500,auto,0,error,510.252,6.5848,Analysis canceled.
+bus-cancel-500,auto,1,error,509.9397,6.2623,Analysis canceled.
+bus-cancel-500,auto,2,error,507.8839,6.5947,Analysis canceled.
+bus-cancel-500,quality,0,error,506.014,28.6298,Analysis canceled.
+bus-cancel-500,quality,1,error,513.741,33.6034,Analysis canceled.
+bus-cancel-500,quality,2,error,514.8999,29.6335,Analysis canceled.
+bus-cancel-500,intersections,0,error,504.734,7.8389,Analysis canceled.
+bus-cancel-500,intersections,1,error,508.9455,7.4225,Analysis canceled.
+bus-cancel-500,intersections,2,error,511.725,7.5766,Analysis canceled.
+bus-cancel-500,distance,0,error,509.9179,7.39,Analysis canceled.
+bus-cancel-500,distance,1,error,509.8747,7.1611,Analysis canceled.
+bus-cancel-500,distance,2,error,508.183,7.3028,Analysis canceled.
+grid-256-cancel-6900,difference,0,error,6912.5962,361.1901,Difference mesh canceled.
+grid-256-cancel-6900,difference,1,error,6902.3945,323.7515,Difference mesh canceled.
+grid-256-cancel-6900,difference,2,error,6914.9455,263.5068,Difference mesh canceled.
+sphere-512-cancel-4500,difference,0,error,4510.7519,941.0617,Difference mesh canceled.
+sphere-512-cancel-4500,difference,1,error,4508.6581,941.1144,Difference mesh canceled.
+sphere-512-cancel-4500,difference,2,error,4514.5704,889.0156,Difference mesh canceled.

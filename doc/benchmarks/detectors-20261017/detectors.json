@@ -1,0 +1,7058 @@
+[
+  {
+    "case": "beartrap-native",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 7302,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "beartrap-native",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 17,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "beartrap-native",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "beartrap-native",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 104,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "beartrap-native",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 308,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "beartrap-native",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 11772,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "beartrap-native",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 3,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "beartrap-native",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 28,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "beartrap-native",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 6,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-hardware",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-hardware",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-hardware",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-hardware",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-hardware",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-hardware",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 10679,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-hardware",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-hardware",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-hardware",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 10679,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 10679,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 10679,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-native",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-stages",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-stages",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-stages",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-stages",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-stages",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-stages",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 10679,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-stages",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-stages",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bennu-stages",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-backend",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-1",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 496,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 496,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 496,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-65",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 496,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 496,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 496,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-batches-8",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-branch",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-1500",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-cancel-3000",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-data",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 16428,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 116,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 48,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 30,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 17,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 19,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 16428,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 116,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 48,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 30,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 17,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 19,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 16428,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 116,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 48,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 30,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 17,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-exact",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 19,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-expanded",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-frontend",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-l2",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-math",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-native-final",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-physical-8",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-prefetch",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-default",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-qos-high-timechart",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-scopes",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-smt-4cores",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-timechart",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-tlb",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-vtune",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-0",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-1",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-3",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-7",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 17058,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 510,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 0,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 270,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 4,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 22,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "bus-workers-8",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 21,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-hardware",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 119819,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-hardware",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 1079616,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-hardware",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 364,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-hardware",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 559509,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-hardware",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 58099,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-hardware",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 60814,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-hardware",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 67687,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-hardware",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 19,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-hardware",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 3261,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 119819,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 1079616,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 364,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 559509,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 58099,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 60814,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 67687,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 19,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 3261,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 119819,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 1079616,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 364,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 559509,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 58099,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 60814,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 67687,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 19,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 3261,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 119819,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 1079616,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 364,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 559509,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 58099,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 60814,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 67687,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 19,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-native",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 3261,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-stages",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 119819,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-stages",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 1079616,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-stages",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 364,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-stages",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 559509,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-stages",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 58099,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-stages",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 60814,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-stages",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 67687,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-stages",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 19,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-stages",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 3261,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-timechart",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 119819,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-timechart",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 1079616,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-timechart",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 364,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-timechart",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 559509,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-timechart",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 58099,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-timechart",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 60814,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-timechart",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 67687,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-timechart",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 19,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "powerplant-timechart",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 3261,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-hardware",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 1436491,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-hardware",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 39096,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-hardware",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 7110,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-hardware",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 146389,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-hardware",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 12454,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-hardware",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 31343,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-hardware",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 13573,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-hardware",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 8168,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-hardware",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 14563,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 1436491,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 39096,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 7110,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 146389,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 12454,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 31343,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 13573,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 8168,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 14563,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 1,
+    "detector": "boundary_edges",
+    "side_a_count": 1436491,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 1,
+    "detector": "non_manifold_edges",
+    "side_a_count": 39096,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 1,
+    "detector": "winding",
+    "side_a_count": 7110,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 1,
+    "detector": "duplicate_points",
+    "side_a_count": 146389,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 1,
+    "detector": "duplicate_triangles",
+    "side_a_count": 12454,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 1,
+    "detector": "degenerate_triangles",
+    "side_a_count": 31343,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 1,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 13573,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 1,
+    "detector": "holes",
+    "side_a_count": 8168,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 1,
+    "detector": "fins",
+    "side_a_count": 14563,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 2,
+    "detector": "boundary_edges",
+    "side_a_count": 1436491,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 2,
+    "detector": "non_manifold_edges",
+    "side_a_count": 39096,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 2,
+    "detector": "winding",
+    "side_a_count": 7110,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 2,
+    "detector": "duplicate_points",
+    "side_a_count": 146389,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 2,
+    "detector": "duplicate_triangles",
+    "side_a_count": 12454,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 2,
+    "detector": "degenerate_triangles",
+    "side_a_count": 31343,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 2,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 13573,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 2,
+    "detector": "holes",
+    "side_a_count": 8168,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-native",
+    "run": 2,
+    "detector": "fins",
+    "side_a_count": 14563,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-stages",
+    "run": 0,
+    "detector": "boundary_edges",
+    "side_a_count": 1436491,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-stages",
+    "run": 0,
+    "detector": "non_manifold_edges",
+    "side_a_count": 39096,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-stages",
+    "run": 0,
+    "detector": "winding",
+    "side_a_count": 7110,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-stages",
+    "run": 0,
+    "detector": "duplicate_points",
+    "side_a_count": 146389,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-stages",
+    "run": 0,
+    "detector": "duplicate_triangles",
+    "side_a_count": 12454,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-stages",
+    "run": 0,
+    "detector": "degenerate_triangles",
+    "side_a_count": 31343,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-stages",
+    "run": 0,
+    "detector": "non_manifold_vertices",
+    "side_a_count": 13573,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-stages",
+    "run": 0,
+    "detector": "holes",
+    "side_a_count": 8168,
+    "side_b_count": 0,
+    "tested_side": "a"
+  },
+  {
+    "case": "sanmiguel-stages",
+    "run": 0,
+    "detector": "fins",
+    "side_a_count": 14563,
+    "side_b_count": 0,
+    "tested_side": "a"
+  }
+]
