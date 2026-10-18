@@ -89,7 +89,8 @@ void transformFromSettings(
         toOrigin[12+k] = -double(center[k]);
         transformed[12+k] = double(center[k]) + translation[k];
     }
-    coordinateMultiply(model, transformed.data(), toOrigin.data());
+    // Composition applies the first matrix, then the second matrix.
+    coordinateMultiply(model, toOrigin.data(), transformed.data());
 }
 
 bool boundsContainFinitePoints(const Bounds& bounds)

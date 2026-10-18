@@ -127,6 +127,34 @@ void checkRigidMove(const WorldPoints& before, const WorldPoints& after, size_t 
 
 } // namespace
 
+TEST_CASE("part file and folder transforms rotate and scale about their stored pivot")
+{
+    const auto checkPivot = [&](auto settings, const auto& matrixFor) {
+        settings.center = {10, 20, 30};
+        settings.translation = {3, 4, 5};
+        for (const float scale : {.25f, 1.f, 2.f}) {
+            settings.scale = scale;
+            for (const auto rotation : {std::array<float,3>{}, std::array<float,3>{0,0,90},
+                                       std::array<float,3>{17,-31,48}}) {
+                settings.rotationDegrees = rotation;
+                woby::CoordinateMatrix matrix;
+                matrixFor(settings, matrix.data());
+                checkCoordinate(woby::transformCoordinate(matrix.data(), {10,20,30}), {13,24,35});
+                // Changing the pivot preserves the linear rotation and scale.
+                auto zero = settings; zero.center = {}; zero.translation = {};
+                woby::CoordinateMatrix linear;
+                matrixFor(zero, linear.data());
+                auto expected = woby::transformCoordinate(linear.data(), {1,2,3});
+                for (size_t k = 0; k < 3; ++k) { expected[k] += settings.center[k] + settings.translation[k]; }
+                checkCoordinate(woby::transformCoordinate(matrix.data(), {11,22,33}), expected);
+            }
+        }
+    };
+    checkPivot(woby::UiGroupState{}, [](const auto& s, double* m) { woby::groupTransformMatrix(s,m); });
+    checkPivot(woby::UiFileSettings{}, [](const auto& s, double* m) { woby::fileTransformMatrix(s,m); });
+    checkPivot(woby::UiSceneNodeSettings{}, [](const auto& s, double* m) { woby::sceneNodeTransformMatrix(s,m); });
+}
+
 TEST_CASE("selection transforms align current file pivots and leave the reference and other objects fixed")
 {
     TransformFixture f;
