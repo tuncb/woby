@@ -1,3 +1,4 @@
+#include "scene_pane_layout.h"
 #include "uv_quality_view.h"
 #include "marker_pick.h"
 #include "comparison_view.h"
@@ -1932,29 +1933,9 @@ static void drawComparisonObjectHint(const UiState& state, const UiComparison& c
     ImGui::EndTooltip();
 }
 
-void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const ComparisonRuntimes& runtimes)
+void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const ComparisonRuntimes& runtimes, ScenePaneLayout* layout)
 {
-    if (edit.lastFrame != ImGui::GetFrameCount() - 1
-        || (edit.objectId != invalidSceneObjectId && !findComparison(state, edit.objectId))) {
-        edit = {};
-    }
-    edit.lastFrame = ImGui::GetFrameCount();
-    const auto beginRename = [&](SceneObjectId id) {
-        if (const auto* comparison = findComparison(state, id)) {
-            edit.objectId = id;
-            edit.text = comparison->name;
-            edit.focus = true;
-            selectSceneObject(state, id);
-        }
-    };
-    const bool sceneFocused = ImGui::IsWindowFocused();
-    const bool canStartRename = sceneFocused && !ImGui::GetIO().WantTextInput
-        && !ImGui::IsAnyItemActive() && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
-    if (canStartRename && edit.objectId == invalidSceneObjectId && state.selectedSceneObjects.size() == 1
-        && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
-        beginRename(state.selectedSceneObjects.front());
-    }
-    bool open = false;
+    bool open = layout && layout->open[static_cast<size_t>(ScenePaneSection::analyses)];
     if (ImGui::BeginTable("analysis_header", 3, ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("visibility", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthStretch);
@@ -1980,7 +1961,32 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
         }
         ImGui::EndTable();
     }
-    if (!open) { return; }
+    if (layout) {
+        if (!beginScenePaneSection(*layout, ScenePaneSection::analyses, open)) {
+            endScenePaneSection(*layout, ScenePaneSection::analyses);
+            return;
+        }
+    } else if (!open) { return; }
+    if (edit.lastFrame != ImGui::GetFrameCount() - 1
+        || (edit.objectId != invalidSceneObjectId && !findComparison(state, edit.objectId))) {
+        edit = {};
+    }
+    edit.lastFrame = ImGui::GetFrameCount();
+    const auto beginRename = [&](SceneObjectId id) {
+        if (const auto* comparison = findComparison(state, id)) {
+            edit.objectId = id;
+            edit.text = comparison->name;
+            edit.focus = true;
+            selectSceneObject(state, id);
+        }
+    };
+    const bool sceneFocused = ImGui::IsWindowFocused();
+    const bool canStartRename = sceneFocused && !ImGui::GetIO().WantTextInput
+        && !ImGui::IsAnyItemActive() && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
+    if (canStartRename && edit.objectId == invalidSceneObjectId && state.selectedSceneObjects.size() == 1
+        && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
+        beginRename(state.selectedSceneObjects.front());
+    }
     if (state.comparisons.empty()) { ImGui::TextDisabled("Select models, then use + to create an analysis."); }
     static UiSelectionRows rows;
     beginSelectionRows(rows, state);
@@ -2050,5 +2056,6 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
     if (selectAll) { selectSceneRows(state, rows.current); }
     if (duplicate) { duplicateSceneSelection(state); }
     else if (remove) { deleteSceneSelection(state); }
+    if (layout) { endScenePaneSection(*layout, ScenePaneSection::analyses); }
 }
 } // namespace woby

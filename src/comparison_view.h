@@ -2,6 +2,7 @@
 #include "comparison_runtime.h"
 
 namespace woby {
+struct ScenePaneLayout;
 // Transient scene-panel editor state; the committed name belongs to UiState.
 struct ComparisonNameEdit {
     SceneObjectId objectId = invalidSceneObjectId;
@@ -12,7 +13,8 @@ struct ComparisonNameEdit {
 
 void drawAnalysisCreationMenu(UiState& state);
 void drawAnalysisCreationMenu(UiState& state, const std::vector<SceneObjectId>& sources);
-void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const ComparisonRuntimes& runtimes = {});
+void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const ComparisonRuntimes& runtimes = {},
+    ScenePaneLayout* layout = nullptr);
 void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes);
 void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
     woby::graphics::ProgramHandle colorProgram, SceneRenderScratch& scratch,

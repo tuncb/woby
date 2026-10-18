@@ -7,6 +7,7 @@
 #include "text_annotation_ui.h"
 
 namespace woby {
+struct ScenePaneLayout;
 struct AnnotationExecutor;
 struct AnnotationPointerRuntime;
 struct AnnotationInteraction {
@@ -54,7 +55,7 @@ struct AnnotationNameEdit {
     bool focus = false;
 };
 void drawAnnotationTools(const UiState& state, AnnotationInteraction& interaction, bool disabled);
-void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit);
+void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit, ScenePaneLayout* layout = nullptr);
 void drawAnnotationInspector(UiState& state, SceneQueryRuntime* queries = nullptr);
 // True consumes the left-button gesture, including invalid placement attempts.
 // Unprepared geometry returns false so camera navigation can handle the gesture.

@@ -24,7 +24,7 @@ struct ComparisonNameFixture {
     woby::UiState state;
     woby::ComparisonNameEdit edit;
     woby::ViewNameEdit viewEdit;
-    woby::ViewListLayout viewLayout;
+    woby::ScenePaneLayout viewLayout;
     woby::SceneObjectId id = woby::createComparison(state);
     ImVec2 row;
     ImVec2 viewRow;
@@ -61,11 +61,12 @@ struct ComparisonNameFixture {
         const auto origin = ImGui::GetCursorScreenPos();
         if (showViews) {
             ImGui::LogToBuffer();
-            woby::drawViews(state, viewEdit, viewLayout, 80.0f);
+            woby::beginScenePaneLayout(viewLayout);
+            woby::drawViews(state, viewEdit, viewLayout);
             viewContents = context->LogBuffer.c_str();
             ImGui::LogFinish();
             for (auto* window : context->Windows) {
-                if (std::string(window->Name).find("view_rows") == std::string::npos) { continue; }
+                if (std::string(window->Name).find("section_rows") == std::string::npos) { continue; }
                 viewRow = ImVec2(window->Pos.x + 50.0f,
                     window->Pos.y + ImGui::GetStyle().WindowPadding.y + woby::renderModeButtonSize() * 0.5f);
                 break;
@@ -895,7 +896,7 @@ TEST_CASE("view rows retain save and delete through the context menu")
     // The trailing action is Save; clicking where Delete used to be keeps the view.
     const ImGuiWindow* rows = nullptr;
     for (const auto* window : f.context->Windows) {
-        if (std::string(window->Name).find("view_rows") != std::string::npos) { rows = window; break; }
+        if (std::string(window->Name).find("section_rows") != std::string::npos) { rows = window; break; }
     }
     REQUIRE(rows);
     f.click({rows->WorkRect.Max.x - woby::renderModeButtonSize() * .5f, f.viewRow.y});

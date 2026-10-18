@@ -1,3 +1,4 @@
+#include "scene_pane_layout.h"
 #include "annotation_ui.h"
 #include "ui_bulk_controls.h"
 #include "cross_section_ui.h"
@@ -108,8 +109,28 @@ void drawAnnotationTools(const UiState& state, AnnotationInteraction& interactio
         cancelAnnotationPointer(interaction); interaction.textTool = !textActive;
     }
 }
-void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
+void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit, ScenePaneLayout* layout)
 {
+    bool open = layout && layout->open[static_cast<size_t>(ScenePaneSection::annotations)];
+    if (ImGui::BeginTable("annotations_header", 2, ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("visibility", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
+        ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableNextRow(); ImGui::TableNextColumn();
+        const auto visible = static_cast<size_t>(std::count_if(state.annotations.begin(), state.annotations.end(),
+            [](const auto& item) { return item.settings.visible; }));
+        if (drawTriStateVisibilityButton("annotations_visible", "Annotations", visible, state.annotations.size(), "annotations")) {
+            setAllAnnotationsVisible(state, visible != state.annotations.size());
+        }
+        ImGui::TableNextColumn();
+        open = ImGui::CollapsingHeader("Annotations", state.annotations.empty() ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_DefaultOpen);
+        ImGui::EndTable();
+    }
+    if (layout) {
+        if (!beginScenePaneSection(*layout, ScenePaneSection::annotations, open)) {
+            endScenePaneSection(*layout, ScenePaneSection::annotations);
+            return;
+        }
+    } else if (!open) { return; }
     if (edit.generation != state.sceneGeneration
         || (edit.objectId != invalidSceneObjectId && !findAnnotation(state, edit.objectId))) {
         edit = {};
@@ -129,21 +150,6 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
         && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
         beginRename(state.selectedSceneObjects.front());
     }
-    bool open = false;
-    if (ImGui::BeginTable("annotations_header", 2, ImGuiTableFlags_SizingStretchProp)) {
-        ImGui::TableSetupColumn("visibility", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
-        ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableNextRow(); ImGui::TableNextColumn();
-        const auto visible = static_cast<size_t>(std::count_if(state.annotations.begin(), state.annotations.end(),
-            [](const auto& item) { return item.settings.visible; }));
-        if (drawTriStateVisibilityButton("annotations_visible", "Annotations", visible, state.annotations.size(), "annotations")) {
-            setAllAnnotationsVisible(state, visible != state.annotations.size());
-        }
-        ImGui::TableNextColumn();
-        open = ImGui::CollapsingHeader("Annotations", state.annotations.empty() ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_DefaultOpen);
-        ImGui::EndTable();
-    }
-    if (!open) { return; }
     static UiSelectionRows rows;
     beginSelectionRows(rows, state);
     bool remove = false, duplicate = false, selectAll = false;
@@ -210,6 +216,7 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
     if (selectAll) { selectSceneRows(state, rows.current); }
     if (remove) { deleteSceneSelection(state); }
     else if (duplicate) { duplicateSceneSelection(state); }
+    if (layout) { endScenePaneSection(*layout, ScenePaneSection::annotations); }
 }
 void drawAnnotationInspector(UiState& state, SceneQueryRuntime* queries)
 {

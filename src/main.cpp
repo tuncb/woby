@@ -2303,7 +2303,7 @@ int main(int argc, char** argv)
         woby::SceneNameEdit modelNameEdit;
         woby::AnnotationNameEdit annotationNameEdit;
         woby::ViewNameEdit viewNameEdit;
-        woby::ViewListLayout viewListLayout;
+        woby::ScenePaneLayout scenePaneLayout;
         std::vector<LoadedModelRuntime> runtimes;
         std::optional<std::filesystem::path> currentScenePath;
         woby::SceneDocument cleanSceneDocument = woby::createSceneDocument(ui);
@@ -3326,18 +3326,11 @@ int main(int argc, char** argv)
                     const float contentHeight = std::max(ImGui::GetFrameHeight(),
                         ImGui::GetContentRegionAvail().y - statusHeight - ImGui::GetStyle().ItemSpacing.y);
                     if (ImGui::BeginChild("SceneObjects", {0, contentHeight})) {
+                        woby::beginScenePaneLayout(scenePaneLayout);
                         woby::synchronizeSceneNameEdit(ui, modelNameEdit);
-                        if (ImGui::IsWindowFocused() && !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive()
-                            && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)
-                            && ui.selectedSceneObjects.size() == 1 && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
-                            if (const auto object = woby::findSceneObject(ui, ui.selectedSceneObjects.front()); object && object->originalName) {
-                                woby::beginSceneNameEdit(modelNameEdit, *object, ui.sceneGeneration);
-                                canvasSelectionPath = woby::sceneSelectionPath(ui, object->id);
-                            }
-                        }
                         const std::string filesPaneTitle = "Models (" + std::to_string(files.size()) + " files)##Files";
                         if (!canvasSelectionPath.empty() && !woby::sceneObjectSelected(ui, canvasSelectionPath.back())) { canvasSelectionPath.clear(); }
-                        bool modelsOpen = false;
+                        bool modelsOpen = scenePaneLayout.open[static_cast<size_t>(woby::ScenePaneSection::models)];
                         if (ImGui::BeginTable("models_header", 2, ImGuiTableFlags_SizingStretchProp)) {
                             ImGui::TableSetupColumn("visibility", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
                             ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthStretch);
@@ -3354,7 +3347,15 @@ int main(int argc, char** argv)
                             modelsOpen = ImGui::CollapsingHeader(filesPaneTitle.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
                             ImGui::EndTable();
                         }
-                        if (modelsOpen) {
+                        if (woby::beginScenePaneSection(scenePaneLayout, woby::ScenePaneSection::models, modelsOpen)) {
+                            if (ImGui::IsWindowFocused() && !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive()
+                                && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)
+                                && ui.selectedSceneObjects.size() == 1 && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
+                                if (const auto object = woby::findSceneObject(ui, ui.selectedSceneObjects.front()); object && object->originalName) {
+                                    woby::beginSceneNameEdit(modelNameEdit, *object, ui.sceneGeneration);
+                                    canvasSelectionPath = woby::sceneSelectionPath(ui, object->id);
+                                }
+                            }
                             if (files.empty()) { ImGui::TextDisabled("No models yet."); }
                             std::vector<woby::SceneObjectId> removeFiles;
                             woby::beginSelectionRows(modelSelectionRows, ui);
@@ -3371,16 +3372,17 @@ int main(int argc, char** argv)
                                 setToastMessage(toast, "Removed " + std::to_string(removeFiles.size()) + " files from scene");
                             }
                         }
-                        else { woby::synchronizeSceneNameEdit(ui, modelNameEdit, true); }
+                        woby::endScenePaneSection(scenePaneLayout, woby::ScenePaneSection::models);
+                        if (!modelsOpen) { woby::synchronizeSceneNameEdit(ui, modelNameEdit, true); }
                         if (modelNameEdit.objectId && !modelNameEdit.focus && modelNameEdit.submittedFrame != ImGui::GetFrameCount()) {
                             woby::synchronizeSceneNameEdit(ui, modelNameEdit, true);
                         }
                         canvasSelectionPath.clear();
-                        woby::drawComparisonObjects(ui, comparisonNameEdit, comparison);
-                        woby::drawAnnotationObjects(ui, annotationNameEdit);
+                        woby::drawComparisonObjects(ui, comparisonNameEdit, comparison, &scenePaneLayout);
+                        woby::drawAnnotationObjects(ui, annotationNameEdit, &scenePaneLayout);
                         ImGui::BeginDisabled(fileActionsDisabled()
                             || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
-                        woby::drawViews(ui, viewNameEdit, viewListLayout, 0, true);
+                        woby::drawViews(ui, viewNameEdit, scenePaneLayout);
                         ImGui::EndDisabled();
                     }
                     ImGui::EndChild();
