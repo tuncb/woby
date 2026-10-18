@@ -273,7 +273,9 @@ def test_rejection_and_filesystem():
                         "--operations", "difference", "--runs", "1"], check=True, capture_output=True, timeout=30)
         result = json.loads(output.read_text())
         assert result["samples"][0]["status"] == "error"
-        assert "collapsed" in result["samples"][0]["error"]
+        assert result["samples"][0]["error"].startswith("Input A: ")
+        native = run(NATIVE, "--model", model, "--operations", "difference", "--runs", "1")
+        assert result["samples"] == native["samples"]
         assert len([e for e in result["events"] if e["name"] == "op.difference"]) == 1
         invalid = subprocess.run([str(NATIVE), "--model", "relative.obj"], capture_output=True, text=True)
         assert invalid.returncode != 0 and "absolute" in invalid.stderr
