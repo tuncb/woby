@@ -1,5 +1,6 @@
 #include "ui_operations.h"
 #include "surface_annotation.h"
+#include "cross_section.h"
 #include "utf8_path.h"
 
 #include <algorithm>
@@ -228,7 +229,7 @@ void setTextAnnotationSettings(UiState& state, SceneObjectId id, TextAnnotationS
 }
 SceneObjectId createCrossSection(UiState& state, CrossSectionSettings settings, std::vector<SceneObjectId> sources)
 {
-    if (sources.empty()) { throw std::runtime_error("Choose visible triangle meshes for the section."); }
+    if (sources.empty()) { throw std::runtime_error("Choose triangle meshes for the section."); }
     std::vector<SceneObjectId> unique;
     for (auto id : sources) {
         const auto object = findSceneObject(state, id);
@@ -236,6 +237,11 @@ SceneObjectId createCrossSection(UiState& state, CrossSectionSettings settings, 
             throw std::runtime_error("Section sources must be distinct model parts.");
         }
         unique.push_back(id);
+    }
+    if (settings.sourceVisible.size() < sources.size()) {
+        auto visible = crossSectionSourceVisibility(state, sources);
+        std::copy(settings.sourceVisible.begin(), settings.sourceVisible.end(), visible.begin());
+        settings.sourceVisible = std::move(visible);
     }
     UiAnnotation item;
     item.section = normalizedCrossSectionSettings(std::move(settings), sources.size());

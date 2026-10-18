@@ -114,7 +114,7 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
     } else if (command.action == A::annotationCreate && command.shape == "section") {
         std::vector<SceneObjectId> sources;
         if (command.target == "scene") {
-            for (const auto& part : scenePickParts(state)) {
+            for (const auto& part : scenePickParts(state, true)) {
                 if (part.mesh && part.indexCount) { sources.push_back(part.objectId); }
             }
         } else {
@@ -126,6 +126,7 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
         }
         CrossSectionSettings s;
         s.upAxis = state.upAxis;
+        s.sourceVisible = crossSectionSourceVisibility(state, sources);
         s = sectionOptions(std::move(s), command, sources.size());
         const auto selection = state.selectedSceneObjects;
         id = createCrossSection(state, std::move(s), std::move(sources));

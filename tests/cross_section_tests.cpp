@@ -206,7 +206,7 @@ TEST_CASE("cross section CLI captures explicit scopes and defaults to the scene 
         {"planeStart", {-2, 0, 0}}, {"planeEnd", {2, 0, 0}}}));
     CHECK(empty.annotations.empty());
 }
-TEST_CASE("cross section CLI distinguishes visible scene sources from explicit folder sources")
+TEST_CASE("cross section CLI captures hidden sources and inherits visibility for scene and explicit scopes")
 {
     Fixture f;
     f.state.sceneNodes.clear();
@@ -214,10 +214,82 @@ TEST_CASE("cross section CLI distinguishes visible scene sources from explicit f
     const auto folder = f.state.sceneNodes.front().objectId;
     setGroupVisible(f.state, f.state.files[1], f.state.files[1].groupSettings[0], false);
     const Json points{{"shape", "section"}, {"planeStart", {-2, 0, 0}}, {"planeEnd", {2, 0, 0}}};
-    auto visible = points;
-    visible["target"] = "scene";
-    CHECK(runSectionCommand(f.state, "annotation.create", visible)["object"]["sourceIds"].size() == 1);
-    CHECK(runSectionCommand(f.state, "annotation.create", points, folder)["object"]["sourceIds"].size() == 2);
+    auto scene = points;
+    scene["target"] = "scene";
+    for (const auto& result : {runSectionCommand(f.state, "annotation.create", scene),
+                             runSectionCommand(f.state, "annotation.create", points, folder)}) {
+        CHECK(result["object"]["sourceIds"].size() == 2);
+        CHECK(result["object"]["sourceVisible"] == Json::array({true, false}));
+    }
+    CHECK(runSectionCommand(f.state, "annotation.create", points, f.sources()[1])["object"]["sourceVisible"] == Json::array({false}));
+    scene["sourceIndex"] = 1;
+    scene["sourceVisible"] = true;
+    CHECK(runSectionCommand(f.state, "annotation.create", scene)["object"]["sourceVisible"] == Json::array({true, true}));
+}
+TEST_CASE("cross section creation inherits model eye states through parent folders and files")
+{
+    Fixture f;
+    f.state.files[0].path = f.root / "nested" / "a.obj";
+    f.state.sceneNodes.clear();
+    appendFolderTreeSceneNode(f.state, f.root, 0, f.state.files.size());
+    const auto sources = f.sources();
+    const std::vector<SceneObjectId> reversed{sources[1], sources[0]};
+    std::vector<bool> expected{true, false};
+    SUBCASE("hidden mesh") { f.state.files[0].groupSettings[0].visible = false; }
+    SUBCASE("hidden file with a visible mesh") { f.state.files[0].fileSettings.visible = false; }
+    SUBCASE("hidden nested folder with visible descendants") { f.state.sceneNodes[0].children[0].settings.visible = false; }
+    SUBCASE("hidden root folder") { f.state.sceneNodes[0].settings.visible = false; expected = {false, false}; }
+    SUBCASE("implicit scene tree") { f.state.sceneNodes.clear(); f.state.files[0].fileSettings.visible = false; }
+    SUBCASE("implicit file children") {
+        f.state.sceneNodes[0].children[0].children[0].children.clear();
+        f.state.files[0].groupSettings[0].visible = false;
+    }
+    SUBCASE("opacity and render modes do not change eye states") {
+        f.state.files[0].fileSettings.opacity = 0;
+        auto& group = f.state.files[0].groupSettings[0];
+        group.showSolidMesh = group.showTriangles = group.showVertices = false;
+        expected = {true, true};
+    }
+    const auto id = createCrossSection(f.state, f.settings(), reversed);
+    CHECK(findAnnotation(f.state, id)->targetIds == reversed);
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == expected);
+}
+TEST_CASE("cross section inherited visibility stays independent and survives duplication and save load")
+{
+    Fixture f;
+    setGroupVisible(f.state, f.state.files[1], f.state.files[1].groupSettings[0], false);
+    const auto id = f.add();
+    REQUIRE(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{true, false});
+    setGroupVisible(f.state, f.state.files[0], f.state.files[0].groupSettings[0], false);
+    setGroupVisible(f.state, f.state.files[1], f.state.files[1].groupSettings[0], true);
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{true, false});
+    const auto copy = duplicateAnnotation(f.state, id);
+    CHECK(findAnnotation(f.state, copy)->section->sourceVisible == std::vector<bool>{true, false});
+    const auto path = f.root / "inherited-visibility.woby";
+    writeSceneDocument(path, createSceneDocument(f.state));
+    const auto restored = prepareSceneReplacement(f.state, f.state.files, readSceneDocument(path));
+    REQUIRE(restored.annotations.size() == 2);
+    for (const auto& item : restored.annotations) {
+        CHECK(item.section->sourceVisible == std::vector<bool>{true, false});
+    }
+    auto settings = *findAnnotation(f.state, id)->section;
+    settings.sourceVisible = {true, true};
+    setCrossSectionSettings(f.state, id, settings);
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{true, true});
+    CHECK_FALSE(f.state.files[0].groupSettings[0].visible);
+    CHECK(f.state.files[1].groupSettings[0].visible);
+}
+TEST_CASE("cross section explicit initial visibility overrides inherited defaults")
+{
+    Fixture f;
+    setGroupVisible(f.state, f.state.files[1], f.state.files[1].groupSettings[0], false);
+    auto settings = f.settings();
+    settings.sourceVisible = {false};
+    auto id = createCrossSection(f.state, settings, f.sources());
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{false, false});
+    settings.sourceVisible = {false, true};
+    id = createCrossSection(f.state, settings, f.sources());
+    CHECK(findAnnotation(f.state, id)->section->sourceVisible == std::vector<bool>{false, true});
 }
 TEST_CASE("cross section cuts every source in one plane and measures a symmetric 2D gap")
 {
@@ -498,6 +570,7 @@ TEST_CASE("cross section projection does not require visible source parts")
 TEST_CASE("cross section pointer creates a shared section and edits endpoints without surface attachment")
 {
     Fixture f;
+    setGroupVisible(f.state, f.state.files[1], f.state.files[1].groupSettings[0], false);
     ScenePickView view;
     view.view = identityMatrix();
     view.projection = identityMatrix();
@@ -509,11 +582,15 @@ TEST_CASE("cross section pointer creates a shared section and edits endpoints wi
     interaction.sectionTool = true;
     REQUIRE(beginAnnotationPointer(f.state, interaction, view, {100, 500}));
     REQUIRE(interaction.dragging);
+    CHECK(interaction.preview.targetIds == f.sources());
+    REQUIRE(interaction.preview.section);
+    CHECK(interaction.preview.section->sourceVisible == std::vector<bool>{true, false});
     moveAnnotationPointer(f.state, interaction, {900, 500});
     endAnnotationPointer(f.state, interaction, true);
     REQUIRE(f.state.annotations.size() == 1);
     const auto id = f.state.annotations[0].objectId;
     CHECK(f.state.annotations[0].targetIds == f.sources());
+    CHECK(f.state.annotations[0].section->sourceVisible == std::vector<bool>{true, false});
     CHECK(f.state.annotations[0].section->a[0] == doctest::Approx(-.8));
     REQUIRE(beginAnnotationPointer(f.state, interaction, view, {900, 500}));
     CHECK(interaction.handle == 1);

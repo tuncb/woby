@@ -1,5 +1,6 @@
 #include "cross_section.h"
 #include "surface_annotation.h"
+#include <boost/unordered/unordered_flat_map.hpp>
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -9,6 +10,45 @@
 #include <stdexcept>
 
 namespace woby {
+std::vector<bool> crossSectionSourceVisibility(const UiState& state, std::span<const SceneObjectId> sources)
+{
+    std::vector<bool> visible(sources.size(), false);
+    boost::unordered_flat_map<SceneObjectId, size_t> indices;
+    for (size_t i = 0; i < sources.size(); ++i) { indices.emplace(sources[i], i); }
+    const auto group = [&](size_t fileIndex, size_t groupIndex, bool parentVisible) {
+        if (fileIndex >= state.files.size()) { return; }
+        const auto& file = state.files[fileIndex];
+        if (groupIndex >= file.groupSettings.size()) { return; }
+        const auto& settings = file.groupSettings[groupIndex];
+        if (const auto it = indices.find(settings.objectId); it != indices.end()) {
+            visible[it->second] = parentVisible && file.fileSettings.visible && settings.visible;
+        }
+    };
+    const auto visit = [&](auto&& self, const UiSceneNode& node, bool parentVisible) -> void {
+        if (node.kind == UiSceneNodeKind::group) {
+            group(node.fileIndex, node.groupIndex, parentVisible);
+            return;
+        }
+        if (node.kind == UiSceneNodeKind::folder) { parentVisible = parentVisible && node.settings.visible; }
+        else {
+            if (node.fileIndex >= state.files.size()) { return; }
+            parentVisible = parentVisible && state.files[node.fileIndex].fileSettings.visible;
+            if (node.children.empty()) {
+                for (size_t g = 0; g < state.files[node.fileIndex].groupSettings.size(); ++g) { group(node.fileIndex, g, parentVisible); }
+                return;
+            }
+        }
+        for (const auto& child : node.children) { self(self, child, parentVisible); }
+    };
+    if (state.sceneNodes.empty()) {
+        for (size_t f = 0; f < state.files.size(); ++f) {
+            for (size_t g = 0; g < state.files[f].groupSettings.size(); ++g) { group(f, g, true); }
+        }
+    } else {
+        for (const auto& node : state.sceneNodes) { visit(visit, node, true); }
+    }
+    return visible;
+}
 std::array<float, 3> snapSectionEndpoint(const std::array<float, 3>& anchor,
     const std::array<float, 3>& point, SceneUpAxis upAxis)
 {

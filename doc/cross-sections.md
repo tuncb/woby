@@ -9,9 +9,11 @@ Hold **Shift** while drawing or dragging an endpoint to snap the direction to
 45-degree increments on the workplane. Release Shift to return to free drawing.
 The preview updates when Shift changes, even if the mouse does not move.
 
-One annotation contains the cuts of all triangle meshes visible when you draw
-the line. The plane extends beyond the line endpoints. It does not change or
-remove mesh geometry. Separate contours stay separate.
+One annotation contains the cuts of all triangle meshes when you draw the line.
+Each contour starts with its model-tree visibility, including the visibility of
+its parent folders and file. Hidden meshes stay in the section and can be shown
+with the section's eye controls. The plane extends beyond the line endpoints.
+It does not change or remove mesh geometry. Separate contours stay separate.
 
 Select the annotation to show its Properties panel and handles:
 
@@ -20,8 +22,9 @@ Select the annotation to show its Properties panel and handles:
 - Use **Position**, **Start**, and **End** for numeric plane edits.
 - **Cut meshes** uses the same folder, file, and mesh tree as **Models**. Expand
   or collapse branches to find the captured sources.
-- Use the eye beside a source to hide its contour. Hiding the source model does
-  not remove it from the section. Draw another section to capture a different set.
+- Use the eye beside a source to show or hide its contour. Later visibility
+  changes in **Models** do not change the section's visibility. Draw another
+  section to capture a different set of meshes.
 - Enable **Face-on 2D** to inspect all contours in one plot with equal axis scales.
 - Enable **Show 2D differences** and choose two sources. Other contours remain
   visible. The white segment marks the largest sampled gap.
@@ -40,7 +43,7 @@ visibility, and Undo/Redo also apply to cross sections.
 
 ## Command line
 
-Create one section from all visible triangle meshes:
+Create one section from all triangle meshes, with their current model-tree visibility:
 
 ```text
 woby ctl --instance demo annotation create scene --shape section --plane-start -5 30 0 --plane-end 105 30 0 --lift 22 --name "Section S" --show-differences true
@@ -48,6 +51,7 @@ woby ctl --instance demo annotation create scene --shape section --plane-start -
 
 Use a folder, file, or group ID instead of `scene` to capture all triangle parts
 in that object, including hidden parts. The captured source list stays fixed.
+Use `--source-index` and `--source-visible` to override a source's initial visibility.
 Endpoints use world coordinates. Lift uses model units. `--section-up-axis y|z`
 defaults to the scene up axis. The end height is set to the start height.
 

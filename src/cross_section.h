@@ -15,6 +15,9 @@ struct CrossSectionResult {
     std::optional<CrossSectionEdge> largestGap;
     double gap = 0;
 };
+// Snapshot the model-tree eye states, including hidden ancestor folders/files.
+[[nodiscard]] std::vector<bool> crossSectionSourceVisibility(const UiState& state,
+    std::span<const SceneObjectId> sources);
 [[nodiscard]] CrossSectionResult cutCrossSection(const CrossSectionSettings& settings,
                                                  std::span<const SceneObjectId> sources,
                                                  std::span<const ScenePickPart> parts, std::stop_token stop = {});

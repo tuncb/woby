@@ -172,7 +172,7 @@ void drawCrossSectionInspector(UiState& state, SceneQueryRuntime* queries)
         result = crossSectionResult(*queries, id);
     }
     ImGui::SeparatorText("Cut meshes");
-    ImGui::TextWrapped("Captured sources. Source visibility does not change this set.");
+    ImGui::TextWrapped("Initial visibility comes from Models. Contour visibility is independent after creation.");
     CrossSectionSourceTree localSources;
     const auto& sources = updateCrossSectionSourceTree(queries ? queries->sectionSources : localSources, state, *item);
     ImGui::PushID("cut_meshes");
@@ -295,16 +295,17 @@ bool beginSectionPointer(UiState& state, AnnotationInteraction& interaction, con
     if (creating) {
         s.a = *world;
         s.b = *world;
-        for (const auto& part : scenePickParts(state)) {
+        for (const auto& part : scenePickParts(state, true)) {
             if (part.indexCount && part.mesh) {
                 interaction.preview.targetIds.push_back(part.objectId);
             }
         }
         if (interaction.preview.targetIds.empty()) {
-            interaction.error = "No visible triangle meshes.";
+            interaction.error = "No triangle meshes.";
             return true;
         }
         interaction.preview.targetId = interaction.preview.targetIds.front();
+        s.sourceVisible = crossSectionSourceVisibility(state, interaction.preview.targetIds);
     }
     interaction.sectionStart = s;
     interaction.sectionGrab = world.value_or(s.a);
