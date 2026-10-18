@@ -2,6 +2,10 @@
 
 Notable changes by release tag. Versions with no notable changes are omitted.
 
+## v0.32.1
+
+- Fixed a crash when creating approximate difference volumes.
+
 ## v0.32.0
 
 - Added approximate difference volumes with resolution checks and CLI controls.
