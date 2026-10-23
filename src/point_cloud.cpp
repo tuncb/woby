@@ -204,8 +204,10 @@ std::optional<Cloud> buildCloud(const Mesh& mesh,std::vector<uint32_t> sourceVer
     // Prepare spatial-error cuts instead, including full sparse leaves. Each
     // group's budgets are independent of the other groups in the source file.
     std::vector<uint32_t> budgets{1,128,256,512,1024,2048};
-    for (uint32_t budget=4096;;budget=std::min(2000000u,budget+budget/4)) {
-        budgets.push_back(budget); if (budget==2000000) break;
+    // Use the same ceiling as the runtime timing controller. Start with a
+    // coarse cut and retain more source detail when the GPU has time for it.
+    for (uint32_t budget=4096;;budget=std::min(maximumNavigationPoints,budget+budget/4)) {
+        budgets.push_back(budget); if (budget==maximumNavigationPoints) break;
     }
     cloud.navigationCuts.resize(budgets.size());
     struct Candidate { double error; uint32_t node; bool operator<(const Candidate& other) const {

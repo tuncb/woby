@@ -1,0 +1,273 @@
+{
+  "baseline_shader": "D:\\woby\\build\\point-navigation-baseline-app\\assets\\shaders\\spirv\\cs_opaque_raster.bin",
+  "cases": [
+    {
+      "compared_samples": 879360,
+      "covered_samples": 43410,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 6218474765578768674,
+      "point_size": 1.0,
+      "reference_fingerprint": 6218474765578768674,
+      "samples": 1,
+      "yaw": 0.0,
+      "zoom": 1.0
+    },
+    {
+      "compared_samples": 879360,
+      "covered_samples": 45664,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 12098265913718823634,
+      "point_size": 4.0,
+      "reference_fingerprint": 12098265913718823634,
+      "samples": 1,
+      "yaw": 0.0,
+      "zoom": 1.0
+    },
+    {
+      "compared_samples": 879360,
+      "covered_samples": 47863,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 317165570476988493,
+      "point_size": 8.0,
+      "reference_fingerprint": 317165570476988493,
+      "samples": 1,
+      "yaw": 0.0,
+      "zoom": 1.0
+    },
+    {
+      "compared_samples": 879360,
+      "covered_samples": 42938,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 15150740641803353509,
+      "point_size": 1.0,
+      "reference_fingerprint": 15150740641803353509,
+      "samples": 1,
+      "yaw": 0.3100000023841858,
+      "zoom": 1.0
+    },
+    {
+      "compared_samples": 879360,
+      "covered_samples": 45066,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 13646338065612940771,
+      "point_size": 4.0,
+      "reference_fingerprint": 13646338065612940771,
+      "samples": 1,
+      "yaw": 0.3100000023841858,
+      "zoom": 1.0
+    },
+    {
+      "compared_samples": 879360,
+      "covered_samples": 47140,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 17838693038629112357,
+      "point_size": 8.0,
+      "reference_fingerprint": 17838693038629112357,
+      "samples": 1,
+      "yaw": 0.3100000023841858,
+      "zoom": 1.0
+    },
+    {
+      "compared_samples": 879360,
+      "covered_samples": 406747,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 14767663128765187462,
+      "point_size": 1.0,
+      "reference_fingerprint": 14767663128765187462,
+      "samples": 1,
+      "yaw": 0.0,
+      "zoom": 0.3499999940395355
+    },
+    {
+      "compared_samples": 879360,
+      "covered_samples": 455050,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 12946935103449459673,
+      "point_size": 4.0,
+      "reference_fingerprint": 12946935103449459673,
+      "samples": 1,
+      "yaw": 0.0,
+      "zoom": 0.3499999940395355
+    },
+    {
+      "compared_samples": 879360,
+      "covered_samples": 461019,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 6588067052921395435,
+      "point_size": 8.0,
+      "reference_fingerprint": 6588067052921395435,
+      "samples": 1,
+      "yaw": 0.0,
+      "zoom": 0.3499999940395355
+    },
+    {
+      "compared_samples": 879360,
+      "covered_samples": 383858,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 1806856152396991498,
+      "point_size": 1.0,
+      "reference_fingerprint": 1806856152396991498,
+      "samples": 1,
+      "yaw": 0.3100000023841858,
+      "zoom": 0.3499999940395355
+    },
+    {
+      "compared_samples": 879360,
+      "covered_samples": 443618,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 12779259113790093367,
+      "point_size": 4.0,
+      "reference_fingerprint": 12779259113790093367,
+      "samples": 1,
+      "yaw": 0.3100000023841858,
+      "zoom": 0.3499999940395355
+    },
+    {
+      "compared_samples": 879360,
+      "covered_samples": 451868,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 8898456655357407288,
+      "point_size": 8.0,
+      "reference_fingerprint": 8898456655357407288,
+      "samples": 1,
+      "yaw": 0.3100000023841858,
+      "zoom": 0.3499999940395355
+    },
+    {
+      "compared_samples": 3517440,
+      "covered_samples": 173664,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 9616573009853164003,
+      "point_size": 1.0,
+      "reference_fingerprint": 9616573009853164003,
+      "samples": 4,
+      "yaw": 0.0,
+      "zoom": 1.0
+    },
+    {
+      "compared_samples": 3517440,
+      "covered_samples": 182634,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 2793937872821015375,
+      "point_size": 4.0,
+      "reference_fingerprint": 2793937872821015375,
+      "samples": 4,
+      "yaw": 0.0,
+      "zoom": 1.0
+    },
+    {
+      "compared_samples": 3517440,
+      "covered_samples": 191454,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 3551482729749646752,
+      "point_size": 8.0,
+      "reference_fingerprint": 3551482729749646752,
+      "samples": 4,
+      "yaw": 0.0,
+      "zoom": 1.0
+    },
+    {
+      "compared_samples": 3517440,
+      "covered_samples": 171792,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 4004360102702315297,
+      "point_size": 1.0,
+      "reference_fingerprint": 4004360102702315297,
+      "samples": 4,
+      "yaw": 0.3100000023841858,
+      "zoom": 1.0
+    },
+    {
+      "compared_samples": 3517440,
+      "covered_samples": 180275,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 9038946813647368947,
+      "point_size": 4.0,
+      "reference_fingerprint": 9038946813647368947,
+      "samples": 4,
+      "yaw": 0.3100000023841858,
+      "zoom": 1.0
+    },
+    {
+      "compared_samples": 3517440,
+      "covered_samples": 188594,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 10137255359029781493,
+      "point_size": 8.0,
+      "reference_fingerprint": 10137255359029781493,
+      "samples": 4,
+      "yaw": 0.3100000023841858,
+      "zoom": 1.0
+    },
+    {
+      "compared_samples": 3517440,
+      "covered_samples": 1626362,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 6551551739861816498,
+      "point_size": 1.0,
+      "reference_fingerprint": 6551551739861816498,
+      "samples": 4,
+      "yaw": 0.0,
+      "zoom": 0.3499999940395355
+    },
+    {
+      "compared_samples": 3517440,
+      "covered_samples": 1820238,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 11805031217133364357,
+      "point_size": 4.0,
+      "reference_fingerprint": 11805031217133364357,
+      "samples": 4,
+      "yaw": 0.0,
+      "zoom": 0.3499999940395355
+    },
+    {
+      "compared_samples": 3517440,
+      "covered_samples": 1844024,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 4717025896754403208,
+      "point_size": 8.0,
+      "reference_fingerprint": 4717025896754403208,
+      "samples": 4,
+      "yaw": 0.0,
+      "zoom": 0.3499999940395355
+    },
+    {
+      "compared_samples": 3517440,
+      "covered_samples": 1535534,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 785328818270141269,
+      "point_size": 1.0,
+      "reference_fingerprint": 785328818270141269,
+      "samples": 4,
+      "yaw": 0.3100000023841858,
+      "zoom": 0.3499999940395355
+    },
+    {
+      "compared_samples": 3517440,
+      "covered_samples": 1774402,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 16027073613719602427,
+      "point_size": 4.0,
+      "reference_fingerprint": 16027073613719602427,
+      "samples": 4,
+      "yaw": 0.3100000023841858,
+      "zoom": 0.3499999940395355
+    },
+    {
+      "compared_samples": 3517440,
+      "covered_samples": 1807509,
+      "different_depth_id_pairs": 0,
+      "optimized_fingerprint": 5395133075412040937,
+      "point_size": 8.0,
+      "reference_fingerprint": 5395133075412040937,
+      "samples": 4,
+      "yaw": 0.3100000023841858,
+      "zoom": 0.3499999940395355
+    }
+  ],
+  "height": 687,
+  "model": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+  "points": 38414391,
+  "width": 1280
+}

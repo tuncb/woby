@@ -34,7 +34,7 @@ struct PointGpuFixture {
     }
 };
 bool initialize(PointGpuFixture& f,uint32_t samples,bool requireAtomics=true,g::PointBackend backend=g::PointBackend::automatic,
-    bool colored=false) {
+    bool colored=false,uint32_t pointCount=257) {
     f.initialized=g::init({}); REQUIRE(f.initialized);
     f.runtime.preference=backend;
     const auto selected=g::selectPointBackend(g::getCaps()->supported,backend);
@@ -58,20 +58,20 @@ bool initialize(PointGpuFixture& f,uint32_t samples,bool requireAtomics=true,g::
     g::setViewClear(0,WOBY_GPU_CLEAR_COLOR|WOBY_GPU_CLEAR_DEPTH,0x000000ff,1);
     g::setViewTransform(0,f.view.view.data(),f.view.renderProjection.data(),true);
     auto& source=f.source;
-    for (uint32_t i=0;i<257;++i) {
+    for (uint32_t i=0;i<pointCount;++i) {
         woby::Vertex v; v.position={float(int(i*17%109)-54)/43,float(int(i*23%79)-39)/34,float(i%13)/12};
         editMeshGeometry(source).vertices.push_back(v); editMeshGeometry(source).pointIndices.push_back(i);
     }
     editMeshGeometry(source).vertices[256].position=meshGeometry(source).vertices[255].position; // Stable equal-depth tie.
     if (colored) {
         auto& colors=editMeshGeometry(source).vertexColors;
-        for (uint32_t i=0;i<257;++i) {
+        for (uint32_t i=0;i<pointCount;++i) {
             const auto rgb=i%17 ? (i*17%256) | ((i*37%256)<<8) | ((i*73%256)<<16) : 0;
             colors.push_back(i%4 ? 0xff000000u | rgb : 0); // Authored black must differ from missing RGB.
         }
     }
     editMeshGeometry(source).nodes={{"first"},{"second"}}; editMeshGeometry(source).nodes[0].pointIndexCount=131;
-    editMeshGeometry(source).nodes[1].pointIndexOffset=131; editMeshGeometry(source).nodes[1].pointIndexCount=126;
+    editMeshGeometry(source).nodes[1].pointIndexOffset=131; editMeshGeometry(source).nodes[1].pointIndexCount=pointCount-131;
     auto prepared=woby::prepareSceneMesh(source,woby::gpuMeshPoints,{},false); REQUIRE(prepared);
     prepared->pointCloud=std::make_shared<const woby::points::Cloud>(woby::points::buildCloud(source,32,8));
     prepared->pointVertexIndices.clear(); prepared->compactOnly=true;
@@ -244,6 +244,83 @@ TEST_CASE("Integrated opaque point GPU footprints IDs refinement and invalidatio
             REQUIRE(f.runtime.enabled); REQUIRE(f.runtime.active);
             CHECK(f.runtime.epoch==epoch); CHECK(f.runtime.submitted==0);
             checkIds(winners(f),reference(f)); checkColors(f,reference(f));
+        }
+    }
+}
+TEST_CASE("Navigation keeps every source point when unequal groups fit the total budget") {
+    for (const auto backend:{g::PointBackend::atomic32,g::PointBackend::atomic64}) for (const uint32_t samples:{1u,4u}) {
+        PointGpuFixture f; if (!initialize(f,samples,true,backend)) continue;
+        // The 131-point first group exceeds half of this 257-point budget.
+        // Both groups together still fit, so no proxy cut is needed.
+        f.runtime.budget=257;
+        draw(f,1,true);
+        CHECK(f.runtime.submitted==257);
+        CHECK_FALSE(f.runtime.pending.valid());
+        checkIds(winners(f),reference(f));
+        for (const auto& selection:f.runtime.navigation) for (const auto& range:selection.ranges)
+            CHECK_FALSE(range.proxy);
+    }
+}
+TEST_CASE("Opaque point atomic rejection preserves source winners under dense contention") {
+    for (const auto backend:{g::PointBackend::atomic32,g::PointBackend::atomic64}) for (const uint32_t samples:{1u,4u}) {
+        INFO("backend=" << int(backend) << ", samples=" << samples);
+        PointGpuFixture f; if (!initialize(f,samples,true,backend,true,8193)) continue;
+        double now=0;
+        for (const float size:{1.0f,4.0f,8.0f,40.0f}) {
+            for (auto& item:f.plan.items) item.pointSize=size;
+            const auto expected=reference(f);
+            // Change the key each time so every trial clears and races all
+            // source footprints again, including exact depth and ID ties.
+            for (uint32_t repeat=0;repeat<3;++repeat) {
+                f.runtime.keys.clear(); draw(f,now++);
+                checkIds(winners(f),expected); checkColors(f,expected);
+            }
+        }
+        f.plan.items.erase(f.plan.items.begin());
+        draw(f,now++); checkIds(winners(f),reference(f));
+        f.view.width=31; f.view.height=23;
+        draw(f,now); checkIds(winners(f),reference(f));
+    }
+}
+TEST_CASE("Opaque point tile coverage preserves clipped queries and later full refinement") {
+    for (const uint32_t samples:{1u,4u}) {
+        PointGpuFixture f; if (!initialize(f,samples,true,g::PointBackend::atomic64,false,8193)) continue;
+        double now=0;
+        for (const float size:{2.0f,3.0f,4.0f,7.0f,8.0f,40.0f}) {
+            for (auto& item:f.plan.items) item.pointSize=size;
+            draw(f,now++); const auto expected=winners(f);
+            std::vector<g::OpaquePointGroup> groups;
+            for (const auto& key:f.runtime.keys) groups.push_back(key.group);
+            std::vector<g::OpaquePointTask> tasks;
+            const auto& mesh=f.models[0].gpuMesh;
+            for (const auto index:mesh.pointCloud->roots) {
+                const auto& node=mesh.pointCloud->nodes[index];
+                for (uint32_t used=0;used<node.count;) {
+                    const auto offset=node.begin+used;
+                    const auto count=std::min({4096u,node.count-used,woby::pointChunkSize-offset%woby::pointChunkSize});
+                    tasks.push_back({mesh.pointChunks[offset/woby::pointChunkSize],offset%woby::pointChunkSize,count,node.group,true});
+                    used+=count;
+                }
+            }
+            const g::PointPrograms programs{f.runtime.clear,f.runtime.raster,f.runtime.resolveIds,
+                f.runtime.batchClear,f.runtime.ids,f.runtime.merge};
+            const auto submit=[&](std::array<uint32_t,4> rectangle,bool reset,bool optimized) {
+                g::submitOpaquePoints(0,g::PointBackend::atomic64,f.runtime.winners,{},programs,
+                    groups,tasks,rectangle,reset,false,optimized?f.runtime.coverage:g::VertexBufferHandle{});
+                return winners(f);
+            };
+            for (const auto rectangle:std::array<std::array<uint32_t,4>,5>{{
+                {1,2,32,21},{0,0,1,1},{36,28,37,29},{0,0,0,0},{37,29,37,29}}}) {
+                INFO("samples=" << samples << ", size=" << size << ", query=" << rectangle[0] << "," << rectangle[1]);
+                const auto referenceQuery=submit(rectangle,true,false);
+                CHECK(submit(rectangle,true,true)==referenceQuery);
+                // Keep the query's coverage cache. It must not hide samples
+                // outside that query when full-source refinement follows.
+                for (auto& task:tasks) task.query=false;
+                CHECK(submit({},false,true)==expected);
+                for (auto& task:tasks) task.query=true;
+                std::reverse(tasks.begin(),tasks.end());
+            }
         }
     }
 }
@@ -473,7 +550,9 @@ TEST_CASE("Portable point batches preserve depth ID pairs across arbitrary refin
         // a hardware path that has no persistent winner buffer.
         f.runtime.preference=g::PointBackend::quads; draw(f,2); g::frame();
         CHECK_FALSE(g::isValid(f.runtime.winners)); CHECK_FALSE(g::isValid(f.runtime.batch));
+        CHECK_FALSE(g::isValid(f.runtime.coverage));
         f.runtime.preference=g::PointBackend::atomic32; draw(f,3);
+        CHECK_FALSE(g::isValid(f.runtime.coverage));
         CHECK(winners(f)==expected);
     }
 }

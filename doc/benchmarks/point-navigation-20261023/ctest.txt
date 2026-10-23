@@ -1,0 +1,273 @@
+Test project D:/woby/build/vs2026-vcpkg
+        Start 110: woby_update_helper_smoke
+        Start  94: woby_obj_colors_render
+        Start 128: woby_runtime_build_graph
+        Start   8: command history evicts results without ever reusing admitted retry keys
+  1/131 Test #128: woby_runtime_build_graph ........................................................   Passed   20.50 sec
+        Start  82: updater removes obsolete renderer assets and restores them on rollback
+  2/131 Test   #8: command history evicts results without ever reusing admitted retry keys .........   Passed   21.19 sec
+        Start 129: woby_test_suite_selection
+  3/131 Test  #94: woby_obj_colors_render ..........................................................   Passed   25.52 sec
+        Start 100: woby_uv_grid_layout_quality_render
+  4/131 Test  #82: updater removes obsolete renderer assets and restores them on rollback ..........   Passed    8.96 sec
+        Start 113: woby_rapidobj_scalar
+  5/131 Test #113: woby_rapidobj_scalar ............................................................   Passed    2.61 sec
+        Start  81: woby_tests::update_tests
+  6/131 Test  #81: woby_tests::update_tests ........................................................   Passed   17.92 sec
+        Start   7: woby_tests::automation_tests
+  7/131 Test #129: woby_test_suite_selection .......................................................   Passed   31.71 sec
+        Start 112: woby_rapidobj_stress
+  8/131 Test #112: woby_rapidobj_stress ............................................................   Passed    2.40 sec
+        Start  87: woby_point_navigation_reporting
+  9/131 Test  #87: woby_point_navigation_reporting .................................................   Passed    0.39 sec
+        Start  42: detector snapshots and stages accept meshes beyond the distance heatmap limit
+ 10/131 Test  #42: detector snapshots and stages accept meshes beyond the distance heatmap limit ...   Passed    1.71 sec
+        Start  51: OBJ prototype preserves continued bodies at every raw block alignment
+ 11/131 Test #100: woby_uv_grid_layout_quality_render ..............................................   Passed   31.97 sec
+        Start  99: woby_uv_grid_layout_uv_render
+ 12/131 Test  #51: OBJ prototype preserves continued bodies at every raw block alignment ...........   Passed    1.41 sec
+        Start 122: woby_intersection_fma_contract
+ 13/131 Test   #7: woby_tests::automation_tests ....................................................   Passed   15.98 sec
+        Start  45: woby_tests::mesh_intersection_predicates_tests
+ 14/131 Test #122: woby_intersection_fma_contract ..................................................   Passed    7.26 sec
+        Start 108: woby_marker_shaders
+ 15/131 Test #108: woby_marker_shaders .............................................................   Passed    5.19 sec
+        Start 107: woby_update_packaging
+ 16/131 Test  #45: woby_tests::mesh_intersection_predicates_tests ..................................   Passed    7.36 sec
+        Start  71: woby_tests::spatial_sort_tests
+ 17/131 Test #107: woby_update_packaging ...........................................................   Passed    4.42 sec
+        Start  41: analysis measures both surfaces above the former triangle cap
+ 18/131 Test  #41: analysis measures both surfaces above the former triangle cap ...................   Passed    0.65 sec
+        Start  50: woby_tests::obj_prototype_tests
+ 19/131 Test  #71: woby_tests::spatial_sort_tests ..................................................   Passed    3.52 sec
+        Start  33: woby_tests::importer_tests
+ 20/131 Test  #33: woby_tests::importer_tests ......................................................   Passed    2.62 sec
+        Start  46: woby_tests::mesh_intersections_tests
+ 21/131 Test  #50: woby_tests::obj_prototype_tests .................................................   Passed    3.17 sec
+        Start  72: woby_tests::surface_annotation_tests
+ 22/131 Test  #72: woby_tests::surface_annotation_tests ............................................   Passed    1.49 sec
+        Start 106: woby_python_selection
+ 23/131 Test  #46: woby_tests::mesh_intersections_tests ............................................   Passed    2.08 sec
+        Start 127: woby_test_discovery
+ 24/131 Test #106: woby_python_selection ...........................................................   Passed    1.48 sec
+        Start  54: woby_tests::preparation_passes_tests
+ 25/131 Test #127: woby_test_discovery .............................................................   Passed    1.51 sec
+        Start 131: woby_windows_launch
+ 26/131 Test  #54: woby_tests::preparation_passes_tests ............................................   Passed    1.02 sec
+        Start  63: woby_tests::scene_pane_layout_tests
+ 27/131 Test  #63: woby_tests::scene_pane_layout_tests .............................................   Passed    0.11 sec
+        Start  74: woby_tests::text_annotation_tests
+ 28/131 Test  #74: woby_tests::text_annotation_tests ...............................................   Passed    0.10 sec
+        Start 101: woby_uv_grid_suite_selection
+ 29/131 Test #131: woby_windows_launch .............................................................   Passed    1.12 sec
+        Start  49: woby_tests::obj_mesh_tests
+ 30/131 Test #101: woby_uv_grid_suite_selection ....................................................   Passed    0.97 sec
+        Start  83: woby_tests::uv_grid_tests
+ 31/131 Test  #49: woby_tests::obj_mesh_tests ......................................................   Passed    0.91 sec
+        Start  40: woby_tests::mesh_comparison_tests
+ 32/131 Test  #83: woby_tests::uv_grid_tests .......................................................   Passed    0.89 sec
+        Start 111: woby_update_helper_fixtures
+ 33/131 Test  #40: woby_tests::mesh_comparison_tests ...............................................   Passed    0.68 sec
+        Start  12: woby_tests::comparison_name_tests
+ 34/131 Test #111: woby_update_helper_fixtures .....................................................   Passed    0.75 sec
+        Start  64: woby_tests::scene_pick_tests
+ 35/131 Test  #12: woby_tests::comparison_name_tests ...............................................   Passed    0.75 sec
+        Start  47: woby_tests::mesh_topology_tests
+ 36/131 Test  #47: woby_tests::mesh_topology_tests .................................................   Passed    0.73 sec
+        Start 125: woby_runtime_staging
+ 37/131 Test  #64: woby_tests::scene_pick_tests ....................................................   Passed    1.09 sec
+        Start  17: woby_tests::cross_section_tests
+ 38/131 Test #125: woby_runtime_staging ............................................................   Passed    0.67 sec
+        Start  78: woby_tests::ui_operations_tests
+ 39/131 Test  #17: woby_tests::cross_section_tests .................................................   Passed    0.75 sec
+        Start  35: woby_tests::loading_preparation_tests
+ 40/131 Test  #78: woby_tests::ui_operations_tests .................................................   Passed    0.64 sec
+        Start  77: woby_tests::ui_name_tests
+ 41/131 Test  #77: woby_tests::ui_name_tests .......................................................   Passed    0.26 sec
+        Start  55: woby_tests::recent_files_tests
+ 42/131 Test  #35: woby_tests::loading_preparation_tests ...........................................   Passed    0.74 sec
+        Start  59: woby_tests::scene_file_edge_tests
+ 43/131 Test  #59: woby_tests::scene_file_edge_tests ...............................................   Passed    0.43 sec
+        Start  13: woby_tests::comparison_placement_tests
+ 44/131 Test  #55: woby_tests::recent_files_tests ..................................................   Passed    0.72 sec
+        Start  34: woby_tests::keyboard_input_tests
+ 45/131 Test  #13: woby_tests::comparison_placement_tests ..........................................   Passed    0.21 sec
+        Start   5: woby_tests::analysis_results_tests
+ 46/131 Test  #34: woby_tests::keyboard_input_tests ................................................   Passed    0.50 sec
+        Start  62: woby_tests::scene_lifecycle_tests
+ 47/131 Test  #99: woby_uv_grid_layout_uv_render ...................................................   Passed   32.64 sec
+        Start  89: woby_headless_camera
+ 48/131 Test   #5: woby_tests::analysis_results_tests ..............................................   Passed    0.63 sec
+        Start  48: woby_tests::model_mesh_tests
+ 49/131 Test  #62: woby_tests::scene_lifecycle_tests ...............................................   Passed    0.37 sec
+        Start   4: woby_tests::analysis_presentation_tests
+ 50/131 Test  #48: woby_tests::model_mesh_tests ....................................................   Passed    0.53 sec
+        Start  65: woby_tests::scene_queries_tests
+ 51/131 Test   #4: woby_tests::analysis_presentation_tests .........................................   Passed    0.49 sec
+        Start  86: woby_tests::windows_paths_tests
+ 52/131 Test  #86: woby_tests::windows_paths_tests .................................................   Passed    0.42 sec
+        Start  76: woby_tests::ui_bulk_operations_tests
+ 53/131 Test  #65: woby_tests::scene_queries_tests .................................................   Passed    0.59 sec
+        Start  23: woby_tests::freeform_tests
+ 54/131 Test  #76: woby_tests::ui_bulk_operations_tests ............................................   Passed    0.12 sec
+        Start  60: woby_tests::scene_history_tests
+ 55/131 Test  #23: woby_tests::freeform_tests ......................................................   Passed    0.34 sec
+        Start  18: woby_tests::difference_mesh_tests
+ 56/131 Test  #60: woby_tests::scene_history_tests .................................................   Passed    0.38 sec
+        Start   2: woby_tests::adaptive_points_tests
+ 57/131 Test  #18: woby_tests::difference_mesh_tests ...............................................   Passed    0.31 sec
+        Start 118: woby_rapidobj_reader
+ 58/131 Test #118: woby_rapidobj_reader ............................................................   Passed    0.28 sec
+        Start  24: woby_tests::freeform_trim_tests
+ 59/131 Test   #2: woby_tests::adaptive_points_tests ...............................................   Passed    0.47 sec
+        Start  79: woby_tests::ui_transform_operations_tests
+ 60/131 Test  #79: woby_tests::ui_transform_operations_tests .......................................   Passed    0.12 sec
+        Start  36: woby_tests::manual_path_dialog_tests
+ 61/131 Test  #24: woby_tests::freeform_trim_tests .................................................   Passed    0.27 sec
+        Start  11: woby_tests::comparison_inspector_tests
+ 62/131 Test  #36: woby_tests::manual_path_dialog_tests ............................................   Passed    0.30 sec
+        Start 116: woby_windows_manifests
+ 63/131 Test  #11: woby_tests::comparison_inspector_tests ..........................................   Passed    0.33 sec
+        Start  15: woby_tests::coordinate_origin_tests
+ 64/131 Test #116: woby_windows_manifests ..........................................................   Passed    0.25 sec
+        Start  75: woby_tests::ui_bulk_controls_tests
+ 65/131 Test  #75: woby_tests::ui_bulk_controls_tests ..............................................   Passed    0.09 sec
+        Start  44: woby_tests::mesh_duplicates_tests
+ 66/131 Test  #15: woby_tests::coordinate_origin_tests .............................................   Passed    0.24 sec
+        Start   9: woby_tests::background_load_tests
+ 67/131 Test  #44: woby_tests::mesh_duplicates_tests ...............................................   Passed    0.22 sec
+        Start  31: woby_tests::importer_lines_tests
+ 68/131 Test   #9: woby_tests::background_load_tests ...............................................   Passed    0.23 sec
+        Start  61: woby_tests::scene_inspector_queries_tests
+ 69/131 Test  #31: woby_tests::importer_lines_tests ................................................   Passed    0.15 sec
+        Start  14: woby_tests::control_tests
+ 70/131 Test  #61: woby_tests::scene_inspector_queries_tests .......................................   Passed    0.19 sec
+        Start  30: woby_tests::importer_geometry_tests
+ 71/131 Test  #14: woby_tests::control_tests .......................................................   Passed    0.15 sec
+        Start 109: woby_graphics_root_layout
+ 72/131 Test  #30: woby_tests::importer_geometry_tests .............................................   Passed    0.17 sec
+        Start  43: woby_tests::mesh_degenerates_tests
+ 73/131 Test #109: woby_graphics_root_layout .......................................................   Passed    0.22 sec
+        Start  16: woby_tests::count_format_tests
+ 74/131 Test  #16: woby_tests::count_format_tests ..................................................   Passed    0.06 sec
+        Start  73: woby_tests::tetrahedral_mesh_tests
+ 75/131 Test  #43: woby_tests::mesh_degenerates_tests ..............................................   Passed    0.26 sec
+        Start  80: woby_tests::ui_view_tests
+ 76/131 Test  #73: woby_tests::tetrahedral_mesh_tests ..............................................   Passed    0.13 sec
+        Start  85: woby_tests::vtk_mesh_tests
+ 77/131 Test  #85: woby_tests::vtk_mesh_tests ......................................................   Passed    0.12 sec
+        Start 114: woby_graphics_diagnostics_allocations
+ 78/131 Test  #80: woby_tests::ui_view_tests .......................................................   Passed    0.18 sec
+        Start  84: woby_tests::uv_quality_tests
+ 79/131 Test #114: woby_graphics_diagnostics_allocations ...........................................   Passed    0.08 sec
+        Start 119: woby_native_allocations
+ 80/131 Test #119: woby_native_allocations .........................................................   Passed    0.05 sec
+        Start  19: woby_tests::file_associations_tests
+ 81/131 Test  #84: woby_tests::uv_quality_tests ....................................................   Passed    0.16 sec
+        Start 115: woby_utility_allocations
+ 82/131 Test  #19: woby_tests::file_associations_tests .............................................   Passed    0.13 sec
+        Start  58: woby_tests::scene_edge_tests
+ 83/131 Test #115: woby_utility_allocations ........................................................   Passed    0.08 sec
+        Start  69: woby_tests::shared_geometry_tests
+ 84/131 Test  #69: woby_tests::shared_geometry_tests ...............................................   Passed    0.08 sec
+        Start  32: woby_tests::importer_point_ids_tests
+ 85/131 Test  #58: woby_tests::scene_edge_tests ....................................................   Passed    0.12 sec
+        Start  20: woby_tests::file_discovery_tests
+ 86/131 Test  #32: woby_tests::importer_point_ids_tests ............................................   Passed    0.11 sec
+        Start 130: woby_version
+ 87/131 Test  #20: woby_tests::file_discovery_tests ................................................   Passed    0.11 sec
+        Start   6: woby_tests::app_icon_tests
+ 88/131 Test #130: woby_version ....................................................................   Passed    0.15 sec
+        Start  70: woby_tests::simd_geometry_tests
+ 89/131 Test   #6: woby_tests::app_icon_tests ......................................................   Passed    0.15 sec
+        Start  56: woby_tests::scene_dimensions_tests
+ 90/131 Test  #70: woby_tests::simd_geometry_tests .................................................   Passed    0.09 sec
+        Start 120: woby_native_commands
+ 91/131 Test #120: woby_native_commands ............................................................   Passed    0.04 sec
+        Start 126: woby_shared_sources
+ 92/131 Test  #56: woby_tests::scene_dimensions_tests ..............................................   Passed    0.19 sec
+        Start  28: woby_tests::graphics_upload_tests
+ 93/131 Test #126: woby_shared_sources .............................................................   Passed    0.09 sec
+        Start  38: woby_tests::marker_pick_tests
+ 94/131 Test  #28: woby_tests::graphics_upload_tests ...............................................   Passed    0.09 sec
+        Start  27: woby_tests::graphics_tests
+ 95/131 Test  #38: woby_tests::marker_pick_tests ...................................................   Passed    0.09 sec
+        Start  67: woby_tests::scene_renderer_tests
+ 96/131 Test  #27: woby_tests::graphics_tests ......................................................   Passed    0.09 sec
+        Start  10: woby_tests::command_line_tests
+ 97/131 Test  #67: woby_tests::scene_renderer_tests ................................................   Passed    0.10 sec
+        Start  68: woby_tests::shader_types_tests
+ 98/131 Test  #10: woby_tests::command_line_tests ..................................................   Passed    0.10 sec
+        Start  39: woby_tests::math_utils_tests
+ 99/131 Test  #68: woby_tests::shader_types_tests ..................................................   Passed    0.09 sec
+        Start  21: woby_tests::frame_pacing_tests
+100/131 Test  #39: woby_tests::math_utils_tests ....................................................   Passed    0.07 sec
+        Start  25: woby_tests::graphics_diagnostics_tests
+101/131 Test  #21: woby_tests::frame_pacing_tests ..................................................   Passed    0.07 sec
+        Start  29: woby_tests::hover_pick_tests
+102/131 Test  #29: woby_tests::hover_pick_tests ....................................................   Passed    0.06 sec
+        Start  52: woby_tests::performance_capture_tests
+103/131 Test  #25: woby_tests::graphics_diagnostics_tests ..........................................   Passed    0.15 sec
+        Start  53: woby_tests::post_loading_tests
+104/131 Test  #52: woby_tests::performance_capture_tests ...........................................   Passed    0.09 sec
+105/131 Test  #53: woby_tests::post_loading_tests ..................................................   Passed    0.11 sec
+106/131 Test #110: woby_update_helper_smoke ........................................................   Passed   97.26 sec
+107/131 Test  #89: woby_headless_camera ............................................................   Passed   24.40 sec
+        Start  88: woby_headless
+108/131 Test  #88: woby_headless ...................................................................   Passed   17.93 sec
+        Start  92: woby_transparency_render
+109/131 Test  #92: woby_transparency_render ........................................................   Passed   14.98 sec
+        Start  93: woby_obj_primitives_render
+110/131 Test  #93: woby_obj_primitives_render ......................................................   Passed   15.61 sec
+        Start 102: woby_uv_quality_render
+111/131 Test #102: woby_uv_quality_render ..........................................................   Passed   12.71 sec
+        Start 124: woby_ctl_lines
+112/131 Test #124: woby_ctl_lines ..................................................................   Passed   12.51 sec
+        Start  91: woby_vertex_render
+113/131 Test  #91: woby_vertex_render ..............................................................   Passed   12.62 sec
+        Start   1: woby_tests::adaptive_points_gpu_tests
+114/131 Test   #1: woby_tests::adaptive_points_gpu_tests ...........................................   Passed   19.75 sec
+        Start  98: woby_uv_grid_inspection_render
+115/131 Test  #98: woby_uv_grid_inspection_render ..................................................   Passed   11.83 sec
+        Start  90: woby_difference_cli
+116/131 Test  #90: woby_difference_cli .............................................................   Passed    4.87 sec
+        Start  95: woby_freeform_render
+117/131 Test  #95: woby_freeform_render ............................................................   Passed   10.82 sec
+        Start  96: woby_uv_grid_render
+118/131 Test  #96: woby_uv_grid_render .............................................................   Passed   10.30 sec
+        Start 105: woby_coordinate_origin
+119/131 Test #105: woby_coordinate_origin ..........................................................   Passed    9.63 sec
+        Start 123: woby_portable_importers
+120/131 Test #123: woby_portable_importers .........................................................   Passed    4.98 sec
+        Start  97: woby_uv_grid_analysis_render
+121/131 Test  #97: woby_uv_grid_analysis_render ....................................................   Passed    7.59 sec
+        Start 117: woby_windows_paths
+122/131 Test #117: woby_windows_paths ..............................................................   Passed    5.19 sec
+        Start 104: woby_post_loading
+123/131 Test #104: woby_post_loading ...............................................................   Passed    5.69 sec
+        Start  66: woby_tests::scene_renderer_gpu_tests
+124/131 Test  #66: woby_tests::scene_renderer_gpu_tests ............................................   Passed    6.13 sec
+        Start 121: woby_native_device_allocations
+125/131 Test #121: woby_native_device_allocations ..................................................   Passed    7.13 sec
+        Start 103: woby_loading_preparation
+126/131 Test #103: woby_loading_preparation ........................................................   Passed    3.26 sec
+        Start  26: woby_tests::graphics_gpu_tests
+127/131 Test  #26: woby_tests::graphics_gpu_tests ..................................................   Passed    2.38 sec
+        Start   3: woby_tests::analysis_display_gpu_tests
+128/131 Test   #3: woby_tests::analysis_display_gpu_tests ..........................................   Passed    2.07 sec
+        Start  57: woby_tests::scene_edge_gpu_tests
+129/131 Test  #57: woby_tests::scene_edge_gpu_tests ................................................   Passed    1.72 sec
+        Start  37: woby_tests::marker_pick_gpu_tests
+130/131 Test  #37: woby_tests::marker_pick_gpu_tests ...............................................   Passed    0.89 sec
+        Start  22: woby_tests::freeform_gpu_tests
+131/131 Test  #22: woby_tests::freeform_gpu_tests ..................................................   Passed    0.76 sec
+
+100% tests passed, 0 tests failed out of 131
+
+Label Time Summary:
+cpu         = 122.36 sec*proc (90 tests)
+graphics    = 315.89 sec*proc (28 tests)
+slow        = 156.69 sec*proc (9 tests)
+unit        = 163.20 sec*proc (98 tests)
+
+Total Test time (real) = 316.41 sec

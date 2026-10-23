@@ -8,7 +8,10 @@ void pointAtomicMax64(uint64* address, uint64 value) {
     case metal:
         __intrinsic_asm "atomic_max_explicit((device atomic_ulong*)($0), $1, memory_order_relaxed)";
     default:
-        InterlockedMax(*address,value);
+        // Winners only increase during a raster dispatch. A relaxed atomic
+        // read can skip a losing update; a stale read only adds redundant work.
+        if (((Atomic<uint64>*)address)->load(MemoryOrder.Relaxed)<value)
+            InterlockedMax(*address,value);
     }
 }
 void pointAtomicMax32(__ref uint destination, uint value) {
@@ -28,6 +31,7 @@ float2 samplePosition(uint sample) {
     if (any(thread.xy>=uint2(cloud.width,cloud.height))) return;
     for (uint sample=0;sample<cloud.samples;++sample)
         cloud.winners[(thread.y*cloud.width+thread.x)*cloud.samples+min(sample,cloud.samples-1)]=0;
+    if (cloud.coverage!=nullptr) cloud.coverage[thread.y*cloud.width+thread.x]=0;
 }
 [numthreads(8,8,1)] void cs_opaque_batch_clear(uint3 thread:SV_DispatchThreadID) {
     if (any(thread.xy>=uint2(cloud.width,cloud.height))) return;
@@ -63,18 +67,46 @@ float2 samplePosition(uint sample) {
         int2 lo=int2(max(float2(0),floor(center-radius)));
         int2 hi=int2(min(float2(cloud.width-1,cloud.height-1),floor(center+radius)));
         if (task.query!=0) { lo=max(lo,int2(cloud.query.xy)); hi=min(hi,int2(cloud.query.zw)-1); }
+        if (any(lo>hi)) continue;
         uint id=group.firstId+p.id-group.sourceFirstId;
         uint depth=asuint(max(clip.z/clip.w,0.0));
-        for (int y=lo.y;y<=hi.y;++y) for (int x=lo.x;x<=hi.x;++x) for (uint sample=0;sample<cloud.samples;++sample) {
-            float2 delta=float2(x,y)+samplePosition(sample)-center;
-            if (dot(delta,delta)>radius*radius) continue;
-            uint index=(uint(y)*cloud.width+uint(x))*cloud.samples+min(sample,cloud.samples-1);
-#ifdef WOBY_POINT_ATOMIC64
-            pointAtomicMax64(cloud.winners+index,(uint64(depth)<<32)|uint64(id));
-#else
-            if (!ids) pointAtomicMax32(cloud.batch[index].depth,depth);
-            else if (cloud.batch[index].depth==depth) pointAtomicMax32(cloud.batch[index].id,id);
+        uint64 key=(uint64(depth)<<32)|uint64(id);
+        // A disabled cache uses one 65536-pixel tile. Both paths use shifts,
+        // not per-point integer division by a runtime tile size.
+        int tileSize=int(1u<<cloud.tileShift);
+        for (int tileY=lo.y>>cloud.tileShift;tileY<=(hi.y>>cloud.tileShift);++tileY)
+            for (int tileX=lo.x>>cloud.tileShift;tileX<=(hi.x>>cloud.tileShift);++tileX) {
+            int2 first=int2(tileX,tileY)*tileSize;
+            int2 last=min(first+tileSize-1,int2(cloud.width,cloud.height)-1);
+#if defined(WOBY_POINT_ATOMIC64) && defined(WOBY_VULKAN)
+            if (cloud.tileSize!=0) {
+                uint tileIndex=uint(tileY)*((cloud.width+cloud.tileSize-1)>>cloud.tileShift)+uint(tileX);
+                if (((Atomic<uint64>*)(cloud.coverage+tileIndex))->load(MemoryOrder.Relaxed)>=key) continue;
+                float lowSample=cloud.samples==1?.5:.125;
+                float highSample=cloud.samples==1?.5:.875;
+                float2 farthest=max(abs(float2(first)+lowSample-center),abs(float2(last)+highSample-center));
+                bool completeQuery=task.query==0 || (all(first>=int2(cloud.query.xy)) && all(last<int2(cloud.query.zw)));
+                // Publish only circles that cover the entire tile and query.
+                // This invocation must then write all covered samples below.
+                // A later, greater certificate can replace it; either way a
+                // skipped point cannot win after this dispatch completes.
+                if (completeQuery && dot(farthest,farthest)<=radius*radius)
+                    pointAtomicMax64(cloud.coverage+tileIndex,key);
+            }
 #endif
+            int2 start=max(lo,first),finish=min(hi,last);
+            for (int y=start.y;y<=finish.y;++y) for (int x=start.x;x<=finish.x;++x) [unroll] for (uint sample=0;sample<4;++sample) {
+                if (sample>=cloud.samples) break;
+                float2 delta=float2(x,y)+samplePosition(sample)-center;
+                if (dot(delta,delta)>radius*radius) continue;
+                uint index=(uint(y)*cloud.width+uint(x))*cloud.samples+min(sample,cloud.samples-1);
+#ifdef WOBY_POINT_ATOMIC64
+                pointAtomicMax64(cloud.winners+index,key);
+#else
+                if (!ids) pointAtomicMax32(cloud.batch[index].depth,depth);
+                else if (cloud.batch[index].depth==depth) pointAtomicMax32(cloud.batch[index].id,id);
+#endif
+            }
         }
     }
 }

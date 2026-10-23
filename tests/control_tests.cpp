@@ -1149,12 +1149,14 @@ TEST_CASE("Triangle edge X-ray control validates scope and round trips the scene
 TEST_CASE("Adaptive point control validates scene scope before applying edits")
 {
     auto state=scene(); const auto clean=woby::createSceneDocument(state);
-    CHECK(run(state,clean,"scene.info")["adaptivePoints"]==true);
-    const auto command=parse({"render","set","scene","--adaptive-points","false"});
-    CHECK(command.operation.adaptivePoints==false);
+    CHECK(run(state,clean,"scene.info")["adaptivePoints"]==false);
+    const auto command=parse({"render","set","scene","--adaptive-points","true"});
+    CHECK(command.operation.adaptivePoints==true);
+    run(state,clean,"render.set",{{"target","scene"},{"adaptivePoints",true}});
+    CHECK(state.adaptivePoints);
+    const auto group=state.files[0].groupSettings[0].objectId;
+    CHECK_THROWS(run(state,clean,"render.set",{{"adaptivePoints",false},{"solid",false}},group));
+    CHECK(state.adaptivePoints); CHECK(state.files[0].groupSettings[0].showSolidMesh);
     run(state,clean,"render.set",{{"target","scene"},{"adaptivePoints",false}});
     CHECK_FALSE(state.adaptivePoints);
-    const auto group=state.files[0].groupSettings[0].objectId;
-    CHECK_THROWS(run(state,clean,"render.set",{{"adaptivePoints",true},{"solid",false}},group));
-    CHECK_FALSE(state.adaptivePoints); CHECK(state.files[0].groupSettings[0].showSolidMesh);
 }

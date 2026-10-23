@@ -103,6 +103,7 @@ def main():
     parser.add_argument("--full-frames", type=int, default=12)
     parser.add_argument("--zoom", type=float, default=1)
     parser.add_argument("--visible-window", action="store_true")
+    parser.add_argument("--points-only", action="store_true", help="Disable mesh surfaces and edges to isolate point rendering")
     parser.add_argument("--compare-transparent-surfaces", action="store_true")
     parser.add_argument("--opacity-checks", action="store_true")
     args = parser.parse_args()
@@ -119,11 +120,14 @@ def main():
     with args.model.open("rb") as source: model_hash=hashlib.file_digest(source,"sha256").hexdigest()
     report=dict(model=str(args.model), model_sha256=model_hash,
                 executable_sha256=hashlib.sha256(args.executable.read_bytes()).hexdigest(),
+                runtime_shader_sha256={str(p.relative_to(args.executable.parent)):hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in sorted((args.executable.parent/"assets/shaders").rglob("*.bin"))},
                 source_revision=subprocess.check_output(["git","rev-parse","HEAD"],cwd=repository,text=True).strip(),
                 source_sha256={str(p.relative_to(repository)):hashlib.sha256(p.read_bytes()).hexdigest()
                     for pattern in ("src/*point*.*","shaders/native/*point*.*","src/graphics.cpp","src/scene_renderer.cpp")
                     for p in repository.glob(pattern)}, rounds=[], hidden_window=not args.visible_window,
                 requested_drawable=[1280,720], zoom=args.zoom,
+                points_only=args.points_only,
                 compare_transparent_surfaces=args.compare_transparent_surfaces,
                 opacity_checks=args.opacity_checks,
                 runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
@@ -191,7 +195,8 @@ def main():
                                   "pitchDegrees":initial["pitchDegrees"]+2*math.cos(frame*math.tau/12)})
             stats=rpc("stats"); report["stats"]=stats
             mesh=bool(stats.get("triangleCount"))
-            rpc("render.set",{"target":"scene","solid":mesh,"triangles":mesh,"vertices":True,"adaptivePoints":True})
+            rpc("render.set",{"target":"scene","solid":mesh and not args.points_only,
+                              "triangles":mesh and not args.points_only,"vertices":True,"adaptivePoints":True})
             cloud_id=loaded["addedIds"][0]; surface_id=None
             if args.compare_transparent_surfaces:
                 surface_path=args.output/"transparent-sheets.obj"

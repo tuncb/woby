@@ -1,0 +1,20 @@
+{
+  "system": {
+    "TotalPhysicalMemory": 68564348928
+  },
+  "os": {
+    "Caption": "Microsoft Windows 11 Home",
+    "Version": "10.0.26300",
+    "BuildNumber": "26300"
+  },
+  "cpu": {
+    "Name": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+    "NumberOfCores": 8,
+    "NumberOfLogicalProcessors": 16
+  },
+  "gpu": [
+    "name, driver_version, memory.total [MiB], temperature.gpu, clocks.current.graphics [MHz], clocks.current.memory [MHz], power.draw [W]",
+    "NVIDIA GeForce RTX 3070 Laptop GPU, 616.92, 8192 MiB, 61, 1560 MHz, 7001 MHz, 49.04 W"
+  ],
+  "date": "2026-10-23T17:59:38.4111901+02:00"
+}

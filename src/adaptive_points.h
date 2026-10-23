@@ -19,6 +19,7 @@ struct AdaptivePointCut {
 struct AdaptivePointRuntime {
     graphics::VertexBufferHandle winners=WOBY_GPU_INVALID_HANDLE;
     graphics::VertexBufferHandle batch=WOBY_GPU_INVALID_HANDLE;
+    graphics::VertexBufferHandle coverage=WOBY_GPU_INVALID_HANDLE;
     graphics::ProgramHandle clear=WOBY_GPU_INVALID_HANDLE, raster=WOBY_GPU_INVALID_HANDLE, resolve=WOBY_GPU_INVALID_HANDLE;
     graphics::ProgramHandle resolveIds=WOBY_GPU_INVALID_HANDLE;
     graphics::ProgramHandle batchClear{}, ids{}, merge{};

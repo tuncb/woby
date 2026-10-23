@@ -1,0 +1,23 @@
+{
+  "model": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+  "model_sha256": "7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329",
+  "binary_sha256": "cbae574eaba2c7ca2f48da9190d55f56adaabaa604c706754e607a60d7360bb0",
+  "baseline_shader_sha256": "6a87dfa3070a99c6d46cc17a8793e4364205b093835ffbf631f30a9c3dfe4e9e",
+  "shaders": {
+    "cs_opaque_batch_clear.bin": "5e862319678a138d3ebf8b9c3dab7dc4a694ea43b7f361a75491c6060847b62e",
+    "cs_opaque_clear.bin": "51e45079f7633cbaae97385e890e0087abe01e983ca0f8bfdacaf223fb68314d",
+    "cs_opaque_depth.bin": "f98274f7cd9902a615e4c8d2c0f89aae8cc5ac154a512943a55b95d62a8ebe05",
+    "cs_opaque_ids.bin": "4fce103d8ac8f08b925f2efa5943b4b5cb2781680e32cbfc7c38c5f99b484c06",
+    "cs_opaque_merge.bin": "df6420e99e06b4d7a77c1e2e17b8bfc4d8352376d5e19820a2eae1cb4dcf256b",
+    "cs_opaque_raster.bin": "2a4b23a30985450075fd2341bd2bd5a0f9892ae99b170200c1939c422d8a1752",
+    "fs_opaque_color.bin": "b7bf2926910607f184074c5f52fc5ea53f8d026aed44df40afd13b1bb180d07f",
+    "fs_opaque_resolve.bin": "6144c999eacda4bc7e4b35fbe309ced1deb282874a2437c99906420e3bd25f62",
+    "vs_opaque_resolve.bin": "1b59dfb9da01cad3d58d898d4477cd2371c60c97e55ff25f26ed71f3511ad0b6"
+  },
+  "source_revision": "ef2112afd50410b4189484e120ebb27c29fde956",
+  "exit_code": 0,
+  "guard_reason": null,
+  "peak_private": 9929732096,
+  "minimum_available": 35986083840,
+  "elapsed_seconds": 57.44076930003939
+}

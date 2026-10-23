@@ -135,7 +135,7 @@ enum class OperationType
 struct PointPacket
 {
     PointBackend backend = PointBackend::quads;
-    std::shared_ptr<Buffer> winners, batch;
+    std::shared_ptr<Buffer> winners, batch, coverage;
     std::shared_ptr<Program> clear, raster, batchClear, ids, merge;
     std::vector<OpaquePointGroup> groups;
     std::vector<OpaquePointTaskData> tasks;
@@ -845,6 +845,17 @@ void pointOperation(gpu::CommandBuffer* commands,const Operation& op,const View&
     require(uint64_t(view.width)*view.height*target.samples*sizeof(uint64_t)<=packet.winners->bytes,"Point target exceeds winner buffer");
     OpaquePointRoot root{};
     root.winners=reinterpret_cast<uint64_t*>(packet.winners->heap.range.gpu);
+    root.tileShift=16; // One tile covers any supported viewport when the cache is disabled.
+    if (packet.coverage) {
+        require(uint64_t(view.width)*view.height*sizeof(uint64_t)<=packet.coverage->bytes,"Point target exceeds coverage buffer");
+        root.coverage=reinterpret_cast<uint64_t*>(packet.coverage->heap.range.gpu);
+        float size=40;
+        for (const auto& group:packet.groups) size=std::min(size,group.pointSize);
+        if (size>=2 && packet.pointCount>=4096) {
+            root.tileSize=1; root.tileShift=0;
+            while (root.tileSize<16 && float(root.tileSize*4)<=size) { root.tileSize*=2; ++root.tileShift; }
+        }
+    }
     if (packet.batch) {
         require(packet.batch->bytes>=packet.winners->bytes,"Point scratch buffer is too small");
         root.batch=reinterpret_cast<OpaquePointBatchSample*>(packet.batch->heap.range.gpu);
@@ -1683,12 +1694,13 @@ void dispatch(ViewId id, ProgramHandle h, uint32_t x, uint32_t y, uint32_t z)
     resetEncoder();
 }
 void submitOpaquePoints(ViewId id,PointBackend backend,VertexBufferHandle winners,VertexBufferHandle batch,const PointPrograms& programs,
-    std::span<const OpaquePointGroup> groups,std::span<const OpaquePointTask> tasks,std::array<uint32_t,4> query,bool reset,bool budgeted) {
+    std::span<const OpaquePointGroup> groups,std::span<const OpaquePointTask> tasks,std::array<uint32_t,4> query,bool reset,bool budgeted,VertexBufferHandle coverage) {
     beginFrame();
     require(backend!=PointBackend::automatic && selectPointBackend(state().caps.supported,backend)==backend,"Point backend unsupported");
     require(!groups.empty(),"Empty opaque point groups");
     auto packet=std::make_shared<PointPacket>();
     packet->backend=backend;
+    if (backend==PointBackend::atomic64 && isValid(coverage)) packet->coverage=resource(state().vertexBuffers,coverage);
     if (backend!=PointBackend::quads) {
         packet->winners=resource(state().vertexBuffers,winners);
         packet->clear=resource(state().programs,programs.clear); packet->raster=resource(state().programs,programs.raster);

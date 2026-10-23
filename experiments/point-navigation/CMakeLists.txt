@@ -1,0 +1,5 @@
+add_executable(woby_point_validation validate.cpp)
+target_compile_features(woby_point_validation PRIVATE cxx_std_20)
+target_link_libraries(woby_point_validation PRIVATE woby_core)
+add_dependencies(woby_point_validation woby)
+woby_enable_project_warnings(woby_point_validation)

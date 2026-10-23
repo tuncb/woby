@@ -1,0 +1,24 @@
+{
+  "base_revision": "ef2112afd50410b4189484e120ebb27c29fde956",
+  "configuration": "vs2026-vcpkg Release",
+  "build_warnings": 0,
+  "ctest_passed": 131,
+  "ctest_failed": 0,
+  "ctest_seconds": 316.41,
+  "real_model_sample_pairs": 105523200,
+  "real_model_mismatches": 0,
+  "executable_sha256": "5026e8925fa71ed77ddd50edceeab1c4570feb7ec407cb44a8142ca011b6ae98",
+  "source_sha256": {
+    "src/adaptive_points.cpp": "26f5ab7bd7979e5ef92f1d68efbcb5425e426e7e3a02cdd55a8850806f825b35",
+    "src/adaptive_points.h": "c7f3d107ad71bec8961f7be6fd68b4bbdb708b941f352410c1e520b30678f140",
+    "src/graphics.cpp": "8fe49e0ab023416e30ba2dfd9873f1f35b2b29ab73abbf7d6573de1922e2983a",
+    "src/graphics.h": "23abc4909404f09810f3f73f45808626ca4228259a922939253adcc4e42ed7a0",
+    "src/point_cloud.cpp": "b6ab3b0c4cfad4088d19dba9740d367d78c2c11eab418bf46364f9322e23f697",
+    "src/point_cloud.h": "a07e65ffe1eb3184d1309bb2a100c9c3d7e8316219979c0d189978e41e4d1aa8",
+    "shaders/native/opaque_points.h": "4c8061bf64b656947d4396796e9f1c6f1328f95a38fdacff2862795691ee8052",
+    "shaders/native/opaque_points.slang": "0ed4c5df477ed8002df87afa2ceaf7ca73021e72c43d204bf438a8bd4afe7311",
+    "tests/adaptive_points_gpu_tests.cpp": "ce72e4202cd00f6b17feef4ab6ab378752a3a89110544e476f71eab31e3fe8b2",
+    "tests/adaptive_points_tests.cpp": "4172fd1f9d61d3d955741bed2b67008f678ff3eb05c9d23f5900c011ebbf132e",
+    "tests/point_navigation_reporting_tests.py": "1d139c4d3845453509ec8f064f36207f05fbe9a1717658874e8c3ea5e1430b0d"
+  }
+}

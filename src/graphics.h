@@ -346,7 +346,8 @@ struct PointPrograms {
 void submitOpaquePoints(ViewId, PointBackend, VertexBufferHandle winners, VertexBufferHandle batch,
     const PointPrograms&,
     std::span<const OpaquePointGroup> groups, std::span<const OpaquePointTask> tasks,
-    std::array<uint32_t,4> queryRectangle, bool reset, bool budgeted);
+    std::array<uint32_t,4> queryRectangle, bool reset, bool budgeted,
+    VertexBufferHandle coverage = WOBY_GPU_INVALID_HANDLE);
 void blit(ViewId, TextureHandle destination, uint16_t x, uint16_t y, TextureHandle source, uint16_t sourceX = 0,
           uint16_t sourceY = 0, uint16_t width = UINT16_MAX, uint16_t height = UINT16_MAX);
 uint32_t readTexture(TextureHandle, void *destination);

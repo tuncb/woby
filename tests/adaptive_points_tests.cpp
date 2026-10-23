@@ -4,6 +4,7 @@
 #include "ui_operations.h"
 #include "automation_registry.h"
 #include <doctest/doctest.h>
+#include <algorithm>
 #include <fstream>
 #include <numeric>
 
@@ -36,6 +37,18 @@ TEST_CASE("Adaptive point queue keeps vertices opaque independently of surface o
         CHECK(color[2]==doctest::Approx(.9f)); CHECK(color[3]==1);
     }
 }
+TEST_CASE("Prepared navigation cuts use rendering headroom above two million points") {
+    const auto cloud=woby::points::buildCloud(cloudMesh(3100000));
+    const auto coarse=woby::points::navigationDetail(cloud,2000000);
+    const auto finer=woby::points::navigationDetail(cloud,3000000);
+    CHECK(coarse.points<=2000000);
+    CHECK(finer.points>2000000);
+    CHECK(finer.points<=3000000);
+    CHECK(finer.points>coarse.points);
+    const auto full=woby::points::navigationDetail(cloud,8000000);
+    CHECK(full.points==3100000);
+    CHECK(std::all_of(full.ranges.begin(),full.ranges.end(),[](const auto& range) { return !range.proxy; }));
+}
 TEST_CASE("Point backend selection retains adaptive rendering without 64 bit atomics") {
     using namespace woby::graphics;
     constexpr auto portable=WOBY_GPU_CAPS_POINT_COMPUTE;
@@ -67,27 +80,31 @@ TEST_CASE("Adaptive point queue switches source color buffers without changing p
 }
 TEST_CASE("Adaptive point controls persist through views scene files and history") {
     PointDirectory directory;
-    woby::UiState state; REQUIRE(state.adaptivePoints);
+    woby::UiState state; REQUIRE_FALSE(state.adaptivePoints);
     const auto clean=woby::createSceneDocument(state);
     woby::SceneHistory history; woby::resetSceneHistory(history,state);
-    woby::setAdaptivePoints(state,false); REQUIRE(state.isDirty);
+    woby::setAdaptivePoints(state,true); REQUIRE(state.isDirty);
     const auto revision=state.sceneEditRevision;
-    woby::setAdaptivePoints(state,false); CHECK(state.sceneEditRevision==revision);
+    woby::setAdaptivePoints(state,true); CHECK(state.sceneEditRevision==revision);
     REQUIRE(woby::recordSceneHistory(history,state));
     auto undo=woby::prepareSceneHistoryStep(history,state,clean,false);
-    REQUIRE(undo); woby::commitSceneHistoryStep(history,state,std::move(*undo),false); CHECK(state.adaptivePoints);
+    REQUIRE(undo); woby::commitSceneHistoryStep(history,state,std::move(*undo),false); CHECK_FALSE(state.adaptivePoints);
     auto redo=woby::prepareSceneHistoryStep(history,state,clean,true);
-    REQUIRE(redo); woby::commitSceneHistoryStep(history,state,std::move(*redo),true); CHECK_FALSE(state.adaptivePoints);
+    REQUIRE(redo); woby::commitSceneHistoryStep(history,state,std::move(*redo),true); CHECK(state.adaptivePoints);
     const auto view=woby::createView(state);
-    woby::setAdaptivePoints(state,true); woby::applyView(state,view); CHECK_FALSE(state.adaptivePoints);
+    woby::setAdaptivePoints(state,false); woby::applyView(state,view); CHECK(state.adaptivePoints);
     const auto path=directory.path/"scene.woby";
     woby::writeSceneDocument(path,woby::createSceneDocument(state));
     const auto saved=woby::readSceneDocument(path);
-    REQUIRE(saved.views.size()==1); CHECK_FALSE(saved.adaptivePoints); CHECK_FALSE(saved.views[0].scene.adaptivePoints);
-    const auto restored=woby::prepareSceneReplacement({}, {}, saved); CHECK_FALSE(restored.adaptivePoints);
-    auto changed=saved; changed.adaptivePoints=true; CHECK_FALSE(woby::sceneContentEqual(changed,saved));
+    REQUIRE(saved.views.size()==1); CHECK(saved.adaptivePoints); CHECK(saved.views[0].scene.adaptivePoints);
+    const auto restored=woby::prepareSceneReplacement({}, {}, saved); CHECK(restored.adaptivePoints);
+    auto changed=saved; changed.adaptivePoints=false; CHECK_FALSE(woby::sceneContentEqual(changed,saved));
+    woby::writeSceneDocument(path,changed);
+    const auto disabled=woby::readSceneDocument(path); CHECK_FALSE(disabled.adaptivePoints);
+    CHECK_FALSE(woby::prepareSceneReplacement(restored, {}, disabled).adaptivePoints);
     { std::ofstream file(path); file << "version = 23\n[[views]]\nname = \"legacy\"\n"; }
-    const auto legacy=woby::readSceneDocument(path); CHECK(legacy.adaptivePoints); CHECK(legacy.views[0].scene.adaptivePoints);
+    const auto legacy=woby::readSceneDocument(path); CHECK_FALSE(legacy.adaptivePoints); CHECK_FALSE(legacy.views[0].scene.adaptivePoints);
+    CHECK_FALSE(woby::prepareSceneReplacement(restored, {}, legacy).adaptivePoints);
     { std::ofstream file(path); file << "version = 23\nadaptive_points = 42\n"; }
     CHECK_THROWS((void)woby::readSceneDocument(path));
 }

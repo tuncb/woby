@@ -18,7 +18,7 @@ import psutil
 def overlapping_workloads(excluded_pid=None):
     names = {"woby.exe", "woby_tests.exe", "woby_overlay_tests.exe",
              "woby_overlay_prototype.exe", "woby_point_prototype.exe", "woby_nographicsapi_prototype.exe",
-             "ctest.exe", "msbuild.exe", "cl.exe", "link.exe", "slangc.exe"}
+             "woby_point_validation.exe", "ctest.exe", "msbuild.exe", "cl.exe", "link.exe", "slangc.exe"}
     result = []
     for process in psutil.process_iter(["pid", "name", "cmdline"]):
         name = (process.info["name"] or "").lower()

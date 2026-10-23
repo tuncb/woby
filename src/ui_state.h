@@ -275,7 +275,7 @@ struct UiState {
     bool showGrid = false;
     bool showDimensions = false;
     bool triangleEdgeXray = false;
-    bool adaptivePoints = true;
+    bool adaptivePoints = false;
     SceneUpAxis upAxis = SceneUpAxis::z;
     float masterVertexPointSize = defaultMasterVertexPointSize;
     // Persisted on Save/Open, but navigation never dirties the scene or enters history.

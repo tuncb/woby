@@ -9,6 +9,7 @@
 
 namespace woby { struct GpuNodeRange; }
 namespace woby::points {
+inline constexpr uint32_t maximumNavigationPoints=8000000;
 using Matrix = std::array<float,16>;
 struct Point { std::array<float,3> position; uint32_t id; };
 static_assert(sizeof(Point)==16);

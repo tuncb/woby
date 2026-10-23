@@ -106,7 +106,7 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
     if (runtime.adaptive && stats->pointRasterBudgeted && stats->pointRasterCount && stats->pointRasterFrame!=runtime.lastTiming) {
         runtime.lastTiming=stats->pointRasterFrame;
         runtime.budget=points::adjustedBudget(runtime.budget,
-            stats->pointRasterMs,8,2000000);
+            stats->pointRasterMs,8,points::maximumNavigationPoints);
     }
     const bool resized=runtime.width!=runtime.previousWidth || runtime.height!=runtime.previousHeight;
     const bool keysChanged=runtime.keys.size()!=runtime.draws.size() || !std::equal(runtime.keys.begin(),runtime.keys.end(),runtime.draws.begin(),
@@ -128,6 +128,14 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
         graphics::destroy(runtime.batch); runtime.batch={};
     }
     if (quads && graphics::isValid(runtime.winners)) { graphics::destroy(runtime.winners); runtime.winners={}; }
+    const bool coverageSupported=runtime.backend==graphics::PointBackend::atomic64
+        && graphics::getCaps()->rendererType==graphics::RendererType::Vulkan;
+    if (coverageSupported && (resized || !graphics::isValid(runtime.coverage))) {
+        const auto replacement=graphics::createVertexBufferStorage(static_cast<uint32_t>(uint64_t(runtime.width)*runtime.height*sizeof(uint64_t)),{sizeof(uint64_t)});
+        if (graphics::isValid(runtime.coverage)) graphics::destroy(runtime.coverage);
+        runtime.coverage=replacement;
+    }
+    if (!coverageSupported && graphics::isValid(runtime.coverage)) { graphics::destroy(runtime.coverage); runtime.coverage={}; }
     if (changed) {
         ++runtime.epoch; runtime.lastChange=runtime.now; runtime.queryValid=false;
         runtime.keys.clear(); runtime.full.clear(); runtime.total=runtime.refined=0;
@@ -151,7 +159,8 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
                 appendTasks(tasks,runtime.draws[i],result.selections[i],static_cast<uint32_t>(i));
         }
     }
-    if (changed && runtime.adaptive && !runtime.pending.valid() && runtime.keys.size()<=32) {
+    const bool fullDetailFits=runtime.total<=runtime.budget;
+    if (changed && runtime.adaptive && !fullDetailFits && !runtime.pending.valid() && runtime.keys.size()<=32) {
         const auto keys=runtime.keys; const auto matrix=runtime.projection;
         const auto width=runtime.width,height=runtime.height,budget=runtime.budget;
         const auto epoch=runtime.epoch;
@@ -173,7 +182,10 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
         const bool newCut=runtime.navigation.empty() || runtime.navigationBudget!=runtime.budget;
         if (newCut) {
             runtime.navigationBudget=runtime.budget; runtime.navigation.clear();
-            for (const auto& key:runtime.keys)
+            // Do not reduce a large group because smaller groups leave their
+            // equal share unused when the entire scene fits the point budget.
+            if (fullDetailFits) runtime.navigation=runtime.full;
+            else for (const auto& key:runtime.keys)
                 runtime.navigation.push_back(points::navigationDetail(*key.cloud,std::max(1u,runtime.budget/static_cast<uint32_t>(runtime.keys.size())),key.sourceGroup));
         }
         if (reset || newCut || quads) {
@@ -223,7 +235,7 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
     const graphics::PointPrograms programs{runtime.clear,runtime.raster,markerIds?runtime.resolveIds:runtime.resolve,
         runtime.batchClear,runtime.ids,runtime.merge};
     graphics::submitOpaquePoints(view,runtime.backend,runtime.winners,runtime.batch,programs,groups,tasks,query,reset,
-        runtime.adaptive && (!quads || navigating));
+        runtime.adaptive && (!quads || navigating),runtime.coverage);
     runtime.active=true; runtime.draws.clear();
 }
 void destroyAdaptivePoints(AdaptivePointRuntime& runtime) {
@@ -231,6 +243,7 @@ void destroyAdaptivePoints(AdaptivePointRuntime& runtime) {
     destroyPointPrograms(runtime);
     if (graphics::isValid(runtime.winners)) graphics::destroy(runtime.winners);
     if (graphics::isValid(runtime.batch)) graphics::destroy(runtime.batch);
+    if (graphics::isValid(runtime.coverage)) graphics::destroy(runtime.coverage);
     runtime={};
 }
 void attachPointHierarchies(std::span<ScenePickPart> parts,const std::vector<LoadedModelRuntime>& runtimes) {

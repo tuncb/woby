@@ -369,6 +369,11 @@ endif()
 
 option(WOBY_BUILD_BENCHMARKS "Build standalone CPU performance workloads" OFF)
 option(WOBY_BUILD_GPU_UPLOAD_BENCHMARK "Build the native GPU upload capacity benchmark" OFF)
+option(WOBY_BUILD_POINT_VALIDATION "Build the full-source point visibility comparison" OFF)
+if(WOBY_BUILD_POINT_VALIDATION)
+    add_subdirectory(experiments/point-navigation)
+    list(APPEND woby_runtime_targets woby_point_validation)
+endif()
 if(WOBY_BUILD_GPU_UPLOAD_BENCHMARK)
     add_subdirectory(experiments/gpu-upload)
 endif()
@@ -477,6 +482,9 @@ endif()
 
 if(BUILD_TESTING)
     include(cmake/WobyPython.cmake)
+    add_test(NAME woby_point_navigation_reporting COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/point_navigation_reporting_tests.py")
+    set_tests_properties(woby_point_navigation_reporting PROPERTIES LABELS "unit;cpu" TIMEOUT 60)
     if(WOBY_BUILD_BENCHMARKS)
         add_test(NAME woby_detector_benchmarks COMMAND "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/performance_benchmarks_tests.py" "$<TARGET_FILE:woby_benchmarks>")
