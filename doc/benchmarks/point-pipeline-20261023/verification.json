@@ -1,0 +1,80 @@
+{
+  "reference_revision": "d86e15d1d0e774e08ff0f255dce0148d3d3033ef",
+  "configuration": "vs2026-vcpkg Release",
+  "build_warnings": 0,
+  "build_errors": 0,
+  "ctest_passed": 132,
+  "ctest_failed": 0,
+  "ctest_seconds": 373.18,
+  "followup_ctest_passed": 3,
+  "followup_ctest_failed": 0,
+  "followup_ctest_seconds": 20.47,
+  "followup_reason": "Use the color-only surface shader in the new color-only GPU fixture; no production changes after the full suite",
+  "vulkan_validation": {
+    "sdk": "1.4.357.0",
+    "core": true,
+    "synchronization": true,
+    "warnings": 0,
+    "errors": 0,
+    "scope": [
+      "all probe self-test modes at 1x/4x MSAA",
+      "application surface-seed cache test, 196 assertions"
+    ],
+    "environment": {
+      "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
+      "VK_LAYER_VALIDATE_SYNC": "1",
+      "VK_LAYER_REPORT_FLAGS": "error,warn,info",
+      "VK_LOADER_DEBUG": "layer",
+      "VK_LOADER_LAYERS_DISABLE": "~implicit~"
+    },
+    "note": "Loader messages about explicit enabling and disabling of implicit layers are expected; neither run has a validation warning or error. This is not GPU-assisted shader instrumentation."
+  },
+  "metal": {
+    "entries": 9,
+    "warnings_as_errors": true,
+    "result": "Slang Metal source generation passed",
+    "native_compilation": false,
+    "runtime_test": false
+  },
+  "sample_validation": {
+    "comparison_cases": 132,
+    "sample_records": 432645120,
+    "fields": [
+      "RGBA8 color",
+      "original uint32 picking ID",
+      "D32_FLOAT depth bits"
+    ],
+    "differences": 0,
+    "includes_reference_repeatability_controls": true,
+    "excludes_small_fixtures_and_pilot": true
+  },
+  "executable_sha256": "d3ae6bbd65e9e2f17bec14a0677cab7446bf8d4ec9a95db2cbd5a4081ac811e1",
+  "probe_sha256": "b3a25e92f2b25f0ef21bc6d249f12b4d8e9307b235d2e5bfe8ff86ee496672d8",
+  "source_sha256": {
+    "CMakeLists.txt": "93b25ec83f134a76eb51e7794ef16202be329cb778ace3eb5aa0f311fab9b5f8",
+    "src/adaptive_points.cpp": "9e55a58d4a2f70b3aad37791883708dfbfbf273cefd669dd41bd670a5fc888b4",
+    "src/adaptive_points.h": "7576ad565f8ea5dcff17849662df5b7eb914b6d3d9dc9361175d882cd1126f01",
+    "src/graphics.cpp": "1bfac59bf5332ab4a5a12d94bdc14ae81ab98c78e216765360b462eb1043551b",
+    "src/graphics.h": "63bf7bdd545f815c5c3c6dd31dd885afc2e40f053e7857dd840885eb6c1561f5",
+    "src/scene_renderer.cpp": "d5e53fdad7c4701353f849389f12a1e29bc950bb12226c25b4d04174b5fe8b77",
+    "shaders/native/opaque_points.h": "1c418ede70c3b25fb609214638b662e556d28e5d7a3380729495e668fe82f2e7",
+    "shaders/native/opaque_points.slang": "3cffad031b7e08dd723dc23ae9e648dfcb4ec5411d2f6d97efd11860faa6c431",
+    "tests/adaptive_points_gpu_tests.cpp": "d7d2d5a6675fa74b462e313c9542e0d9da95f99ad85ddeed47aac2291f4cf492",
+    "experiments/point-pipeline/CMakeLists.txt": "6a25386bf7ac2c185255db92f526225e063f5b2f398f529c3059820cdec7b1ba",
+    "experiments/point-pipeline/main.cpp": "72b820c8e1452400a3874c925897dbd4299a32f4f1f409a3a088c47349c4699c",
+    "experiments/point-pipeline/pipeline.slang": "cab2ae5c09e859b2234fe79451463e693b186b1a3051e94a0611d0e44bff2d07",
+    "experiments/point-pipeline/README.md": "35dd683670aced96406517a542f17f663925db83084a42ab4ab9e19c9f6bd485",
+    "experiments/point-pipeline/root.h": "cde6b927b8b06042808d766c683eaac4b07b610d5de5e0da0867bec189c33705",
+    "experiments/point-pipeline/run.py": "75df21dd4ae818a58a65c6e06a1c4dd644abced4e3ce016c4702aa2371e891f6"
+  },
+  "validation_log_sha256": {
+    "metal-codegen.log": "1287125ea24d6b577572f87ca91e6d8bdccbac14c1c52339b9f9baa62eef521d",
+    "point-pipeline-ctest-final.log": "46c998216302f40ed08950de611e1a012ac4fe708c0c3c3a64f2ee012879a979",
+    "point-pipeline-ctest-fixture.log": "9510da6b1481e217ea6de04e0d4e1f6cc13bba4824ab3d44f104b652ebd208c5",
+    "point-pipeline-release-final.log": "be8ec8eb28724b53f7372197602fa838b623dbe23a53db391ce96d180d1ea45e",
+    "point-pipeline-release-fixture.log": "a24939b0fbfe34d95f7c44511a1c8825a3baf463470d86ef68aee1cfb22a1632",
+    "point-pipeline-release.log": "c828b49d51bded042d3cdbae1fd00e475695caef00fe2bc86bb206110e9509da",
+    "point-pipeline-vulkan-application-final.log": "63c5b07feeec1b94440d6d6442e11f79a2c446df183463c3734c752a05d08e26",
+    "point-pipeline-vulkan-probe-final.log": "d565926ba9fc3a9cd1ccd9b31a0c85dca712c44b8ce795f29991f137badaf74b"
+  }
+}

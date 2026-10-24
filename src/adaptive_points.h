@@ -37,6 +37,12 @@ struct AdaptivePointRuntime {
     uint32_t width=0,height=0,previousWidth=0,previousHeight=0,budget=2000000,lastTiming=0;
     uint32_t navigationBudget=0;
     uint64_t epoch=0, total=0, refined=0, submitted=0;
+    // A single opaque mesh can seed depth. Its point key covers transform and
+    // source changes; these fields cover topology, mode, and sample changes.
+    uint64_t surfaceDepthSource=0, previousSurfaceDepthSource=0;
+    uint64_t surfaceDepthView=0, previousSurfaceDepthView=0;
+    bool allowSurfaceDepth=true; // Runtime/testing override, not scene state.
+    uint32_t minimumSurfaceDepthPoints=1000000;
     double now=0,lastChange=0;
     bool enabled=false,adaptive=true,previousAdaptive=true,queryEnabled=false,unavailable=false,active=false;
     std::string error;

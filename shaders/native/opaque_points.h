@@ -21,6 +21,7 @@ struct OpaquePointRoot {
     OpaquePointBatchSample* batch; // Per-batch depth bits and original ID; 32-bit atomics.
     uint64* coverage; // A depth/ID lower bound for every sample in a tile.
     uint32 tileSize, tileShift;
+    uint32 depthTexture, seedDepth; // Optional opaque surface depth on a reset.
 };
 #ifndef __SLANG__
 #include <cstddef>
@@ -28,8 +29,9 @@ static_assert(sizeof(OpaquePoint)==16);
 static_assert(sizeof(OpaquePointGroupData)==112);
 static_assert(sizeof(OpaquePointTaskData)==24);
 static_assert(sizeof(OpaquePointBatchSample)==8);
-static_assert(sizeof(OpaquePointRoot)==96);
+static_assert(sizeof(OpaquePointRoot)==104);
 static_assert(offsetof(OpaquePointRoot,coverage)==80);
 static_assert(offsetof(OpaquePointRoot,tileSize)==88);
 static_assert(offsetof(OpaquePointRoot,tileShift)==92);
+static_assert(offsetof(OpaquePointRoot,depthTexture)==96);
 #endif

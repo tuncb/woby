@@ -46,6 +46,7 @@ void destroyPointPrograms(AdaptivePointRuntime& runtime) {
 void prepareAdaptivePoints(AdaptivePointRuntime& runtime,const std::filesystem::path& assets,
     const ScenePickView& view,bool adaptive,double now,bool queryEnabled,std::array<float,2> query) {
     runtime.draws.clear(); runtime.active=false; runtime.submitted=0;
+    runtime.surfaceDepthSource=0; runtime.surfaceDepthView=0;
     runtime.width=view.width; runtime.height=view.height; runtime.now=now; runtime.adaptive=adaptive;
     runtime.queryEnabled=queryEnabled; runtime.query=query;
     woby::multiplyMatrices(runtime.projection.data(),view.view.data(),view.renderProjection.data());
@@ -112,7 +113,14 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
     const bool keysChanged=runtime.keys.size()!=runtime.draws.size() || !std::equal(runtime.keys.begin(),runtime.keys.end(),runtime.draws.begin(),
             [](const auto& key,const auto& draw) { return same(key,draw.key); });
     const bool quads=runtime.backend==graphics::PointBackend::quads;
-    const bool changed=resized || runtime.backend!=runtime.previousBackend || runtime.adaptive!=runtime.previousAdaptive || runtime.projection!=runtime.previousProjection || keysChanged;
+    const bool seedDepth=runtime.allowSurfaceDepth && runtime.surfaceDepthSource && runtime.surfaceDepthView
+        && runtime.backend==graphics::PointBackend::atomic64 && runtime.draws.size()==1
+        && runtime.draws[0].key.group.pointSize>=4
+        && runtime.draws[0].key.group.endId-runtime.draws[0].key.group.firstId>=runtime.minimumSurfaceDepthPoints;
+    const uint64_t depthSource=seedDepth?runtime.surfaceDepthSource:0;
+    const uint64_t depthView=seedDepth?runtime.surfaceDepthView:0;
+    const bool changed=resized || runtime.backend!=runtime.previousBackend || runtime.adaptive!=runtime.previousAdaptive || runtime.projection!=runtime.previousProjection || keysChanged
+        || depthSource!=runtime.previousSurfaceDepthSource || depthView!=runtime.previousSurfaceDepthView;
     bool reset=changed || (!quads && !graphics::isValid(runtime.winners));
     if (!quads && (resized || !graphics::isValid(runtime.winners))) {
         const auto replacement=graphics::createVertexBufferStorage(static_cast<uint32_t>(uint64_t(runtime.width)*runtime.height*4*sizeof(uint64_t)),{sizeof(uint64_t)});
@@ -147,6 +155,7 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
         runtime.previousProjection=runtime.projection; runtime.previousWidth=runtime.width; runtime.previousHeight=runtime.height;
         runtime.previousAdaptive=runtime.adaptive;
         runtime.previousBackend=runtime.backend;
+        runtime.previousSurfaceDepthSource=depthSource; runtime.previousSurfaceDepthView=depthView;
     }
     const bool navigating=runtime.adaptive && runtime.now-runtime.lastChange<.15;
     std::vector<graphics::OpaquePointTask> tasks;
@@ -235,7 +244,7 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
     const graphics::PointPrograms programs{runtime.clear,runtime.raster,markerIds?runtime.resolveIds:runtime.resolve,
         runtime.batchClear,runtime.ids,runtime.merge};
     graphics::submitOpaquePoints(view,runtime.backend,runtime.winners,runtime.batch,programs,groups,tasks,query,reset,
-        runtime.adaptive && (!quads || navigating),runtime.coverage);
+        runtime.adaptive && (!quads || navigating),runtime.coverage,seedDepth);
     runtime.active=true; runtime.draws.clear();
 }
 void destroyAdaptivePoints(AdaptivePointRuntime& runtime) {

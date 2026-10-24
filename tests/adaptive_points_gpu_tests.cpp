@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstring>
 #include <future>
+#include <numeric>
 
 namespace {
 namespace g=woby::graphics;
@@ -23,6 +24,7 @@ struct PointGpuFixture {
     g::FrameBufferHandle framebuffer{};
     woby::MarkerDrawContext markers;
     uint32_t samples=1;
+    uint16_t x=3,y=5;
     ~PointGpuFixture() {
         if (!initialized) return;
         woby::destroyAdaptivePoints(runtime); woby::destroyModelRuntimes(models);
@@ -89,7 +91,7 @@ bool initialize(PointGpuFixture& f,uint32_t samples,bool requireAtomics=true,g::
 }
 void draw(PointGpuFixture& f,double now,bool adaptive=false,bool query=false,std::array<float,2> position={},bool markerIds=true) {
     f.markers.list={};
-    g::setViewRect(0,3,5,static_cast<uint16_t>(f.view.width),static_cast<uint16_t>(f.view.height));
+    g::setViewRect(0,f.x,f.y,static_cast<uint16_t>(f.view.width),static_cast<uint16_t>(f.view.height));
     g::setViewTransform(0,f.view.view.data(),f.view.renderProjection.data(),true); g::touch(0);
     woby::prepareAdaptivePoints(f.runtime,WOBY_TEST_ASSET_DIRECTORY,f.view,adaptive,now,query,position);
     woby::submitSceneFiles(0,f.plan,f.models,f.mesh,f.mesh,f.point,{},f.view.width,f.view.height,
@@ -322,6 +324,115 @@ TEST_CASE("Opaque point tile coverage preserves clipped queries and later full r
                 std::reverse(tasks.begin(),tasks.end());
             }
         }
+    }
+}
+TEST_CASE("Surface depth seeds retain exact visible markers and invalidate cached occlusion") {
+    for (const uint32_t samples:{1u,4u}) {
+        PointGpuFixture f; if (!initialize(f,samples,true,g::PointBackend::atomic64,true,8193)) continue;
+        if (g::getCaps()->rendererType!=g::RendererType::Vulkan) continue;
+        auto& geometry=woby::editMeshGeometry(f.source);
+        geometry.pointIndices.clear(); geometry.indices.resize(8193);
+        std::iota(geometry.indices.begin(),geometry.indices.end(),0u);
+        for (auto& vertex:geometry.vertices) vertex.position[2]*=.5f;
+        // Guarantee a surface-only region between its corner circles. Dense
+        // random markers alone can cover every sample at the nearest depth.
+        geometry.vertices[8190].position={-.6f,-.7f,.9f};
+        geometry.vertices[8191].position={.6f,-.7f,.9f};
+        geometry.vertices[8192].position={0,.7f,.9f};
+        geometry.nodes={{"opaque",0,8193}};
+        auto prepared=woby::prepareSceneMesh(f.source,woby::gpuMeshPoints,{},false); REQUIRE(prepared);
+        prepared->pointCloud=std::make_shared<const woby::points::Cloud>(woby::points::buildCloud(f.source));
+        auto upload=woby::beginGpuMeshUpload(std::move(*prepared),f.source,woby::meshVertexLayout());
+        woby::waitGpuMeshUpload(upload); woby::destroyModelRuntimes(f.models);
+        f.models.push_back({std::move(upload.mesh)});
+        f.plan.items.resize(1); f.plan.items[0].solid=true;
+        f.plan.items[0].useVertexColors=true;
+        double now=0;
+        const auto capture=[&] {
+            std::vector<uint8_t> image(43*37*8);
+            g::readTexture(f.output,image.data());
+            const auto ready=g::readTexture(f.ids,image.data()+43*37*4);
+            while (g::frame()<ready) {}
+            return image;
+        };
+        const auto compare=[&](bool seedExpected) {
+            f.runtime.allowSurfaceDepth=false; draw(f,now++);
+            const auto expected=capture();
+            f.runtime.allowSurfaceDepth=true; draw(f,now++);
+            CHECK((f.runtime.previousSurfaceDepthSource!=0)==seedExpected);
+            CHECK(capture()==expected);
+            const auto epoch=f.runtime.epoch;
+            draw(f,now++); CHECK(f.runtime.submitted==0); CHECK(f.runtime.epoch==epoch);
+            CHECK(capture()==expected);
+        };
+        compare(false); // The normal threshold avoids a full-image seed for a small mesh.
+        f.runtime.minimumSurfaceDepthPoints=4096;
+        compare(true);
+        const auto seeded=winners(f);
+        CHECK(std::any_of(seeded.begin(),seeded.end(),[](uint64_t key) { return key!=0 && uint32_t(key)==0; }));
+        auto originEpoch=f.runtime.epoch;
+        f.x=6; f.y=7; draw(f,now++); CHECK(f.runtime.epoch>originEpoch); (void)capture(); compare(true);
+        f.x=3; f.y=5; compare(true);
+        // Surface opacity does not change the point color key. Removing the
+        // occluder must nevertheless restore the previously hidden source IDs.
+        auto epoch=f.runtime.epoch;
+        f.plan.items[0].color[3]=.35f; draw(f,now++);
+        CHECK(f.runtime.epoch>epoch); CHECK(f.runtime.submitted==8193);
+        checkIds(winners(f),reference(f)); compare(false);
+        f.plan.items[0].color[3]=1; compare(true);
+        epoch=f.runtime.epoch;
+        f.plan.items[0].solid=false; draw(f,now++);
+        CHECK(f.runtime.epoch>epoch); checkIds(winners(f),reference(f)); compare(false);
+        f.plan.items[0].solid=true; compare(true);
+        // A topology-only edit can retain the same point hierarchy.
+        epoch=f.runtime.epoch;
+        f.models[0].gpuMesh.nodeRanges[0].triangleIndexCount=3;
+        f.models[0].gpuMesh.resourceRevision=woby::nextMeshContentRevision();
+        draw(f,now++); CHECK(f.runtime.epoch>epoch); (void)capture(); compare(true);
+        auto other=f.plan.items[0]; other.points=false; other.model[14]+=.1f;
+        f.plan.items.push_back(other); compare(false);
+        f.plan.items.pop_back(); compare(true);
+        // A draw recorded by another caller is not covered by the mesh key.
+        epoch=f.runtime.epoch;
+        g::setVertexBuffer(0,f.models[0].gpuMesh.vertexBuffer);
+        g::setIndexBuffer(f.models[0].gpuMesh.triangleIndexBuffer,0,3);
+        g::setColor({0,0,1,1}); g::setTransform(other.model.data());
+        g::setState(WOBY_GPU_STATE_WRITE_RGB|WOBY_GPU_STATE_WRITE_A|WOBY_GPU_STATE_WRITE_Z|WOBY_GPU_STATE_DEPTH_TEST_LESS);
+        g::submit(0,f.mesh); draw(f,now++);
+        CHECK(f.runtime.previousSurfaceDepthSource==0); CHECK(f.runtime.epoch>epoch);
+        checkIds(winners(f),reference(f));
+        compare(true);
+        f.plan.items[0].pointSize=3; compare(false);
+        f.plan.items[0].pointSize=1; compare(false);
+        // The desktop without hover picking binds only the color/depth targets.
+        f.plan.items[0].pointSize=8;
+        const auto colorMesh=woby::loadProgram(WOBY_TEST_ASSET_DIRECTORY,"vs_mesh.bin","fs_mesh.bin");
+        g::destroy(f.mesh); f.mesh=colorMesh;
+        g::destroy(f.framebuffer);
+        const std::array colorTargets{f.output,f.depth};
+        f.framebuffer=g::createFrameBuffer(2,colorTargets.data()); g::setViewFrameBuffer(0,f.framebuffer);
+        const auto colorOnly=[&] {
+            std::vector<uint8_t> image(43*37*4);
+            const auto ready=g::readTexture(f.output,image.data()); while (g::frame()<ready) {}
+            return image;
+        };
+        f.runtime.allowSurfaceDepth=false; draw(f,now++,false,false,{},false); const auto expectedColor=colorOnly();
+        f.runtime.allowSurfaceDepth=true; draw(f,now++,false,false,{},false);
+        CHECK(f.runtime.previousSurfaceDepthSource!=0); CHECK(colorOnly()==expectedColor);
+        draw(f,now++,false,false,{},false); CHECK(f.runtime.submitted==0); CHECK(colorOnly()==expectedColor);
+        // The desktop uses a separate clear view for the default framebuffer.
+        g::setViewFrameBuffer(0,{}); g::setViewFrameBuffer(1,{});
+        g::setViewTransform(1,nullptr,nullptr,true); g::setViewClear(1,WOBY_GPU_CLEAR_NONE);
+        g::touch(0); g::touch(1);
+        const auto depthState=g::pointSurfaceDepthState(1); REQUIRE(depthState!=0);
+        g::setViewRect(1,7,11,1,1); CHECK(g::pointSurfaceDepthState(1)!=depthState);
+        g::setViewClear(0,WOBY_GPU_CLEAR_NONE); CHECK(g::pointSurfaceDepthState(1)==0);
+        g::setViewClear(0,WOBY_GPU_CLEAR_DEPTH,0,1); CHECK(g::pointSurfaceDepthState(1)!=0);
+        g::setVertexBuffer(0,f.models[0].gpuMesh.vertexBuffer);
+        g::setIndexBuffer(f.models[0].gpuMesh.triangleIndexBuffer,0,3);
+        g::setState(WOBY_GPU_STATE_WRITE_Z|WOBY_GPU_STATE_DEPTH_TEST_LESS); g::submit(0,f.mesh);
+        CHECK(g::pointSurfaceDepthState(1)==0);
+        g::frame();
     }
 }
 TEST_CASE("Integrated reduced point GPU picking queries all original circle footprints") {

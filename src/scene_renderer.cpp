@@ -305,6 +305,19 @@ void submitSceneFiles(
             draw(item, mesh, mesh.nodeRanges[item.groupIndex]);
         }
     };
+    if (adaptivePoints && !importedLinesOnly && plan.items.size()==1) {
+        // Keep cached visibility independent of untracked occluders. For one
+        // opaque mesh, its existing point key plus resource revision covers
+        // every depth input. Mixed scenes keep the general point path.
+        const auto depthView=graphics::pointSurfaceDepthState(viewId);
+        if (depthView) each([&](const auto& item,const auto& mesh,const auto& range) {
+            if (item.solid && item.points && item.color[3]>=.999f && mesh.pointCloud
+                && range.triangleIndexCount && graphics::isValid(mesh.vertexBuffer) && graphics::isValid(mesh.triangleIndexBuffer)) {
+                adaptivePoints->surfaceDepthSource=mesh.resourceRevision;
+                adaptivePoints->surfaceDepthView=depthView;
+            }
+        });
+    }
     const auto points = [&](const SceneDrawItem& item, const GpuMesh& mesh, const GpuNodeRange& range) {
         if (!item.points || !range.pointIndexCount || (!mesh.pointCloud && !graphics::isValid(mesh.pointIdBuffer))) { return; }
         auto color = scaledRgbColor(item.color, 1.5f);

@@ -2,6 +2,10 @@
 
 Measured on 23 October 2026. Baseline: `ef2112afd50410b4189484e120ebb27c29fde956`.
 
+The [follow-up pipeline experiments](point-pipeline-performance.md) compare early
+surface depth, precise barriers, and a combined renderer against the optimized
+renderer described here.
+
 Keep **Adaptive points while navigating** for now. The new renderer makes full
 detail much faster and preserves the original sample results. However, full
 detail still exceeds a 33.3 ms GPU frame budget in several tested views. Removing

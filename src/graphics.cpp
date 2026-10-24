@@ -142,7 +142,7 @@ struct PointPacket
     std::vector<std::shared_ptr<Buffer>> buffers;
     std::vector<std::shared_ptr<Buffer>> colors;
     std::array<uint32_t,4> query{};
-    bool reset = false, budgeted = false;
+    bool reset = false, budgeted = false, seedSurfaceDepth = false;
     uint64_t pointCount = 0;
 };
 struct Operation
@@ -543,6 +543,10 @@ std::shared_ptr<Texture> createTexture(uint16_t width, uint16_t height, TextureF
     auto usage = depth ? gpu::TextureUsage::depth_stencil_attachment
                        : gpu::TextureUsage::sampled | gpu::TextureUsage::transfer_source |
                              gpu::TextureUsage::transfer_destination;
+    const auto depthUsage = gpu::TextureUsage::depth_stencil_attachment | gpu::TextureUsage::sampled;
+    const bool sampledDepth = depth && state().caps.rendererType == RendererType::Vulkan
+        && gpu::supports_texture_format(state().device, nativeFormat(format), depthUsage);
+    if (sampledDepth) usage = depthUsage;
     if (!depth && (flags & WOBY_GPU_TEXTURE_RT))
         usage = usage | gpu::TextureUsage::color_attachment;
     if (flags & WOBY_GPU_TEXTURE_COMPUTE_WRITE)
@@ -551,6 +555,7 @@ std::shared_ptr<Texture> createTexture(uint16_t width, uint16_t height, TextureF
     {
         auto multiUsage = depth ? gpu::TextureUsage::depth_stencil_attachment
                                 : gpu::TextureUsage::color_attachment | gpu::TextureUsage::sampled;
+        if (sampledDepth) multiUsage = depthUsage;
         result->multisample = createImage(width, height, nativeFormat(format), multiUsage, 4);
         if (depth || (flags & WOBY_GPU_TEXTURE_MSAA_SAMPLE))
             result->image = result->multisample;
@@ -640,6 +645,7 @@ struct Attachments
     uint32_t count = 0, samples = 1;
     gpu::DepthAttachment depth;
     gpu::Format depthFormat = gpu::Format::undefined;
+    uint32_t depthSampled = kInvalidHandle;
 };
 Attachments attachments(const Framebuffer &framebuffer, const View &view, bool first)
 {
@@ -655,6 +661,7 @@ Attachments attachments(const Framebuffer &framebuffer, const View &view, bool f
                                                                                       : gpu::LoadOp::load,
                             .clear = view.reversedDepth ? 1.0f - view.depth : view.depth};
             result.depthFormat = image->format;
+            result.depthSampled = image->sampled;
         }
         else
         {
@@ -862,6 +869,9 @@ void pointOperation(gpu::CommandBuffer* commands,const Operation& op,const View&
     }
     root.width=view.width; root.height=view.height; root.samples=target.samples;
     root.x=view.x; root.y=view.y; root.groupCount=static_cast<uint32_t>(packet.groups.size());
+    if (packet.seedSurfaceDepth && packet.reset && target.depthSampled!=kInvalidHandle) {
+        root.depthTexture=target.depthSampled; root.seedDepth=1;
+    }
     root.query={packet.query[0],packet.query[1],packet.query[2],packet.query[3]};
     auto groups=allocate(packet.groups.size()*sizeof(OpaquePointGroupData));
     auto* destination=reinterpret_cast<OpaquePointGroupData*>(groups.cpu);
@@ -1693,13 +1703,44 @@ void dispatch(ViewId id, ProgramHandle h, uint32_t x, uint32_t y, uint32_t z)
                                     .groups = {x, y, z}});
     resetEncoder();
 }
+uint64_t pointSurfaceDepthState(ViewId id) {
+    beginFrame();
+    const auto& c=state(); const auto& view=c.views[id];
+    if (c.caps.rendererType!=RendererType::Vulkan || !(c.caps.supported&WOBY_GPU_CAPS_OPAQUE_POINTS)
+        || !view.reversedDepth) return 0;
+    for (const auto& op:current().operations)
+        if (op.view==id && op.type!=OperationType::touch) return 0;
+    const View* clear=&view;
+    if (!(view.clearFlags&WOBY_GPU_CLEAR_DEPTH)) {
+        // The application clears the default target in an earlier view. Accept
+        // only an immediate preceding target view that contains touches alone.
+        if (view.framebuffer) return 0;
+        int previous=-1;
+        for (const auto& op:current().operations)
+            if (op.view<id && !c.views[op.view].framebuffer) previous=std::max(previous,int(op.view));
+        if (previous<0) return 0;
+        for (const auto& op:current().operations)
+            if (op.view==previous && op.type!=OperationType::touch) return 0;
+        clear=&c.views[static_cast<size_t>(previous)];
+    }
+    if (!(clear->clearFlags&WOBY_GPU_CLEAR_DEPTH) || !clear->reversedDepth || clear->depth!=1) return 0;
+    uint32_t samples=0;
+    if (view.framebuffer) {
+        for (const auto& texture:view.framebuffer->textures) if (texture->format==TextureFormat::D24S8) {
+            const auto image=attachment(texture);
+            if (image->sampled!=kInvalidHandle) samples=image->samples;
+        }
+    } else samples=(c.flags&WOBY_GPU_RESET_MSAA_X4)?4u:1u;
+    return samples ? uint64_t(samples)|(uint64_t(view.x)<<8)|(uint64_t(view.y)<<24) : 0;
+}
 void submitOpaquePoints(ViewId id,PointBackend backend,VertexBufferHandle winners,VertexBufferHandle batch,const PointPrograms& programs,
-    std::span<const OpaquePointGroup> groups,std::span<const OpaquePointTask> tasks,std::array<uint32_t,4> query,bool reset,bool budgeted,VertexBufferHandle coverage) {
+    std::span<const OpaquePointGroup> groups,std::span<const OpaquePointTask> tasks,std::array<uint32_t,4> query,bool reset,bool budgeted,VertexBufferHandle coverage,bool seedSurfaceDepth) {
     beginFrame();
     require(backend!=PointBackend::automatic && selectPointBackend(state().caps.supported,backend)==backend,"Point backend unsupported");
     require(!groups.empty(),"Empty opaque point groups");
     auto packet=std::make_shared<PointPacket>();
     packet->backend=backend;
+    packet->seedSurfaceDepth=seedSurfaceDepth && backend==PointBackend::atomic64 && state().caps.rendererType==RendererType::Vulkan;
     if (backend==PointBackend::atomic64 && isValid(coverage)) packet->coverage=resource(state().vertexBuffers,coverage);
     if (backend!=PointBackend::quads) {
         packet->winners=resource(state().vertexBuffers,winners);
