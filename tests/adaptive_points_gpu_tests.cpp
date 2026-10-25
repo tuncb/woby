@@ -263,6 +263,35 @@ TEST_CASE("Navigation keeps every source point when unequal groups fit the total
             CHECK_FALSE(range.proxy);
     }
 }
+TEST_CASE("Point sample counts follow MSAA changes with reused compute programs") {
+    for (const auto backend:{g::PointBackend::atomic32,g::PointBackend::atomic64}) {
+        PointGpuFixture f; if (!initialize(f,1,true,backend,true)) continue;
+        g::ProgramHandle raster{},ids{};
+        uint32_t step=0;
+        for (const uint32_t samples:{1u,4u,1u,4u}) {
+            INFO("backend=" << int(backend) << ", samples=" << samples << ", step=" << step);
+            if (samples!=f.samples) {
+                // Previous readbacks completed. Keep the compute programs and
+                // mesh while replacing only the multisample render target.
+                g::destroy(f.framebuffer);
+                for (auto handle:{f.output,f.depth,f.ids}) g::destroy(handle);
+                const auto flags=samples==4?WOBY_GPU_TEXTURE_RT_MSAA_X4:WOBY_GPU_TEXTURE_RT;
+                f.output=g::createTexture2D(43,37,false,1,g::TextureFormat::RGBA8,flags|WOBY_GPU_TEXTURE_READ_BACK);
+                f.depth=g::createTexture2D(43,37,false,1,g::TextureFormat::D24S8,flags);
+                f.ids=g::createTexture2D(43,37,false,1,g::TextureFormat::RGBA8,flags|WOBY_GPU_TEXTURE_READ_BACK);
+                const std::array targets{f.output,f.ids,f.depth}; f.framebuffer=g::createFrameBuffer(3,targets.data());
+                REQUIRE(g::isValid(f.framebuffer));
+                g::setViewFrameBuffer(0,f.framebuffer); f.samples=samples;
+            }
+            for (auto& item:f.plan.items) { item.pointSize=step%2?3.5f:1.0f; item.useVertexColors=true; }
+            draw(f,double(step+1)); const auto expected=reference(f);
+            checkIds(winners(f),expected); checkColors(f,expected);
+            if (step==0) { raster=f.runtime.raster; ids=f.runtime.ids; }
+            CHECK(f.runtime.raster.idx==raster.idx); CHECK(f.runtime.ids.idx==ids.idx);
+            ++step;
+        }
+    }
+}
 TEST_CASE("Opaque point atomic rejection preserves source winners under dense contention") {
     for (const auto backend:{g::PointBackend::atomic32,g::PointBackend::atomic64}) for (const uint32_t samples:{1u,4u}) {
         INFO("backend=" << int(backend) << ", samples=" << samples);

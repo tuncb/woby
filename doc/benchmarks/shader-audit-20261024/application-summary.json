@@ -1,0 +1,416 @@
+{
+  "semantic100m": {
+    "comparisons": [
+      {
+        "size": 4,
+        "phase": "full",
+        "reference_ms": 23.658496,
+        "retained_ms": 21.033472,
+        "reduction_percent": 11.095481301939058,
+        "round_medians": {
+          "reference": [
+            23.237632,
+            24.07936
+          ],
+          "retained": [
+            20.867072,
+            21.199872
+          ]
+        }
+      },
+      {
+        "size": 4,
+        "phase": "navigation",
+        "reference_ms": 2.77536,
+        "retained_ms": 3.072832,
+        "reduction_percent": -10.71832122679579,
+        "round_medians": {
+          "reference": [
+            2.841088,
+            2.709632
+          ],
+          "retained": [
+            3.058816,
+            3.086848
+          ]
+        }
+      },
+      {
+        "size": 4,
+        "phase": "cached",
+        "reference_ms": 0.286464,
+        "retained_ms": 0.285952,
+        "reduction_percent": 0.17873100983021306,
+        "round_medians": {
+          "reference": [
+            0.290304,
+            0.282624
+          ],
+          "retained": [
+            0.288768,
+            0.283136
+          ]
+        }
+      },
+      {
+        "size": 8,
+        "phase": "full",
+        "reference_ms": 67.99782400000001,
+        "retained_ms": 57.798144,
+        "reduction_percent": 15.000009412065907,
+        "round_medians": {
+          "reference": [
+            67.777536,
+            68.218112
+          ],
+          "retained": [
+            58.25024,
+            57.346048
+          ]
+        }
+      },
+      {
+        "size": 8,
+        "phase": "navigation",
+        "reference_ms": 6.807040000000001,
+        "retained_ms": 6.615616,
+        "reduction_percent": 2.8121474238435584,
+        "round_medians": {
+          "reference": [
+            7.49056,
+            6.12352
+          ],
+          "retained": [
+            6.737024,
+            6.494208
+          ]
+        }
+      },
+      {
+        "size": 8,
+        "phase": "cached",
+        "reference_ms": 0.252416,
+        "retained_ms": 0.25574399999999997,
+        "reduction_percent": -1.3184584178498993,
+        "round_medians": {
+          "reference": [
+            0.247808,
+            0.257024
+          ],
+          "retained": [
+            0.25856,
+            0.252928
+          ]
+        }
+      }
+    ],
+    "exports": [
+      {
+        "filename": "cloud-only-4px.png",
+        "dimensions": [
+          1920,
+          1800
+        ],
+        "different_pixels": 0
+      },
+      {
+        "filename": "cloud-only-8px.png",
+        "dimensions": [
+          1920,
+          1800
+        ],
+        "different_pixels": 0
+      },
+      {
+        "filename": "full-detail.png",
+        "dimensions": [
+          1920,
+          1800
+        ],
+        "different_pixels": 0
+      }
+    ],
+    "exact_exports": true,
+    "scope": "Serial whole-application GPU time; 2 rounds. Hidden window uses 20 Hz pacing. Not FPS or paired per-frame ratios."
+  },
+  "beartrap": {
+    "comparisons": [
+      {
+        "size": 4,
+        "phase": "full",
+        "reference_ms": 24.294912,
+        "retained_ms": 24.199808,
+        "reduction_percent": 0.39145644981137817,
+        "round_medians": {
+          "reference": [
+            24.255488,
+            24.334336
+          ],
+          "retained": [
+            23.965952,
+            24.433664
+          ]
+        }
+      },
+      {
+        "size": 4,
+        "phase": "navigation",
+        "reference_ms": 18.622847999999998,
+        "retained_ms": 18.902592,
+        "reduction_percent": -1.5021547724601625,
+        "round_medians": {
+          "reference": [
+            18.682112,
+            18.563584
+          ],
+          "retained": [
+            19.207296,
+            18.597888
+          ]
+        }
+      },
+      {
+        "size": 4,
+        "phase": "cached",
+        "reference_ms": 16.68256,
+        "retained_ms": 16.571711999999998,
+        "reduction_percent": 0.6644543763067556,
+        "round_medians": {
+          "reference": [
+            16.66368,
+            16.701439999999998
+          ],
+          "retained": [
+            16.450176,
+            16.693247999999997
+          ]
+        }
+      },
+      {
+        "size": 8,
+        "phase": "full",
+        "reference_ms": 38.427648,
+        "retained_ms": 34.457856,
+        "reduction_percent": 10.330561995363329,
+        "round_medians": {
+          "reference": [
+            38.306816,
+            38.54848
+          ],
+          "retained": [
+            34.441472,
+            34.47424
+          ]
+        }
+      },
+      {
+        "size": 8,
+        "phase": "navigation",
+        "reference_ms": 22.4928,
+        "retained_ms": 21.783296,
+        "reduction_percent": 3.154360506473175,
+        "round_medians": {
+          "reference": [
+            22.687744,
+            22.297856
+          ],
+          "retained": [
+            21.617152,
+            21.949440000000003
+          ]
+        }
+      },
+      {
+        "size": 8,
+        "phase": "cached",
+        "reference_ms": 16.5856,
+        "retained_ms": 16.73408,
+        "reduction_percent": -0.895234420219948,
+        "round_medians": {
+          "reference": [
+            16.40832,
+            16.762880000000003
+          ],
+          "retained": [
+            16.71488,
+            16.75328
+          ]
+        }
+      }
+    ],
+    "exports": [
+      {
+        "filename": "cloud-only-4px.png",
+        "dimensions": [
+          1920,
+          1800
+        ],
+        "different_pixels": 0
+      },
+      {
+        "filename": "cloud-only-8px.png",
+        "dimensions": [
+          1920,
+          1800
+        ],
+        "different_pixels": 0
+      },
+      {
+        "filename": "full-detail.png",
+        "dimensions": [
+          1920,
+          1800
+        ],
+        "different_pixels": 0
+      }
+    ],
+    "exact_exports": true,
+    "scope": "Serial whole-application GPU time; 2 rounds. Hidden window uses 20 Hz pacing. Not FPS or paired per-frame ratios."
+  },
+  "semantic100m-navigation": {
+    "comparisons": [
+      {
+        "size": 4,
+        "phase": "full",
+        "reference_ms": 23.944192,
+        "retained_ms": 20.325376,
+        "reduction_percent": 15.113544027712456,
+        "round_medians": {
+          "reference": [
+            23.243008,
+            23.944192,
+            24.221696
+          ],
+          "retained": [
+            20.552704,
+            20.325376,
+            20.10112
+          ]
+        }
+      },
+      {
+        "size": 4,
+        "phase": "navigation",
+        "reference_ms": 8.127488,
+        "retained_ms": 7.737344,
+        "reduction_percent": 4.800302381252353,
+        "round_medians": {
+          "reference": [
+            8.246272,
+            7.912448,
+            8.127488
+          ],
+          "retained": [
+            6.203392,
+            7.737344,
+            8.0896
+          ]
+        }
+      },
+      {
+        "size": 4,
+        "phase": "cached",
+        "reference_ms": 1.490944,
+        "retained_ms": 1.0716160000000001,
+        "reduction_percent": 28.12499999999999,
+        "round_medians": {
+          "reference": [
+            3.703808,
+            1.462784,
+            1.490944
+          ],
+          "retained": [
+            1.7684479999999998,
+            1.035776,
+            1.0716160000000001
+          ]
+        }
+      },
+      {
+        "size": 8,
+        "phase": "full",
+        "reference_ms": 67.27296,
+        "retained_ms": 56.579072,
+        "reduction_percent": 15.896265007515654,
+        "round_medians": {
+          "reference": [
+            66.275328,
+            67.27296,
+            69.102592
+          ],
+          "retained": [
+            56.113152,
+            56.579072,
+            56.9856
+          ]
+        }
+      },
+      {
+        "size": 8,
+        "phase": "navigation",
+        "reference_ms": 7.823872,
+        "retained_ms": 7.064064,
+        "reduction_percent": 9.711406321575812,
+        "round_medians": {
+          "reference": [
+            7.837696,
+            7.823872,
+            7.6544
+          ],
+          "retained": [
+            7.064064,
+            6.910976,
+            7.68512
+          ]
+        }
+      },
+      {
+        "size": 8,
+        "phase": "cached",
+        "reference_ms": 3.6398080000000004,
+        "retained_ms": 2.6086400000000003,
+        "reduction_percent": 28.330285553523705,
+        "round_medians": {
+          "reference": [
+            4.21376,
+            3.061248,
+            3.6398080000000004
+          ],
+          "retained": [
+            2.6086400000000003,
+            3.589632,
+            2.52416
+          ]
+        }
+      }
+    ],
+    "exports": [
+      {
+        "filename": "cloud-only-4px.png",
+        "dimensions": [
+          1920,
+          1800
+        ],
+        "different_pixels": 0
+      },
+      {
+        "filename": "cloud-only-8px.png",
+        "dimensions": [
+          1920,
+          1800
+        ],
+        "different_pixels": 0
+      },
+      {
+        "filename": "full-detail.png",
+        "dimensions": [
+          1920,
+          1800
+        ],
+        "different_pixels": 0
+      }
+    ],
+    "exact_exports": true,
+    "scope": "Serial whole-application GPU time; 3 rounds. Hidden window uses 20 Hz pacing. Not FPS or paired per-frame ratios."
+  }
+}

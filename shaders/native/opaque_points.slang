@@ -22,8 +22,8 @@ void pointAtomicMax32(__ref uint destination, uint value) {
         InterlockedMax(destination,value);
     }
 }
-float2 samplePosition(uint sample) {
-    if (cloud.samples==1) return float2(.5,.5);
+float2 samplePosition<let samples : uint>(uint sample) {
+    if (samples==1) return float2(.5,.5);
     const float2 positions[4]={float2(.375,.125),float2(.875,.375),float2(.125,.625),float2(.625,.875)};
     return positions[sample];
 }
@@ -84,7 +84,7 @@ float opaqueSurfaceDepth(uint2 pixel,uint sample) {
         cloud.winners[index]=max(cloud.winners[index],key);
     }
 }
-[ForceInline] void rasterProjectedPoint(float4 clip,float pointSize,uint id,bool query,bool ids) {
+[ForceInline] void rasterProjectedPointSamples<let samples : uint>(float4 clip,float pointSize,uint id,bool query,bool ids) {
         if (!all(isfinite(clip)) || clip.w<=0 || clip.z<0 || clip.z>clip.w) return;
         float2 center=float2(clip.x/clip.w*.5+.5,.5-clip.y/clip.w*.5)*float2(cloud.width,cloud.height);
         float radius=pointSize*.5;
@@ -106,8 +106,8 @@ float opaqueSurfaceDepth(uint2 pixel,uint sample) {
             if (cloud.tileSize!=0) {
                 uint tileIndex=uint(tileY)*((cloud.width+cloud.tileSize-1)>>cloud.tileShift)+uint(tileX);
                 if (((Atomic<uint64>*)(cloud.coverage+tileIndex))->load(MemoryOrder.Relaxed)>=key) continue;
-                float lowSample=cloud.samples==1?.5:.125;
-                float highSample=cloud.samples==1?.5:.875;
+                float lowSample=samples==1?.5:.125;
+                float highSample=samples==1?.5:.875;
                 float2 farthest=max(abs(float2(first)+lowSample-center),abs(float2(last)+highSample-center));
                 bool completeQuery=!query || (all(first>=int2(cloud.query.xy)) && all(last<int2(cloud.query.zw)));
                 // Publish only circles that cover the entire tile and query.
@@ -120,10 +120,10 @@ float opaqueSurfaceDepth(uint2 pixel,uint sample) {
 #endif
             int2 start=max(lo,first),finish=min(hi,last);
             for (int y=start.y;y<=finish.y;++y) for (int x=start.x;x<=finish.x;++x) [unroll] for (uint sample=0;sample<4;++sample) {
-                if (sample>=cloud.samples) break;
-                float2 delta=float2(x,y)+samplePosition(sample)-center;
+                if (sample>=samples) break;
+                float2 delta=float2(x,y)+samplePosition<samples>(sample)-center;
                 if (dot(delta,delta)>radius*radius) continue;
-                uint index=(uint(y)*cloud.width+uint(x))*cloud.samples+min(sample,cloud.samples-1);
+                uint index=(uint(y)*cloud.width+uint(x))*samples+min(sample,samples-1);
 #ifdef WOBY_POINT_ATOMIC64
                 pointAtomicMax64(cloud.winners+index,key);
 #else
@@ -133,15 +133,33 @@ float opaqueSurfaceDepth(uint2 pixel,uint sample) {
             }
         }
 }
-[ForceInline] void rasterPoints(uint3 dispatch,uint lane,bool ids) {
+[ForceInline] void rasterPointTaskSamples<let samples : uint>(uint3 dispatch,uint lane,bool ids) {
     uint taskIndex=dispatch.y*cloud.dispatchWidth+dispatch.x;
     if (taskIndex>=cloud.taskCount) return;
     OpaquePointTaskData task=cloud.tasks[taskIndex];
     OpaquePointGroupData group=cloud.groups[task.group];
     for (uint i=lane;i<task.count;i+=128) {
         OpaquePoint p=task.points[i];
-        rasterProjectedPoint(mul(group.matrix,float4(p.position,1)),group.pointSize,
+        rasterProjectedPointSamples<samples>(mul(group.matrix,float4(p.position,1)),group.pointSize,
             group.firstId+p.id-group.sourceFirstId,task.query!=0,ids);
+    }
+}
+[ForceInline] void rasterProjectedPoint(float4 clip,float pointSize,uint id,bool query,bool ids) {
+    if (cloud.samples==1) {
+        rasterProjectedPointSamples<1>(clip,pointSize,id,query,ids);
+    }
+    else {
+        rasterProjectedPointSamples<4>(clip,pointSize,id,query,ids);
+    }
+}
+// The adaptor accepts only 1x or 4x MSAA. Choose once per task so the
+// compiler can fold sample positions, loop guards, and winner strides.
+[ForceInline] void rasterPoints(uint3 dispatch,uint lane,bool ids) {
+    if (cloud.samples==1) {
+        rasterPointTaskSamples<1>(dispatch,lane,ids);
+    }
+    else {
+        rasterPointTaskSamples<4>(dispatch,lane,ids);
     }
 }
 #ifdef WOBY_POINT_ATOMIC64

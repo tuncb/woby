@@ -94,3 +94,87 @@ Vulkan's [synchronization examples](https://docs.vulkan.org/guide/latest/synchro
 describe the compute and graphics dependencies used in the precise-barrier
 variant. The [synchronization specification](https://docs.vulkan.org/spec/latest/chapters/synchronization.html)
 defines the execution and memory scopes.
+
+## Shader audit
+
+The same optional target also accepts `--audit CONFIGURATION OUTPUT`. Use
+`shader_audit.py` to create the configuration, record input hashes, and apply
+the resource guards. This mode compares complete shader directories within
+one process. It does not change the application's shader files.
+
+Keep the four files from `shaders/native` and the SPIR-V directory from the
+same reference build. Build candidates into a new directory:
+
+```powershell
+uv run experiments/point-pipeline/shader_variants.py build/reference-source build/reference-app/assets/shaders/spirv build/shader-candidates --compiler C:/tools/slang/2026.18.3/bin/slangc.exe --ngapi build/vs2026-vcpkg/_deps/woby_ngapi-src --validator C:/VulkanSDK/1.4.357.0/Bin/spirv-val.exe --variants threads256 sample-generic split-vertices early-tests
+uv run experiments/point-pipeline/shader_audit.py build/vs2026-vcpkg/bin/Release/woby_point_pipeline.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj build/reference-app/assets/shaders/spirv build/shader-candidates build/shader-audit-new --variants repeat threads256 sample-generic --workloads combined:1 combined:4 combined:8 points:8 --frames 24 --rounds 4
+uv run experiments/point-pipeline/audit_summary.py build/shader-audit-new --output build/shader-audit-summary.json
+```
+
+Use `fixture` in place of the model path for a small, four-group correctness
+case. It includes authored and missing colors, depth ties, clipped triangles,
+and a nonzero viewport origin. Test it at both `--samples 1` and `--samples 4`.
+The CTest entries `woby_shader_audit_tools` and `woby_shader_audit_gpu` check the
+reporting rules and baseline/repeat rendering. The GPU test requires the optional
+target and `WOBY_TEST_HEADLESS=ON`.
+
+Supported workloads are `solid`, `edges`, `pulled`, `lines`, `line-sprites`,
+`uv`, `comparison`, `quads`, `points`, `combined`, `transparent`,
+`transparent-edges`, and `transparent-pulled`. A suffix such as `points:8`
+sets marker diameter in pixels. `combined` draws the solid, native triangle
+edges, and compute points. All point modes use full source detail. Both sides
+apply the same production surface-depth seed rules.
+
+Each camera frame runs all candidates in a rotating order. There are four warm
+frames per round. GPU timestamps include all rendering passes, clears, barriers,
+and resolves. They exclude capture and readback. The summary pairs individual
+camera-frame times before it calculates ratios. It reports the median of round
+medians and their range. These times are not desktop FPS. Keep `repeat` as a
+control: it uses exactly the reference shaders and exposes measurement noise.
+Identical shader bytecode shares a driver pipeline within the audit process.
+The generator's source anchors target the reference at `f83fb21`. Use its saved
+sources, including the headers, when reproducing this audit. The current
+application already contains `sample-generic`.
+
+Before timing each workload, the probe compares every final color, D32 depth,
+and picking-ID sample at two camera angles. A mismatch fails the run by default.
+Use `--allow-mismatch` only to finish a screening campaign; the report still marks
+that candidate as incorrect. Incomplete campaigns cannot enter the summary.
+The runner retains configuration, hashes, raw frame times, validation counts,
+resource limits, exit status, and progress logs. Use a new output directory for
+each run. Do not run a campaign at the same time as builds or other GPU work.
+
+The candidate generator contains research variants, not approved application
+settings. In particular:
+
+- `identity-normal` is valid only for an identity model transform.
+- `early-tests` tests opaque fills. Applying it to hidden-line or zero-alpha
+  draws can change depth. Production use would need separate shader entries.
+- `split-vertices` uploads extra position/normal and UV streams. The probe uses
+  a spare root pointer for UVs; production use would need a proper buffer and ABI.
+- `split-conditional` combines those streams with conditional UV reads. It
+  preserves the separate comparison attributes when the UV grid is disabled.
+- `block-cull` stores task bounds in a separate buffer and uses a spare pointer
+  in the 64-bit point path. It is not a portable replacement for the batch path.
+- `sample-lanes` tests one sample per invocation. Its strict certificate test
+  prevents the sample lanes for a point from rejecting each other.
+- `sample-generic` specializes the task loop for one or four samples with Slang
+  value generics. This is the retained production change. `sample-count` and
+  `sample-shared` test the same specialization with other source forms.
+- `baseline-normalized` and `sample-normalized` strip debug instructions and
+  compact SPIR-V IDs in the three raster compute entries. They test variation
+  between equivalent shader binaries. They are not production build options.
+- `lossless-points` stores two 16-bit float-bit offsets, one unchanged 32-bit
+  coordinate, and the original ID when a task's bit ranges fit. Other tasks keep their original float values.
+  It adds no quantization. The probe retains both layouts for comparisons.
+- `lossless21-points` uses 21-, 21-, and 22-bit offsets for the three coordinates.
+  It also preserves every float bit and falls back when a task does not fit.
+  Test the two packing formats in separate campaigns. Their decoding and task
+  metadata did not produce a useful speed gain on the large inputs.
+
+The comparison workload uses a proxy scalar field, not a full detector result.
+The line-sprite workload forms line segments from source triangle indices.
+The probe does not model UI cost, display presentation, adaptive navigation,
+cached frames, or asynchronous loading. Use the application benchmark for those
+questions. See [the shader audit report](../../doc/shader-performance.md) for
+measurements and decisions.

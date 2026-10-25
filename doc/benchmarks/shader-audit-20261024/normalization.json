@@ -1,0 +1,57 @@
+{
+  "operation": "spirv-opt --strip-debug --compact-ids INPUT -o OUTPUT",
+  "tool": "C:/VulkanSDK/1.4.357.0/Bin/spirv-opt.exe",
+  "entries": [
+    {
+      "entry": "cs_opaque_raster",
+      "forms": {
+        "sample-count": {
+          "raw_sha256": "bcad7dd6f45910d3a531fdd48a2a021fafb145e4179259f90488d8b2caba3e84",
+          "normalized_sha256": "76dcad3cb962a9ee619e0837440a2bd5abcfcffb7997036ae7e43e37612aee36"
+        },
+        "sample-generic": {
+          "raw_sha256": "2dfb7f7894f7c44c4ffce29618e6913210768969a1d07f9a19d1bb80285365fd",
+          "normalized_sha256": "76dcad3cb962a9ee619e0837440a2bd5abcfcffb7997036ae7e43e37612aee36"
+        },
+        "sample-shared": {
+          "raw_sha256": "bcad7dd6f45910d3a531fdd48a2a021fafb145e4179259f90488d8b2caba3e84",
+          "normalized_sha256": "76dcad3cb962a9ee619e0837440a2bd5abcfcffb7997036ae7e43e37612aee36"
+        }
+      }
+    },
+    {
+      "entry": "cs_opaque_depth",
+      "forms": {
+        "sample-count": {
+          "raw_sha256": "37896e381c0525f55f994a67a1ca17ae4f337550d4d0aeb28a14fe03489a3d85",
+          "normalized_sha256": "3ac9dca7ffc03375f48942141f561ceebe5d3c55f9eb6826faf75178d9b622e2"
+        },
+        "sample-generic": {
+          "raw_sha256": "850dac0316f353f4b39025dc7d438bd57771e1ae4e76b0c02d6072731d10ff61",
+          "normalized_sha256": "3ac9dca7ffc03375f48942141f561ceebe5d3c55f9eb6826faf75178d9b622e2"
+        },
+        "sample-shared": {
+          "raw_sha256": "37896e381c0525f55f994a67a1ca17ae4f337550d4d0aeb28a14fe03489a3d85",
+          "normalized_sha256": "3ac9dca7ffc03375f48942141f561ceebe5d3c55f9eb6826faf75178d9b622e2"
+        }
+      }
+    },
+    {
+      "entry": "cs_opaque_ids",
+      "forms": {
+        "sample-count": {
+          "raw_sha256": "1bd2df1d13d8d7c09f42f04c283e0af69ed5a36e964e5b086ba35bba33a2c9a2",
+          "normalized_sha256": "50030e8113243e480d6a07db45e674cdb28f563edbdf2bc5ee358597b5408c3c"
+        },
+        "sample-generic": {
+          "raw_sha256": "1b36a9b58e51b8b4ae8db71d67e19d399d4f553b11bfd83d1abe37a673fce8c5",
+          "normalized_sha256": "50030e8113243e480d6a07db45e674cdb28f563edbdf2bc5ee358597b5408c3c"
+        },
+        "sample-shared": {
+          "raw_sha256": "1bd2df1d13d8d7c09f42f04c283e0af69ed5a36e964e5b086ba35bba33a2c9a2",
+          "normalized_sha256": "50030e8113243e480d6a07db45e674cdb28f563edbdf2bc5ee358597b5408c3c"
+        }
+      }
+    }
+  ]
+}

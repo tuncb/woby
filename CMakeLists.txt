@@ -487,6 +487,9 @@ endif()
 
 if(BUILD_TESTING)
     include(cmake/WobyPython.cmake)
+    add_test(NAME woby_shader_audit_tools COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/shader_audit_tests.py")
+    set_tests_properties(woby_shader_audit_tools PROPERTIES LABELS "unit;cpu" TIMEOUT 60)
     add_test(NAME woby_point_navigation_reporting COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/point_navigation_reporting_tests.py")
     set_tests_properties(woby_point_navigation_reporting PROPERTIES LABELS "unit;cpu" TIMEOUT 60)
@@ -499,6 +502,12 @@ if(BUILD_TESTING)
         set_tests_properties(woby_point_benchmark_reporting PROPERTIES TIMEOUT 60)
     endif()
     option(WOBY_TEST_HEADLESS "Run headless integration tests (requires a NoGraphicsAPI-compatible GPU)" OFF)
+    if(WOBY_TEST_HEADLESS AND TARGET woby_point_pipeline)
+        add_test(NAME woby_shader_audit_gpu COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/shader_audit_tests.py" --gpu "$<TARGET_FILE:woby_point_pipeline>"
+            "$<TARGET_FILE_DIR:woby>/assets/shaders/spirv")
+        set_tests_properties(woby_shader_audit_gpu PROPERTIES LABELS graphics TIMEOUT 240 RUN_SERIAL TRUE)
+    endif()
     if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
         add_test(NAME woby_headless COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_headless_smoke.py" "$<TARGET_FILE:woby>")

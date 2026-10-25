@@ -1,0 +1,13 @@
+{
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+  "os": "Microsoft Windows 11 Home",
+  "os_build": "26300",
+  "physical_memory_bytes": 68564348928,
+  "gpu": "NVIDIA GeForce RTX 3070 Laptop GPU, 616.92, 8192 MiB",
+  "reference_commit": "f83fb21009c568593b24d79d4ce478ecfcc636d5",
+  "slang": "2026.18.3",
+  "vulkan_sdk": "1.4.357.0",
+  "ngapi_commit": "ae017a2f545abc0847e546cc7e84139bf3cc4241",
+  "clock_temperature": "Not fixed; paired controls retained",
+  "sample_date": "2026-10-24/25"
+}
