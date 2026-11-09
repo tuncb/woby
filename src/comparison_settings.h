@@ -1,6 +1,7 @@
 #pragma once
 
 #include "surface_mesh_quality.h"
+#include "tetrahedral_quality.h"
 #include "mesh_duplicates.h"
 #include "mesh_degenerates.h"
 #include "mesh_topology.h"
@@ -122,6 +123,7 @@ struct ComparisonSettings
     ComparisonSide diagnosticSide = ComparisonSide::a;
     DiagnosticCategory diagnosticCategory = DiagnosticCategory::boundary;
     SurfaceQualitySettings quality;
+    TetrahedralQualitySettings tetrahedral;
     DuplicateSettings duplicates;
     DegenerateSettings degenerates;
     IntersectionSettings intersections;

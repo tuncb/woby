@@ -89,7 +89,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"type", "name", "a", "b", "alignment", "lockPlacement", "originA", "originB", "distanceOnA"}, {}, false, true},
         {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
-            {"uvThresholdEnabled", "uvOverlapEnabled", "uvRangeEnabled", "uvThreshold", "uvNearCollapse", "uvRangeMinimum", "uvRangeMaximum", "uvOverlapScope", "uvSeparated", "uvLinkedSelection", "uvMetric", "uvNormalization", "uvView", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "alignment", "lockPlacement", "originA", "originB", "distanceOnA", "tolerance", "colorRange", "colorMinimum", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "analysisMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
+            {"uvThresholdEnabled", "uvOverlapEnabled", "uvRangeEnabled", "uvThreshold", "uvNearCollapse", "uvRangeMinimum", "uvRangeMaximum", "uvOverlapScope", "uvSeparated", "uvLinkedSelection", "uvMetric", "uvNormalization", "uvView", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "alignment", "lockPlacement", "originA", "originB", "distanceOnA", "tolerance", "colorRange", "colorMinimum", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "analysisMode", "tetrahedral", "tetrahedralMetric", "tetrahedralMinimumEnabled", "tetrahedralMaximumEnabled", "tetrahedralMinimum", "tetrahedralMaximum", "tetrahedralSelectedOnly", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
         {ControlAction::comparisonAdd, "analysis.add", "analysis add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "analysis.remove", "analysis remove", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonEnable, "analysis.enable", "analysis enable", "target", {"side", "enabled", "object", "isolate"}, {"side", "enabled"}, false, true},
@@ -130,6 +130,7 @@ const ControlMethod& controlMethod(ControlAction action)
 namespace {
 bool booleanOption(const std::string& name)
 {
+    if (name == "tetrahedral" || name == "tetrahedralMinimumEnabled" || name == "tetrahedralMaximumEnabled" || name == "tetrahedralSelectedOnly") { return true; }
     if (name == "faceCamera") { return true; }
     if (name == "showAOnly" || name == "showBOnly") { return true; }
     if (name == "showPlane" || name == "showConnections" || name == "showDifferences" || name == "faceOn" || name == "sourceVisible") { return true; }
@@ -141,6 +142,7 @@ bool booleanOption(const std::string& name)
 }
 bool stringOption(const std::string& name)
 {
+    if (name == "tetrahedralMetric") { return true; }
     if (name == "sourceObject" || name == "sourceSide") { return true; }
     if (name == "alignment" || name == "originA" || name == "originB") { return true; }
     if (name == "text") { return true; }
@@ -245,6 +247,13 @@ std::string cliOption(const std::string& name)
     if (name == "showDuplicatePoints") { return "--show-duplicate-points"; }
     if (name == "showDuplicateTriangles") { return "--show-duplicate-triangles"; }
     if (name == "qualityMetric") { return "--quality-metric"; }
+    if (name == "tetrahedral") { return "--tetrahedral"; }
+    if (name == "tetrahedralMetric") { return "--tetrahedral-metric"; }
+    if (name == "tetrahedralMinimumEnabled") { return "--tetrahedral-minimum-enabled"; }
+    if (name == "tetrahedralMaximumEnabled") { return "--tetrahedral-maximum-enabled"; }
+    if (name == "tetrahedralMinimum") { return "--tetrahedral-minimum"; }
+    if (name == "tetrahedralMaximum") { return "--tetrahedral-maximum"; }
+    if (name == "tetrahedralSelectedOnly") { return "--tetrahedral-selected-only"; }
     if (name == "qualityOnA") { return "--quality-on-a"; }
     if (name == "qualityMinimumEnabled") { return "--quality-minimum-enabled"; }
     if (name == "qualityMaximumEnabled") { return "--quality-maximum-enabled"; }
@@ -361,6 +370,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     BOOL_FIELD(duplicatePoints) BOOL_FIELD(duplicateTriangles) BOOL_FIELD(showDuplicatePoints) BOOL_FIELD(showDuplicateTriangles)
     BOOL_FIELD(locked) BOOL_FIELD(propertiesVisible) BOOL_FIELD(automaticNearPlane)
     BOOL_FIELD(qualityOnA) BOOL_FIELD(qualityMinimumEnabled) BOOL_FIELD(qualityMaximumEnabled)
+    BOOL_FIELD(tetrahedral) BOOL_FIELD(tetrahedralMinimumEnabled) BOOL_FIELD(tetrahedralMaximumEnabled) BOOL_FIELD(tetrahedralSelectedOnly)
     BOOL_FIELD(lockPlacement)
     BOOL_FIELD(distanceOnA) BOOL_FIELD(showEdges) BOOL_FIELD(showBoundaries) BOOL_FIELD(showNonManifold) BOOL_FIELD(showWinding) BOOL_FIELD(enabled)
 #undef BOOL_FIELD
@@ -375,6 +385,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     NUMBER_FIELD(right) NUMBER_FIELD(up) NUMBER_FIELD(forward) NUMBER_FIELD(factor)
     NUMBER_FIELD(distance) NUMBER_FIELD(fovDegrees) NUMBER_FIELD(nearPlane)
     NUMBER_FIELD(qualityMinimumSize) NUMBER_FIELD(qualityMaximumSize)
+    NUMBER_FIELD(tetrahedralMinimum) NUMBER_FIELD(tetrahedralMaximum)
     NUMBER_FIELD(holeSizeRatioTolerance) NUMBER_FIELD(finMaxAreaRatio)
     NUMBER_FIELD(needleThresholdRatio) NUMBER_FIELD(capMinAngleDegrees)
     NUMBER_FIELD(tolerance) NUMBER_FIELD(colorRange) NUMBER_FIELD(colorMinimum)
@@ -406,6 +417,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     STRING_FIELD(text)
     STRING_FIELD(sectionUpAxis)
     STRING_FIELD(analysisMode) STRING_FIELD(detector) STRING_FIELD(qualityMetric) STRING_FIELD(topologyMode) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
+    STRING_FIELD(tetrahedralMetric)
     STRING_FIELD(shape) STRING_FIELD(comments) STRING_FIELD(collection) STRING_FIELD(revision)
     STRING_FIELD(uvOverlapScope)
     STRING_FIELD(uvColor) STRING_FIELD(uvMetric) STRING_FIELD(uvNormalization) STRING_FIELD(type) STRING_FIELD(uvView)
@@ -460,7 +472,8 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         && *command.qualityMetric != "shape" && *command.qualityMetric != "size_jump") {
         throw std::invalid_argument("qualityMetric must be longest_edge, equivalent_size, shape, or size_jump.");
     }
-    if (command.detector && std::find(diagnosticCategoryKeys.begin(), diagnosticCategoryKeys.end(), *command.detector) == diagnosticCategoryKeys.end()) {
+    if (command.tetrahedralMetric) { (void)parseTetrahedralQualityMetric(*command.tetrahedralMetric); }
+    if (command.detector && *command.detector != "tetrahedral_quality" && std::find(diagnosticCategoryKeys.begin(), diagnosticCategoryKeys.end(), *command.detector) == diagnosticCategoryKeys.end()) {
         throw std::invalid_argument("Unknown detector. Use a detector key from analysis.results.");
     }
     if (command.analysisMode) {
@@ -582,6 +595,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(duplicatePoints) FIELD(duplicateTriangles) FIELD(showDuplicatePoints) FIELD(showDuplicateTriangles)
     FIELD(shape) FIELD(comments) FIELD(locked) FIELD(start) FIELD(end) FIELD(delta) FIELD(aspect) FIELD(opacity)
     FIELD(qualityMetric) FIELD(qualityOnA) FIELD(qualityMinimumEnabled) FIELD(qualityMaximumEnabled) FIELD(qualityMinimumSize) FIELD(qualityMaximumSize)
+    FIELD(tetrahedral) FIELD(tetrahedralMetric) FIELD(tetrahedralMinimumEnabled) FIELD(tetrahedralMaximumEnabled) FIELD(tetrahedralMinimum) FIELD(tetrahedralMaximum) FIELD(tetrahedralSelectedOnly)
     FIELD(distanceOnA) FIELD(showEdges) FIELD(showBoundaries) FIELD(showNonManifold) FIELD(showWinding) FIELD(topologyMode) FIELD(tolerance) FIELD(colorRange) FIELD(colorMinimum) FIELD(enabled)
 #undef FIELD
     return result;

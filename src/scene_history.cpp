@@ -55,6 +55,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
         comparison.detectorSelection = {};
         comparison.diagnosticFocus.reset();
         comparison.pendingDiagnosticFocus.reset();
+        comparison.tetrahedralFocus.reset();
         comparison.uvFindingFocus.reset();
         comparison.intersectionRequestRevision = 0; comparison.cancelIntersections = false;
         comparison.detectorRequests = {};

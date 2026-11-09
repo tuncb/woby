@@ -617,6 +617,13 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
     } else if (key == "show_duplicate_triangles") { record.settings.duplicates.showTriangles = parseTomlBool(value);
     } else if (key == "analysis_tolerance") {
         record.settings.tolerance = parseTomlFloat(value);
+    } else if (key == "tetrahedral_enabled") { record.settings.tetrahedral.enabled = parseTomlBool(value);
+    } else if (key == "tetrahedral_metric") { record.settings.tetrahedral.metric = parseTetrahedralQualityMetric(parseTomlString(value));
+    } else if (key == "tetrahedral_minimum_enabled") { record.settings.tetrahedral.minimumEnabled = parseTomlBool(value);
+    } else if (key == "tetrahedral_maximum_enabled") { record.settings.tetrahedral.maximumEnabled = parseTomlBool(value);
+    } else if (key == "tetrahedral_minimum") { record.settings.tetrahedral.minimum = parseTomlFloat(value);
+    } else if (key == "tetrahedral_maximum") { record.settings.tetrahedral.maximum = parseTomlFloat(value);
+    } else if (key == "tetrahedral_selected_only") { record.settings.tetrahedral.selectedOnly = parseTomlBool(value);
     } else if (key == "quality_metric") {
         record.settings.quality.metric = parseSurfaceQualityMetric(parseTomlString(value));
     } else if (key == "quality_on_a") {
@@ -747,6 +754,13 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "show_duplicate_triangles = " << (comparison.duplicates.showTriangles ? "true" : "false") << "\n";
 
     stream << "quality_metric = \"" << surfaceQualityMetricKey(comparison.quality.metric) << "\"\n";
+    stream << "tetrahedral_enabled = " << (comparison.tetrahedral.enabled ? "true" : "false") << "\n";
+    stream << "tetrahedral_metric = \"" << tetrahedralQualityMetricKey(comparison.tetrahedral.metric) << "\"\n";
+    stream << "tetrahedral_minimum_enabled = " << (comparison.tetrahedral.minimumEnabled ? "true" : "false") << "\n";
+    stream << "tetrahedral_maximum_enabled = " << (comparison.tetrahedral.maximumEnabled ? "true" : "false") << "\n";
+    stream << "tetrahedral_minimum = "; writeTomlFloat(stream, comparison.tetrahedral.minimum); stream << "\n";
+    stream << "tetrahedral_maximum = "; writeTomlFloat(stream, comparison.tetrahedral.maximum); stream << "\n";
+    stream << "tetrahedral_selected_only = " << (comparison.tetrahedral.selectedOnly ? "true" : "false") << "\n";
     stream << "quality_on_a = " << (comparison.quality.onOriginal ? "true" : "false") << "\n";
     stream << "quality_minimum_enabled = " << (comparison.quality.minimumEnabled ? "true" : "false") << "\n";
     stream << "quality_maximum_enabled = " << (comparison.quality.maximumEnabled ? "true" : "false") << "\n";

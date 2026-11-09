@@ -214,6 +214,13 @@ Node duplicates(const DuplicateResult& r)
 }
 Node detectorNode(const MeshComparison& r, ComparisonSide side, const std::string& detector)
 {
+    if (detector == "tetrahedral_quality") {
+        const auto& q = side == ComparisonSide::a ? r.original.tetrahedralQuality : r.repaired.tetrahedralQuality;
+        auto node = scalar(tetrahedralQualitySummary(q.get()));
+        if (q) { array(node,"cells",q->cells.size(),[q](size_t i) { return scalar(tetrahedralQualityCellResult(*q,i)); },"cellsTruncated"); }
+        else { array(node,"cells",0,{}); }
+        return node;
+    }
     const auto it = std::find(diagnosticCategoryKeys.begin(), diagnosticCategoryKeys.end(), detector);
     if (it == diagnosticCategoryKeys.end()) { throw std::invalid_argument("Unknown detector."); }
     const auto index = static_cast<size_t>(it - diagnosticCategoryKeys.begin());
@@ -305,6 +312,34 @@ void writeDetector(analysis_export_detail::Writer& out, const MeshComparison& re
 }
 } // namespace
 
+nlohmann::json tetrahedralQualitySummary(const TetrahedralMeshQuality* q)
+{
+    using Json = nlohmann::json;
+    if (!q) { return {{"status","not_run"},{"cellCount",0}}; }
+    Json result{{"status","complete"},{"cellCount",q->cells.size()},{"quadraticCells",q->quadraticCells},
+        {"idBase",1},{"shapeScope","four corners"},{"validityScope","all nodes; adaptive Bernstein bounds"},
+        {"jacobianNormalization","longest distance between cell nodes cubed"},{"collapseTolerance",1e-12},
+        {"statisticsScope","all finite cell values, including invalid cells"},
+        {"sourceCellIdentity","source cell ordinal (all VTK cell types, or importer tetrahedron array); not an authored solver ID"}};
+    for (size_t i = 0; i < tetrahedralValidityCount; ++i) { result["validity"][tetrahedralValidityName(static_cast<TetrahedralValidity>(i))] = q->validityCounts[i]; }
+    for (size_t i = 0; i < tetrahedralQualityMetricCount; ++i) {
+        const auto& s = q->statistics[i]; const auto number = [&](double v) { return s.count ? Json(v) : Json(nullptr); };
+        result["metrics"][tetrahedralQualityMetricKey(static_cast<TetrahedralQualityMetric>(i))] = {{"count",s.count},{"minimum",number(s.minimum)},
+            {"percentile5",number(s.percentile5)},{"median",number(s.median)},{"percentile95",number(s.percentile95)},{"maximum",number(s.maximum)}};
+    }
+    return result;
+}
+nlohmann::json tetrahedralQualityCellResult(const TetrahedralMeshQuality& q, size_t index)
+{
+    const auto& cell = q.cells.at(index);
+    nlohmann::json result{{"index",index+1},{"partId",std::to_string(cell.partId)},{"sourceCell",cell.sourceCell+1},
+        {"nodeCount",cell.nodeCount},{"validity",tetrahedralValidityName(cell.validity)}};
+    for (size_t i = 0; i < tetrahedralQualityMetricCount; ++i) {
+        result[tetrahedralQualityMetricKey(static_cast<TetrahedralQualityMetric>(i))] = std::isfinite(cell.values[i]) ? nlohmann::json(cell.values[i]) : nlohmann::json(nullptr);
+    }
+    return result;
+}
+
 nlohmann::json analysisDetectorSummary(const MeshComparison& result, ComparisonSide side, const std::string& detector)
 {
     return materialize(detectorNode(result, side, detector));
@@ -367,6 +402,15 @@ void writeAnalysisResults(std::ostream& stream, const MeshComparison& result, Js
                 writer::value(out, item.key()); writer::append(out, ":"); writer::value(out, item.value());
             }
             if (innerComma) { writer::append(out, ","); }
+            const auto& tetrahedral = side == ComparisonSide::a ? result.original.tetrahedralQuality : result.repaired.tetrahedralQuality;
+            if (tetrahedral) {
+                writer::append(out,"\"tetrahedralCells\":[");
+                for (size_t i = 0; i < tetrahedral->cells.size(); ++i) {
+                    checkStop(stop); if (i) { writer::append(out,","); }
+                    writer::value(out,tetrahedralQualityCellResult(*tetrahedral,i));
+                }
+                writer::append(out,"],");
+            }
             writer::append(out, "\"detectors\":{\"schemaVersion\":1,\"idBase\":1,\"scope\":\"per-source batch; selected parts, including unused points when whole file selected\"");
             for (const auto* key : diagnosticCategoryKeys) {
                 writer::append(out, ","); writer::value(out, key); writer::append(out, ":");
@@ -397,6 +441,7 @@ void startAnalysisExport(AnalysisExportRuntime& runtime, const MeshComparison& r
         auto& dest = side == 0 ? snapshot.original : snapshot.repaired;
         dest.topology = source.topology; dest.duplicates = source.duplicates;
         dest.degenerates = source.degenerates; dest.intersections = source.intersections;
+        dest.tetrahedralQuality = source.tetrahedralQuality;
     }
     runtime.stop = {}; runtime.written = 0; runtime.target = target; runtime.path = path;
     runtime.outcome = {{"state", "running"}, {"target", target}, {"path", pathToUtf8(path)}};

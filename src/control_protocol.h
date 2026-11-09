@@ -63,6 +63,9 @@ struct ControlOperation {
     std::optional<float> tolerance, colorRange, colorMinimum;
     std::optional<std::string> type, uvView;
     std::optional<std::string> qualityMetric, topologyMode, detector;
+    std::optional<std::string> tetrahedralMetric;
+    std::optional<bool> tetrahedral, tetrahedralMinimumEnabled, tetrahedralMaximumEnabled, tetrahedralSelectedOnly;
+    std::optional<float> tetrahedralMinimum, tetrahedralMaximum;
     std::optional<uint64_t> index, offset, limit, intersectionPairLimit, intersectionCandidateLimit;
     std::optional<std::string> collection, revision;
     std::optional<bool> duplicatePoints, duplicateTriangles, showDuplicatePoints, showDuplicateTriangles;

@@ -59,6 +59,7 @@ void renameComparison(UiState& state, SceneObjectId id, const std::string& name)
 void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array<float, 3>& translation);
 void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
 void frameComparison(UiState& state, SceneObjectId id);
+void selectTetrahedralCell(UiState& state, const Mesh& mesh, uint64_t signature, size_t index, SceneObjectId id);
 // UV navigation retains the analysis inspector and uses only matching results.
 [[nodiscard]] const UvFindingFocus* focusedUvFinding(const UiState& state, uint64_t resultSignature, SceneObjectId id,
     std::optional<uint64_t> geometrySignature = {});

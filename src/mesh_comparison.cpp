@@ -650,6 +650,7 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     }
     if (settings.colorRangeMode != ComparisonColorRange::custom) { settings.colorMinimum = 0; }
     settings.quality = normalizedSurfaceQualitySettings(settings.quality);
+    settings.tetrahedral = normalizedTetrahedralQualitySettings(settings.tetrahedral);
     settings.degenerates = normalizedDegenerateSettings(settings.degenerates);
     settings.topologyInspection = normalizedTopologyInspectionSettings(settings.topologyInspection);
     settings.topologyMode = normalizedTopologyMode(settings.topologyMode);
@@ -1012,7 +1013,7 @@ uint32_t nextComparisonStage(uint32_t missing)
     // sub-stages run sequentially on the background worker.
     if (missing & comparisonSource) { return comparisonSource; }
     if (missing & comparisonDetectors) { return missing & comparisonDetectors; }
-    for (const auto stage : {comparisonQuality, comparisonDistance}) {
+    for (const auto stage : {comparisonTetrahedralQuality, comparisonQuality, comparisonDistance}) {
         if (missing & stage) { return stage; }
     }
     return 0;
@@ -1027,7 +1028,8 @@ uint32_t requestedComparisonStages(const ComparisonSettings& settings, bool both
         const auto category = static_cast<DiagnosticCategory>(i);
         if (diagnosticAutoUpdate(settings, category)) { stages |= comparisonDiagnosticStage(category); }
     }
-    if (fullResults || settings.mode == ComparisonMode::surfaceQuality) { stages |= comparisonQuality; }
+    if (fullResults || (settings.mode == ComparisonMode::surfaceQuality && !settings.tetrahedral.enabled)) { stages |= comparisonQuality; }
+    if (settings.tetrahedral.enabled && (fullResults || settings.mode == ComparisonMode::surfaceQuality)) { stages |= comparisonTetrahedralQuality; }
     if (bothInputs && (fullResults || settings.mode == ComparisonMode::distance)) { stages |= comparisonDistance; }
     return stages;
 }
@@ -1171,6 +1173,10 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
             }
         }
         if (stages & comparisonQuality) { surface.quality = inspectSurfaceMeshQuality(mesh, stop); }
+        if (stages & comparisonTetrahedralQuality) {
+            surface.tetrahedralQuality = std::make_shared<const TetrahedralMeshQuality>(inspectTetrahedralQuality(mesh, stop));
+            surface.tetrahedralDisplay = tetrahedralQualityDisplay(mesh, *surface.tetrahedralQuality, stop);
+        }
         prepareComparisonDiagnosticDisplay(surface, mesh, stages, stop);
 
     };
@@ -1268,6 +1274,10 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
         if (stages & comparisonQuality) {
             target.quality = std::move(source.quality);
             target.qualityFaces = std::move(source.qualityFaces);
+        }
+        if (stages & comparisonTetrahedralQuality) {
+            target.tetrahedralQuality = std::move(source.tetrahedralQuality);
+            target.tetrahedralDisplay = std::move(source.tetrahedralDisplay);
         }
         if (stages & comparisonDegenerates) {
             target.degenerates = std::move(source.degenerates);

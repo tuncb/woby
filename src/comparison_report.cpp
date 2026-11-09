@@ -202,7 +202,22 @@ std::vector<std::string> comparisonReportLines(
             + "; maximum angle > " + measurementNumber(settings.degenerates.capMinAngleDegrees) + " degrees; collapsed faces always included.");
         if (options.legend && settings.degenerates.show) { lines.push_back("Purple faces/edges: degenerate triangles; crosses mark collapsed faces."); }
     }
-    if (settings.mode == ComparisonMode::surfaceQuality) {
+    if (settings.mode == ComparisonMode::surfaceQuality && settings.tetrahedral.enabled) {
+        const auto& q = settings.quality.onOriginal ? result.original.tetrahedralQuality : result.repaired.tetrahedralQuality;
+        lines.push_back("Tetrahedral cell quality");
+        lines.push_back(tetrahedralQualityMetricName(settings.tetrahedral.metric));
+        if (!q) { lines.push_back("No tetrahedral quality result."); }
+        else {
+            lines.push_back(std::to_string(q->cells.size())+" cells; "+std::to_string(q->quadraticCells)+" quadratic.");
+            for (size_t i = 0; i < tetrahedralValidityCount; ++i) { lines.push_back(std::string(tetrahedralValidityName(static_cast<TetrahedralValidity>(i)))+": "+std::to_string(q->validityCounts[i])); }
+            const auto& s = q->statistics[static_cast<size_t>(settings.tetrahedral.metric)];
+            lines.push_back(s.count ? "Min / P5 / median / P95 / max: "+measurementNumber(s.minimum)+" / "+measurementNumber(s.percentile5)+" / "+measurementNumber(s.median)+" / "+measurementNumber(s.percentile95)+" / "+measurementNumber(s.maximum) : "No finite values.");
+            const auto limits = tetrahedralQualityOutsideLimits(*q,settings.tetrahedral);
+            lines.push_back("Below minimum: "+std::to_string(limits[0])+"; above maximum: "+std::to_string(limits[1]));
+            lines.push_back("Shape and angles use corners; volume and validity use all nodes. Unresolved cells are not certified valid.");
+        }
+    }
+    if (settings.mode == ComparisonMode::surfaceQuality && !settings.tetrahedral.enabled) {
         const bool sources = settings.task == AnalysisTask::meshQuality;
         const auto metric = settings.quality.metric;
         const auto index = static_cast<size_t>(metric);

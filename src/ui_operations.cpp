@@ -499,6 +499,7 @@ SceneObjectId duplicateComparison(UiState& state, SceneObjectId id)
     copy.uvProbe.reset();
     copy.pendingDiagnosticFocus.reset();
     copy.uvFindingFocus.reset();
+    copy.tetrahedralFocus.reset();
     copy.intersectionRequestRevision = 0; copy.cancelIntersections = false;
     copy.detectorRequests = {};
     copy.differenceRequest = {};
@@ -582,8 +583,25 @@ void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array
 void frameComparison(UiState& state, SceneObjectId id)
 {
     resetComparisonDiagnosticFocus(state, id);
-    if (auto* comparison = findComparison(state, id)) { comparison->uvFindingFocus.reset(); }
+    if (auto* comparison = findComparison(state, id)) { comparison->uvFindingFocus.reset(); comparison->tetrahedralFocus.reset(); }
     if (const auto bounds = comparisonDisplayBounds(state, id)) { frameComparisonBounds(state, *bounds); }
+}
+
+void selectTetrahedralCell(UiState& state, const Mesh& mesh, uint64_t signature, size_t index, SceneObjectId id)
+{
+    auto* comparison = findComparison(state, id);
+    if (!comparison || !comparison->settings.enabled || !comparison->settings.tetrahedral.enabled
+        || !signature || signature != comparisonGeometrySignature(state, id) || index >= meshGeometry(mesh).tetrahedra.size()) { return; }
+    const auto& cell = meshGeometry(mesh).tetrahedra[index];
+    std::vector<Vertex> vertices(cell.nodeCount);
+    for (size_t n = 0; n < cell.nodeCount; ++n) {
+        const auto p = meshPosition(mesh, cell.nodes[n]);
+        for (size_t k = 0; k < 3; ++k) { vertices[n].position[k] = static_cast<float>(p[k]) + comparison->translation[k]; }
+    }
+    auto bounds = calculateBounds(vertices); bounds.radius = std::max(bounds.radius*1.2f, .001f);
+    state.camera = fitCameraBounds(frameCameraBounds(bounds, state.upAxis), bounds);
+    comparison->tetrahedralFocus = TetrahedralFocus{signature,index};
+    selectSceneObject(state, id);
 }
 
 const UvFindingFocus* focusedUvFinding(const UiState& state, uint64_t resultSignature, SceneObjectId id,
@@ -986,6 +1004,7 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
         settings = normalizedComparisonSettings(settings);
         const auto before = comparison->settings;
         if (settings == before) { return; }
+        if (settings.quality.onOriginal != before.quality.onOriginal) { comparison->tetrahedralFocus.reset(); }
         const bool alignmentChanged = before.alignOrigins != settings.alignOrigins
             || (before.type == settings.type && before.alignEnabledParts != settings.alignEnabledParts);
         const bool editableCapture = settings.type == AnalysisType::surfaceComparison && settings.alignEnabledParts

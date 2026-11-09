@@ -216,6 +216,10 @@ add_library(woby_core STATIC
     src/model_mesh.h
     src/tetrahedral_mesh.cpp
     src/tetrahedral_mesh.h
+    src/tetrahedral_quality.cpp
+    src/tetrahedral_quality.h
+    src/tetrahedral_quality_view.cpp
+    src/tetrahedral_quality_view.h
     src/vtk_mesh.cpp
     src/vtk_mesh.h
     src/obj_mesh.cpp
@@ -294,6 +298,13 @@ set_target_properties(woby_core PROPERTIES OPTIMIZE_DEPENDENCIES ON)
 woby_enable_project_warnings(woby_core)
 woby_enable_enum_switch_warnings(woby_core)
 woby_enable_precompiled_headers(woby_core)
+set_source_files_properties(src/tetrahedral_quality.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+if(MSVC)
+    set_source_files_properties(src/tetrahedral_quality.cpp PROPERTIES COMPILE_OPTIONS /fp:strict)
+else()
+    set_source_files_properties(src/tetrahedral_quality.cpp PROPERTIES
+        COMPILE_OPTIONS "-fno-fast-math;-ffp-contract=off;-frounding-math")
+endif()
 woby_configure_avx512_rebase()
 
 add_executable(woby
@@ -538,6 +549,9 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/uv_grid_suite_selection_tests.py")
         add_test(NAME woby_uv_quality_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_uv_quality_smoke.py" "$<TARGET_FILE:woby>")
+        add_test(NAME woby_tetrahedral_quality_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_tetrahedral_quality_smoke.py" "$<TARGET_FILE:woby>")
+        set_tests_properties(woby_tetrahedral_quality_render PROPERTIES TIMEOUT 180 LABELS graphics RESOURCE_LOCK woby_gpu)
         add_test(NAME woby_loading_preparation COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_loading_preparation_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_post_loading COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
@@ -658,6 +672,7 @@ if(BUILD_TESTING)
         tests/importer_lines_tests.cpp
         tests/importer_geometry_tests.cpp
         tests/tetrahedral_mesh_tests.cpp
+        tests/tetrahedral_quality_tests.cpp
         tests/vtk_mesh_tests.cpp
         tests/importer_point_ids_tests.cpp
         tests/automation_tests.cpp

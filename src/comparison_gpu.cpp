@@ -7,7 +7,7 @@
 namespace woby {
 void destroySurface(ComparisonGpuSurface &gpu)
 {
-    for (const auto handle : {gpu.vertices, gpu.samples, gpu.quality, gpu.boundaries, gpu.nonManifold, gpu.winding,
+    for (const auto handle : {gpu.vertices, gpu.samples, gpu.quality, gpu.tetrahedralQuality[0], gpu.tetrahedralQuality[1], gpu.boundaries, gpu.nonManifold, gpu.winding,
         gpu.nonManifoldVertices, gpu.holes, gpu.finEdges, gpu.finFill, gpu.duplicatePoints, gpu.duplicateTriangleEdges, gpu.duplicateTriangleFill, gpu.degenerateEdges, gpu.degenerateFill, gpu.intersectionEdges, gpu.intersectionFill})
     {
         if (woby::graphics::isValid(handle))
@@ -15,7 +15,7 @@ void destroySurface(ComparisonGpuSurface &gpu)
             woby::graphics::destroy(handle);
         }
     }
-    for (const auto handle : {gpu.triangles})
+    for (const auto handle : {gpu.triangles, gpu.tetrahedralTriangles, gpu.tetrahedralEdges})
     {
         if (woby::graphics::isValid(handle))
         {
@@ -72,6 +72,22 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
         gpu.quality = woby::graphics::createVertexBuffer(
             woby::graphics::makeRef(surface.qualityFaces.data(), bytes), {sizeof(SurfaceQualityFace)});
         if (!woby::graphics::isValid(gpu.quality)) { throw std::runtime_error("Cannot allocate surface mesh quality buffer."); }
+    }
+    if (stages & comparisonTetrahedralQuality) {
+        const auto& tetrahedral = surface.tetrahedralDisplay;
+        if (!tetrahedral.indices.empty()) {
+            gpu.tetrahedralTriangles = woby::graphics::createIndexBuffer(woby::graphics::makeRef(tetrahedral.indices.data(),
+                comparisonBufferBytes(tetrahedral.indices.size(), sizeof(uint32_t))), WOBY_GPU_BUFFER_INDEX32);
+            if (!woby::graphics::isValid(gpu.tetrahedralTriangles)) { throw std::runtime_error("Cannot allocate tetrahedral index buffer."); }
+            gpu.tetrahedralEdges = woby::graphics::createIndexBuffer(woby::graphics::makeRef(tetrahedral.edges.data(),
+                comparisonBufferBytes(tetrahedral.edges.size(), sizeof(uint32_t))), WOBY_GPU_BUFFER_INDEX32);
+            if (!woby::graphics::isValid(gpu.tetrahedralEdges)) { throw std::runtime_error("Cannot allocate tetrahedral edge buffer."); }
+            for (size_t bank = 0; bank < 2; ++bank) {
+                gpu.tetrahedralQuality[bank] = woby::graphics::createVertexBuffer(woby::graphics::makeRef(tetrahedral.faces[bank].data(),
+                    comparisonBufferBytes(tetrahedral.faces[bank].size(), sizeof(SurfaceQualityFace))), {sizeof(SurfaceQualityFace)});
+                if (!woby::graphics::isValid(gpu.tetrahedralQuality[bank])) { throw std::runtime_error("Cannot allocate tetrahedral quality buffer."); }
+            }
+        }
     }
     if (stages & comparisonSource) {
         const auto vertexBytes = comparisonBufferBytes(meshGeometry(surface.source).vertices.size(), sizeof(Vertex));
@@ -140,6 +156,9 @@ void destroyStage(ComparisonGpuSurface& gpu, uint32_t stages)
     if (stages & comparisonIntersections) { destroy(gpu.intersectionEdges); destroy(gpu.intersectionFill); }
     if (stages & comparisonDistance) { destroy(gpu.samples); }
     if (stages & comparisonQuality) { destroy(gpu.quality); }
+    if (stages & comparisonTetrahedralQuality) {
+        destroy(gpu.tetrahedralTriangles); destroy(gpu.tetrahedralEdges); for (auto& handle : gpu.tetrahedralQuality) { destroy(handle); }
+    }
 }
 
 } // namespace woby

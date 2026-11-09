@@ -22,6 +22,9 @@ struct ComparisonGpuSurface
     woby::graphics::IndexBufferHandle triangles = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle samples = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle quality = WOBY_GPU_INVALID_HANDLE;
+    std::array<woby::graphics::VertexBufferHandle, 2> tetrahedralQuality{{WOBY_GPU_INVALID_HANDLE, WOBY_GPU_INVALID_HANDLE}};
+    woby::graphics::IndexBufferHandle tetrahedralTriangles = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::IndexBufferHandle tetrahedralEdges = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle boundaries = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle nonManifold = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle nonManifoldVertices = WOBY_GPU_INVALID_HANDLE;
@@ -95,13 +98,13 @@ struct ComparisonJobRuntime {
 struct ComparisonResultRuntime {
     ComparisonCacheStatus cache;
     uint64_t signature = 0, revision = 0;
-    std::array<uint64_t, 8> stageRevisions{};
+    std::array<uint64_t, 9> stageRevisions{};
     MeshComparison value;
 };
 struct ComparisonGpuRuntime {
     ComparisonGpuSurface original, repaired;
     uint32_t uploadedStages = 0;
-    std::array<uint64_t, 8> stageRevisions{};
+    std::array<uint64_t, 9> stageRevisions{};
     bool ready = false;
 };
 struct ComparisonInspectorRuntime {

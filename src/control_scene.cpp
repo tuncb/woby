@@ -124,6 +124,9 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"needleThresholdRatio", settings.degenerates.needleThresholdRatio}, {"capMinAngleDegrees", settings.degenerates.capMinAngleDegrees},
                 {"duplicatePoints", settings.duplicates.points}, {"duplicateTriangles", settings.duplicates.triangles}, {"showDuplicatePoints", settings.duplicates.showPoints}, {"showDuplicateTriangles", settings.duplicates.showTriangles},
                 {"qualityMetric", surfaceQualityMetricKey(settings.quality.metric)}, {"qualityOnA", settings.quality.onOriginal},
+                {"tetrahedral", settings.tetrahedral.enabled}, {"tetrahedralMetric", tetrahedralQualityMetricKey(settings.tetrahedral.metric)},
+                {"tetrahedralMinimumEnabled", settings.tetrahedral.minimumEnabled}, {"tetrahedralMaximumEnabled", settings.tetrahedral.maximumEnabled},
+                {"tetrahedralMinimum", settings.tetrahedral.minimum}, {"tetrahedralMaximum", settings.tetrahedral.maximum}, {"tetrahedralSelectedOnly", settings.tetrahedral.selectedOnly},
                 {"qualityMinimumEnabled", settings.quality.minimumEnabled}, {"qualityMaximumEnabled", settings.quality.maximumEnabled},
                 {"qualityMinimumSize", settings.quality.minimumSize}, {"qualityMaximumSize", settings.quality.maximumSize},
                 {"showBoundaries", settings.showBoundaries}, {"showNonManifold", settings.showNonManifold}, {"showWinding", settings.showWinding}, {"topologyMode", topologyModeName(settings.topologyMode)}, {"analysisMode", analysisModeName(settings.analysisMode)}}},
@@ -585,6 +588,13 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.showDuplicatePoints) { settings.duplicates.showPoints = *command.showDuplicatePoints; }
             if (command.showDuplicateTriangles) { settings.duplicates.showTriangles = *command.showDuplicateTriangles; }
             if (command.qualityMetric) { settings.quality.metric = parseSurfaceQualityMetric(*command.qualityMetric); }
+            if (command.tetrahedral) { settings.tetrahedral.enabled = *command.tetrahedral; }
+            if (command.tetrahedralMetric) { settings.tetrahedral.metric = parseTetrahedralQualityMetric(*command.tetrahedralMetric); }
+            if (command.tetrahedralMinimumEnabled) { settings.tetrahedral.minimumEnabled = *command.tetrahedralMinimumEnabled; }
+            if (command.tetrahedralMaximumEnabled) { settings.tetrahedral.maximumEnabled = *command.tetrahedralMaximumEnabled; }
+            if (command.tetrahedralMinimum) { settings.tetrahedral.minimum = *command.tetrahedralMinimum; }
+            if (command.tetrahedralMaximum) { settings.tetrahedral.maximum = *command.tetrahedralMaximum; }
+            if (command.tetrahedralSelectedOnly) { settings.tetrahedral.selectedOnly = *command.tetrahedralSelectedOnly; }
             if (command.qualityOnA) { settings.quality.onOriginal = *command.qualityOnA; }
             if (command.qualityMinimumEnabled) { settings.quality.minimumEnabled = *command.qualityMinimumEnabled; }
             if (command.qualityMaximumEnabled) { settings.quality.maximumEnabled = *command.qualityMaximumEnabled; }
@@ -823,6 +833,15 @@ Json controlFocusComparisonDiagnostic(UiState& state, const MeshComparison& resu
     if (resultSignature == 0 || resultSignature != comparisonGeometrySignature(state, command.objectId)) {
         throw std::invalid_argument("Analysis findings are out of date.");
     }
+    if (*command.detector == "tetrahedral_quality") {
+        const auto& surface = *command.side == "a" ? result.original : result.repaired;
+        if (!surface.tetrahedralQuality || *command.index == 0 || *command.index > surface.tetrahedralQuality->cells.size()) { throw std::invalid_argument("Tetrahedral cell index is outside the results."); }
+        auto settings = comparison->settings; settings.mode = ComparisonMode::surfaceQuality;
+        settings.tetrahedral.enabled = true; settings.quality.onOriginal = *command.side == "a";
+        setComparisonSettings(state,settings,command.objectId);
+        selectTetrahedralCell(state,surface.source,resultSignature,static_cast<size_t>(*command.index-1),command.objectId);
+        return {{"target",command.target},{"index",*command.index},{"count",surface.tetrahedralQuality->cells.size()},{"camera",controlCameraInfo(state)}};
+    }
     const auto detector = std::find(diagnosticCategoryKeys.begin(), diagnosticCategoryKeys.end(), *command.detector);
     if (detector == diagnosticCategoryKeys.end()) { throw std::invalid_argument("Unknown detector."); }
     const auto category = static_cast<DiagnosticCategory>(detector - diagnosticCategoryKeys.begin());
@@ -877,7 +896,8 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance, bo
                 }
                 return detectors;
             }()},
-            {"surfaceMeshQuality", quality}, {"sampleCount", value.distances.size()}, {"triangleCount", meshGeometry(value.source).indices.size() / 3},
+            {"surfaceMeshQuality", quality}, {"tetrahedralMeshQuality", tetrahedralQualitySummary(value.tetrahedralQuality.get())},
+            {"sampleCount", value.distances.size()}, {"triangleCount", meshGeometry(value.source).indices.size() / 3},
             {"diagnostics", {{"boundaryEdges", diagnostics.boundaryEdges.size()},
                 {"nonManifoldEdges", diagnostics.nonManifoldEdges.size()},
                 {"inconsistentWindingEdges", diagnostics.inconsistentWindingEdges.size()},

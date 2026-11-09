@@ -132,6 +132,10 @@ struct UvFindingFocus {
     // Empty while switching from layout to the 3D surface for a missing/collapsed UV.
     std::optional<std::array<std::array<float, 3>, 3>> geometry;
 };
+struct TetrahedralFocus {
+    uint64_t signature = 0;
+    size_t index = 0;
+};
 
 struct UvProbe {
     uint64_t signature = 0;
@@ -161,6 +165,7 @@ struct UiComparison {
     // View selection waiting for matching detector results; never drawn directly.
     std::optional<DiagnosticFocus> pendingDiagnosticFocus;
     std::optional<UvFindingFocus> uvFindingFocus;
+    std::optional<TetrahedralFocus> tetrahedralFocus; // Transient cell selection, excluded from scene/history.
     // One-shot inspection commands, excluded from scene files and history.
     uint64_t intersectionRequestRevision = 0;
     bool cancelIntersections = false;

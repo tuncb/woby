@@ -105,6 +105,8 @@ TEST_CASE("VTK reader supports mixed point line surface and tetrahedral cells")
         REQUIRE(g.nodes.size() == 4);
         CHECK(g.nodes[0].indexCount == 21); CHECK(g.nodes[3].indexOffset == 21); CHECK(g.nodes[3].indexCount == 60);
         CHECK(g.tetrahedra[0].groupIndex == 3);
+        CHECK(g.tetrahedra[0].sourceCell == 7);
+        CHECK(g.tetrahedra[1].sourceCell == 8);
     }
     CHECK(meshGeometry(parse(vtk({{0,1,2}},{2}))).pointIndices.size() == 3);
     CHECK(meshGeometry(parse(vtk({{0,1,2}},{4}))).lineIndices.size() == 4);

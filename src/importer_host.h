@@ -6,6 +6,7 @@
 #include <exception>
 #include <filesystem>
 #include <functional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -63,7 +64,7 @@ void unloadImporters();
     const WobyImportLines* lines = nullptr, const WobyImportPointIds* pointIds = nullptr,
     const WobyImportPoints* points = nullptr, const WobyImportFreeform* freeform = nullptr,
     const ModelLoadProgressCallback& progress = {}, bool deferPreparation = false,
-    const WobyImportTetrahedra* tetrahedra = nullptr);
+    const WobyImportTetrahedra* tetrahedra = nullptr, std::span<const uint32_t> sourceCellIds = {});
 [[nodiscard]] std::vector<std::filesystem::path> readImporterSettings(const std::filesystem::path& path);
 void writeImporterSettings(const std::filesystem::path& path, const std::vector<std::filesystem::path>& plugins);
 

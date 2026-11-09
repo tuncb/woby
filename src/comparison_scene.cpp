@@ -24,6 +24,7 @@ namespace
 struct WorldVertexRemap {
     const Mesh* mesh = nullptr;
     std::vector<uint32_t> vertices;
+    std::vector<std::vector<size_t>> cells;
 };
 
 void appendGroup(Mesh &result, WorldVertexRemap& remap, const UiFileState &file, size_t groupIndex, const double *model, std::stop_token stop)
@@ -44,6 +45,11 @@ void appendGroup(Mesh &result, WorldVertexRemap& remap, const UiFileState &file,
     if (remap.mesh != &file.mesh) {
         remap.mesh = &file.mesh;
         remap.vertices.assign(meshGeometry(file.mesh).vertices.size(), missing);
+        remap.cells.assign(meshGeometry(file.mesh).nodes.size(), {});
+        for (size_t i = 0; i < meshGeometry(file.mesh).tetrahedra.size(); ++i) {
+            if (i % 4096 == 0 && stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
+            remap.cells.at(meshGeometry(file.mesh).tetrahedra[i].groupIndex).push_back(i);
+        }
     }
     // Reuse vertices within a part, preserving source splits and triangle order.
     // A new part gets its own vertices because its transform can differ. Earlier
@@ -54,15 +60,9 @@ void appendGroup(Mesh &result, WorldVertexRemap& remap, const UiFileState &file,
     node.sourceObjectId = file.groupSettings[groupIndex].objectId;
     node.uvQualityOffset = meshGeometry(result).indices.size()/3;
     editMeshGeometry(result).nodes.push_back(std::move(node));
-    for (size_t i = group.indexOffset; i < end; ++i)
-    {
-        if (i % 16384 == 0 && stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
-        const auto sourceIndex = meshGeometry(file.mesh).indices[i];
+    const auto appendVertex = [&](uint32_t sourceIndex) {
         auto& mapped = remap.vertices.at(sourceIndex);
-        if (mapped != missing && mapped >= firstVertex) {
-            editMeshGeometry(result).indices.push_back(mapped);
-            continue;
-        }
+        if (mapped != missing && mapped >= firstVertex) { return mapped; }
         const auto point = transformCoordinate(model, meshPosition(file.mesh, sourceIndex));
         Vertex vertex;
         vertex.position = renderPosition(point);
@@ -70,8 +70,20 @@ void appendGroup(Mesh &result, WorldVertexRemap& remap, const UiFileState &file,
         editMeshGeometry(result).precisePositions.push_back(point);
         validateComparisonMeshSize(meshGeometry(result).vertices.size() + 1, 0);
         mapped = static_cast<uint32_t>(meshGeometry(result).vertices.size());
-        editMeshGeometry(result).indices.push_back(mapped);
         editMeshGeometry(result).vertices.push_back(vertex);
+        return mapped;
+    };
+    for (size_t i = group.indexOffset; i < end; ++i) {
+        if (i % 16384 == 0 && stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
+        const auto mapped = appendVertex(meshGeometry(file.mesh).indices[i]);
+        editMeshGeometry(result).indices.push_back(mapped);
+    }
+    for (const auto index : remap.cells.at(groupIndex)) {
+        if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
+        auto cell = meshGeometry(file.mesh).tetrahedra[index];
+        for (size_t n = 0; n < cell.nodeCount; ++n) { cell.nodes[n] = appendVertex(cell.nodes[n]); }
+        cell.groupIndex = static_cast<uint32_t>(meshGeometry(result).nodes.size()-1);
+        editMeshGeometry(result).tetrahedra.push_back(cell);
     }
 }
 // One traversal supplies both geometry snapshots and their cache signatures.

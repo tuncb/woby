@@ -3688,13 +3688,16 @@ int main(int argc, char** argv)
                                 const auto found = comparison.objects.find(payload.objectId);
                                 const auto category = static_cast<woby::DiagnosticCategory>(std::find(woby::diagnosticCategoryKeys.begin(),
                                     woby::diagnosticCategoryKeys.end(), *payload.detector) - woby::diagnosticCategoryKeys.begin());
-                                if (found == comparison.objects.end() || !woby::comparisonDetectorReady(found->second, ui, payload.objectId, category)) {
+                                const bool tetrahedral = *payload.detector == "tetrahedral_quality";
+                                if (found == comparison.objects.end() || !(tetrahedral
+                                    ? woby::comparisonStagesReady(found->second, ui, payload.objectId, woby::comparisonTetrahedralQuality)
+                                    : woby::comparisonDetectorReady(found->second, ui, payload.objectId, category))) {
                                     throw std::invalid_argument("Detector results are not current; run analysis run first.");
                                 }
                                 const auto revision = std::to_string(found->second.results.revision);
                                 if (payload.revision && *payload.revision != revision) { throw std::invalid_argument("Results changed; restart pagination without --revision."); }
                                 result = woby::analysisResultPage(found->second.results.value, *payload.side == "a" ? woby::ComparisonSide::a : woby::ComparisonSide::b,
-                                    *payload.detector, payload.collection.value_or("/findings"), static_cast<size_t>(payload.offset.value_or(0)), static_cast<size_t>(payload.limit.value_or(100)));
+                                    *payload.detector, payload.collection.value_or(tetrahedral ? "/cells" : "/findings"), static_cast<size_t>(payload.offset.value_or(0)), static_cast<size_t>(payload.limit.value_or(100)));
                                 result["revision"] = revision; result["target"] = payload.target;
                             } else if (payload.action == A::comparisonResults || payload.action == A::comparisonExport) {
                                 const auto* source = woby::findComparison(ui, payload.objectId);
@@ -3740,8 +3743,9 @@ int main(int argc, char** argv)
                                 }
                                 const auto detector = std::find(woby::diagnosticCategoryKeys.begin(),
                                     woby::diagnosticCategoryKeys.end(), *payload.detector);
-                                if (detector == woby::diagnosticCategoryKeys.end()
-                                    || !woby::comparisonDetectorReady(found->second, ui, payload.objectId,
+                                const bool tetrahedral = *payload.detector == "tetrahedral_quality";
+                                if (tetrahedral ? !woby::comparisonStagesReady(found->second,ui,payload.objectId,woby::comparisonTetrahedralQuality)
+                                    : detector == woby::diagnosticCategoryKeys.end() || !woby::comparisonDetectorReady(found->second, ui, payload.objectId,
                                         static_cast<woby::DiagnosticCategory>(detector - woby::diagnosticCategoryKeys.begin()))) {
                                     throw std::invalid_argument("Detector findings are not current; run the detector first.");
                                 }

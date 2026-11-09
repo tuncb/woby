@@ -107,6 +107,7 @@ struct TetrahedralCell {
     uint32_t nodeCount = 4;
     std::array<uint32_t, 10> nodes{}; // VTK order, indexes into the shared vertex table.
     uint32_t groupIndex = 0;
+    uint64_t sourceCell = 0; // Zero-based source cell ordinal; preserved by analysis copies.
 };
 struct MeshGeometry {
     std::vector<Vertex> vertices;

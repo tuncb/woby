@@ -8,6 +8,9 @@
 #include <ostream>
 
 namespace woby {
+// Bounded metadata; per-cell results are available through tetrahedral_quality /cells.
+nlohmann::json tetrahedralQualitySummary(const TetrahedralMeshQuality* quality);
+nlohmann::json tetrahedralQualityCellResult(const TetrahedralMeshQuality& quality, size_t index);
 
 // Collection paths use zero-based array indexes, e.g. /findings/0/members.
 // Only the requested page is materialized; nested arrays retain summary limits.

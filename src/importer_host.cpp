@@ -530,8 +530,11 @@ bool hasImporterForPath(const std::filesystem::path& path)
 Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy* hierarchy,
     const WobyImportLines* lines, const WobyImportPointIds* pointIds,
     const WobyImportPoints* points, const WobyImportFreeform* freeform, const ModelLoadProgressCallback& progress, bool deferPreparation,
-    const WobyImportTetrahedra* tetrahedra)
+    const WobyImportTetrahedra* tetrahedra, std::span<const uint32_t> sourceCellIds)
 {
+    if (!sourceCellIds.empty() && (!tetrahedra || sourceCellIds.size() != tetrahedra->cell_count)) {
+        throw std::runtime_error("Tetrahedral source cell IDs must match the cell buffer.");
+    }
     if (tetrahedra && (tetrahedra->struct_size < sizeof(WobyImportTetrahedra)
         || (tetrahedra->cell_count && !tetrahedra->cells) || tetrahedra->group_count > 100000u
         || (tetrahedra->group_count && !tetrahedra->groups))) {
@@ -560,7 +563,7 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
         + (lines ? uint64_t(lines->index_count) * sizeof(uint32_t) : 0)
         + (points ? uint64_t(points->index_count) * sizeof(uint32_t) : 0)
         + (pointIds ? uint64_t(pointIds->vertex_count) * sizeof(uint64_t) : 0)
-        + (tetrahedra ? uint64_t(tetrahedra->cell_count) * sizeof(WobyImportTetrahedron) : 0);
+        + (tetrahedra ? uint64_t(tetrahedra->cell_count) * sizeof(TetrahedralCell) : 0);
     if (result.struct_size < sizeof(WobyImportResult) || (result.flags & ~3u) != 0u
         || (result.index_count == 0u && (!lines || !lines->index_count) && (!points || !points->index_count)
             && (!freeform || !freeform->patch_count) && (!tetrahedra || !tetrahedra->cell_count)) || result.index_count % 3u != 0u
@@ -691,6 +694,7 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
                 if (c % 4096 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, nextCell+c, tetrahedra->cell_count); }
                 const auto& source = tetrahedra->cells[nextCell+c];
                 TetrahedralCell cell; cell.nodeCount = source.node_count; cell.groupIndex = groupIndex;
+                cell.sourceCell = sourceCellIds.empty() ? nextCell+c : sourceCellIds[nextCell+c];
                 std::copy(std::begin(source.nodes), std::end(source.nodes), cell.nodes.begin());
                 buffers.tetrahedra.push_back(cell);
             }

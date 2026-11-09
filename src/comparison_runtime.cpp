@@ -117,7 +117,7 @@ ComparisonSettings readyComparisonSettings(const ComparisonRuntime& runtime, con
     const auto requested = comparisonSettings(state, id);
     const auto ready = [&](uint32_t stage) { return comparisonStagesReady(runtime, requested, signature, stage, true); };
     if ((settings.mode == ComparisonMode::distance && !ready(comparisonDistance))
-        || (settings.mode == ComparisonMode::surfaceQuality && !ready(comparisonQuality))) {
+        || (settings.mode == ComparisonMode::surfaceQuality && !ready(settings.tetrahedral.enabled ? comparisonTetrahedralQuality : comparisonQuality))) {
         const bool original = settings.mode == ComparisonMode::distance ? settings.distanceOnOriginal : settings.quality.onOriginal;
         settings.mode = original ? ComparisonMode::original : ComparisonMode::repaired;
     }
@@ -531,6 +531,10 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                         spdlog::info("Surface quality CPU preparation: {:.3f} ms (worker; values, distributions and all display metrics)",
                             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
                     }
+                    if (stage & comparisonTetrahedralQuality) {
+                        spdlog::info("Tetrahedral quality CPU preparation: {:.3f} ms (worker; cells, validity bounds and display)",
+                            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
+                    }
                     if (stage & comparisonSource) {
                         if (qualities[0]) { result.original.source.uvQuality = qualities[0]; }
                         if (qualities[1]) { result.repaired.source.uvQuality = qualities[1]; }
@@ -562,7 +566,7 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
     if (wanted && active) {
         const auto pending = runtime.results.cache.completed & ~runtime.gpu.uploadedStages & ~runtime.jobs.failedStages;
         for (const auto stage : {comparisonSource, comparisonTopology, comparisonDuplicatePoints, comparisonDuplicateTriangles,
-            comparisonDegenerates, comparisonQuality, comparisonDistance, comparisonIntersections}) {
+            comparisonDegenerates, comparisonQuality, comparisonTetrahedralQuality, comparisonDistance, comparisonIntersections}) {
             if (!(pending & stage)) { continue; }
             try {
                 const auto started = std::chrono::steady_clock::now();
@@ -570,6 +574,10 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                 uploadSurface(runtime.gpu.repaired, runtime.results.value.repaired, stage, runtime.sources.prepared ? &runtime.sources.prepared->buffers[1] : nullptr);
                 if (stage & comparisonQuality) {
                     spdlog::info("Surface quality GPU upload: {:.3f} ms (allocation and staging; all display metrics)",
+                        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
+                }
+                if (stage & comparisonTetrahedralQuality) {
+                    spdlog::info("Tetrahedral quality GPU upload: {:.3f} ms (all cell display metrics)",
                         std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
                 }
                 for (auto* surface : {&runtime.results.value.original, &runtime.results.value.repaired}) {
@@ -590,6 +598,10 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                 if (stage & comparisonQuality) {
                     std::vector<SurfaceQualityFace>().swap(runtime.results.value.original.qualityFaces);
                     std::vector<SurfaceQualityFace>().swap(runtime.results.value.repaired.qualityFaces);
+                }
+                if (stage & comparisonTetrahedralQuality) {
+                    runtime.results.value.original.tetrahedralDisplay = {};
+                    runtime.results.value.repaired.tetrahedralDisplay = {};
                 }
             } catch (const std::bad_alloc&) {
                 throw;
@@ -667,7 +679,7 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         runtime.gpu.ready = false;
         runtime.jobs.retryDetectorsSeparately = false;
         runtime.jobs.allocationFailed = true;
-        runtime.jobs.failedStages = comparisonSource | comparisonDetectors | comparisonQuality | comparisonDistance | comparisonIntersections;
+        runtime.jobs.failedStages = comparisonSource | comparisonDetectors | comparisonQuality | comparisonTetrahedralQuality | comparisonDistance | comparisonIntersections;
         runtime.jobs.attemptedSignature = runtime.results.cache.signature;
         runtime.jobs.error = "Memory allocation failed. Analysis stopped; free memory and retry.";
         for (auto& status : runtime.results.value.detectors) { status.phase = IntersectionPhase::failed; status.error = runtime.jobs.error; }
@@ -794,7 +806,9 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
         if (comparison.settings.intersections.show && (runtime.jobs.intersection.requested
             || phase == IntersectionPhase::queued || phase == IntersectionPhase::running
             || findComparison(state, comparison.objectId)->intersectionRequestRevision != runtime.jobs.intersection.consumedRequest)) { ready = false; }
-        if (comparison.settings.mode == ComparisonMode::surfaceQuality) {
+        if (comparison.settings.mode == ComparisonMode::surfaceQuality && comparison.settings.tetrahedral.enabled) {
+            ready = ready && comparisonStagesReady(runtime, state, comparison.objectId, comparisonTetrahedralQuality, true);
+        } else if (comparison.settings.mode == ComparisonMode::surfaceQuality) {
             ready = ready &&
                 (meshGeometry(runtime.results.value.original.source).indices.empty() || woby::graphics::isValid(runtime.gpu.original.quality)) &&
                 (meshGeometry(runtime.results.value.repaired.source).indices.empty() || woby::graphics::isValid(runtime.gpu.repaired.quality));

@@ -136,8 +136,10 @@ Mesh loadVtkMesh(std::istream& input, const ModelLoadProgressCallback& progress,
     if (integer(input) != cellCount) { throw std::runtime_error("VTK CELL_TYPES count must match CELLS."); }
     std::vector<uint32_t> triangles, lines, points;
     std::vector<WobyImportTetrahedron> cells;
+    std::vector<uint32_t> sourceCellIds;
     const auto budget = [&] {
         const uint64_t bytes = vertices.size()*sizeof(WobyImportVertex) + cells.size()*sizeof(WobyImportTetrahedron)
+            + sourceCellIds.size()*sizeof(uint32_t)
             + (triangles.size()+lines.size()+points.size()+connectivity.size()+offsets.size())*sizeof(uint32_t);
         if (bytes > maxBytes || triangles.size() > UINT32_MAX || lines.size() > UINT32_MAX || points.size() > UINT32_MAX) {
             throw std::runtime_error("VTK geometry exceeds supported size.");
@@ -167,7 +169,7 @@ Mesh loadVtkMesh(std::istream& input, const ModelLoadProgressCallback& progress,
         case 10: case 24: {
             require(type == 10 ? 4u : 10u);
             WobyImportTetrahedron cell{}; cell.node_count = count;
-            std::copy(n,n+count,cell.nodes); cells.push_back(cell); break;
+            std::copy(n,n+count,cell.nodes); cells.push_back(cell); sourceCellIds.push_back(i); break;
         }
         default: throw std::runtime_error("Unsupported VTK cell type " + std::to_string(type) + ".");
         }
@@ -187,7 +189,7 @@ Mesh loadVtkMesh(std::istream& input, const ModelLoadProgressCallback& progress,
     const WobyImportLines importedLines{sizeof(WobyImportLines),lines.data(),static_cast<uint32_t>(lines.size()),nullptr,0};
     const WobyImportPoints importedPoints{sizeof(WobyImportPoints),points.data(),static_cast<uint32_t>(points.size()),nullptr,0};
     const WobyImportTetrahedra tetrahedra{sizeof(WobyImportTetrahedra),cells.data(),static_cast<uint32_t>(cells.size()),nullptr,0};
-    return copyImportedMesh(result,nullptr,&importedLines,nullptr,&importedPoints,nullptr,progress,deferPreparation,&tetrahedra);
+    return copyImportedMesh(result,nullptr,&importedLines,nullptr,&importedPoints,nullptr,progress,deferPreparation,&tetrahedra,sourceCellIds);
 }
 
 Mesh loadVtkMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress, bool deferPreparation)

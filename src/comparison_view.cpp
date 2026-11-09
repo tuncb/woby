@@ -1,5 +1,6 @@
 #include "scene_pane_layout.h"
 #include "uv_quality_view.h"
+#include "tetrahedral_quality_view.h"
 #include "marker_pick.h"
 #include "comparison_view.h"
 #include "ui_bulk_controls.h"
@@ -1479,11 +1480,17 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         }
         if (task == AnalysisTask::meshQuality) {
             ImGui::SeparatorText("Metric");
+            int domain = settings.tetrahedral.enabled ? 1 : 0;
+            ImGui::SetNextItemWidth(-1);
+            if (ImGui::Combo("##quality_domain", &domain, "Surface triangles\0Tetrahedral cells\0")) { settings.tetrahedral.enabled = domain == 1; }
+            if (settings.tetrahedral.enabled) { drawTetrahedralQualityControls(settings.tetrahedral); }
+            else {
             int metric = static_cast<int>(settings.quality.metric);
             const char* metrics[] = {"Longest edge", "Equivalent size", "Shape quality", "Local size jump"};
             ImGui::SetNextItemWidth(-1);
             if (ImGui::Combo("##quality_metric", &metric, metrics, 4)) {
                 settings.quality.metric = static_cast<SurfaceQualityMetric>(metric);
+            }
             }
         }
         if (both && settings.mode == ComparisonMode::overlay)
@@ -1508,7 +1515,11 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (task == AnalysisTask::meshChecks) { drawDiagnosticNavigation(state, runtime, validVisible, hasA, hasB, id); }
     if (!validVisible) { return; }
     if (task == AnalysisTask::meshQuality) {
-        const bool qualityReady = inspectorStagesReady(runtime, state, id, comparisonQuality);
+        const bool qualityReady = inspectorStagesReady(runtime, state, id, comparisonSettings(state,id).tetrahedral.enabled ? comparisonTetrahedralQuality : comparisonQuality);
+        if (comparisonSettings(state,id).tetrahedral.enabled) {
+            if (qualityReady) { drawTetrahedralQualityResults(state,runtime,id); }
+            return;
+        }
         if (qualityReady) { drawSurfaceQualityStatistics(runtime.results.value, comparisonSettings(state, id)); }
         drawSurfaceQualitySizeLimits(state, id, qualityReady ? &runtime.results.value : nullptr);
     }
@@ -1562,9 +1573,36 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
     const auto &gpu = useOriginal ? runtime.gpu.original : runtime.gpu.repaired;
     const bool quality = settings.mode == ComparisonMode::surfaceQuality;
     const bool heatmap = settings.mode == ComparisonMode::distance || quality;
-    if (quality && !woby::graphics::isValid(gpu.quality)) { return; }
+    if (quality && !settings.tetrahedral.enabled && !woby::graphics::isValid(gpu.quality)) { return; }
     float identity[16];
     woby::translationMatrix(identity, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
+    if (quality && settings.tetrahedral.enabled) {
+        const auto& surface = useOriginal ? runtime.results.value.original : runtime.results.value.repaired;
+        if (!surface.tetrahedralQuality || !woby::graphics::isValid(gpu.tetrahedralTriangles)) { return; }
+        const auto& cells = surface.tetrahedralQuality->cells;
+        if (cells.empty()) { return; }
+        uint32_t first = 0, count = cells.back().firstFace+cells.back().faceCount;
+        if (settings.tetrahedral.selectedOnly && comparison.tetrahedralFocus
+            && comparison.tetrahedralFocus->signature == runtime.results.signature && comparison.tetrahedralFocus->index < cells.size()) {
+            const auto& cell = cells[comparison.tetrahedralFocus->index]; first = cell.firstFace; count = cell.faceCount;
+        }
+        const auto metric = static_cast<size_t>(settings.tetrahedral.metric);
+        woby::graphics::setTransform(identity);
+        woby::graphics::setComparison({static_cast<float>(metric%4),1,2,tetrahedralMetricHigherIsBetter(settings.tetrahedral.metric) ? 1.0f : 0.0f});
+        woby::graphics::setColor({.58f,.63f,.69f,1});
+        woby::graphics::setVertexBuffer(0,gpu.vertices);
+        woby::graphics::setFaceDisplay(gpu.tetrahedralQuality[metric/4],gpu.tetrahedralTriangles,woby::graphics::FaceDisplayKind::surfaceQuality,first,count);
+        setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_WRITE_Z | WOBY_GPU_STATE_DEPTH_TEST_LEQUAL | WOBY_GPU_STATE_MSAA,woby::graphics::isValid(markerProgram));
+        woby::graphics::submit(view,woby::graphics::isValid(markerProgram) ? markerProgram : runtimes.program);
+        if (settings.showEdges) {
+            woby::graphics::setTransform(identity); woby::graphics::setVertexBuffer(0,gpu.vertices);
+            woby::graphics::setIndexBuffer(gpu.tetrahedralEdges,first*6,count*6);
+            woby::graphics::setColor({.22f,.25f,.30f,1});
+            woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_PT_LINES | WOBY_GPU_STATE_DEPTH_TEST_LEQUAL | WOBY_GPU_STATE_MSAA);
+            woby::graphics::submit(view,colorProgram);
+        }
+        return;
+    }
     if (isUvAnalysis(settings.type)) {
         if (!woby::graphics::isValid(gpu.vertices) || !woby::graphics::isValid(gpu.triangles)) { return; }
         const std::array<float, 4> gray = {.58f, .63f, .69f, 1};

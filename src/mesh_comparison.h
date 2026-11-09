@@ -60,6 +60,8 @@ struct SurfaceComparison
     std::vector<DiagnosticEdge> nonManifoldVertexBounds, nonManifoldVertexMarkers, holeBounds, holeEdges, finBounds, finEdges;
     std::vector<std::array<float, 3>> finFill;
     SurfaceMeshQuality quality;
+    std::shared_ptr<const TetrahedralMeshQuality> tetrahedralQuality;
+    TetrahedralQualityDisplay tetrahedralDisplay;
     // Worker-prepared display data, released after successful GPU upload.
     std::vector<SurfaceQualityFace> qualityFaces;
     MeshDuplicates duplicates;
@@ -95,7 +97,8 @@ enum ComparisonStage : uint32_t {
     comparisonQuality = 1u << 4,
     comparisonDistance = 1u << 5,
     comparisonDegenerates = 1u << 6,
-    comparisonIntersections = 1u << 7
+    comparisonIntersections = 1u << 7,
+    comparisonTetrahedralQuality = 1u << 8
 };
 inline constexpr uint32_t comparisonDetectors = comparisonTopology | comparisonDuplicatePoints
     | comparisonDuplicateTriangles | comparisonDegenerates;
