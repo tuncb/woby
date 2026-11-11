@@ -581,6 +581,7 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         if (category == "boundary") { record.settings.diagnosticCategory = DiagnosticCategory::boundary; }
         else if (category == "non_manifold") { record.settings.diagnosticCategory = DiagnosticCategory::nonManifold; }
         else if (category == "non_manifold_vertices") { record.settings.diagnosticCategory = DiagnosticCategory::nonManifoldVertices; }
+        else if (category == "thin_regions") { record.settings.diagnosticCategory = DiagnosticCategory::thinRegions; }
         else if (category == "fins") { record.settings.diagnosticCategory = DiagnosticCategory::fins; }
         else if (category == "holes") { record.settings.diagnosticCategory = DiagnosticCategory::holes; }
         else if (category == "winding") { record.settings.diagnosticCategory = DiagnosticCategory::winding; }
@@ -589,6 +590,15 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         else if (category == "degenerate_triangles") { record.settings.diagnosticCategory = DiagnosticCategory::degenerateTriangles; }
         else if (category == "duplicate_triangles") { record.settings.diagnosticCategory = DiagnosticCategory::duplicateTriangles; }
         else { throw std::runtime_error("Unknown diagnostic category."); }
+    } else if (key == "analysis_thickness_auto_update") { record.settings.thickness.autoUpdate = parseTomlBool(value);
+    } else if (key == "analysis_thickness_show") { record.settings.thickness.show = parseTomlBool(value);
+    } else if (key == "analysis_thickness_map") { record.settings.thickness.showMap = parseTomlBool(value);
+    } else if (key == "analysis_thickness_absolute_enabled") { record.settings.thickness.absoluteEnabled = parseTomlBool(value);
+    } else if (key == "analysis_thickness_relative_enabled") { record.settings.thickness.relativeEnabled = parseTomlBool(value);
+    } else if (key == "analysis_thickness_maximum") { record.settings.thickness.maximumThickness = parseTomlFloat(value);
+    } else if (key == "analysis_thickness_maximum_relative") { record.settings.thickness.maximumRelativeThickness = parseTomlFloat(value);
+    } else if (key == "analysis_thickness_minimum_region_area") { record.settings.thickness.minimumRegionArea = parseTomlFloat(value);
+    } else if (key == "analysis_thickness_elements") { record.settings.thickness.elementsThroughThickness = parseTomlInteger(value);
     } else if (key == "analysis_auto_update_boundaries") { record.settings.autoUpdateBoundaries = parseTomlBool(value);
     } else if (key == "analysis_auto_update_non_manifold_edges") { record.settings.autoUpdateNonManifold = parseTomlBool(value);
     } else if (key == "analysis_auto_update_winding") { record.settings.autoUpdateWinding = parseTomlBool(value);
@@ -704,6 +714,7 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "diagnostic_side = \"" << (comparison.diagnosticSide == ComparisonSide::a ? "a" : "b") << "\"\n";
     const char* category = comparison.diagnosticCategory == DiagnosticCategory::boundary ? "boundary"
         : comparison.diagnosticCategory == DiagnosticCategory::nonManifoldVertices ? "non_manifold_vertices"
+        : comparison.diagnosticCategory == DiagnosticCategory::thinRegions ? "thin_regions"
         : comparison.diagnosticCategory == DiagnosticCategory::fins ? "fins"
         : comparison.diagnosticCategory == DiagnosticCategory::holes ? "holes"
         : comparison.diagnosticCategory == DiagnosticCategory::nonManifold ? "non_manifold"
@@ -737,6 +748,15 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "analysis_holes_enabled = " << (comparison.topologyInspection.holes ? "true" : "false") << "\n";
     stream << "analysis_show_holes = " << (comparison.topologyInspection.showHoles ? "true" : "false") << "\n";
     stream << "analysis_hole_size_ratio_tolerance = " << comparison.topologyInspection.holeSizeRatioTolerance << "\n";
+    stream << "analysis_thickness_auto_update = " << (comparison.thickness.autoUpdate ? "true" : "false") << "\n";
+    stream << "analysis_thickness_show = " << (comparison.thickness.show ? "true" : "false") << "\n";
+    stream << "analysis_thickness_map = " << (comparison.thickness.showMap ? "true" : "false") << "\n";
+    stream << "analysis_thickness_absolute_enabled = " << (comparison.thickness.absoluteEnabled ? "true" : "false") << "\n";
+    stream << "analysis_thickness_relative_enabled = " << (comparison.thickness.relativeEnabled ? "true" : "false") << "\n";
+    stream << "analysis_thickness_maximum = "; writeTomlFloat(stream, comparison.thickness.maximumThickness); stream << "\n";
+    stream << "analysis_thickness_maximum_relative = "; writeTomlFloat(stream, comparison.thickness.maximumRelativeThickness); stream << "\n";
+    stream << "analysis_thickness_minimum_region_area = "; writeTomlFloat(stream, comparison.thickness.minimumRegionArea); stream << "\n";
+    stream << "analysis_thickness_elements = " << comparison.thickness.elementsThroughThickness << "\n";
     stream << "analysis_processing_mode = \"" << analysisModeName(comparison.analysisMode) << "\"\n";
     stream << "topology_mode = \"" << topologyModeName(comparison.topologyMode) << "\"\n";
     stream << "analysis_show_winding = " << (comparison.showWinding ? "true" : "false") << "\n";

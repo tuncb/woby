@@ -36,6 +36,7 @@ struct ComparisonAnalysisInput {
     std::array<double, 3> origin{};
     std::shared_ptr<const AnalysisGeometry> geometry;
     MeshTopology incidence; // Only immutable graph owners; no finding vectors.
+    std::shared_ptr<const ThicknessMeasurements> thickness;
 };
 struct SurfaceComparison
 {
@@ -67,6 +68,11 @@ struct SurfaceComparison
     MeshDuplicates duplicates;
     MeshDegenerates degenerates;
     MeshIntersections intersections;
+    MeshThickness thickness;
+    std::vector<DiagnosticEdge> thinRegionBounds, thinRegionEdges;
+    std::vector<std::array<float, 3>> thinRegionFill, thicknessMap;
+    std::vector<std::array<uint32_t, 2>> thinRegionFillRanges; // First vertex and count per region.
+    std::array<uint32_t, thicknessMapBinCount> thicknessMapCounts{};
     std::vector<DiagnosticEdge> intersectionBounds, intersectionEdges;
     std::vector<DiagnosticEdge> degenerateBounds;
     // Bounds diagonals used by shared finding navigation; not rendered as edges.
@@ -98,10 +104,11 @@ enum ComparisonStage : uint32_t {
     comparisonDistance = 1u << 5,
     comparisonDegenerates = 1u << 6,
     comparisonIntersections = 1u << 7,
-    comparisonTetrahedralQuality = 1u << 8
+    comparisonTetrahedralQuality = 1u << 8,
+    comparisonThickness = 1u << 9
 };
 inline constexpr uint32_t comparisonDetectors = comparisonTopology | comparisonDuplicatePoints
-    | comparisonDuplicateTriangles | comparisonDegenerates;
+    | comparisonDuplicateTriangles | comparisonDegenerates | comparisonThickness;
 [[nodiscard]] DetectorStatus comparisonDetectorStatus(const MeshComparison& result, DiagnosticCategory category);
 [[nodiscard]] const char* detectorPhaseName(IntersectionPhase phase);
 // Retain previous counts, but prevent stale findings from being inspected or drawn.
@@ -111,6 +118,7 @@ struct ComparisonCacheStatus {
     uint32_t completed = 0;
     DegenerateSettings degenerates;
     TopologyMode topologyMode = TopologyMode::originalIndex;
+    ThicknessSettings thickness;
 };
 [[nodiscard]] uint32_t requestedComparisonStages(const ComparisonSettings& settings, bool bothInputs,
     bool fullResults = false);
@@ -121,12 +129,13 @@ bool resetComparisonCache(ComparisonCacheStatus& cache, uint64_t signature);
 // Invalidates only the threshold-dependent detector stage.
 bool resetComparisonDegenerateCache(ComparisonCacheStatus& cache, DegenerateSettings settings);
 bool resetComparisonTopologyCache(ComparisonCacheStatus& cache, TopologyMode mode);
+bool resetComparisonThicknessCache(ComparisonCacheStatus& cache, ThicknessSettings settings);
 [[nodiscard]] std::array<ComparisonAnalysisInput, 2> comparisonAnalysisInputs(const MeshComparison& result, bool includeIncidence = true);
 [[nodiscard]] uint32_t topologyFindingStage(DiagnosticCategory category);
 [[nodiscard]] MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired,
     uint32_t stages, std::stop_token stop = {}, DegenerateSettings degenerates = {}, TopologyMode topologyMode = TopologyMode::originalIndex, IntersectionLimits intersectionLimits = {},
     const std::array<ComparisonAnalysisInput, 2>& analysisInputs = {}, uint32_t topologyFindings = topologyAllFindings,
-    TopologyInspectionSettings topologySettings = {});
+    TopologyInspectionSettings topologySettings = {}, ThicknessSettings thickness = {});
 // Rejects stale worker results; moves only the stages produced by that worker.
 bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache, MeshComparison update,
     uint64_t signature, uint32_t stages);

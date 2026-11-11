@@ -692,6 +692,10 @@ bool diagnosticResultSettingsCurrent(const UiComparison& comparison, const MeshC
         const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
         if (surface.intersections.phase != IntersectionPhase::complete || surface.intersections.mode != comparison.settings.topologyMode) { return false; }
     }
+    if (focus.category == DiagnosticCategory::thinRegions) {
+        const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
+        if (!sameThicknessFilters(surface.thickness.settings, comparison.settings.thickness)) { return false; }
+    }
     if (focus.category == DiagnosticCategory::degenerateTriangles) {
         const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
         if (!sameDegenerateThresholds(surface.degenerates.settings, comparison.settings.degenerates)) { return false; }
@@ -761,6 +765,10 @@ void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
         if (surface.intersections.phase != IntersectionPhase::complete || surface.intersections.mode != settings.topologyMode) { return; }
     }
+    if (settings.diagnosticCategory == DiagnosticCategory::thinRegions) {
+        const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
+        if (!sameThicknessFilters(surface.thickness.settings, settings.thickness)) { return; }
+    }
     if (settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
         if (!sameDegenerateThresholds(surface.degenerates.settings, settings.degenerates)) { return; }
@@ -793,6 +801,10 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
     if (settings.diagnosticCategory == DiagnosticCategory::selfIntersections) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
         if (surface.intersections.phase != IntersectionPhase::complete || surface.intersections.mode != settings.topologyMode) { return; }
+    }
+    if (settings.diagnosticCategory == DiagnosticCategory::thinRegions) {
+        const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
+        if (!sameThicknessFilters(surface.thickness.settings, settings.thickness)) { return; }
     }
     if (settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
@@ -974,7 +986,7 @@ size_t countVisibleComparisonDiagnostics(const ComparisonSettings& settings)
         settings.showBoundaries, settings.showNonManifold, settings.showWinding,
         settings.duplicates.showPoints, settings.duplicates.showTriangles, settings.degenerates.show,
         settings.topologyInspection.showNonManifoldVertices, settings.topologyInspection.showHoles,
-        settings.topologyInspection.showFins, settings.intersections.show
+        settings.topologyInspection.showFins, settings.thickness.show, settings.intersections.show
     };
     return static_cast<size_t>(std::count(visibility.begin(), visibility.end(), true));
 }
@@ -994,6 +1006,7 @@ void setComparisonDiagnosticsVisible(UiState& state, bool visible, SceneObjectId
     settings.topologyInspection.showHoles = visible;
     settings.topologyInspection.showFins = visible;
     settings.intersections.show = visible;
+    settings.thickness.show = visible;
     if (!visible) { resetComparisonDiagnosticFocus(state, id); }
     if (settings != comparison->settings) { setComparisonSettings(state, settings, id); }
 }
@@ -1035,6 +1048,7 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
             || settings.analysisMode != comparison->settings.analysisMode
             || normalizedTopologyInspectionSettings(settings.topologyInspection).finMaxAreaRatio != comparison->settings.topologyInspection.finMaxAreaRatio
             || normalizedTopologyInspectionSettings(settings.topologyInspection).holeSizeRatioTolerance != comparison->settings.topologyInspection.holeSizeRatioTolerance
+            || !sameThicknessFilters(settings.thickness, comparison->settings.thickness)
             || !sameDegenerateThresholds(normalizedDegenerateSettings(settings.degenerates), comparison->settings.degenerates)) {
             resetComparisonDiagnosticFocus(state, id);
         }

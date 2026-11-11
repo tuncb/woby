@@ -58,6 +58,7 @@ bool comparisonStagesReady(const ComparisonRuntime& runtime, const ComparisonSet
     }
     if ((stages & (comparisonTopology | comparisonIntersections)) && runtime.results.cache.topologyMode != settings.topologyMode) { return false; }
     if ((stages & comparisonDegenerates) && !sameDegenerateThresholds(runtime.results.cache.degenerates, settings.degenerates)) { return false; }
+    if ((stages & comparisonThickness) && !sameThicknessFilters(runtime.results.cache.thickness, settings.thickness)) { return false; }
     if (stages & comparisonTopology) {
         for (const auto* surface : {&runtime.results.value.original, &runtime.results.value.repaired}) {
             if ((topologyFindings & topologyBoundaryRegions) && surface->topology.inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance) { return false; }
@@ -138,6 +139,7 @@ ComparisonSettings readyComparisonSettings(const ComparisonRuntime& runtime, con
     settings.duplicates.showTriangles &= settings.duplicates.triangles;
     settings.degenerates.show &= settings.degenerates.enabled;
     settings.intersections.show &= ready(comparisonIntersections);
+    settings.thickness.show &= detectorReady(DiagnosticCategory::thinRegions);
     return settings;
 }
 
@@ -243,6 +245,14 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
         invalidateGpu(comparisonDegenerates); runtime.jobs.failedStages &= ~comparisonDegenerates;
         invalidateComparisonDetectors(runtime.results.value, comparisonDegenerates);
         runtime.jobs.attemptedSignature = 0; runtime.jobs.error.clear(); resetComparisonDiagnosticFocus(state, id);
+    }
+    if (resetComparisonThicknessCache(runtime.results.cache, settings.thickness)) {
+        if (runtime.jobs.workerStages & comparisonThickness) { runtime.jobs.stop.request_stop(); }
+        invalidateGpu(comparisonThickness); runtime.jobs.failedStages &= ~comparisonThickness;
+        invalidateComparisonDetectors(runtime.results.value, comparisonThickness);
+        auto& status = runtime.results.value.detectors[static_cast<size_t>(DiagnosticCategory::thinRegions)];
+        if (status.hasResult && (runtime.results.value.original.analysis.thickness || runtime.results.value.repaired.analysis.thickness)) { status.phase = IntersectionPhase::queued; }
+        runtime.jobs.attemptedSignature = 0; runtime.jobs.error.clear(); resetComparisonDiagnosticFocus(state,id);
     }
     if (runtime.jobs.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance) {
         runtime.jobs.holeSizeRatioTolerance = settings.topologyInspection.holeSizeRatioTolerance;
@@ -522,11 +532,11 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                     runtime.sources.prepared ? runtime.sources.prepared->buffers[0].uvQuality : nullptr,
                     runtime.sources.prepared ? runtime.sources.prepared->buffers[1].uvQuality : nullptr};
                 runtime.jobs.worker = std::async(std::launch::async, [inputs = runtime.sources.inputs, stage = runtime.jobs.workerStages,
-                    qualities, analysis = (runtime.jobs.workerStages & comparisonTopology) ? comparisonAnalysisInputs(runtime.results.value)
+                    qualities, analysis = (runtime.jobs.workerStages & (comparisonTopology | comparisonThickness)) ? comparisonAnalysisInputs(runtime.results.value)
                         : std::array<ComparisonAnalysisInput, 2>{}, findings, topologySettings = settings.topologyInspection,
-                    degenerates = settings.degenerates, mode = settings.topologyMode, stop = runtime.jobs.stop.get_token()] {
+                    thickness = settings.thickness, degenerates = settings.degenerates, mode = settings.topologyMode, stop = runtime.jobs.stop.get_token()] {
                     const auto started = std::chrono::steady_clock::now();
-                    auto result = computeComparisonStages((*inputs)[0], (*inputs)[1], stage, stop, degenerates, mode, {}, analysis, findings, topologySettings);
+                    auto result = computeComparisonStages((*inputs)[0], (*inputs)[1], stage, stop, degenerates, mode, {}, analysis, findings, topologySettings, thickness);
                     if (stage & comparisonQuality) {
                         spdlog::info("Surface quality CPU preparation: {:.3f} ms (worker; values, distributions and all display metrics)",
                             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
@@ -566,7 +576,7 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
     if (wanted && active) {
         const auto pending = runtime.results.cache.completed & ~runtime.gpu.uploadedStages & ~runtime.jobs.failedStages;
         for (const auto stage : {comparisonSource, comparisonTopology, comparisonDuplicatePoints, comparisonDuplicateTriangles,
-            comparisonDegenerates, comparisonQuality, comparisonTetrahedralQuality, comparisonDistance, comparisonIntersections}) {
+            comparisonDegenerates, comparisonThickness, comparisonQuality, comparisonTetrahedralQuality, comparisonDistance, comparisonIntersections}) {
             if (!(pending & stage)) { continue; }
             try {
                 const auto started = std::chrono::steady_clock::now();
@@ -586,6 +596,7 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                     if (stage & comparisonDuplicateTriangles) { release(surface->duplicateTriangleDisplayEdges); release(surface->duplicateTriangleDisplayFill); }
                     if (stage & comparisonDegenerates) { release(surface->degenerateDisplayEdges); release(surface->degenerateDisplayFill); }
                     if (stage & comparisonIntersections) { release(surface->intersectionDisplayFill); }
+                    if (stage & comparisonThickness) { release(surface->thinRegionFill); release(surface->thicknessMap); }
                 }
                 runtime.gpu.uploadedStages |= stage;
                 for (size_t i = 0; i < runtime.gpu.stageRevisions.size(); ++i) {

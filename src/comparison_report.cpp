@@ -130,7 +130,7 @@ std::vector<std::string> comparisonReportLines(
                 lines.push_back(label + " " + name + ": " + formatCount(duplicates.duplicateCount) + " (" + duplicateStatus(duplicates) + ")");
             };
             const char* detectorNames[] = {"boundary edges", "non-manifold edges", "inconsistent triangles", "duplicate points",
-                "source-ID duplicate triangles", "degenerate triangles", "non-manifold vertices", "holes", "fin candidates"};
+                "source-ID duplicate triangles", "degenerate triangles", "non-manifold vertices", "holes", "fin candidates", "thin regions"};
             for (size_t i = 0; i < backgroundDetectorCount; ++i) {
                 const auto& status = result.detectors[i];
                 if (status.phase == IntersectionPhase::complete) { continue; }
@@ -153,6 +153,9 @@ std::vector<std::string> comparisonReportLines(
             }
             if (ready(DiagnosticCategory::fins)) {
                 lines.push_back(label + " Woby fin candidates: " + formatCount(topology.fins.size()) + " known (" + finStatus(topology) + "); heuristic");
+            }
+            if (ready(DiagnosticCategory::thinRegions)) {
+                lines.push_back(label + " thin regions: " + formatCount(surface->thickness.regions.size()) + " (" + thicknessStatus(surface->thickness) + "); sampled thickness estimates");
             }
             if (ready(DiagnosticCategory::holes)) {
                 size_t branched = 0, open = 0;

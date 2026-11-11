@@ -130,6 +130,7 @@ add_library(woby_core STATIC
     src/comparison_legend.cpp
     src/surface_mesh_quality.cpp
     src/mesh_intersections.cpp
+    src/mesh_thickness.cpp
     src/mesh_topology.cpp
     src/mesh_degenerates.cpp
     src/mesh_duplicates.cpp
@@ -650,6 +651,7 @@ if(BUILD_TESTING)
         tests/analysis_presentation_tests.cpp
         tests/count_format_tests.cpp
         tests/mesh_intersections_tests.cpp
+        tests/mesh_thickness_tests.cpp
         tests/mesh_intersection_predicates_tests.cpp
         tests/mesh_intersection_reference.cpp
         tests/mesh_topology_tests.cpp

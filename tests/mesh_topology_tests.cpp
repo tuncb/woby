@@ -892,7 +892,7 @@ TEST_CASE("automatic detector batches preserve independent stage results and dis
         {0,1,2, 0,2,3, 2,1,0, 0,0,1}));
     const auto stages = requestedComparisonStages({}, false);
     CHECK(nextComparisonStage(stages) == comparisonSource);
-    CHECK(nextComparisonStage(stages & ~comparisonSource) == comparisonDetectors);
+    CHECK(nextComparisonStage(stages & ~comparisonSource) == (comparisonDetectors & ~comparisonThickness));
     CHECK(nextComparisonStage(comparisonTopology | comparisonDegenerates | comparisonDistance)
         == (comparisonTopology | comparisonDegenerates));
     const auto batch = computeComparisonStages(input, {}, comparisonDetectors);

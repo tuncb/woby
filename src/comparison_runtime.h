@@ -33,6 +33,8 @@ struct ComparisonGpuSurface
     woby::graphics::VertexBufferHandle winding = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle intersectionEdges = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle intersectionFill = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle thinRegionEdges = WOBY_GPU_INVALID_HANDLE, thinRegionFill = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle thicknessMap = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle degenerateEdges = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle degenerateFill = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle duplicatePoints = WOBY_GPU_INVALID_HANDLE;
@@ -98,13 +100,13 @@ struct ComparisonJobRuntime {
 struct ComparisonResultRuntime {
     ComparisonCacheStatus cache;
     uint64_t signature = 0, revision = 0;
-    std::array<uint64_t, 9> stageRevisions{};
+    std::array<uint64_t, 10> stageRevisions{};
     MeshComparison value;
 };
 struct ComparisonGpuRuntime {
     ComparisonGpuSurface original, repaired;
     uint32_t uploadedStages = 0;
-    std::array<uint64_t, 9> stageRevisions{};
+    std::array<uint64_t, 10> stageRevisions{};
     bool ready = false;
 };
 struct ComparisonInspectorRuntime {

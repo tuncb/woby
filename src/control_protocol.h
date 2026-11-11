@@ -70,6 +70,15 @@ struct ControlOperation {
     std::optional<std::string> collection, revision;
     std::optional<bool> duplicatePoints, duplicateTriangles, showDuplicatePoints, showDuplicateTriangles;
     std::optional<bool> nonManifoldVertices, showNonManifoldVertices, holes, showHoles, fins, showFins;
+    std::optional<bool> thinRegions;
+    std::optional<bool> showThinRegions;
+    std::optional<bool> thicknessMap;
+    std::optional<bool> thicknessAbsoluteEnabled;
+    std::optional<bool> thicknessRelativeEnabled;
+    std::optional<float> maximumThickness;
+    std::optional<float> maximumRelativeThickness;
+    std::optional<float> minimumThinRegionArea;
+    std::optional<uint64_t> thicknessElements;
     std::optional<float> holeSizeRatioTolerance, finMaxAreaRatio;
     std::optional<bool> selfIntersections, autoUpdateSelfIntersections, showSelfIntersections;
     std::optional<bool> autoUpdateBoundaries, autoUpdateNonManifold, autoUpdateWinding;

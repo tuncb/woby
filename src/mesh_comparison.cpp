@@ -633,6 +633,7 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
         settings.diagnosticCategory != DiagnosticCategory::duplicatePoints &&
         settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles &&
         settings.diagnosticCategory != DiagnosticCategory::selfIntersections &&
+        settings.diagnosticCategory != DiagnosticCategory::thinRegions &&
         settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles &&
         settings.diagnosticCategory != DiagnosticCategory::nonManifoldVertices && settings.diagnosticCategory != DiagnosticCategory::holes && settings.diagnosticCategory != DiagnosticCategory::fins) {
         settings.diagnosticCategory = DiagnosticCategory::boundary;
@@ -652,6 +653,7 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     settings.quality = normalizedSurfaceQualitySettings(settings.quality);
     settings.tetrahedral = normalizedTetrahedralQualitySettings(settings.tetrahedral);
     settings.degenerates = normalizedDegenerateSettings(settings.degenerates);
+    settings.thickness = normalizedThicknessSettings(settings.thickness);
     settings.topologyInspection = normalizedTopologyInspectionSettings(settings.topologyInspection);
     settings.topologyMode = normalizedTopologyMode(settings.topologyMode);
     if (settings.analysisMode != AnalysisMode::perVolume && settings.analysisMode != AnalysisMode::whole) {
@@ -704,6 +706,7 @@ const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(
     case DiagnosticCategory::nonManifoldVertices: return surface.nonManifoldVertexBounds;
     case DiagnosticCategory::holes: return surface.holeBounds;
     case DiagnosticCategory::fins: return surface.finBounds;
+    case DiagnosticCategory::thinRegions: return surface.thinRegionBounds;
     case DiagnosticCategory::boundary: return diagnostics.boundaryEdges;
     case DiagnosticCategory::nonManifold: return diagnostics.nonManifoldEdges;
     case DiagnosticCategory::winding: return diagnostics.inconsistentWindingEdges;
@@ -882,7 +885,7 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
         result.repaired.diagnostics = inspectMesh(repaired, stop);
         inspectSurfaceTopology(result.repaired, repaired, topologyMode, stop);
         result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
-        completeComparisonDetectors(result, comparisonDetectors);
+        completeComparisonDetectors(result, comparisonDetectors & ~comparisonThickness);
         return result;
     }
     if (meshGeometry(repaired).vertices.empty() && meshGeometry(repaired).indices.empty()) {
@@ -891,7 +894,7 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
         result.original.diagnostics = inspectMesh(original, stop);
         inspectSurfaceTopology(result.original, original, topologyMode, stop);
         result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
-        completeComparisonDetectors(result, comparisonDetectors);
+        completeComparisonDetectors(result, comparisonDetectors & ~comparisonThickness);
         return result;
     }
     validateComparisonDistanceSize(meshGeometry(original).vertices.size(), meshGeometry(original).indices.size() / 3);
@@ -903,7 +906,7 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
     inspectSurfaceTopology(result.original, original, topologyMode, stop);
     inspectSurfaceTopology(result.repaired, repaired, topologyMode, stop);
     result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
-    completeComparisonDetectors(result, comparisonDetectors);
+    completeComparisonDetectors(result, comparisonDetectors & ~comparisonThickness);
     return result;
 }
 
@@ -920,6 +923,7 @@ bool diagnosticAutoUpdate(const ComparisonSettings& settings, DiagnosticCategory
     case DiagnosticCategory::nonManifoldVertices: return settings.topologyInspection.nonManifoldVertices;
     case DiagnosticCategory::holes: return settings.topologyInspection.holes;
     case DiagnosticCategory::fins: return settings.topologyInspection.fins;
+    case DiagnosticCategory::thinRegions: return settings.thickness.autoUpdate;
     case DiagnosticCategory::selfIntersections: return settings.intersections.autoUpdate;
     }
     return false;
@@ -937,6 +941,7 @@ void setDiagnosticAutoUpdate(ComparisonSettings& settings, DiagnosticCategory ca
     case DiagnosticCategory::nonManifoldVertices: settings.topologyInspection.nonManifoldVertices = automatic; break;
     case DiagnosticCategory::holes: settings.topologyInspection.holes = automatic; break;
     case DiagnosticCategory::fins: settings.topologyInspection.fins = automatic; break;
+    case DiagnosticCategory::thinRegions: settings.thickness.autoUpdate = automatic; break;
     case DiagnosticCategory::selfIntersections: settings.intersections.autoUpdate = automatic; break;
     }
 }
@@ -976,7 +981,12 @@ void invalidateComparisonDetectors(MeshComparison& result, uint32_t stages)
         // but release the old graph before its replacement starts allocating.
         for (auto* surface : {&result.original, &result.repaired}) {
             surface->topology = {};
+            auto measurements = surface->analysis.thickness;
+            auto source = surface->analysis.source;
+            const auto origin = surface->analysis.origin;
             surface->analysis = {};
+            surface->analysis.thickness = std::move(measurements);
+            surface->analysis.source = std::move(source); surface->analysis.origin = origin;
             surface->topologyDisplayInputs = {};
             surface->diagnostics = {};
             for (auto* edges : {&surface->topologyBoundaries, &surface->topologyNonManifold,
@@ -996,6 +1006,7 @@ uint32_t comparisonDiagnosticStage(DiagnosticCategory category)
     case DiagnosticCategory::duplicatePoints: return comparisonDuplicatePoints;
     case DiagnosticCategory::duplicateTriangles: return comparisonDuplicateTriangles;
     case DiagnosticCategory::degenerateTriangles: return comparisonDegenerates;
+    case DiagnosticCategory::thinRegions: return comparisonThickness;
     case DiagnosticCategory::selfIntersections: return comparisonIntersections;
     case DiagnosticCategory::boundary:
     case DiagnosticCategory::nonManifold:
@@ -1059,6 +1070,15 @@ bool resetComparisonTopologyCache(ComparisonCacheStatus& cache, TopologyMode mod
     return true;
 }
 
+bool resetComparisonThicknessCache(ComparisonCacheStatus& cache, ThicknessSettings settings)
+{
+    settings = normalizedThicknessSettings(settings);
+    const bool changed = !sameThicknessFilters(cache.thickness, settings);
+    cache.thickness = settings;
+    if (changed) { cache.completed &= ~comparisonThickness; }
+    return changed;
+}
+
 std::array<ComparisonAnalysisInput, 2> comparisonAnalysisInputs(const MeshComparison& result, bool includeIncidence)
 {
     std::array inputs{result.original.analysis, result.repaired.analysis};
@@ -1073,18 +1093,19 @@ uint32_t topologyFindingStage(DiagnosticCategory category)
     case DiagnosticCategory::holes: return topologyBoundaryRegions;
     case DiagnosticCategory::fins: return topologyFinPatches;
     case DiagnosticCategory::duplicatePoints: case DiagnosticCategory::duplicateTriangles:
+    case DiagnosticCategory::thinRegions:
     case DiagnosticCategory::degenerateTriangles: case DiagnosticCategory::selfIntersections: return 0;
     }
     return 0;
 }
 MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired, uint32_t stages, std::stop_token stop,
     DegenerateSettings degenerates, TopologyMode topologyMode, IntersectionLimits intersectionLimits,
-    const std::array<ComparisonAnalysisInput, 2>& analysisInputs, uint32_t topologyFindings, TopologyInspectionSettings topologySettings)
+    const std::array<ComparisonAnalysisInput, 2>& analysisInputs, uint32_t topologyFindings, TopologyInspectionSettings topologySettings, ThicknessSettings thickness)
 {
     if (!meshGeometry(original).vertices.empty() && !meshGeometry(repaired).vertices.empty() && original.origin != repaired.origin) {
         auto aligned = repaired;
         rebaseMesh(aligned, original.origin);
-        return computeComparisonStages(original, aligned, stages, stop, degenerates, topologyMode, intersectionLimits, analysisInputs, topologyFindings, topologySettings);
+        return computeComparisonStages(original, aligned, stages, stop, degenerates, topologyMode, intersectionLimits, analysisInputs, topologyFindings, topologySettings, thickness);
     }
     checkCanceled(stop);
     MeshComparison result;
@@ -1173,6 +1194,45 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
             }
         }
         if (stages & comparisonQuality) { surface.quality = inspectSurfaceMeshQuality(mesh, stop); }
+        if (stages & comparisonThickness) {
+            const bool reuse = cached.source == mesh.duplicateInput && cached.origin == mesh.origin && cached.thickness;
+            const std::vector<DuplicateSource> empty;
+            auto measurements = reuse ? cached.thickness : measureMeshThickness(mesh.duplicateInput ? mesh.duplicateInput->sources : empty, stop);
+            surface.thickness = filterThinRegions(measurements, thickness, stop);
+            surface.thickness.coordinateOrigin = mesh.origin;
+            surface.analysis.source = mesh.duplicateInput; surface.analysis.origin = mesh.origin;
+            surface.analysis.thickness = std::move(measurements);
+            const auto point = [](const auto& p) { return std::array<float,3>{static_cast<float>(p[0]),static_cast<float>(p[1]),static_cast<float>(p[2])}; };
+            for (const auto& region : surface.thickness.regions) {
+                checkCanceled(stop); surface.thinRegionBounds.push_back({point(region.minimumBound),point(region.maximumBound)});
+                (void)comparisonBufferBytes(surface.thinRegionFill.size()+region.faces.size()*3,sizeof(std::array<float,3>));
+                surface.thinRegionFillRanges.push_back({static_cast<uint32_t>(surface.thinRegionFill.size()),static_cast<uint32_t>(region.faces.size()*3)});
+                const auto& source = surface.thickness.measurements->sources[region.source];
+                for (const auto f : region.faces) {
+                    const auto& face = source.geometry->faces[f];
+                    for (size_t k = 0; k < 3; ++k) {
+                        const auto p = point(source.geometry->vertices[face.vertices[k]].position);
+                        surface.thinRegionFill.push_back(p);
+                        surface.thinRegionEdges.push_back({p,point(source.geometry->vertices[face.vertices[(k+1)%3]].position)});
+                    }
+                }
+            }
+            std::array<std::vector<std::array<float,3>>,thicknessMapBinCount> bins;
+            for (const auto& source : surface.thickness.measurements->sources) {
+                for (size_t f = 0; f < source.geometry->faces.size(); ++f) {
+                    checkCanceled(stop); size_t bin = thicknessMapBinCount-1;
+                    if (f < source.faces.size() && std::isfinite(source.faces[f].typical) && source.reference > 0) {
+                        bin = static_cast<size_t>(std::clamp(source.faces[f].typical/source.reference,0.0,1.0)*11);
+                    }
+                    for (const auto v : source.geometry->faces[f].vertices) { bins[bin].push_back(point(source.geometry->vertices[v].position)); }
+                }
+            }
+            for (size_t i = 0; i < bins.size(); ++i) {
+                (void)comparisonBufferBytes(surface.thicknessMap.size()+bins[i].size(),sizeof(std::array<float,3>));
+                surface.thicknessMapCounts[i] = static_cast<uint32_t>(bins[i].size());
+                surface.thicknessMap.insert(surface.thicknessMap.end(),bins[i].begin(),bins[i].end());
+            }
+        }
         if (stages & comparisonTetrahedralQuality) {
             surface.tetrahedralQuality = std::make_shared<const TetrahedralMeshQuality>(inspectTetrahedralQuality(mesh, stop));
             surface.tetrahedralDisplay = tetrahedralQualityDisplay(mesh, *surface.tetrahedralQuality, stop);
@@ -1217,7 +1277,24 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
         }
         if (!stages) { return false; }
     }
+    if (stages & comparisonThickness) {
+        for (const auto* surface : {&update.original,&update.repaired}) {
+            if (surface->thickness.measurements && !sameThicknessFilters(surface->thickness.settings,cache.thickness)) {
+                stages &= ~comparisonThickness; break;
+            }
+        }
+        if (!stages) { return false; }
+    }
     const auto merge = [&](SurfaceComparison& target, SurfaceComparison& source) {
+        if (stages & comparisonThickness) {
+            target.thickness = std::move(source.thickness);
+            target.thinRegionBounds = std::move(source.thinRegionBounds); target.thinRegionEdges = std::move(source.thinRegionEdges);
+            target.thinRegionFill = std::move(source.thinRegionFill); target.thicknessMap = std::move(source.thicknessMap);
+            target.thinRegionFillRanges = std::move(source.thinRegionFillRanges);
+            target.thicknessMapCounts = source.thicknessMapCounts;
+            target.analysis.source = source.analysis.source; target.analysis.origin = source.analysis.origin;
+            target.analysis.thickness = source.analysis.thickness;
+        }
         if (stages & comparisonIntersections) {
             target.intersections = std::move(source.intersections);
             target.intersectionBounds = std::move(source.intersectionBounds);
@@ -1228,6 +1305,9 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
         if (stages & (comparisonTopology | comparisonIntersections)) {
             // An intersection update must not discard incidence built previously.
             if (source.analysis.geometry) {
+                if (!source.analysis.thickness && source.analysis.source == target.analysis.source && source.analysis.origin == target.analysis.origin) {
+                    source.analysis.thickness = target.analysis.thickness;
+                }
                 if (source.analysis.geometry == target.analysis.geometry && !source.analysis.incidence.sourceStorage) {
                     source.analysis.incidence = target.analysis.incidence;
                 }

@@ -8,7 +8,7 @@ namespace woby {
 void destroySurface(ComparisonGpuSurface &gpu)
 {
     for (const auto handle : {gpu.vertices, gpu.samples, gpu.quality, gpu.tetrahedralQuality[0], gpu.tetrahedralQuality[1], gpu.boundaries, gpu.nonManifold, gpu.winding,
-        gpu.nonManifoldVertices, gpu.holes, gpu.finEdges, gpu.finFill, gpu.duplicatePoints, gpu.duplicateTriangleEdges, gpu.duplicateTriangleFill, gpu.degenerateEdges, gpu.degenerateFill, gpu.intersectionEdges, gpu.intersectionFill})
+        gpu.nonManifoldVertices, gpu.holes, gpu.finEdges, gpu.finFill, gpu.thinRegionEdges, gpu.thinRegionFill, gpu.thicknessMap, gpu.duplicatePoints, gpu.duplicateTriangleEdges, gpu.duplicateTriangleFill, gpu.degenerateEdges, gpu.degenerateFill, gpu.intersectionEdges, gpu.intersectionFill})
     {
         if (woby::graphics::isValid(handle))
         {
@@ -139,6 +139,11 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
         gpu.intersectionEdges = uploadEdges(surface.intersectionEdges);
         gpu.intersectionFill = uploadPositions(surface.intersectionDisplayFill);
     }
+    if (stages & comparisonThickness) {
+        gpu.thinRegionEdges = uploadEdges(surface.thinRegionEdges);
+        gpu.thinRegionFill = uploadPositions(surface.thinRegionFill);
+        gpu.thicknessMap = uploadPositions(surface.thicknessMap);
+    }
     if (stages & comparisonDuplicatePoints) { gpu.duplicatePoints = uploadPositions(surface.duplicatePointDisplay); }
     if (stages & comparisonDuplicateTriangles) {
         gpu.duplicateTriangleEdges = uploadPositions(surface.duplicateTriangleDisplayEdges);
@@ -154,6 +159,7 @@ void destroyStage(ComparisonGpuSurface& gpu, uint32_t stages)
     if (stages & comparisonDuplicateTriangles) { destroy(gpu.duplicateTriangleEdges); destroy(gpu.duplicateTriangleFill); }
     if (stages & comparisonDegenerates) { destroy(gpu.degenerateEdges); destroy(gpu.degenerateFill); }
     if (stages & comparisonIntersections) { destroy(gpu.intersectionEdges); destroy(gpu.intersectionFill); }
+    if (stages & comparisonThickness) { destroy(gpu.thinRegionEdges); destroy(gpu.thinRegionFill); destroy(gpu.thicknessMap); }
     if (stages & comparisonDistance) { destroy(gpu.samples); }
     if (stages & comparisonQuality) { destroy(gpu.quality); }
     if (stages & comparisonTetrahedralQuality) {

@@ -89,7 +89,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"type", "name", "a", "b", "alignment", "lockPlacement", "originA", "originB", "distanceOnA"}, {}, false, true},
         {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
-            {"uvThresholdEnabled", "uvOverlapEnabled", "uvRangeEnabled", "uvThreshold", "uvNearCollapse", "uvRangeMinimum", "uvRangeMaximum", "uvOverlapScope", "uvSeparated", "uvLinkedSelection", "uvMetric", "uvNormalization", "uvView", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "alignment", "lockPlacement", "originA", "originB", "distanceOnA", "tolerance", "colorRange", "colorMinimum", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "analysisMode", "tetrahedral", "tetrahedralMetric", "tetrahedralMinimumEnabled", "tetrahedralMaximumEnabled", "tetrahedralMinimum", "tetrahedralMaximum", "tetrahedralSelectedOnly", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
+            {"uvThresholdEnabled", "uvOverlapEnabled", "uvRangeEnabled", "uvThreshold", "uvNearCollapse", "uvRangeMinimum", "uvRangeMaximum", "uvOverlapScope", "uvSeparated", "uvLinkedSelection", "uvMetric", "uvNormalization", "uvView", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "alignment", "lockPlacement", "originA", "originB", "distanceOnA", "tolerance", "colorRange", "colorMinimum", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "analysisMode", "tetrahedral", "tetrahedralMetric", "tetrahedralMinimumEnabled", "tetrahedralMaximumEnabled", "tetrahedralMinimum", "tetrahedralMaximum", "tetrahedralSelectedOnly", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio", "thinRegions", "showThinRegions", "thicknessMap", "thicknessAbsoluteEnabled", "thicknessRelativeEnabled", "maximumThickness", "maximumRelativeThickness", "minimumThinRegionArea", "thicknessElements"}, {}, true, true},
         {ControlAction::comparisonAdd, "analysis.add", "analysis add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "analysis.remove", "analysis remove", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonEnable, "analysis.enable", "analysis enable", "target", {"side", "enabled", "object", "isolate"}, {"side", "enabled"}, false, true},
@@ -130,6 +130,7 @@ const ControlMethod& controlMethod(ControlAction action)
 namespace {
 bool booleanOption(const std::string& name)
 {
+    if (name == "thinRegions" || name == "showThinRegions" || name == "thicknessMap" || name == "thicknessAbsoluteEnabled" || name == "thicknessRelativeEnabled") { return true; }
     if (name == "tetrahedral" || name == "tetrahedralMinimumEnabled" || name == "tetrahedralMaximumEnabled" || name == "tetrahedralSelectedOnly") { return true; }
     if (name == "faceCamera") { return true; }
     if (name == "showAOnly" || name == "showBOnly") { return true; }
@@ -151,6 +152,7 @@ bool stringOption(const std::string& name)
 }
 bool integerOption(const std::string& name)
 {
+    if (name == "thicknessElements") { return true; }
     if (name == "sourceIndex" || name == "referenceIndex" || name == "comparedIndex") { return true; }
     return name == "index" || name == "offset" || name == "limit" || name == "intersectionPairLimit" || name == "intersectionCandidateLimit";
 }
@@ -225,6 +227,15 @@ std::string cliOption(const std::string& name)
     if (name == "showNonManifoldVertices") { return "--show-non-manifold-vertices"; }
     if (name == "fins") { return "--fins"; }
     if (name == "showFins") { return "--show-fins"; }
+    if (name == "thinRegions") { return "--thin-regions"; }
+    if (name == "showThinRegions") { return "--show-thin-regions"; }
+    if (name == "thicknessMap") { return "--thickness-map"; }
+    if (name == "thicknessAbsoluteEnabled") { return "--thickness-absolute-enabled"; }
+    if (name == "thicknessRelativeEnabled") { return "--thickness-relative-enabled"; }
+    if (name == "maximumThickness") { return "--maximum-thickness"; }
+    if (name == "maximumRelativeThickness") { return "--maximum-relative-thickness"; }
+    if (name == "minimumThinRegionArea") { return "--minimum-thin-region-area"; }
+    if (name == "thicknessElements") { return "--thickness-elements"; }
     if (name == "finMaxAreaRatio") { return "--fin-max-area-ratio"; }
     if (name == "holes") { return "--holes"; }
     if (name == "showHoles") { return "--show-holes"; }
@@ -365,6 +376,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     BOOL_FIELD(uvSeparated) BOOL_FIELD(uvLinkedSelection) BOOL_FIELD(isolate) BOOL_FIELD(uvGrid) BOOL_FIELD(lineDepthTest)
     BOOL_FIELD(nonManifoldVertices) BOOL_FIELD(showNonManifoldVertices) BOOL_FIELD(holes) BOOL_FIELD(showHoles) BOOL_FIELD(fins) BOOL_FIELD(showFins)
     BOOL_FIELD(autoUpdateBoundaries) BOOL_FIELD(autoUpdateNonManifold) BOOL_FIELD(autoUpdateWinding)
+    BOOL_FIELD(thinRegions) BOOL_FIELD(showThinRegions) BOOL_FIELD(thicknessMap) BOOL_FIELD(thicknessAbsoluteEnabled) BOOL_FIELD(thicknessRelativeEnabled)
     BOOL_FIELD(autoUpdateSelfIntersections) BOOL_FIELD(selfIntersections) BOOL_FIELD(showSelfIntersections)
     BOOL_FIELD(degenerateTriangles) BOOL_FIELD(showDegenerateTriangles)
     BOOL_FIELD(duplicatePoints) BOOL_FIELD(duplicateTriangles) BOOL_FIELD(showDuplicatePoints) BOOL_FIELD(showDuplicateTriangles)
@@ -386,6 +398,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     NUMBER_FIELD(distance) NUMBER_FIELD(fovDegrees) NUMBER_FIELD(nearPlane)
     NUMBER_FIELD(qualityMinimumSize) NUMBER_FIELD(qualityMaximumSize)
     NUMBER_FIELD(tetrahedralMinimum) NUMBER_FIELD(tetrahedralMaximum)
+    NUMBER_FIELD(maximumThickness) NUMBER_FIELD(maximumRelativeThickness) NUMBER_FIELD(minimumThinRegionArea)
     NUMBER_FIELD(holeSizeRatioTolerance) NUMBER_FIELD(finMaxAreaRatio)
     NUMBER_FIELD(needleThresholdRatio) NUMBER_FIELD(capMinAngleDegrees)
     NUMBER_FIELD(tolerance) NUMBER_FIELD(colorRange) NUMBER_FIELD(colorMinimum)
@@ -494,6 +507,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     INTEGER_FIELD(referenceIndex, 2147483647)
     INTEGER_FIELD(comparedIndex, 2147483647)
     INTEGER_FIELD(limit, 100)
+    INTEGER_FIELD(thicknessElements, 100)
     INTEGER_FIELD(intersectionPairLimit, 2147483647)
     INTEGER_FIELD(intersectionCandidateLimit, 2147483647)
 #undef INTEGER_FIELD
@@ -588,6 +602,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(offset) FIELD(limit) FIELD(collection) FIELD(revision) FIELD(intersectionPairLimit) FIELD(intersectionCandidateLimit)
     FIELD(alignment) FIELD(lockPlacement) FIELD(originA) FIELD(originB)
     FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object) FIELD(index)
+    FIELD(thinRegions) FIELD(showThinRegions) FIELD(thicknessMap) FIELD(thicknessAbsoluteEnabled) FIELD(thicknessRelativeEnabled) FIELD(maximumThickness) FIELD(maximumRelativeThickness) FIELD(minimumThinRegionArea) FIELD(thicknessElements)
     FIELD(nonManifoldVertices) FIELD(showNonManifoldVertices) FIELD(holes) FIELD(showHoles) FIELD(holeSizeRatioTolerance) FIELD(fins) FIELD(showFins) FIELD(finMaxAreaRatio)
     FIELD(autoUpdateBoundaries) FIELD(autoUpdateNonManifold) FIELD(autoUpdateWinding)
     FIELD(detector) FIELD(autoUpdateSelfIntersections) FIELD(selfIntersections) FIELD(showSelfIntersections)

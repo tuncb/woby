@@ -138,6 +138,8 @@ TEST_CASE("analysis export jobs publish a consistent snapshot and never overwrit
 TEST_CASE("direct export matches the established schema for every detector on both sides")
 {
     MeshComparison r;
+    auto thickness = std::make_shared<ThicknessMeasurements>(); thickness->measuredFaces = 1;
+    r.original.thickness.measurements = std::move(thickness);
     for (auto& status : r.detectors) { status.phase = IntersectionPhase::complete; }
     auto mesh = std::make_shared<SourceMeshData>();
     woby::editSourcePositions(*mesh) = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}};

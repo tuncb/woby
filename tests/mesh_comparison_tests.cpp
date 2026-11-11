@@ -102,7 +102,7 @@ TEST_CASE("diagnostic visibility counts every category independently")
         &settings.showBoundaries, &settings.showNonManifold, &settings.showWinding,
         &settings.duplicates.showPoints, &settings.duplicates.showTriangles, &settings.degenerates.show,
         &settings.topologyInspection.showNonManifoldVertices, &settings.topologyInspection.showHoles,
-        &settings.topologyInspection.showFins, &settings.intersections.show
+        &settings.topologyInspection.showFins, &settings.thickness.show, &settings.intersections.show
     };
     CHECK(woby::countVisibleComparisonDiagnostics(settings) == woby::diagnosticCategoryCount);
     for (auto* field : fields) { *field = false; }
@@ -135,7 +135,7 @@ TEST_CASE("bulk diagnostic visibility changes only the targeted analysis display
     settings.showWinding = false;
     settings.intersections.show = false;
     woby::setComparisonSettings(state, settings, id);
-    CHECK(woby::countVisibleComparisonDiagnostics(settings) == 8);
+    CHECK(woby::countVisibleComparisonDiagnostics(settings) == woby::diagnosticCategoryCount-2);
     const auto otherSettings = woby::comparisonSettings(state, other);
     const auto signature = woby::comparisonGeometrySignature(state, id);
     const auto result = woby::compareMeshes(square(), {});

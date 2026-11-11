@@ -785,7 +785,7 @@ TEST_CASE("automatic detector preferences round trip scenes and saved views")
     WorkflowFixture f; REQUIRE(f.initialized);
     for (size_t i = 0; i < diagnosticCategoryCount; ++i) {
         const auto category = static_cast<DiagnosticCategory>(i);
-        CHECK(diagnosticAutoUpdate(comparisonSettings(f.state, f.id), category) == (category != DiagnosticCategory::selfIntersections));
+        CHECK(diagnosticAutoUpdate(comparisonSettings(f.state, f.id), category) == (category != DiagnosticCategory::selfIntersections && category != DiagnosticCategory::thinRegions));
         setComparisonAutomaticUpdate(f.state, f.id, category, category == DiagnosticCategory::selfIntersections);
     }
     auto command = parseControlOperation(*findControlMethod("analysis.set"), {{"target", "analysis"},

@@ -1339,7 +1339,7 @@ TEST_CASE("diagnostics show all checks including zero counts and pending results
     }
     INFO(contents);
     REQUIRE(diagnostics);
-    CHECK(diagnostics->CurrentRow == 10); // Header plus every diagnostic category.
+    CHECK(diagnostics->CurrentRow == static_cast<int>(woby::diagnosticCategoryCount)); // Header plus every diagnostic category.
     CHECK(contents.find("| 0 |") != std::string::npos);
     CHECK(contents.find("Not run") != std::string::npos);
     CHECK(contents.find("All check groups") == std::string::npos);
@@ -1473,7 +1473,7 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
         "edges used by only one triangle", "one connected fan or ring", "simple closed boundary loops",
         "candidate patches", "edges shared by more than two triangles", "conflicting winding",
         "exactly equal source coordinates", "same three source point indices", "collapsed or collinear triangles",
-        "triangle pairs that intersect",
+        "supported inward ray lengths", "triangle pairs that intersect",
     };
     const auto settingsBeforeHints = woby::comparisonSettings(f.state, f.id);
     const auto revisionBeforeHints = f.state.sceneEditRevision;
@@ -1504,6 +1504,7 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
         woby::DiagnosticCategory::holes, woby::DiagnosticCategory::fins, woby::DiagnosticCategory::nonManifold,
         woby::DiagnosticCategory::winding, woby::DiagnosticCategory::duplicatePoints,
         woby::DiagnosticCategory::duplicateTriangles, woby::DiagnosticCategory::degenerateTriangles,
+        woby::DiagnosticCategory::thinRegions,
         woby::DiagnosticCategory::selfIntersections,
     };
     for (size_t row = 0; row < updateButtons.size(); ++row) {

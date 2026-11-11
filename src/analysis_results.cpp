@@ -212,6 +212,40 @@ Node duplicates(const DuplicateResult& r)
         return item;
     }, "findingsTruncated"); return n;
 }
+Node thickness(const MeshThickness& result)
+{
+    const auto* m = result.measurements.get();
+    auto n = scalar({{"algorithm","woby-thickness-rays-v1"},{"status",thicknessStatus(result)},
+        {"count",m && !m->unavailableSources && !m->unknownFaces ? Json(result.regions.size()) : Json(nullptr)},
+        {"knownCount",result.regions.size()},{"measuredFaces",m ? m->measuredFaces : 0},{"unknownFaces",m ? m->unknownFaces : 0},
+        {"reference","area-weighted 95th percentile per analysis batch"},{"samplesPerFace",4},{"raysPerSample",7},
+        {"coneHalfAngleDegrees",25},{"minimumIsSampled",true},{"areaIncludesBothSides",true},
+        {"maximumThickness",result.settings.maximumThickness},{"absoluteEnabled",result.settings.absoluteEnabled},
+        {"maximumRelativeThickness",result.settings.maximumRelativeThickness},{"relativeEnabled",result.settings.relativeEnabled},
+        {"minimumRegionArea",result.settings.minimumRegionArea},{"elementsThroughThickness",result.settings.elementsThroughThickness}});
+    array(n,"sources",m ? m->sources.size() : 0,[m](size_t i) {
+        const auto& s = m->sources[i]; return scalar({{"source",s.geometry->source},{"sourceId",std::to_string(s.geometry->fileId)},
+            {"batchId",std::to_string(s.geometry->batchId)},{"referenceThickness",s.reference},{"unavailableReason",s.unavailableReason}});
+    },"sourcesTruncated");
+    array(n,"findings",result.regions.size(),[&result](size_t i) {
+        const auto& region = result.regions[i]; const auto& source = result.measurements->sources[region.source];
+        auto item = scalar({{"source",source.geometry->source},{"sourceId",std::to_string(source.geometry->fileId)},
+            {"batchId",std::to_string(source.geometry->batchId)},{"minimumThickness",region.minimum},{"typicalThickness",region.typical},
+            {"referenceThickness",source.reference},{"relativeThickness",region.relativeThickness},{"surfaceArea",region.area},
+            {"confidence",region.confidence},{"suggestedElementSize",region.suggestedSize},
+            {"from",originalPosition(region.from,result.coordinateOrigin)},{"to",originalPosition(region.to,result.coordinateOrigin)},
+            {"minimumBound",originalPosition(region.minimumBound,result.coordinateOrigin)},
+            {"maximumBound",originalPosition(region.maximumBound,result.coordinateOrigin)},{"faceCount",region.faces.size()}});
+        array(item,"faces",region.faces.size(),[&source,&region](size_t j) {
+            const auto f = region.faces[j]; const auto& ref = source.geometry->faces[f].reference;
+            return scalar({{"sourceId",std::to_string(ref.fileId)},{"partId",std::to_string(ref.partId)},
+                {"triangleId",ref.triangleId+1},{"thickness",source.faces[f].typical},{"minimumThickness",source.faces[f].minimum}});
+        },"facesTruncated");
+        return item;
+    },"findingsTruncated");
+    return n;
+}
+
 Node detectorNode(const MeshComparison& r, ComparisonSide side, const std::string& detector)
 {
     if (detector == "tetrahedral_quality") {
@@ -241,6 +275,7 @@ Node detectorNode(const MeshComparison& r, ComparisonSide side, const std::strin
     case DiagnosticCategory::nonManifoldVertices: return topologyInspection(s.topology, false);
     case DiagnosticCategory::holes: return topologyInspection(s.topology, true);
     case DiagnosticCategory::fins: return fins(s.topology);
+    case DiagnosticCategory::thinRegions: return thickness(s.thickness);
     case DiagnosticCategory::selfIntersections: return intersections(s.intersections);
     }
     throw std::invalid_argument("Unknown detector.");
@@ -273,6 +308,17 @@ bool detectionComplete(const MeshComparison& result, const Json& summary)
     }
     return true;
 }
+void writeFullNode(analysis_export_detail::Writer& out, const Node& node)
+{
+    namespace writer = analysis_export_detail;
+    auto object = writer::object(out);
+    for (const auto& field : node.value.items()) { writer::field(object,field.key(),field.value()); }
+    for (const auto& [name,values] : node.arrays) {
+        if (!values.truncated.empty()) { writer::field(object,values.truncated,values.incomplete); }
+        writer::arrayField(object,name,values.size,[&](size_t i) { writeFullNode(out,values.at(i)); });
+    }
+    writer::end(object);
+}
 void writeDetector(analysis_export_detail::Writer& out, const MeshComparison& result, ComparisonSide side, const char* detector)
 {
     namespace writer = analysis_export_detail;
@@ -290,6 +336,7 @@ void writeDetector(analysis_export_detail::Writer& out, const MeshComparison& re
     }
     for (const auto& [name, a] : n.arrays) {
         writer::arrayField(object, name, a.size, [&](size_t i) {
+            if (category == DiagnosticCategory::thinRegions) { writeFullNode(out,a.at(i)); return; }
             if (name == "sources") { writer::source(out, t.sources[i]); return; }
             if (name == "affectedFaces") { writer::face(out, t.windingFaces[i]); return; }
             if (name == "boundaryRegions") { writer::boundary(out, t, i); return; }
@@ -304,6 +351,7 @@ void writeDetector(analysis_export_detail::Writer& out, const MeshComparison& re
             case DiagnosticCategory::nonManifoldVertices: writer::vertex(out, t, t.nonManifoldVertices[i]); break;
             case DiagnosticCategory::holes: writer::boundary(out, t, t.holes[i]); break;
             case DiagnosticCategory::fins: writer::fin(out, t, i); break;
+            case DiagnosticCategory::thinRegions: break; // Written above, including its nested face records.
             case DiagnosticCategory::selfIntersections: writer::intersection(out, s.intersections.findings[i]); break;
             }
         });

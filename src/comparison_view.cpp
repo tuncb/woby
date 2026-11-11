@@ -305,6 +305,15 @@ void drawDiagnosticSettingsPopup(UiState& state, SceneObjectId id, DiagnosticCat
         ImGui::InputFloat("Cap angle (degrees)", &settings.degenerates.capMinAngleDegrees, 0, 0, "%.6g", ImGuiInputTextFlags_AutoSelectAll);
         setLastItemTooltip("Largest angle must strictly exceed this threshold (90 to 180 degrees).");
         ImGui::TextWrapped("Collapsed and collinear triangles are always included.");
+    } else if (category == DiagnosticCategory::thinRegions) {
+        ImGui::Checkbox("Absolute thickness limit", &settings.thickness.absoluteEnabled);
+        ImGui::InputFloat("Maximum thickness", &settings.thickness.maximumThickness, 0, 0, "%.6g");
+        ImGui::Checkbox("Relative thickness limit", &settings.thickness.relativeEnabled);
+        ImGui::InputFloat("Maximum relative thickness", &settings.thickness.maximumRelativeThickness, 0, 0, "%.6g");
+        ImGui::InputFloat("Minimum region surface area", &settings.thickness.minimumRegionArea, 0, 0, "%.6g");
+        ImGui::InputInt("Elements through thickness", &settings.thickness.elementsThroughThickness, 0, 0);
+        ImGui::Checkbox("Show thickness map", &settings.thickness.showMap);
+        ImGui::TextWrapped("A face passes either enabled limit. The relative reference is the area-weighted 95th percentile in each analysis batch. Area includes both surface sides. Units follow the model. Filters reuse measured rays.");
     } else if (category == DiagnosticCategory::selfIntersections) {
         int pairs = static_cast<int>(settings.intersections.limits.pairs);
         int candidates = static_cast<int>(settings.intersections.limits.candidateTests);
@@ -420,6 +429,8 @@ const char* diagnosticHint(DiagnosticCategory category)
     case DiagnosticCategory::selfIntersections:
         return "Finds triangle pairs that intersect or overlap in the same plane. "
             "Valid shared edges and vertices are excluded, as are collapsed triangles.";
+    case DiagnosticCategory::thinRegions:
+        return "Measures supported inward ray lengths on closed surfaces. Finds connected thin regions using absolute or relative thickness limits. Open, conflicting or intersecting boundaries are unavailable.";
     }
     return "";
 }
@@ -518,12 +529,13 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime,
         }
     }
     ImGui::TableNextColumn();
-    bool visible = fins ? settings.topologyInspection.showFins : intersection ? settings.intersections.show : vertex ? settings.topologyInspection.showNonManifoldVertices : holes ? settings.topologyInspection.showHoles : degenerate ? settings.degenerates.show : category == DiagnosticCategory::boundary ? settings.showBoundaries
+    bool visible = category == DiagnosticCategory::thinRegions ? settings.thickness.show : fins ? settings.topologyInspection.showFins : intersection ? settings.intersections.show : vertex ? settings.topologyInspection.showNonManifoldVertices : holes ? settings.topologyInspection.showHoles : degenerate ? settings.degenerates.show : category == DiagnosticCategory::boundary ? settings.showBoundaries
         : category == DiagnosticCategory::duplicatePoints ? settings.duplicates.showPoints
         : category == DiagnosticCategory::duplicateTriangles ? settings.duplicates.showTriangles
         : category == DiagnosticCategory::winding ? settings.showWinding : settings.showNonManifold;
     if (drawVisibilityIconField(name, visible)) {
         if (intersection) { settings.intersections.show = visible; }
+        else if (category == DiagnosticCategory::thinRegions) { settings.thickness.show = visible; }
         else if (vertex) { settings.topologyInspection.showNonManifoldVertices = visible; }
         else if (holes) { settings.topologyInspection.showHoles = visible; }
         else if (fins) { settings.topologyInspection.showFins = visible; }
@@ -643,6 +655,49 @@ void drawIntersectionFindings(UiState& state, const ComparisonRuntime& runtime, 
     ImGui::EndDisabled(); ImGui::SameLine(); ImGui::BeginDisabled(end >= result.findings.size());
     if (ImGui::Button("Next pairs")) { selectComparisonDiagnostic(state, runtime.results.value, runtime.results.signature, end, id); }
     ImGui::EndDisabled();
+}
+
+void drawThinRegionFindings(UiState& state, const ComparisonRuntime& runtime, SceneObjectId id)
+{
+    const auto settings = comparisonSettings(state,id);
+    if (settings.diagnosticCategory != DiagnosticCategory::thinRegions || !inspectorDetectorReady(runtime,state,id,DiagnosticCategory::thinRegions)) { return; }
+    const auto& result = (settings.diagnosticSide == ComparisonSide::a ? runtime.results.value.original : runtime.results.value.repaired).thickness;
+    if (!result.measurements) { return; }
+    const auto& measurements = *result.measurements;
+    ImGui::TextWrapped("%zu measured faces; %zu unknown faces. Measurements are sampled estimates. The minimum is not a guaranteed global minimum.",measurements.measuredFaces,measurements.unknownFaces);
+    ImGui::TextWrapped("Relative reference: area-weighted 95th percentile per analysis batch. Connected faces and measured opposite faces form one region. Confidence is the supported ray fraction.");
+    if (settings.thickness.showMap) { ImGui::TextWrapped("Thickness map: red = thin, blue = reference thickness or greater, gray = unknown. Each batch has its own scale."); }
+    for (const auto& source : measurements.sources) {
+        if (!source.unavailableReason.empty()) { ImGui::TextWrapped("%s: %s",source.geometry->source.c_str(),source.unavailableReason.c_str()); }
+    }
+    const auto* comparison = findComparison(state,id);
+    const size_t selected = comparison->diagnosticFocus ? comparison->diagnosticFocus->index : 0;
+    const size_t begin = selected/diagnosticPageSize*diagnosticPageSize;
+    if (ImGui::BeginTable("thin_region_findings",5,ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+        ImGui::TableSetupColumn("Source / region"); ImGui::TableSetupColumn("Minimum"); ImGui::TableSetupColumn("Typical");
+        ImGui::TableSetupColumn("Relative"); ImGui::TableSetupColumn("Surface area"); ImGui::TableHeadersRow();
+        for (size_t i = begin; i < std::min(begin+diagnosticPageSize,result.regions.size()); ++i) {
+            const auto& region = result.regions[i]; const auto& source = measurements.sources[region.source];
+            ImGui::PushID(static_cast<int>(i)); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            const auto label = source.geometry->source+" / "+std::to_string(i+1);
+            if (ImGui::Selectable(label.c_str(),comparison->diagnosticFocus && selected == i,ImGuiSelectableFlags_SpanAllColumns)) {
+                selectComparisonDiagnostic(state,runtime.results.value,runtime.results.signature,i,id);
+            }
+            for (const auto value : {region.minimum,region.typical,region.relativeThickness,region.area}) { ImGui::TableNextColumn(); ImGui::Text("%.6g",value); }
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    ImGui::BeginDisabled(begin == 0);
+    if (ImGui::Button("Previous regions")) { selectComparisonDiagnostic(state,runtime.results.value,runtime.results.signature,begin-diagnosticPageSize,id); }
+    ImGui::EndDisabled(); ImGui::SameLine(); ImGui::BeginDisabled(begin+diagnosticPageSize >= result.regions.size());
+    if (ImGui::Button("Next regions")) { selectComparisonDiagnostic(state,runtime.results.value,runtime.results.signature,begin+diagnosticPageSize,id); }
+    ImGui::EndDisabled();
+    if (selected < result.regions.size()) {
+        const auto& region = result.regions[selected];
+        ImGui::TextWrapped("%zu faces; ray confidence %.1f%%. Preliminary element size <= %.6g for %d elements through the sampled minimum thickness. Element growth and solver accuracy are not evaluated.",
+            region.faces.size(),region.confidence*100,region.suggestedSize,settings.thickness.elementsThroughThickness);
+    }
 }
 
 void drawDegenerateFindings(UiState& state, const ComparisonRuntime& runtime, bool current, SceneObjectId id)
@@ -912,6 +967,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         {"Duplicate points", DiagnosticCategory::duplicatePoints},
         {"Duplicate triangles", DiagnosticCategory::duplicateTriangles},
         {"Degenerate triangles", DiagnosticCategory::degenerateTriangles},
+        {"Thin regions", DiagnosticCategory::thinRegions},
         {"Self-intersections", DiagnosticCategory::selfIntersections},
     };
     // Fixed icon/count columns and a wrapping name use the available pane width.
@@ -987,6 +1043,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
             : focus.category == DiagnosticCategory::nonManifold ? "Non-manifold edges"
             : focus.category == DiagnosticCategory::duplicatePoints ? "Duplicate point group"
             : focus.category == DiagnosticCategory::selfIntersections ? "Intersecting face pair"
+            : focus.category == DiagnosticCategory::thinRegions ? "Thin region"
             : focus.category == DiagnosticCategory::degenerateTriangles ? "Degenerate triangle"
             : focus.category == DiagnosticCategory::duplicateTriangles ? "Duplicate triangle group" : "Winding edges";
         const auto count = comparisonDiagnosticEdges(runtime.results.value, focus.side, focus.category).size();
@@ -995,6 +1052,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     }
     drawDuplicateFindings(state, runtime, current, id);
     drawDegenerateFindings(state, runtime, current, id);
+    drawThinRegionFindings(state,runtime,id);
     drawIntersectionFindings(state, runtime, current, id);
     drawTopologyFindings(state, runtime, current, id);
     drawTopologyInspectionFindings(state, runtime, current, id);
@@ -1652,6 +1710,29 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
     {
         submitWire(view, runtime.gpu.original, colorProgram, {.3f, .75f, 1, 1}, true, identity);
     }
+    if (settings.thickness.show) {
+        const auto& surface = useOriginal ? runtime.results.value.original : runtime.results.value.repaired;
+        if (settings.thickness.showMap && woby::graphics::isValid(gpu.thicknessMap)) {
+            uint32_t first = 0;
+            for (size_t bin = 0; bin < thicknessMapBinCount; ++bin) {
+                const auto count = surface.thicknessMapCounts[bin];
+                if (count) {
+                    const auto color = surfaceQualityColor(bin == thicknessMapBinCount-1 ? -2 : static_cast<double>(bin)/11,SurfaceQualityMetric::shape);
+                    woby::graphics::setTransform(identity); woby::graphics::setVertexBuffer(0,gpu.thicknessMap,first,count);
+                    woby::graphics::setColor(color);
+                    setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_DEPTH_TEST_LEQUAL | WOBY_GPU_STATE_MSAA,woby::graphics::isValid(markerProgram));
+                    woby::graphics::submit(view,colorProgram);
+                }
+                first += count;
+            }
+        } else if (woby::graphics::isValid(gpu.thinRegionFill)) {
+            woby::graphics::setTransform(identity); woby::graphics::setVertexBuffer(0,gpu.thinRegionFill);
+            woby::graphics::setColor({1,.42f,.08f,.5f});
+            setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_DEPTH_TEST_LEQUAL | WOBY_GPU_STATE_BLEND_ALPHA | WOBY_GPU_STATE_MSAA,woby::graphics::isValid(markerProgram));
+            woby::graphics::submit(view,colorProgram);
+        }
+        submitEdges(view,gpu.thinRegionEdges,colorProgram,{1,.42f,.08f,1},identity);
+    }
     if (settings.intersections.show) {
         if (woby::graphics::isValid(gpu.intersectionFill)) {
             const std::array<float, 4> red = {1, .2f, .15f, .45f};
@@ -1800,6 +1881,25 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
             faceFill.assign(finding.geometry.begin(), finding.geometry.end());
             for (size_t k = 0; k < 3; ++k) { points.push_back(finding.geometry[k]); points.push_back(finding.geometry[(k+1)%3]); }
             if (finding.reasons.collapsed) { appendCross(points, finding.geometry[0], radius); }
+        } else if (focus.category == DiagnosticCategory::thinRegions) {
+            if (!comparisonDetectorReady(it->second,comparison.settings,signature,DiagnosticCategory::thinRegions,true)) { continue; }
+            const auto& surface = focus.side == ComparisonSide::a ? it->second.results.value.original : it->second.results.value.repaired;
+            const auto& gpu = focus.side == ComparisonSide::a ? it->second.gpu.original : it->second.gpu.repaired;
+            const auto& region = surface.thickness.regions.at(focus.index);
+            const auto point = [](const auto& p) { return std::array<float,3>{static_cast<float>(p[0]),static_cast<float>(p[1]),static_cast<float>(p[2])}; };
+            points.push_back(point(region.from)); points.push_back(point(region.to));
+            // The worker packs each region into a contiguous range. Reuse its
+            // uploaded geometry instead of copying all selected faces each frame.
+            if (woby::graphics::isValid(gpu.thinRegionFill)) {
+                const auto& range = surface.thinRegionFillRanges.at(focus.index);
+                float transform[16];
+                woby::translationMatrix(transform,comparison.translation[0],comparison.translation[1],comparison.translation[2]);
+                woby::graphics::setTransform(transform);
+                woby::graphics::setColor({1,1,.1f,1});
+                woby::graphics::setVertexBuffer(0,gpu.thinRegionFill,range[0],range[1]);
+                woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_DEPTH_TEST_ALWAYS | WOBY_GPU_STATE_MSAA);
+                woby::graphics::submit(view,colorProgram);
+            }
         } else if (focus.category == DiagnosticCategory::fins) {
             const auto& topology = (focus.side == ComparisonSide::a ? it->second.results.value.original : it->second.results.value.repaired).topology;
             const auto& patch = topology.finPatches[topology.fins.at(focus.index)];
@@ -1872,9 +1972,10 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
         std::memcpy(buffer.data, triangles.data(), triangles.size() * sizeof(triangles[0]));
         float transform[16];
         woby::translationMatrix(transform, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
-        const std::array<float, 4> yellow = {1, 1, .1f, 1};
+        const std::array<float, 4> focusColor = !uv && focus.category == DiagnosticCategory::thinRegions
+            ? std::array<float,4>{.1f,1,1,1} : std::array<float,4>{1,1,.1f,1};
         woby::graphics::setTransform(transform);
-        woby::graphics::setColor(yellow);
+        woby::graphics::setColor(focusColor);
         woby::graphics::setVertexBuffer(0, &buffer);
         woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A |
             WOBY_GPU_STATE_DEPTH_TEST_ALWAYS | WOBY_GPU_STATE_MSAA);

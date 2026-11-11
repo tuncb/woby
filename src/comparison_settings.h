@@ -6,6 +6,7 @@
 #include "mesh_degenerates.h"
 #include "mesh_topology.h"
 #include "mesh_intersections.h"
+#include "mesh_thickness.h"
 #include "uv_grid.h"
 #include "difference_mesh.h"
 
@@ -32,12 +33,12 @@ inline AnalysisMode parseModelAnalysisMode(const std::string& name) {
     if (mode == AnalysisMode::model) { throw std::invalid_argument("Model analysisMode must be per_volume or whole."); }
     return mode;
 }
-enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles, degenerateTriangles, nonManifoldVertices, holes, fins, selfIntersections };
+enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles, degenerateTriangles, nonManifoldVertices, holes, fins, thinRegions, selfIntersections };
 inline constexpr size_t backgroundDetectorCount = static_cast<size_t>(DiagnosticCategory::selfIntersections);
 inline constexpr size_t diagnosticCategoryCount = backgroundDetectorCount + 1;
 inline constexpr std::array<const char*, diagnosticCategoryCount> diagnosticCategoryKeys = {
     "boundary_edges", "non_manifold_edges", "inconsistently_oriented_tris", "duplicate_points",
-    "duplicate_tris", "degenerate_tris", "non_manifold_vertices", "holes", "fins", "self_intersections"
+    "duplicate_tris", "degenerate_tris", "non_manifold_vertices", "holes", "fins", "thin_regions", "self_intersections"
 };
 
 struct DetectorRequest {
@@ -127,6 +128,7 @@ struct ComparisonSettings
     DuplicateSettings duplicates;
     DegenerateSettings degenerates;
     IntersectionSettings intersections;
+    ThicknessSettings thickness;
     friend bool operator==(const ComparisonSettings &, const ComparisonSettings &) = default;
 };
 

@@ -114,6 +114,15 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"showNonManifoldVertices", settings.topologyInspection.showNonManifoldVertices},
                 {"fins", settings.topologyInspection.fins},
                 {"showFins", settings.topologyInspection.showFins},
+                {"thinRegions", settings.thickness.autoUpdate},
+                {"showThinRegions", settings.thickness.show},
+                {"thicknessMap", settings.thickness.showMap},
+                {"thicknessAbsoluteEnabled", settings.thickness.absoluteEnabled},
+                {"thicknessRelativeEnabled", settings.thickness.relativeEnabled},
+                {"maximumThickness", settings.thickness.maximumThickness},
+                {"maximumRelativeThickness", settings.thickness.maximumRelativeThickness},
+                {"minimumThinRegionArea", settings.thickness.minimumRegionArea},
+                {"thicknessElements", settings.thickness.elementsThroughThickness},
                 {"finMaxAreaRatio", settings.topologyInspection.finMaxAreaRatio},
                 {"holes", settings.topologyInspection.holes},
                 {"showHoles", settings.topologyInspection.showHoles},
@@ -567,6 +576,15 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.showNonManifoldVertices) { settings.topologyInspection.showNonManifoldVertices = *command.showNonManifoldVertices; }
             if (command.fins) { settings.topologyInspection.fins = *command.fins; }
             if (command.showFins) { settings.topologyInspection.showFins = *command.showFins; }
+            if (command.thinRegions) { settings.thickness.autoUpdate = *command.thinRegions; }
+            if (command.showThinRegions) { settings.thickness.show = *command.showThinRegions; }
+            if (command.thicknessMap) { settings.thickness.showMap = *command.thicknessMap; }
+            if (command.thicknessAbsoluteEnabled) { settings.thickness.absoluteEnabled = *command.thicknessAbsoluteEnabled; }
+            if (command.thicknessRelativeEnabled) { settings.thickness.relativeEnabled = *command.thicknessRelativeEnabled; }
+            if (command.maximumThickness) { settings.thickness.maximumThickness = *command.maximumThickness; }
+            if (command.maximumRelativeThickness) { settings.thickness.maximumRelativeThickness = *command.maximumRelativeThickness; }
+            if (command.minimumThinRegionArea) { settings.thickness.minimumRegionArea = *command.minimumThinRegionArea; }
+            if (command.thicknessElements) { settings.thickness.elementsThroughThickness = static_cast<int>(*command.thicknessElements); }
             if (command.finMaxAreaRatio) { settings.topologyInspection.finMaxAreaRatio = *command.finMaxAreaRatio; }
             if (command.holes) { settings.topologyInspection.holes = *command.holes; }
             if (command.showHoles) { settings.topologyInspection.showHoles = *command.showHoles; }

@@ -130,6 +130,11 @@ DiagnosticSummary diagnosticSummary(const SurfaceComparison& surface, Diagnostic
         available = surface.intersections.availableSources; unavailable = surface.intersections.unavailableSources;
         limited = surface.intersections.truncated;
         break;
+    case DiagnosticCategory::thinRegions:
+        summary.count = surface.thickness.regions.size();
+        available = surface.thickness.measurements ? surface.thickness.measurements->measuredFaces : 0;
+        unavailable = surface.thickness.measurements ? surface.thickness.measurements->unavailableSources + surface.thickness.measurements->unknownFaces : 1;
+        break;
     }
     summary.state = unavailable && !available ? AnalysisResultState::unavailable
         : unavailable || limited ? AnalysisResultState::partial : AnalysisResultState::ready;

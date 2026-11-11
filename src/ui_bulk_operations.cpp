@@ -63,6 +63,7 @@ void setDetectorVisible(ComparisonSettings& settings, DiagnosticCategory categor
     case DiagnosticCategory::nonManifoldVertices: settings.topologyInspection.showNonManifoldVertices = visible; break;
     case DiagnosticCategory::holes: settings.topologyInspection.showHoles = visible; break;
     case DiagnosticCategory::fins: settings.topologyInspection.showFins = visible; break;
+    case DiagnosticCategory::thinRegions: settings.thickness.show = visible; break;
     case DiagnosticCategory::selfIntersections: settings.intersections.show = visible; break;
     }
 }

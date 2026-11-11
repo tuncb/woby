@@ -875,6 +875,7 @@ TEST_CASE("ctl analysis focus selects an exact finding in every category on eith
         surface->nonManifoldVertexBounds = {first, second};
         surface->holeBounds = {first, second};
         surface->finBounds = {first, second};
+        surface->thinRegionBounds = {first, second};
         surface->duplicatePointBounds = {first, second};
         surface->duplicateTriangleBounds = {first, second};
         surface->degenerateBounds = {first, second};

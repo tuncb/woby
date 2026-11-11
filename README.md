@@ -12,6 +12,7 @@ woby is a desktop application for viewing and analyzing 3D geometry.
 - **Surface comparison:** Create named analyses with A/B inputs, overlays, and distance heatmaps. Set tolerances and color ranges. Results include maximum, mean, P95, and area statistics. Distances are approximate and unsigned. Measurements use the model coordinate units.
 - **Mesh diagnostics:** Find boundary edges, winding edges, non-manifold edges and vertices, duplicates, degenerate triangles, holes, fin candidates, and self-intersections. Select findings to show them in the viewport.
 - **Surface mesh quality:** Examine triangle size, shape quality, and local size changes. Results include histograms, percentiles, and comparisons with specified size limits.
+- **Thin regions:** [Measure surface-based volume thickness](doc/thin-regions.md) before FEM meshing. Inspect thin regions, thickness maps, and preliminary element-size limits.
 - **UV inspection:** Examine an existing 2D UV layout or a 3D surface grid. Measure distortion, stretch, orientation, and overlaps. Select linked points in the source and analysis. Woby does not create UV coordinates.
 - **Annotations:** Draw lines and rectangles on surfaces. Place text in the scene. Change text, color, and size. Keep text facing the camera or use a fixed rotation. Save annotations with the scene.
 - **Saved states:** Save named Views and `.woby` scenes. Use Undo/Redo for scene changes, object additions and removals, and analysis settings.
