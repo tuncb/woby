@@ -1,6 +1,10 @@
 # woby changelog
 
-Notable changes by release tag. Versions with no notable changes are omitted.
+Notable changes by release tag.
+
+## v0.34.1
+
+No notable changes.
 
 ## v0.34.0
 
