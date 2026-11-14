@@ -765,7 +765,7 @@ TEST_CASE("Escape dismisses color pickers and dropdowns without changing their v
 TEST_CASE("button hints remain visible when disabled and preserve click behavior")
 {
     for (const bool disabled : {false, true}) {
-        for (int kind = 0; kind < 4; ++kind) {
+        for (int kind = 0; kind < 6; ++kind) {
             CAPTURE(disabled);
             CAPTURE(kind);
             KeyboardFixture fixture;
@@ -795,10 +795,12 @@ TEST_CASE("button hints remain visible when disabled and preserve click behavior
                     ImGui::BeginDisabled(disabled);
                     clicked = woby::drawVisibilityButton("visible", true, "part");
                     ImGui::EndDisabled();
-                } else {
+                } else if (kind == 3) {
                     ImGui::BeginDisabled(disabled);
                     clicked = woby::drawResetIconButton("reset", hint);
                     ImGui::EndDisabled();
+                } else {
+                    clicked = woby::drawDimensionsButton(kind == 5, disabled);
                 }
                 button = ImGui::GetItemRectMin();
                 button.x += 8.0f;

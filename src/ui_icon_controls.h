@@ -26,6 +26,7 @@ bool drawInformationHeader(const char* label, const char* title, const char* tex
 bool drawRenderModeIconButton(const char* id, const char* icon, const char* tooltip,
     RenderModeState state, bool disabled);
 bool drawCameraViewButton(const char* id, CameraView view, const char* tooltip);
+bool drawDimensionsButton(bool visible, bool disabled);
 bool drawTriStateMasterIconButton(const char* id, const char* icon, const char* label,
     size_t enabledCount, size_t totalCount);
 bool drawTriStateVisibilityButton(const char* id, const char* label,

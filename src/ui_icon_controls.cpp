@@ -164,6 +164,31 @@ bool drawRenderModeIconButton(
     return changed;
 }
 
+bool drawDimensionsButton(bool visible, bool disabled)
+{
+    ImGui::BeginDisabled(disabled);
+    const bool clicked = drawRenderModeIconButton("dimensions", "",
+        visible ? "Hide dimensions" : "Show dimensions\nSize of visible selected geometry, including parent transforms.",
+        visible ? RenderModeState::on : RenderModeState::off, false);
+    const auto low = ImGui::GetItemRectMin();
+    const float unit = uiSize(1.0f);
+    const float y = low.y + renderModeButtonSize() * 0.5f;
+    const float left = low.x + 7 * unit;
+    const float right = low.x + renderModeButtonSize() - 7 * unit;
+    const auto color = ImGui::GetColorU32(visible ? ImGuiCol_Text : ImGuiCol_TextDisabled);
+    auto* draw = ImGui::GetWindowDrawList();
+    // Dimension line with inward arrowheads and extension marks at each end.
+    draw->AddLine({left, y}, {right, y}, color, 1.5f * unit);
+    for (const float x : {left, right}) {
+        const float direction = x == left ? 1.0f : -1.0f;
+        draw->AddLine({x, y - 6 * unit}, {x, y + 6 * unit}, color, 1.5f * unit);
+        draw->AddLine({x, y}, {x + direction * 4 * unit, y - 3 * unit}, color, 1.5f * unit);
+        draw->AddLine({x, y}, {x + direction * 4 * unit, y + 3 * unit}, color, 1.5f * unit);
+    }
+    ImGui::EndDisabled();
+    return clicked;
+}
+
 float informationIconSize() { return uiSize(20.0f); }
 
 bool drawCameraViewButton(const char* id, CameraView view, const char* tooltip)

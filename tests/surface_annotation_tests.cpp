@@ -657,7 +657,7 @@ struct AnnotationUiFixture {
     AnnotationNameEdit nameEdit;
     SceneQueryRuntime queries;
     ScenePickView pickView = view();
-    ImVec2 lineButton{}, rectangleButton{}, sectionButton{}, textButton{}, dimensions{};
+    ImVec2 lineButton{}, rectangleButton{}, sectionButton{}, textButton{};
     bool pointerAllowed = true, captureMouse = false, disabled = false;
     bool showObjects = false, showInspector = false;
     bool showScaleOverlay = false;
@@ -686,10 +686,6 @@ struct AnnotationUiFixture {
         sectionButton = {textButton.x - renderModeButtonSize() - ImGui::GetStyle().ItemSpacing.x, textButton.y};
         lineButton = {origin.x + renderModeButtonSize() / 2, sectionButton.y};
         rectangleButton = {lineButton.x + renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.x, sectionButton.y};
-        ImGui::SameLine();
-        bool showDimensions = false;
-        ImGui::Checkbox("Show dimensions", &showDimensions);
-        dimensions = ImGui::GetItemRectMin();
         if (showObjects) {
             ImGui::LogToBuffer();
             drawAnnotationObjects(scene.state, nameEdit);
@@ -901,14 +897,13 @@ TEST_CASE("annotation CLI commands preserve geometry comments through scene save
     CHECK(readSceneDocument(path).annotations == document.annotations);
 }
 
-TEST_CASE("annotation icon tools share the dimensions row and toggle without editing scene content")
+TEST_CASE("annotation icon tools share a row and toggle without editing scene content")
 {
     AnnotationUiFixture fixture;
     CHECK(fixture.lineButton.x < fixture.rectangleButton.x);
     CHECK(fixture.rectangleButton.x < fixture.sectionButton.x);
     CHECK(fixture.sectionButton.x < fixture.textButton.x);
-    CHECK(fixture.textButton.x < fixture.dimensions.x);
-    CHECK(fixture.dimensions.y < fixture.rectangleButton.y);
+    CHECK(fixture.textButton.y == fixture.rectangleButton.y);
     const auto revision = fixture.scene.state.sceneEditRevision;
     fixture.click(fixture.lineButton);
     CHECK(fixture.interaction.tool == AnnotationShape::line);

@@ -3281,6 +3281,10 @@ int main(int argc, char** argv)
                                     false)) {
                                 woby::toggleShowGrid(ui);
                             }
+                            ImGui::SameLine();
+                            if (woby::drawDimensionsButton(ui.showDimensions, !woby::scenePostLoadReady(ui))) {
+                                woby::setShowDimensions(ui, !ui.showDimensions);
+                            }
                             const size_t groupCount = woby::totalGroupCount(ui);
                             const size_t solidMeshCount = woby::countEnabledSceneRenderMode(
                                 ui,
@@ -3348,19 +3352,6 @@ int main(int argc, char** argv)
 
                     if (scenePaneOpen) {
                         woby::drawAnnotationTools(ui, annotationInteraction, fileActionsDisabled());
-                        ImGui::SameLine();
-                        ImGui::BeginDisabled(!woby::scenePostLoadReady(ui));
-                        bool showDimensions = ui.showDimensions;
-                        if (ImGui::Checkbox("Show dimensions", &showDimensions)) {
-                            woby::setShowDimensions(ui, showDimensions);
-                        }
-                        if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip("Size of visible selected geometry, including parent transforms.");
-                        }
-                        ImGui::EndDisabled();
-                        if (showDimensions && ui.selectedSceneObjects.empty()) {
-                            ImGui::TextDisabled("Select a mesh to see its dimensions.");
-                        }
                     }
 
                     const float contentHeight = std::max(ImGui::GetFrameHeight(),
