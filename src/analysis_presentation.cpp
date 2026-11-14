@@ -148,4 +148,20 @@ std::string diagnosticSummaryText(const DiagnosticSummary& summary)
     return analysisResultStateLabel(summary.state);
 }
 
+DiagnosticSummary combineDiagnosticSummaries(const DiagnosticSummary& a, const DiagnosticSummary& b)
+{
+    if (a.state == b.state) { return {a.state, a.count + b.count}; }
+    const auto complete = [](AnalysisResultState state) {
+        return state == AnalysisResultState::ready || state == AnalysisResultState::partial
+            || state == AnalysisResultState::unavailable;
+    };
+    if (complete(a.state) && complete(b.state)) { return {AnalysisResultState::partial, a.count + b.count}; }
+    return {complete(a.state) ? b.state : a.state, a.count + b.count};
+}
+
+bool diagnosticNeedsAttention(const DiagnosticSummary& summary)
+{
+    return summary.state != AnalysisResultState::ready || summary.count != 0;
+}
+
 } // namespace woby

@@ -110,6 +110,7 @@ struct ComparisonGpuRuntime {
     bool ready = false;
 };
 struct ComparisonInspectorRuntime {
+    std::optional<DiagnosticCategory> settingsPage;
     ComparisonRangeDrag rangeDrag;
     ComparisonInspectorCache queries;
     std::array<std::array<DiagnosticSummary, 2>, diagnosticCategoryCount> diagnosticSummaries{};

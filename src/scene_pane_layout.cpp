@@ -94,6 +94,11 @@ bool beginScenePaneSection(ScenePaneLayout& layout, ScenePaneSection section, bo
     }
     if (!open) { return false; }
     ImGui::PushID(static_cast<int>(index));
+    if (layout.contentSized) {
+        return ImGui::BeginChild("section_rows", {0, 0},
+            ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    }
     return ImGui::BeginChild("section_rows", {0, layout.heights[index]});
 }
 
@@ -102,6 +107,11 @@ void endScenePaneSection(ScenePaneLayout& layout, ScenePaneSection section)
     const auto index = static_cast<size_t>(section);
     if (!layout.open[index]) { return; }
     ImGui::EndChild();
+    if (layout.contentSized) {
+        ImGui::Spacing();
+        ImGui::PopID();
+        return;
+    }
     if (nextOpenSection(layout, index) != scenePaneSectionCount) {
         ImGui::InvisibleButton("section_divider", {-1, layout.dividerHeight});
         const bool hovered = ImGui::IsItemHovered();

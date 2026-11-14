@@ -24,7 +24,7 @@ void drawViews(UiState& state, ViewNameEdit& edit, ScenePaneLayout& layout)
         ImGui::TableSetupColumn("add", ImGuiTableColumnFlags_WidthFixed, button);
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
-        open = ImGui::CollapsingHeader("Views", ImGuiTreeNodeFlags_DefaultOpen);
+        open = woby::drawSectionHeader("Saved views", ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::TableNextColumn();
         if (drawRenderModeIconButton("add", "+", "Create a view from the current scene", RenderModeState::off, false)) {
             createView(state);
@@ -35,7 +35,8 @@ void drawViews(UiState& state, ViewNameEdit& edit, ScenePaneLayout& layout)
         static UiSelectionRows rows;
         beginSelectionRows(rows, state);
         bool duplicate = false, remove = false, selectAll = false;
-        if (state.views.empty()) { ImGui::TextDisabled("Use + to save the current view."); }
+        if (layout.contentSized && ImGui::Button("+ Save view", {-1, 0})) { createView(state); }
+        if (state.views.empty()) { ImGui::TextDisabled("Save the camera and display settings."); }
         const auto beginRename = [&](ViewId id) {
             if (const auto* view = findView(state, id)) {
                 edit.id = id;

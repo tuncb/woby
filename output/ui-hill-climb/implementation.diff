@@ -1,0 +1,723 @@
+diff --git a/src/comparison_view.cpp b/src/comparison_view.cpp
+index d91612f..9a3c9d9 100644
+--- a/src/comparison_view.cpp
++++ b/src/comparison_view.cpp
+@@ -276,26 +276,25 @@ void membershipTree(UiState& state, ComparisonRuntime& runtime, ComparisonSide s
+     ImGui::PopID();
+     updateComparisonInspectorCache(runtime.inspector.queries, state, id);
+ }
+-void drawDiagnosticSettingsPopup(UiState& state, SceneObjectId id, DiagnosticCategory category, const char* name)
++void drawDiagnosticSettingsContents(UiState& state, SceneObjectId id, DiagnosticCategory category)
+ {
+-    const std::string hint = std::string(name) + " settings";
+-    if (drawRenderModeIconButton("settings", "\xef\x80\x93", hint.c_str(), RenderModeState::off, false)) {
+-        ImGui::OpenPopup("diagnostic_settings");
+-    }
+-    const auto buttonMax = ImGui::GetItemRectMax();
+-    ImGui::SetNextWindowPos({buttonMax.x, buttonMax.y + ImGui::GetStyle().ItemSpacing.y}, ImGuiCond_Appearing, {1, 0});
+-    ImGui::SetNextWindowSize({uiSize(360), 0}, ImGuiCond_Always);
+-    if (!ImGui::BeginPopup("diagnostic_settings", ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) { return; }
+-    ImGui::TextUnformatted(name);
+-    ImGui::Separator();
++    ImGui::TextWrapped("Changes apply immediately. Save the scene to keep them on disk.");
++    ImGui::Spacing();
++    const auto floatField = [](const char* label, float& value) {
++        ImGui::TextUnformatted(label);
++        ImGui::SetNextItemWidth(-1);
++        const std::string key = std::string("##") + label;
++        return ImGui::InputFloat(key.c_str(), &value, 0, 0, "%.6g");
++    };
+     auto settings = comparisonSettings(state, id);
+     bool automatic = diagnosticAutoUpdate(settings, category);
+-    if (ImGui::Checkbox("Automatic updates", &automatic)) {
++    if (drawToggleField("Auto update", automatic)) {
+         setComparisonAutomaticUpdate(state, id, category, automatic);
+         settings = comparisonSettings(state, id);
+     }
+     const auto initial = settings;
+-    ImGui::TextWrapped("Analysis: %s", findComparison(state, id)->name.c_str());
++    ImGui::TextWrapped("When on, rerun this check after relevant inputs or settings change.");
++    ImGui::Spacing();
+     if (category == DiagnosticCategory::degenerateTriangles) {
+         if (ImGui::IsWindowAppearing()) { ImGui::SetKeyboardFocusHere(); }
+         ImGui::SetNextItemWidth(ImGui::GetFontSize()*8);
+@@ -306,14 +305,29 @@ void drawDiagnosticSettingsPopup(UiState& state, SceneObjectId id, DiagnosticCat
+         setLastItemTooltip("Largest angle must strictly exceed this threshold (90 to 180 degrees).");
+         ImGui::TextWrapped("Collapsed and collinear triangles are always included.");
+     } else if (category == DiagnosticCategory::thinRegions) {
+-        ImGui::Checkbox("Absolute thickness limit", &settings.thickness.absoluteEnabled);
+-        ImGui::InputFloat("Maximum thickness", &settings.thickness.maximumThickness, 0, 0, "%.6g");
+-        ImGui::Checkbox("Relative thickness limit", &settings.thickness.relativeEnabled);
+-        ImGui::InputFloat("Maximum relative thickness", &settings.thickness.maximumRelativeThickness, 0, 0, "%.6g");
+-        ImGui::InputFloat("Minimum region surface area", &settings.thickness.minimumRegionArea, 0, 0, "%.6g");
+-        ImGui::InputInt("Elements through thickness", &settings.thickness.elementsThroughThickness, 0, 0);
+-        ImGui::Checkbox("Show thickness map", &settings.thickness.showMap);
+-        ImGui::TextWrapped("A face passes either enabled limit. The relative reference is the area-weighted 95th percentile in each analysis batch. Area includes both surface sides. Units follow the model. Filters reuse measured rays.");
++        ImGui::SeparatorText("Thickness limits");
++        drawToggleField("Absolute limit", settings.thickness.absoluteEnabled);
++        ImGui::BeginDisabled(!settings.thickness.absoluteEnabled);
++        floatField("Maximum thickness (model units)", settings.thickness.maximumThickness);
++        ImGui::EndDisabled();
++        drawToggleField("Relative limit", settings.thickness.relativeEnabled);
++        ImGui::BeginDisabled(!settings.thickness.relativeEnabled);
++        floatField("Maximum ratio", settings.thickness.maximumRelativeThickness);
++        ImGui::EndDisabled();
++        ImGui::TextWrapped("Reference: area-weighted 95th percentile thickness in each batch.");
++        ImGui::Spacing();
++        ImGui::SeparatorText("Region filter");
++        floatField("Minimum region surface area (model units squared)", settings.thickness.minimumRegionArea);
++        ImGui::TextUnformatted("Elements through thickness");
++        ImGui::SetNextItemWidth(-1);
++        ImGui::InputInt("##Elements through thickness", &settings.thickness.elementsThroughThickness, 0, 0);
++        ImGui::Spacing();
++        ImGui::SeparatorText("Display");
++        drawVisibilityField("Thickness map", settings.thickness.showMap);
++        if (ImGui::TreeNode("How these limits work")) {
++            ImGui::TextWrapped("A face is marked thin if it meets either enabled limit. Area includes both surface sides. Units follow the model. Filters reuse measured rays. The element count sets a preliminary size recommendation; it does not change the mesh.");
++            ImGui::TreePop();
++        }
+     } else if (category == DiagnosticCategory::selfIntersections) {
+         int pairs = static_cast<int>(settings.intersections.limits.pairs);
+         int candidates = static_cast<int>(settings.intersections.limits.candidateTests);
+@@ -332,9 +346,28 @@ void drawDiagnosticSettingsPopup(UiState& state, SceneObjectId id, DiagnosticCat
+         ImGui::TextWrapped("Loop bounding-box diagonal / edge-connected component diagonal, inclusive. Larger openings remain boundary findings. Ratios may exceed 1.");
+     }
+     if (settings != initial) { setComparisonSettings(state, settings, id); }
+-    ImGui::TextWrapped("Automatic updates run initially and after relevant input or detector settings change. Turn off to run only from the Update column. Cancel or failure waits for a retry or a relevant change.");
+-    if (ImGui::Button("Close")) { ImGui::CloseCurrentPopup(); }
+-    ImGui::EndPopup();
++    ImGui::Spacing();
++    ImGui::TextWrapped("Cancel or failure waits for a retry or a relevant input change.");
++}
++
++void drawDiagnosticSettingsButton(UiState& state, SceneObjectId id, DiagnosticCategory category, const char* name)
++{
++    const std::string hint = std::string(name) + " settings";
++    if (drawRenderModeIconButton("settings", "\xef\x80\x93", hint.c_str(), RenderModeState::off, false)) {
++        ImGui::OpenPopup("diagnostic_settings");
++    }
++    const auto buttonMax = ImGui::GetItemRectMax();
++    ImGui::SetNextWindowPos({buttonMax.x, buttonMax.y + ImGui::GetStyle().ItemSpacing.y}, ImGuiCond_Appearing, {1, 0});
++    const auto* viewport = ImGui::GetMainViewport();
++    ImGui::SetNextWindowSize({std::min(uiSize(500), viewport->WorkSize.x - uiSize(24)), 0});
++    ImGui::SetNextWindowSizeConstraints({0, 0}, {viewport->WorkSize.x, viewport->WorkSize.y - uiSize(24)});
++    if (ImGui::BeginPopup("diagnostic_settings", ImGuiWindowFlags_NoSavedSettings)) {
++        drawPaneHeading(hint.c_str());
++        ImGui::TextWrapped("Analysis: %s", findComparison(state, id)->name.c_str());
++        drawDiagnosticSettingsContents(state, id, category);
++        if (ImGui::Button("Close")) { ImGui::CloseCurrentPopup(); }
++        ImGui::EndPopup();
++    }
+ }
+ 
+ void drawDetectorUpdate(UiState& state, const DetectorStatus& result, bool hasInput, SceneObjectId id, DiagnosticCategory category)
+@@ -435,7 +468,7 @@ const char* diagnosticHint(DiagnosticCategory category)
+     return "";
+ }
+ 
+-void diagnosticRow(UiState& state, const ComparisonRuntime& runtime,
++void diagnosticRow(UiState& state, ComparisonRuntime& runtime,
+     const char* name, DiagnosticCategory category, bool hasA, bool hasB, SceneObjectId id,
+     UiSelectionRows& rows, bool& selectAll)
+ {
+@@ -548,7 +581,7 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime,
+     }
+     if (settings != initial) { setComparisonSettings(state, settings, id); }
+     ImGui::TableNextColumn();
+-    drawDiagnosticSettingsPopup(state, id, category, name);
++    drawDiagnosticSettingsButton(state, id, category, name);
+     ImGui::PopID();
+ }
+ 
+@@ -664,26 +697,31 @@ void drawThinRegionFindings(UiState& state, const ComparisonRuntime& runtime, Sc
+     const auto& result = (settings.diagnosticSide == ComparisonSide::a ? runtime.results.value.original : runtime.results.value.repaired).thickness;
+     if (!result.measurements) { return; }
+     const auto& measurements = *result.measurements;
++    ImGui::TextWrapped("Thickness values use model units. The minimum is a sampled estimate.");
++    if (ImGui::TreeNode("Method and coverage")) {
+     ImGui::TextWrapped("%zu measured faces; %zu unknown faces. Measurements are sampled estimates. The minimum is not a guaranteed global minimum.",measurements.measuredFaces,measurements.unknownFaces);
+     ImGui::TextWrapped("Relative reference: area-weighted 95th percentile per analysis batch. Connected faces and measured opposite faces form one region. Confidence is the supported ray fraction.");
+     if (settings.thickness.showMap) { ImGui::TextWrapped("Thickness map: red = thin, blue = reference thickness or greater, gray = unknown. Each batch has its own scale."); }
+     for (const auto& source : measurements.sources) {
+         if (!source.unavailableReason.empty()) { ImGui::TextWrapped("%s: %s",source.geometry->source.c_str(),source.unavailableReason.c_str()); }
++    }
++        ImGui::TreePop();
+     }
+     const auto* comparison = findComparison(state,id);
+     const size_t selected = comparison->diagnosticFocus ? comparison->diagnosticFocus->index : 0;
+     const size_t begin = selected/diagnosticPageSize*diagnosticPageSize;
+-    if (ImGui::BeginTable("thin_region_findings",5,ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
++    if (ImGui::BeginTable("thin_region_findings",3,ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+         ImGui::TableSetupColumn("Source / region"); ImGui::TableSetupColumn("Minimum"); ImGui::TableSetupColumn("Typical");
+-        ImGui::TableSetupColumn("Relative"); ImGui::TableSetupColumn("Surface area"); ImGui::TableHeadersRow();
++        ImGui::TableHeadersRow();
+         for (size_t i = begin; i < std::min(begin+diagnosticPageSize,result.regions.size()); ++i) {
+             const auto& region = result.regions[i]; const auto& source = measurements.sources[region.source];
+             ImGui::PushID(static_cast<int>(i)); ImGui::TableNextRow(); ImGui::TableNextColumn();
+-            const auto label = source.geometry->source+" / "+std::to_string(i+1);
++            const auto label = "Region " + std::to_string(i+1);
+             if (ImGui::Selectable(label.c_str(),comparison->diagnosticFocus && selected == i,ImGuiSelectableFlags_SpanAllColumns)) {
+                 selectComparisonDiagnostic(state,runtime.results.value,runtime.results.signature,i,id);
+             }
+-            for (const auto value : {region.minimum,region.typical,region.relativeThickness,region.area}) { ImGui::TableNextColumn(); ImGui::Text("%.6g",value); }
++            if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s\nRelative thickness: %.6g\nSurface area: %.6g", source.geometry->source.c_str(), region.relativeThickness, region.area); }
++            for (const auto value : {region.minimum,region.typical}) { ImGui::TableNextColumn(); ImGui::Text("%.6g",value); }
+             ImGui::PopID();
+         }
+         ImGui::EndTable();
+@@ -918,12 +956,13 @@ void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool
+     ImGui::EndChild();
+ }
+ 
+-void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, bool current,
++void drawDiagnosticNavigation(UiState& state, ComparisonRuntime& runtime, bool current,
+     bool hasA, bool hasB, SceneObjectId id)
+ {
+-    ImGui::AlignTextToFramePadding();
+-    ImGui::TextUnformatted("Diagnostics");
+     auto settings = comparisonSettings(state, id);
++    if (ImGui::TreeNode("Check options")) {
++    ImGui::AlignTextToFramePadding();
++    ImGui::TextUnformatted("Check options");
+     ImGui::SameLine();
+     drawInformationIcon("diagnostics_info", "Surface diagnostics",
+         "Checks run independently within each source batch. By default, existing child volumes/parts are separate batches. Original indices preserve source connectivity; exact positions join equal coordinates. "
+@@ -953,6 +992,8 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime,
+     if (ImGui::IsItemHovered()) {
+         ImGui::SetTooltip("Files stay separate. Original indices preserve source connectivity.\nExact positions join exactly equal world coordinates within each batch, with no epsilon.");
+     }
++    ImGui::TreePop();
++    }
+     validateComparisonDiagnosticFocus(state, runtime.results.value, current ? runtime.results.signature : 0, id, runtime.inspector.queries.signature);
+     constexpr struct {
+         const char* name;
+@@ -970,6 +1011,73 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime,
+         {"Thin regions", DiagnosticCategory::thinRegions},
+         {"Self-intersections", DiagnosticCategory::selfIntersections},
+     };
++    ImGui::SeparatorText("Check status");
++    static UiSelectionRows attentionRows;
++    if (attentionRows.scope != id) { attentionRows = {}; }
++    beginSelectionRows(attentionRows, state);
++    attentionRows.scope = id;
++    size_t completed = 0;
++    const auto summaryFor = [&](DiagnosticCategory category) {
++        const auto phase = comparisonDetectorStatus(runtime.results.value, category).phase;
++        const bool ready = inspectorDetectorReady(runtime, state, id, category);
++        const auto a = diagnosticSummary(runtime.results.value.original, category, phase, ready);
++        const auto b = diagnosticSummary(runtime.results.value.repaired, category, phase, ready);
++        return hasA && hasB ? combineDiagnosticSummaries(a, b) : hasA ? a : b;
++    };
++    const auto checkRow = [&](const auto& row) {
++        const auto summary = summaryFor(row.category);
++        const auto key = static_cast<uint64_t>(row.category) + 1;
++        const auto order = registerSelectionRow(attentionRows, key);
++        ImGui::PushID(row.name);
++        ImGui::TableNextRow(); ImGui::TableNextColumn();
++        const bool selected = comparisonSettings(state, id).diagnosticCategory == row.category;
++        if (ImGui::Selectable(row.name, selected, 0, {0, ImGui::GetFrameHeight()})) {
++            selectDetectorRow(state, id, row.category, order, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift);
++            auto edited = comparisonSettings(state, id);
++            edited.diagnosticCategory = row.category;
++            setComparisonSettings(state, edited, id);
++        }
++        setLastItemTooltip(diagnosticHint(row.category));
++        ImGui::TableNextColumn();
++        ImGui::AlignTextToFramePadding();
++        ImGui::TextWrapped("%s", diagnosticSummaryText(summary).c_str());
++        ImGui::PopID();
++    };
++    if (ImGui::BeginTable("check_status", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
++        ImGui::TableSetupColumn("Check", ImGuiTableColumnFlags_WidthStretch, 2);
++        ImGui::TableSetupColumn("Result", ImGuiTableColumnFlags_WidthStretch, 1);
++        for (const auto& row : rows) {
++            if (diagnosticNeedsAttention(summaryFor(row.category))) { checkRow(row); }
++            else { ++completed; }
++        }
++        ImGui::EndTable();
++    }
++    if (completed) {
++        const auto label = std::to_string(completed) + " completed checks - No findings";
++        if (ImGui::TreeNode(label.c_str())) {
++            if (ImGui::BeginTable("completed_checks", 2)) {
++                for (const auto& row : rows) {
++                    if (!diagnosticNeedsAttention(summaryFor(row.category))) { checkRow(row); }
++                }
++                ImGui::EndTable();
++            }
++            ImGui::TreePop();
++        }
++    }
++    const auto selectionActions = endSelectionRows(attentionRows);
++    if (selectionActions.selectAll) { selectDetectorRows(state, id, attentionRows.current); }
++    ImGui::BeginDisabled(!(hasA || hasB));
++    if (ImGui::Button("Run all checks", {-1, 0})) {
++        for (const auto& row : rows) {
++            const auto phase = comparisonDetectorStatus(runtime.results.value, row.category).phase;
++            if (phase != IntersectionPhase::queued && phase != IntersectionPhase::running) {
++                requestComparisonDetector(state, id, row.category, false);
++            }
++        }
++    }
++    ImGui::EndDisabled();
++    // Retain per-check run/cancel, visibility and bulk selection for expert workflows.
++    if (woby::drawSectionHeader("All check controls")) {
+     // Fixed icon/count columns and a wrapping name use the available pane width.
+     // Only the outer inspector scrolls, so row controls are always reachable.
+     if (ImGui::BeginTable("Analysis diagnostics", 5,
+@@ -1006,11 +1114,32 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime,
+         selectAll = endSelectionRows(selectedRows).selectAll || selectAll;
+         if (selectAll) { selectDetectorRows(state, id, selectedRows.current); }
+     }
++    }
+     ImGui::SeparatorText("Findings");
+     const auto selected = comparisonSettings(state, id);
+     for (const auto& row : rows) {
+         if (row.category == selected.diagnosticCategory) { ImGui::TextUnformatted(row.name); break; }
+     }
++    auto selectedSettings = comparisonSettings(state, id);
++    bool* visible = nullptr;
++    switch (selectedSettings.diagnosticCategory) {
++    case DiagnosticCategory::boundary: visible = &selectedSettings.showBoundaries; break;
++    case DiagnosticCategory::nonManifold: visible = &selectedSettings.showNonManifold; break;
++    case DiagnosticCategory::winding: visible = &selectedSettings.showWinding; break;
++    case DiagnosticCategory::duplicatePoints: visible = &selectedSettings.duplicates.showPoints; break;
++    case DiagnosticCategory::duplicateTriangles: visible = &selectedSettings.duplicates.showTriangles; break;
++    case DiagnosticCategory::nonManifoldVertices: visible = &selectedSettings.topologyInspection.showNonManifoldVertices; break;
++    case DiagnosticCategory::holes: visible = &selectedSettings.topologyInspection.showHoles; break;
++    case DiagnosticCategory::fins: visible = &selectedSettings.topologyInspection.showFins; break;
++    case DiagnosticCategory::selfIntersections: visible = &selectedSettings.intersections.show; break;
++    case DiagnosticCategory::degenerateTriangles: visible = &selectedSettings.degenerates.show; break;
++    case DiagnosticCategory::thinRegions: visible = &selectedSettings.thickness.show; break;
++    }
++    if (visible && drawVisibilityField("Findings visible", *visible)) { setComparisonSettings(state, selectedSettings, id); }
++    if (ImGui::Button("\xef\x80\x93 Settings")) { runtime.inspector.settingsPage = selectedSettings.diagnosticCategory; }
++    ImGui::SameLine();
++    drawDetectorUpdate(state, comparisonDetectorStatus(runtime.results.value, selectedSettings.diagnosticCategory),
++        hasA || hasB, id, selectedSettings.diagnosticCategory);
+     const auto& findings = comparisonDiagnosticEdges(runtime.results.value, selected.diagnosticSide, selected.diagnosticCategory);
+     const bool ready = inspectorDetectorReady(runtime, state, id, selected.diagnosticCategory);
+     const auto selectedPhase = comparisonDetectorStatus(runtime.results.value, selected.diagnosticCategory).phase;
+@@ -1288,7 +1417,7 @@ void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId i
+             ImGui::InputFloat("Range maximum", &settings.uvGrid.maximum, 0, 0, "%.5g");
+         }
+     }
+-    if (ImGui::CollapsingHeader("Display options")) {
++    if (woby::drawSectionHeader("Display options")) {
+         ImGui::BeginDisabled(settings.uvView != UvView::layout);
+         ImGui::Checkbox("Separate patches", &settings.uvSeparated);
+         ImGui::EndDisabled();
+@@ -1608,15 +1737,33 @@ void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes)
+     updateComparisonInspectorCache(runtimes.objects[id].inspector.queries, state, id);
+     drawComparisonActivity(state, runtimes.objects[id], id);
+     if (ImGui::BeginChild("comparison_properties")) {
++        auto& runtime = runtimes.objects[id];
++        if (runtime.inspector.settingsPage && comparisonTask(state, id) == AnalysisTask::meshChecks) {
++            if (ImGui::Button("< Back to checks")) { runtime.inspector.settingsPage.reset(); }
++            else {
++                const auto category = *runtime.inspector.settingsPage;
++                const char* title = category == DiagnosticCategory::thinRegions ? "Thin regions"
++                    : category == DiagnosticCategory::selfIntersections ? "Self-intersections"
++                    : category == DiagnosticCategory::degenerateTriangles ? "Degenerate triangles"
++                    : category == DiagnosticCategory::holes ? "Holes"
++                    : category == DiagnosticCategory::fins ? "Fin candidates" : "Detector";
++                drawPaneHeading((std::string(title) + " settings").c_str());
++                ImGui::TextWrapped("%s", comparison->name.c_str());
++                drawDiagnosticSettingsContents(state, id, category);
++            }
++        } else {
++            runtime.inspector.settingsPage.reset();
+         drawComparisonContents(state, runtimes.objects[id], id);
+         ImGui::Separator();
+-        if (ImGui::CollapsingHeader("Result display")) {
++        if (woby::drawSectionHeader("Result display")) {
+             auto translation = findComparison(state, id)->translation;
+             ImGui::SetNextItemWidth(-1);
+             if (ImGui::DragFloat3("Result position", translation.data(), .1f)) {
+                 setComparisonTranslation(state, id, translation);
+             }
+         }
++        }
++
+     }
+     ImGui::EndChild();
+     ImGui::PopID();
+@@ -2086,7 +2233,7 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
+             setAllComparisonsVisible(state, visible != state.comparisons.size());
+         }
+         ImGui::TableNextColumn();
+-        open = ImGui::CollapsingHeader("Analyses", ImGuiTreeNodeFlags_DefaultOpen);
++        open = woby::drawSectionHeader("Analyses", ImGuiTreeNodeFlags_DefaultOpen);
+         ImGui::TableNextColumn();
+         const auto buttonPosition = ImGui::GetCursorScreenPos();
+         if (drawRenderModeIconButton("create_analysis", "+", "Create an analysis", RenderModeState::off, false)) {
+@@ -2126,7 +2273,7 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
+         && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
+         beginRename(state.selectedSceneObjects.front());
+     }
+-    if (state.comparisons.empty()) { ImGui::TextDisabled("Select models, then use + to create an analysis."); }
++    if (state.comparisons.empty()) { ImGui::TextWrapped("Select models, then use + to create an analysis."); }
+     static UiSelectionRows rows;
+     beginSelectionRows(rows, state);
+     bool duplicate = false, remove = false, selectAll = false;
+@@ -2187,8 +2334,35 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
+                 ImGui::EndPopup();
+             }
+         }
++        if (foundRuntime != runtimes.objects.end()
++            && comparisonTask(state, id) == AnalysisTask::meshChecks
++            && comparisonInspectorCacheCurrent(foundRuntime->second.inspector.queries, state, id)) {
++            const auto& inspector = foundRuntime->second.inspector;
++            size_t findings = 0, pending = 0;
++            for (const auto& check : inspector.diagnosticSummaries) {
++                bool hasFindings = false, incomplete = false;
++                for (size_t side = 0; side < 2; ++side) {
++                    if (!inspector.queries.inputs[side].summary.enabledPartCount) { continue; }
++                    hasFindings |= check[side].count != 0;
++                    incomplete |= check[side].state != AnalysisResultState::ready;
++                }
++                findings += hasFindings;
++                pending += incomplete;
++            }
++            ImGui::Indent(renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.x);
++            ImGui::TextWrapped("%zu %s with findings", findings, findings == 1 ? "check" : "checks");
++            if (pending) { ImGui::TextColored({1, .73f, .28f, 1}, "Checks incomplete"); }
++            ImGui::Unindent(renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.x);
++        }
+         ImGui::PopID();
+     }
++    if (layout && layout->contentSized) {
++        if (ImGui::Button("+ Add analysis", {-1, 0})) { ImGui::OpenPopup("add_analysis_action"); }
++        if (ImGui::BeginPopup("add_analysis_action")) {
++            drawAnalysisCreationMenu(state);
++            ImGui::EndPopup();
++        }
++    }
+     const auto shortcuts = endSelectionRows(rows);
+     selectAll = shortcuts.selectAll || selectAll;
+     remove = remove || (shortcuts.remove && sceneSelectionHasKind(state, SceneObjectKind::comparison));
+diff --git a/src/main.cpp b/src/main.cpp
+index 78b8d0b..88ff929 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -99,15 +99,15 @@ constexpr woby::graphics::ViewId sceneView = 1;
+ constexpr woby::graphics::ViewId helperView = 5;
+ constexpr woby::graphics::ViewId imguiView = 255;
+ constexpr float minSceneViewportWidth = 160.0f;
+-constexpr float viewerPaneBackgroundRed = 0.20f;
+-constexpr float viewerPaneBackgroundGreen = 0.21f;
+-constexpr float viewerPaneBackgroundBlue = 0.22f;
++constexpr float viewerPaneBackgroundRed = 0.14f;
++constexpr float viewerPaneBackgroundGreen = 0.17f;
++constexpr float viewerPaneBackgroundBlue = 0.20f;
+ constexpr float viewerPaneBackgroundAlpha = 1.0f;
+ constexpr float popupBackgroundRed = 0.20f;
+ constexpr float popupBackgroundGreen = 0.21f;
+ constexpr float popupBackgroundBlue = 0.22f;
+ constexpr float popupBackgroundAlpha = 1.0f;
+-constexpr float appFontSize = 17.0f;
++constexpr float appFontSize = 18.0f;
+ constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
+ constexpr ImWchar appFontGlyphRanges[] = {
+     0xf0c7,
+@@ -632,21 +632,30 @@ void configureAppStyle()
+     auto& style = ImGui::GetStyle();
+     style.FrameRounding = 3.0f;
+     style.FrameBorderSize = 1.0f;
+-    style.FramePadding = ImVec2(8.0f, 5.0f);
+-    style.ItemSpacing = ImVec2(8.0f, 6.0f);
++    style.WindowPadding = ImVec2(16.0f, 16.0f);
++    style.FramePadding = ImVec2(10.0f, 7.0f);
++    style.CellPadding = ImVec2(8.0f, 7.0f);
++    style.WindowRounding = 0.0f;
++    style.PopupRounding = 6.0f;
++    style.DisabledAlpha = 0.7f;
++    style.ItemSpacing = ImVec2(10.0f, 10.0f);
+     style.Colors[ImGuiCol_Text] = ImVec4(.94f, .95f, .96f, 1);
+     style.Colors[ImGuiCol_TextDisabled] = ImVec4(.65f, .67f, .70f, 1);
+-    style.Colors[ImGuiCol_Button] = ImVec4(.28f, .29f, .31f, 1);
+-    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(.36f, .38f, .40f, 1);
++    style.Colors[ImGuiCol_Button] = ImVec4(.19f, .23f, .28f, 1);
++    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(.26f, .32f, .40f, 1);
+     style.Colors[ImGuiCol_ButtonActive] = ImVec4(.42f, .44f, .47f, 1);
+-    style.Colors[ImGuiCol_Header] = ImVec4(.29f, .31f, .33f, 1);
+-    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(.36f, .38f, .40f, 1);
++    style.Colors[ImGuiCol_Header] = ImVec4(.19f, .29f, .41f, 1);
++    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(.26f, .32f, .40f, 1);
+     style.Colors[ImGuiCol_HeaderActive] = ImVec4(.42f, .44f, .47f, 1);
+-    style.Colors[ImGuiCol_FrameBg] = ImVec4(.14f, .15f, .17f, 1);
++    style.Colors[ImGuiCol_FrameBg] = ImVec4(.10f, .13f, .17f, 1);
+     style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(.23f, .25f, .28f, 1);
+     style.Colors[ImGuiCol_FrameBgActive] = ImVec4(.29f, .31f, .34f, 1);
+-    style.Colors[ImGuiCol_CheckMark] = ImVec4(.40f, .78f, .92f, 1);
++    style.Colors[ImGuiCol_CheckMark] = ImVec4(.23f, .58f, .98f, 1);
+     style.Colors[ImGuiCol_SliderGrab] = style.Colors[ImGuiCol_CheckMark];
++    style.Colors[ImGuiCol_TableHeaderBg] = ImVec4(.18f, .21f, .25f, 1);
++    style.Colors[ImGuiCol_Border] = ImVec4(.27f, .32f, .39f, 1);
++    style.Colors[ImGuiCol_Separator] = style.Colors[ImGuiCol_Border];
++    style.Colors[ImGuiCol_PopupBg] = ImVec4(.14f, .17f, .20f, 1);
+ }
+ 
+ std::filesystem::path uiPreferencePath()
+@@ -665,7 +674,7 @@ void updateUiScale(SDL_Window* window, woby::UiState& state, const ImGuiStyle& b
+     auto& style = ImGui::GetStyle();
+     if (style.FontScaleMain == scale) { return; }
+     const float ratio = scale / style.FontScaleMain;
+-    woby::setViewerPaneWidth(state, state.viewerPaneWidth * ratio, 380.0f * scale, 10000.0f);
++    woby::setViewerPaneWidth(state, state.viewerPaneWidth * ratio, 320.0f * scale, 10000.0f);
+     woby::setPropertiesPaneWidth(state, state.propertiesPaneWidth * ratio, 300.0f * scale, 10000.0f);
+     style = woby::scaledUiStyle(baseStyle, scale);
+ }
+@@ -678,7 +687,7 @@ float renderModeButtonRowWidth()
+ 
+ float minimumViewerPaneWidth()
+ {
+-    return uiSize(380.0f);
++    return uiSize(320.0f);
+ }
+ 
+ void drawViewerPaneToggleButton(woby::UiState& state)
+@@ -752,7 +761,8 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
+         woby::setPropertiesPaneWidth(state, ImGui::GetWindowSize().x, uiSize(300.0f), layout.maxRightWidth);
+         drawPropertiesPaneToggleButton(state);
+         ImGui::SameLine();
+-        ImGui::TextUnformatted("Properties");
++        woby::drawPaneHeading(woby::selectedComparison(state) ? "Analysis"
++            : woby::selectedAnnotation(state) ? "Annotation" : "Model properties");
+         ImGui::Separator();
+         if (woby::selectedAnnotation(state)) {
+             ImGui::BeginDisabled(!woby::scenePostLoadReady(state));
+@@ -769,6 +779,34 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
+     ImGui::End();
+ }
+ 
++void drawViewportTools(woby::UiState& state, const CanvasLayout& layout,
++    woby::SceneQueryRuntime& queries, const woby::ComparisonRuntimes& comparisons)
++{
++    const float available = layout.width - layout.leftWidth
++        - (state.propertiesPaneVisible ? layout.rightWidth : 0.0f);
++    if (available < uiSize(260)) { return; }
++    ImGui::SetNextWindowPos({layout.leftWidth + uiSize(12), layout.top + uiSize(12)});
++    ImGui::SetNextWindowBgAlpha(0.95f);
++    if (ImGui::Begin("##ViewportTools", nullptr, ImGuiWindowFlags_NoDecoration
++            | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
++            | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing)) {
++        ImGui::BeginDisabled(state.files.empty() && state.comparisons.empty());
++        if (ImGui::Button("Fit all")) { woby::fitCameraToScene(state); }
++        woby::setLastItemTooltip("Frame the scene (R)");
++        ImGui::SameLine();
++        woby::updateSceneSelectionQueries(queries, state, &comparisons);
++        ImGui::BeginDisabled(!queries.selection.bounds.has_value());
++        if (ImGui::Button("Fit selection")) { woby::fitCameraToSelection(state); }
++        ImGui::EndDisabled();
++        ImGui::EndDisabled();
++        ImGui::SameLine();
++        woby::drawInformationIcon("camera_help", "Inspect the scene",
++            "Click a model to select it. Use the mouse to orbit, pan, and zoom. "
++            "Open Display in the Scene pane for standard camera views and rendering controls.");
++    }
++    ImGui::End();
++}
++
+ void drawPaneToggles(woby::UiState& state, float windowWidth, float top)
+ {
+     const auto flags = ImGuiWindowFlags_NoDecoration
+@@ -783,7 +821,7 @@ void drawPaneToggles(woby::UiState& state, float windowWidth, float top)
+         if (ImGui::Begin("##ShowViewerPane", nullptr, flags)) {
+             drawViewerPaneToggleButton(state);
+             ImGui::SameLine();
+-            ImGui::TextUnformatted("Scene controls");
++            woby::drawPaneHeading("Scene");
+         }
+         ImGui::End();
+     }
+@@ -2304,6 +2342,7 @@ int main(int argc, char** argv)
+         woby::AnnotationNameEdit annotationNameEdit;
+         woby::ViewNameEdit viewNameEdit;
+         woby::ScenePaneLayout scenePaneLayout;
++        scenePaneLayout.contentSized = true;
+         std::vector<LoadedModelRuntime> runtimes;
+         std::optional<std::filesystem::path> currentScenePath;
+         woby::SceneDocument cleanSceneDocument = woby::createSceneDocument(ui);
+@@ -3198,7 +3237,7 @@ int main(int argc, char** argv)
+ 
+                         drawViewerPaneToggleButton(ui);
+                         ImGui::SameLine();
+-                        ImGui::TextUnformatted("Scene controls");
++                        woby::drawPaneHeading("Scene");
+                         ImGui::SameLine();
+                         ImGui::SetCursorPosX(ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x
+                             - 2.0f * renderModeButtonSize() - ImGui::GetStyle().ItemSpacing.x);
+@@ -3213,7 +3252,7 @@ int main(int argc, char** argv)
+                         // Match SceneObjects' unpadded child so the header stays inside the content edges.
+                         if (ImGui::BeginChild("DisplayHeader", {0, ImGui::GetFrameHeight()},
+                                 ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+-                            scenePaneOpen = ImGui::CollapsingHeader("Display");
++                            scenePaneOpen = woby::drawSectionHeader("Display");
+                         }
+                         ImGui::EndChild();
+                     if (scenePaneOpen) {
+@@ -3328,7 +3367,7 @@ int main(int argc, char** argv)
+                     if (ImGui::BeginChild("SceneObjects", {0, contentHeight})) {
+                         woby::beginScenePaneLayout(scenePaneLayout);
+                         woby::synchronizeSceneNameEdit(ui, modelNameEdit);
+-                        const std::string filesPaneTitle = "Models (" + std::to_string(files.size()) + " files)##Files";
++                        const std::string filesPaneTitle = "Models  " + std::to_string(files.size()) + "##Files";
+                         if (!canvasSelectionPath.empty() && !woby::sceneObjectSelected(ui, canvasSelectionPath.back())) { canvasSelectionPath.clear(); }
+                         bool modelsOpen = scenePaneLayout.open[static_cast<size_t>(woby::ScenePaneSection::models)];
+                         if (ImGui::BeginTable("models_header", 2, ImGuiTableFlags_SizingStretchProp)) {
+@@ -3344,7 +3383,7 @@ int main(int argc, char** argv)
+                             }
+                             ImGui::TableNextColumn();
+                             if (!canvasSelectionPath.empty() || modelNameEdit.focus) { ImGui::SetNextItemOpen(true); }
+-                            modelsOpen = ImGui::CollapsingHeader(filesPaneTitle.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
++                            modelsOpen = woby::drawSectionHeader(filesPaneTitle.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                             ImGui::EndTable();
+                         }
+                         if (woby::beginScenePaneSection(scenePaneLayout, woby::ScenePaneSection::models, modelsOpen)) {
+@@ -3438,6 +3477,7 @@ int main(int argc, char** argv)
+                 }
+                 woby::synchronizeSceneNameEdit(ui, modelNameEdit, !ui.viewerPaneVisible);
+                 drawPropertiesPane(ui, comparison, panelLayout, inspector);
++                drawViewportTools(ui, panelLayout, renderScratch.queries, comparison);
+                 if (requestSettings) {
+                     woby::startFileAssociationAction(fileAssociations, {woby::FileAssociationAction::refresh});
+                 }
+diff --git a/src/scene_inspector.cpp b/src/scene_inspector.cpp
+index 151d3d0..be67c18 100644
+--- a/src/scene_inspector.cpp
++++ b/src/scene_inspector.cpp
+@@ -145,6 +145,7 @@ bool propertyHeading(InspectorEditor& editor, const char* title, const char* too
+     const char* informationText = nullptr)
+ {
+     bool open = false;
++    ImGui::Spacing();
+     ImGui::PushID(static_cast<int>(group));
+     // Separate fixed-width cells keep the passive hint and reset hit target outside the header.
+     if (ImGui::BeginTable("heading", informationText ? 3 : 2, ImGuiTableFlags_NoSavedSettings)) {
+@@ -156,7 +157,7 @@ bool propertyHeading(InspectorEditor& editor, const char* title, const char* too
+         ImGui::TableSetupColumn("Reset", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFrameHeight());
+         ImGui::TableNextColumn();
+         if (collapsible) {
+-            open = ImGui::CollapsingHeader(title, ImGuiTreeNodeFlags_DefaultOpen);
++            open = woby::drawSectionHeader(title, ImGuiTreeNodeFlags_DefaultOpen);
+         } else {
+             ImGui::AlignTextToFramePadding();
+             ImGui::TextUnformatted(title);
+@@ -174,35 +175,36 @@ bool propertyHeading(InspectorEditor& editor, const char* title, const char* too
+     return open;
+ }
+ 
+-void axisFields(InspectorEditor& editor, const char* title, const char* tooltip,
+-    UiObjectProperty first, UiPropertyGroup group)
++void transformFields(InspectorEditor& editor)
+ {
+-    ImGui::PushID(title);
+-    propertyHeading(editor, title, tooltip, group, false);
+-    if (ImGui::BeginTable("axes", 3)) {
+-        // Keep labels in their own row so input frame padding cannot shift
+-        // the text baseline of subsequent columns.
+-        ImGui::TableNextRow();
++    if (ImGui::BeginTable("transform_axes", 3, ImGuiTableFlags_SizingStretchProp)) {
++        ImGui::TableSetupColumn("Axis", ImGuiTableColumnFlags_WidthFixed, uiSize(36));
++        ImGui::TableSetupColumn("Translation", ImGuiTableColumnFlags_WidthStretch, 1);
++        ImGui::TableSetupColumn("Rotation (degrees)", ImGuiTableColumnFlags_WidthStretch, 1);
++        ImGui::TableHeadersRow();
+         for (int axis = 0; axis < 3; ++axis) {
+-            ImGui::TableNextColumn();
++            ImGui::TableNextRow(); ImGui::TableNextColumn();
++            ImGui::AlignTextToFramePadding();
+             ImGui::TextUnformatted(axis == 0 ? "X" : axis == 1 ? "Y" : "Z");
+-        }
+-        ImGui::TableNextRow();
+-        for (int axis = 0; axis < 3; ++axis) {
+             ImGui::TableNextColumn();
+-            numericInput(editor, static_cast<UiObjectProperty>(static_cast<int>(first) + axis));
++            numericInput(editor, static_cast<UiObjectProperty>(static_cast<int>(UiObjectProperty::translationX) + axis));
++            ImGui::TableNextColumn();
++            numericInput(editor, static_cast<UiObjectProperty>(static_cast<int>(UiObjectProperty::rotationX) + axis));
+         }
++        ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TableNextColumn();
++        resetButton(editor, "Reset translation", UiPropertyGroup::translation);
++        ImGui::TableNextColumn();
++        resetButton(editor, "Reset rotation", UiPropertyGroup::rotation);
+         ImGui::EndTable();
+     }
+-    ImGui::PopID();
+ }
+ 
+-void renderModeField(InspectorEditor& editor, const char* label, const char* icon, UiObjectProperty property)
++void renderModeField(InspectorEditor& editor, const char* label, UiObjectProperty property)
+ {
+     const auto current = inspectorProperty(editor.snapshot, property);
+     bool value = current.value != 0.0f;
+     ImGui::BeginDisabled(!current.available);
+-    if (drawRenderModeField(label, icon, value, current.mixed)) {
++    if (drawToggleField(label, value, current.mixed)) {
+         setSelectedObjectProperty(editor, property, value ? 1.0f : 0.0f);
+     }
+     ImGui::EndDisabled();
+@@ -308,7 +310,9 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
+         if (analysisMode.available) {
+             int mode = static_cast<int>(analysisMode.value) - 1;
+             if (analysisMode.mixed) { ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, true); }
+-            if (ImGui::Combo("Analysis mode", &mode, "Per volume\0Whole\0")) {
++            ImGui::TextUnformatted("Analysis mode");
++            ImGui::SetNextItemWidth(-1);
++            if (ImGui::Combo("##Analysis mode", &mode, "Per volume\0Whole\0")) {
+                 setSelectedObjectProperty(editor, UiObjectProperty::analysisMode, static_cast<float>(mode + 1));
+             }
+             if (analysisMode.mixed) { ImGui::PopItemFlag(); }
+@@ -316,10 +320,7 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
+         }
+         if (propertyHeading(editor, "Transform",
+                 "Reset translation, rotation, and scale on selected objects.", UiPropertyGroup::transform, true)) {
+-            axisFields(editor, "Translation", "Reset translation on selected objects to zero.",
+-                UiObjectProperty::translationX, UiPropertyGroup::translation);
+-            axisFields(editor, "Rotation (degrees)", "Reset rotation on selected objects to zero.",
+-                UiObjectProperty::rotationX, UiPropertyGroup::rotation);
++            transformFields(editor);
+             if (ImGui::BeginTable("scale", 3)) {
+                 ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch);
+                 ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+@@ -351,16 +352,17 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
+                 if (drawVisibilityIconField("selected objects", visible, visibility.mixed)) {
+                     setSelectedObjectsVisible(editor, visible);
+                 }
++                ImGui::SameLine();
++                ImGui::TextUnformatted("Model visible");
+             }
+-            if (visibility.available) { ImGui::SameLine(); }
+-            renderModeField(editor, "Solid mesh", solidMeshIcon, UiObjectProperty::solidMesh);
+-            ImGui::SameLine();
+-            renderModeField(editor, "Triangle edges", trianglesIcon, UiObjectProperty::triangles);
+-            ImGui::SameLine();
+-            renderModeField(editor, "Vertices", verticesIcon, UiObjectProperty::vertices);
++            renderModeField(editor, "Faces", UiObjectProperty::solidMesh);
++            renderModeField(editor, "Edges", UiObjectProperty::triangles);
++            renderModeField(editor, "Points", UiObjectProperty::vertices);
+             const auto vertexSize = inspectorProperty(editor.snapshot, UiObjectProperty::vertexSize);
+             {
+-                ImGui::SameLine(0.0f, 0.0f);
++                ImGui::AlignTextToFramePadding();
++                ImGui::TextUnformatted("Point size");
++                ImGui::SameLine();
+                 ImGui::BeginDisabled(!vertexSize.available);
+                 float value = vertexSize.available ? vertexSize.value : 1.0f;
+                 ImGui::SetNextItemWidth(std::min(uiSize(100.0f), ImGui::GetContentRegionAvail().x));
+@@ -396,14 +398,13 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
+             ImGui::BeginDisabled(!uv.available);
+             bool uvEnabled = uv.value != 0.0f;
+             if (uv.mixed) { ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, true); }
+-            if (ImGui::Checkbox("UV coloring", &uvEnabled)) {
++            if (drawToggleField("UV coloring", uvEnabled, uv.mixed)) {
+                 setSelectedObjectProperty(editor, UiObjectProperty::uvGrid, uv.mixed || uvEnabled ? 1.0f : 0.0f);
+             }
+             if (uv.mixed) { ImGui::PopItemFlag(); }
+             ImGui::EndDisabled();
+             if (!uv.available) { ImGui::TextDisabled("No UV coordinates in this selection"); }
+             else {
+-                ImGui::SameLine();
+                 drawInformationIcon("uv_help", "UV grid",
+                     "Shows supplied UV coordinates on solid surfaces. Cyan lines mark constant U; orange lines mark constant V.\n\n"
+                     "Density is cells per UV unit (0.1 to 1000). U and V can be changed independently. "

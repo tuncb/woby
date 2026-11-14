@@ -20,5 +20,8 @@ struct DiagnosticSummary {
 [[nodiscard]] DiagnosticSummary diagnosticSummary(const SurfaceComparison& surface, DiagnosticCategory category,
     IntersectionPhase phase, bool current);
 [[nodiscard]] std::string diagnosticSummaryText(const DiagnosticSummary& summary);
+// Only current, complete checks with no findings can leave the attention list.
+[[nodiscard]] DiagnosticSummary combineDiagnosticSummaries(const DiagnosticSummary& a, const DiagnosticSummary& b);
+[[nodiscard]] bool diagnosticNeedsAttention(const DiagnosticSummary& summary);
 
 } // namespace woby

@@ -290,7 +290,7 @@ struct UiState {
     float viewerPaneWidth = 0.0f;
     bool viewerPaneVisible = true;
     // Shared right-hand inspector preferences; session-only, not scene content.
-    float propertiesPaneWidth = 420.0f;
+    float propertiesPaneWidth = 560.0f;
     bool propertiesPaneVisible = false;
     std::vector<UiFileState> files;
     std::vector<UiSceneNode> sceneNodes;

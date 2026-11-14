@@ -99,15 +99,15 @@ constexpr woby::graphics::ViewId sceneView = 1;
 constexpr woby::graphics::ViewId helperView = 5;
 constexpr woby::graphics::ViewId imguiView = 255;
 constexpr float minSceneViewportWidth = 160.0f;
-constexpr float viewerPaneBackgroundRed = 0.20f;
-constexpr float viewerPaneBackgroundGreen = 0.21f;
-constexpr float viewerPaneBackgroundBlue = 0.22f;
+constexpr float viewerPaneBackgroundRed = 0.14f;
+constexpr float viewerPaneBackgroundGreen = 0.17f;
+constexpr float viewerPaneBackgroundBlue = 0.20f;
 constexpr float viewerPaneBackgroundAlpha = 1.0f;
 constexpr float popupBackgroundRed = 0.20f;
 constexpr float popupBackgroundGreen = 0.21f;
 constexpr float popupBackgroundBlue = 0.22f;
 constexpr float popupBackgroundAlpha = 1.0f;
-constexpr float appFontSize = 17.0f;
+constexpr float appFontSize = 18.0f;
 constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
 constexpr ImWchar appFontGlyphRanges[] = {
     0xf0c7,
@@ -632,21 +632,30 @@ void configureAppStyle()
     auto& style = ImGui::GetStyle();
     style.FrameRounding = 3.0f;
     style.FrameBorderSize = 1.0f;
-    style.FramePadding = ImVec2(8.0f, 5.0f);
-    style.ItemSpacing = ImVec2(8.0f, 6.0f);
+    style.WindowPadding = ImVec2(16.0f, 16.0f);
+    style.FramePadding = ImVec2(10.0f, 7.0f);
+    style.CellPadding = ImVec2(8.0f, 7.0f);
+    style.WindowRounding = 0.0f;
+    style.PopupRounding = 6.0f;
+    style.DisabledAlpha = 0.7f;
+    style.ItemSpacing = ImVec2(10.0f, 10.0f);
     style.Colors[ImGuiCol_Text] = ImVec4(.94f, .95f, .96f, 1);
     style.Colors[ImGuiCol_TextDisabled] = ImVec4(.65f, .67f, .70f, 1);
-    style.Colors[ImGuiCol_Button] = ImVec4(.28f, .29f, .31f, 1);
-    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(.36f, .38f, .40f, 1);
+    style.Colors[ImGuiCol_Button] = ImVec4(.19f, .23f, .28f, 1);
+    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(.26f, .32f, .40f, 1);
     style.Colors[ImGuiCol_ButtonActive] = ImVec4(.42f, .44f, .47f, 1);
-    style.Colors[ImGuiCol_Header] = ImVec4(.29f, .31f, .33f, 1);
-    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(.36f, .38f, .40f, 1);
+    style.Colors[ImGuiCol_Header] = ImVec4(.19f, .29f, .41f, 1);
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(.26f, .32f, .40f, 1);
     style.Colors[ImGuiCol_HeaderActive] = ImVec4(.42f, .44f, .47f, 1);
-    style.Colors[ImGuiCol_FrameBg] = ImVec4(.14f, .15f, .17f, 1);
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(.10f, .13f, .17f, 1);
     style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(.23f, .25f, .28f, 1);
     style.Colors[ImGuiCol_FrameBgActive] = ImVec4(.29f, .31f, .34f, 1);
-    style.Colors[ImGuiCol_CheckMark] = ImVec4(.40f, .78f, .92f, 1);
+    style.Colors[ImGuiCol_CheckMark] = ImVec4(.23f, .58f, .98f, 1);
     style.Colors[ImGuiCol_SliderGrab] = style.Colors[ImGuiCol_CheckMark];
+    style.Colors[ImGuiCol_TableHeaderBg] = ImVec4(.18f, .21f, .25f, 1);
+    style.Colors[ImGuiCol_Border] = ImVec4(.27f, .32f, .39f, 1);
+    style.Colors[ImGuiCol_Separator] = style.Colors[ImGuiCol_Border];
+    style.Colors[ImGuiCol_PopupBg] = ImVec4(.14f, .17f, .20f, 1);
 }
 
 std::filesystem::path uiPreferencePath()
@@ -665,7 +674,7 @@ void updateUiScale(SDL_Window* window, woby::UiState& state, const ImGuiStyle& b
     auto& style = ImGui::GetStyle();
     if (style.FontScaleMain == scale) { return; }
     const float ratio = scale / style.FontScaleMain;
-    woby::setViewerPaneWidth(state, state.viewerPaneWidth * ratio, 380.0f * scale, 10000.0f);
+    woby::setViewerPaneWidth(state, state.viewerPaneWidth * ratio, 320.0f * scale, 10000.0f);
     woby::setPropertiesPaneWidth(state, state.propertiesPaneWidth * ratio, 300.0f * scale, 10000.0f);
     style = woby::scaledUiStyle(baseStyle, scale);
 }
@@ -678,7 +687,7 @@ float renderModeButtonRowWidth()
 
 float minimumViewerPaneWidth()
 {
-    return uiSize(380.0f);
+    return uiSize(320.0f);
 }
 
 void drawViewerPaneToggleButton(woby::UiState& state)
@@ -752,7 +761,8 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
         woby::setPropertiesPaneWidth(state, ImGui::GetWindowSize().x, uiSize(300.0f), layout.maxRightWidth);
         drawPropertiesPaneToggleButton(state);
         ImGui::SameLine();
-        ImGui::TextUnformatted("Properties");
+        woby::drawPaneHeading(woby::selectedComparison(state) ? "Analysis"
+            : woby::selectedAnnotation(state) ? "Annotation" : "Model properties");
         ImGui::Separator();
         if (woby::selectedAnnotation(state)) {
             ImGui::BeginDisabled(!woby::scenePostLoadReady(state));
@@ -765,6 +775,35 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
         } else {
             woby::drawSceneInspector(state, inspector);
         }
+    }
+    ImGui::End();
+}
+
+void drawViewportTools(woby::UiState& state, const CanvasLayout& layout,
+    woby::SceneQueryRuntime& queries, const woby::ComparisonRuntimes& comparisons)
+{
+    const float available = layout.width - layout.leftWidth
+        - (state.propertiesPaneVisible ? layout.rightWidth : 0.0f);
+    const float offset = state.viewerPaneVisible ? uiSize(12) : uiSize(160);
+    if (available < offset + uiSize(260)) { return; }
+    ImGui::SetNextWindowPos({layout.leftWidth + offset, layout.top + uiSize(12)});
+    ImGui::SetNextWindowBgAlpha(0.95f);
+    if (ImGui::Begin("##ViewportTools", nullptr, ImGuiWindowFlags_NoDecoration
+            | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+            | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing)) {
+        ImGui::BeginDisabled(state.files.empty() && state.comparisons.empty());
+        if (ImGui::Button("Fit all")) { woby::fitCameraToScene(state); }
+        woby::setLastItemTooltip("Frame the scene (R)");
+        ImGui::SameLine();
+        woby::updateSceneSelectionQueries(queries, state, &comparisons);
+        ImGui::BeginDisabled(!queries.selection.bounds.has_value());
+        if (ImGui::Button("Fit selection")) { woby::fitCameraToSelection(state); }
+        ImGui::EndDisabled();
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        woby::drawInformationIcon("camera_help", "Inspect the scene",
+            "Click a model to select it. Use the mouse to orbit, pan, and zoom. "
+            "Open Display in the Scene pane for standard camera views and rendering controls.");
     }
     ImGui::End();
 }
@@ -783,7 +822,7 @@ void drawPaneToggles(woby::UiState& state, float windowWidth, float top)
         if (ImGui::Begin("##ShowViewerPane", nullptr, flags)) {
             drawViewerPaneToggleButton(state);
             ImGui::SameLine();
-            ImGui::TextUnformatted("Scene controls");
+            woby::drawPaneHeading("Scene");
         }
         ImGui::End();
     }
@@ -2304,6 +2343,7 @@ int main(int argc, char** argv)
         woby::AnnotationNameEdit annotationNameEdit;
         woby::ViewNameEdit viewNameEdit;
         woby::ScenePaneLayout scenePaneLayout;
+        scenePaneLayout.contentSized = true;
         std::vector<LoadedModelRuntime> runtimes;
         std::optional<std::filesystem::path> currentScenePath;
         woby::SceneDocument cleanSceneDocument = woby::createSceneDocument(ui);
@@ -3198,7 +3238,7 @@ int main(int argc, char** argv)
 
                         drawViewerPaneToggleButton(ui);
                         ImGui::SameLine();
-                        ImGui::TextUnformatted("Scene controls");
+                        woby::drawPaneHeading("Scene");
                         ImGui::SameLine();
                         ImGui::SetCursorPosX(ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x
                             - 2.0f * renderModeButtonSize() - ImGui::GetStyle().ItemSpacing.x);
@@ -3213,7 +3253,7 @@ int main(int argc, char** argv)
                         // Match SceneObjects' unpadded child so the header stays inside the content edges.
                         if (ImGui::BeginChild("DisplayHeader", {0, ImGui::GetFrameHeight()},
                                 ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-                            scenePaneOpen = ImGui::CollapsingHeader("Display");
+                            scenePaneOpen = woby::drawSectionHeader("Display");
                         }
                         ImGui::EndChild();
                     if (scenePaneOpen) {
@@ -3328,7 +3368,7 @@ int main(int argc, char** argv)
                     if (ImGui::BeginChild("SceneObjects", {0, contentHeight})) {
                         woby::beginScenePaneLayout(scenePaneLayout);
                         woby::synchronizeSceneNameEdit(ui, modelNameEdit);
-                        const std::string filesPaneTitle = "Models (" + std::to_string(files.size()) + " files)##Files";
+                        const std::string filesPaneTitle = "Models  " + std::to_string(files.size()) + "##Files";
                         if (!canvasSelectionPath.empty() && !woby::sceneObjectSelected(ui, canvasSelectionPath.back())) { canvasSelectionPath.clear(); }
                         bool modelsOpen = scenePaneLayout.open[static_cast<size_t>(woby::ScenePaneSection::models)];
                         if (ImGui::BeginTable("models_header", 2, ImGuiTableFlags_SizingStretchProp)) {
@@ -3344,7 +3384,7 @@ int main(int argc, char** argv)
                             }
                             ImGui::TableNextColumn();
                             if (!canvasSelectionPath.empty() || modelNameEdit.focus) { ImGui::SetNextItemOpen(true); }
-                            modelsOpen = ImGui::CollapsingHeader(filesPaneTitle.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                            modelsOpen = woby::drawSectionHeader(filesPaneTitle.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
                             ImGui::EndTable();
                         }
                         if (woby::beginScenePaneSection(scenePaneLayout, woby::ScenePaneSection::models, modelsOpen)) {
@@ -3438,6 +3478,7 @@ int main(int argc, char** argv)
                 }
                 woby::synchronizeSceneNameEdit(ui, modelNameEdit, !ui.viewerPaneVisible);
                 drawPropertiesPane(ui, comparison, panelLayout, inspector);
+                drawViewportTools(ui, panelLayout, renderScratch.queries, comparison);
                 if (requestSettings) {
                     woby::startFileAssociationAction(fileAssociations, {woby::FileAssociationAction::refresh});
                 }

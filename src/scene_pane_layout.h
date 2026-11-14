@@ -12,6 +12,7 @@ using ScenePaneOpen = std::array<bool, scenePaneSectionCount>;
 
 // Window layout belongs to the UI adapter, not to the saved scene.
 struct ScenePaneLayout {
+    bool contentSized = false;
     ScenePaneOpen open{true, true, false, true};
     ScenePaneHeights weights{1, 1, 1, 1};
     ScenePaneHeights heights{};

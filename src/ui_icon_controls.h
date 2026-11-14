@@ -14,6 +14,10 @@ inline constexpr const char* verticesIcon = "\xef\x86\x92";
 float uiSize(float value);
 float renderModeButtonSize();
 float informationIconSize();
+bool drawSectionHeader(const char* label, int flags = 0);
+void drawPaneHeading(const char* text);
+// Standard labelled switch. Mixed values become enabled on the first click.
+bool drawToggleField(const char* label, bool& value, bool mixed = false);
 // Call immediately after a control; disabled controls still explain their action.
 void setLastItemTooltip(const char* text);
 // Draw last in a row; reserve its size plus ItemSpacing.x beside stretch controls.

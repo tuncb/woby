@@ -1,0 +1,353 @@
+{
+  "purpose": "Woby UI picture-design hill climb. No application code changes.",
+  "method": "Fresh independent agents viewed each image set. Eight equal-weight categories per agent. Aggregate equal-weight mean over all 24 scores.",
+  "target": 8.5,
+  "selectedRound": 5,
+  "selectedMean": 8.533333333333333,
+  "individualThresholdMet": false,
+  "rounds": [
+    {
+      "round": 0,
+      "agents": [
+        {
+          "model": "gpt-6.1-terra",
+          "scores": {
+            "Typography": 4,
+            "Hierarchy": 5,
+            "Spacing and density": 4,
+            "Color and contrast": 5,
+            "Iconography": 4,
+            "Consistency and polish": 5,
+            "Clarity": 4,
+            "Overall": 4.5
+          },
+          "mean": 4.4375
+        },
+        {
+          "model": "gpt-6.1-sol",
+          "scores": {
+            "Typography": 4,
+            "Hierarchy": 4,
+            "Spacing and density": 4,
+            "Color and contrast": 5,
+            "Iconography": 4,
+            "Consistency and polish": 4,
+            "Clarity": 4,
+            "Overall": 4
+          },
+          "mean": 4.125
+        },
+        {
+          "model": "gpt-6-astra",
+          "scores": {
+            "Typography": 4,
+            "Hierarchy": 4,
+            "Spacing and density": 3.5,
+            "Color and contrast": 5,
+            "Iconography": 4.5,
+            "Consistency and polish": 4,
+            "Clarity": 4,
+            "Overall": 4
+          },
+          "mean": 4.125
+        }
+      ],
+      "mean": 4.229166666666667
+    },
+    {
+      "round": 1,
+      "agents": [
+        {
+          "model": "gpt-6.1-terra",
+          "scores": {
+            "Typography": 7.5,
+            "Hierarchy": 7.5,
+            "Spacing and density": 6.5,
+            "Color and contrast": 8,
+            "Iconography": 7,
+            "Consistency and polish": 7.5,
+            "Clarity": 7,
+            "Overall": 7.3
+          },
+          "mean": 7.2875
+        },
+        {
+          "model": "gpt-6.1-sol",
+          "scores": {
+            "Typography": 7.5,
+            "Hierarchy": 7.5,
+            "Spacing and density": 6.5,
+            "Color and contrast": 8,
+            "Iconography": 7.5,
+            "Consistency and polish": 7.5,
+            "Clarity": 7,
+            "Overall": 7.5
+          },
+          "mean": 7.375
+        },
+        {
+          "model": "gpt-6-astra",
+          "scores": {
+            "Typography": 7.5,
+            "Hierarchy": 7.8,
+            "Spacing and density": 6.5,
+            "Color and contrast": 8,
+            "Iconography": 7.2,
+            "Consistency and polish": 7.3,
+            "Clarity": 7,
+            "Overall": 7.3
+          },
+          "mean": 7.324999999999999
+        }
+      ],
+      "mean": 7.329166666666667
+    },
+    {
+      "round": 2,
+      "agents": [
+        {
+          "model": "gpt-6.1-terra",
+          "scores": {
+            "Typography": 8,
+            "Hierarchy": 8,
+            "Spacing and density": 7,
+            "Color and contrast": 8,
+            "Iconography": 7,
+            "Consistency and polish": 8,
+            "Clarity": 7,
+            "Overall": 8
+          },
+          "mean": 7.625
+        },
+        {
+          "model": "gpt-6.1-sol",
+          "scores": {
+            "Typography": 8.5,
+            "Hierarchy": 8.4,
+            "Spacing and density": 8,
+            "Color and contrast": 8.6,
+            "Iconography": 8.3,
+            "Consistency and polish": 8.4,
+            "Clarity": 7.9,
+            "Overall": 8.3
+          },
+          "mean": 8.299999999999999
+        },
+        {
+          "model": "gpt-6-astra",
+          "scores": {
+            "Typography": 8.5,
+            "Hierarchy": 8.4,
+            "Spacing and density": 7.8,
+            "Color and contrast": 8.6,
+            "Iconography": 8.2,
+            "Consistency and polish": 8.3,
+            "Clarity": 7.8,
+            "Overall": 8.3
+          },
+          "mean": 8.237499999999999
+        }
+      ],
+      "mean": 8.054166666666669
+    },
+    {
+      "round": 3,
+      "agents": [
+        {
+          "model": "gpt-6.1-terra",
+          "scores": {
+            "Typography": 8,
+            "Hierarchy": 8,
+            "Spacing and density": 7.5,
+            "Color and contrast": 8,
+            "Iconography": 8,
+            "Consistency and polish": 7.5,
+            "Clarity": 7.5,
+            "Overall": 8
+          },
+          "mean": 7.8125
+        },
+        {
+          "model": "gpt-6.1-sol",
+          "scores": {
+            "Typography": 8.5,
+            "Hierarchy": 8.7,
+            "Spacing and density": 8.3,
+            "Color and contrast": 8.8,
+            "Iconography": 8.5,
+            "Consistency and polish": 8.5,
+            "Clarity": 8.6,
+            "Overall": 8.6
+          },
+          "mean": 8.5625
+        },
+        {
+          "model": "gpt-6-astra",
+          "scores": {
+            "Typography": 8.5,
+            "Hierarchy": 8.4,
+            "Spacing and density": 8.2,
+            "Color and contrast": 8.7,
+            "Iconography": 8.8,
+            "Consistency and polish": 8.3,
+            "Clarity": 8.2,
+            "Overall": 8.4
+          },
+          "mean": 8.4375
+        }
+      ],
+      "mean": 8.270833333333334
+    },
+    {
+      "round": 4,
+      "agents": [
+        {
+          "model": "gpt-6.1-terra",
+          "scores": {
+            "Typography": 8,
+            "Hierarchy": 8,
+            "Spacing and density": 7.5,
+            "Color and contrast": 8,
+            "Iconography": 8,
+            "Consistency and polish": 7.5,
+            "Clarity": 8,
+            "Overall": 7.8
+          },
+          "mean": 7.85
+        },
+        {
+          "model": "gpt-6.1-sol",
+          "scores": {
+            "Typography": 8.3,
+            "Hierarchy": 8.5,
+            "Spacing and density": 8.1,
+            "Color and contrast": 8.7,
+            "Iconography": 8.4,
+            "Consistency and polish": 8.2,
+            "Clarity": 8.5,
+            "Overall": 8.4
+          },
+          "mean": 8.3875
+        },
+        {
+          "model": "gpt-6-astra",
+          "scores": {
+            "Typography": 8.7,
+            "Hierarchy": 8.8,
+            "Spacing and density": 8.2,
+            "Color and contrast": 9,
+            "Iconography": 8.6,
+            "Consistency and polish": 8.5,
+            "Clarity": 8.5,
+            "Overall": 8.6
+          },
+          "mean": 8.6125
+        }
+      ],
+      "mean": 8.283333333333333
+    },
+    {
+      "round": 5,
+      "agents": [
+        {
+          "model": "gpt-6.1-terra",
+          "scores": {
+            "Typography": 8.5,
+            "Hierarchy": 8.5,
+            "Spacing and density": 8,
+            "Color and contrast": 8.5,
+            "Iconography": 8,
+            "Consistency and polish": 8,
+            "Clarity": 8,
+            "Overall": 8.2
+          },
+          "mean": 8.2125
+        },
+        {
+          "model": "gpt-6.1-sol",
+          "scores": {
+            "Typography": 8.6,
+            "Hierarchy": 8.8,
+            "Spacing and density": 8.5,
+            "Color and contrast": 8.8,
+            "Iconography": 8.6,
+            "Consistency and polish": 8.5,
+            "Clarity": 8.6,
+            "Overall": 8.7
+          },
+          "mean": 8.637500000000001
+        },
+        {
+          "model": "gpt-6-astra",
+          "scores": {
+            "Typography": 8.8,
+            "Hierarchy": 9,
+            "Spacing and density": 8.5,
+            "Color and contrast": 9,
+            "Iconography": 8.8,
+            "Consistency and polish": 8.5,
+            "Clarity": 8.6,
+            "Overall": 8.8
+          },
+          "mean": 8.75
+        }
+      ],
+      "mean": 8.533333333333333
+    },
+    {
+      "round": 6,
+      "agents": [
+        {
+          "model": "gpt-6.1-terra",
+          "scores": {
+            "Typography": 8.5,
+            "Hierarchy": 8.5,
+            "Spacing and density": 8,
+            "Color and contrast": 8.5,
+            "Iconography": 8,
+            "Consistency and polish": 8,
+            "Clarity": 8,
+            "Overall": 8.2
+          },
+          "mean": 8.2125
+        },
+        {
+          "model": "gpt-6.1-sol",
+          "scores": {
+            "Typography": 8.5,
+            "Hierarchy": 8.7,
+            "Spacing and density": 8.3,
+            "Color and contrast": 8.8,
+            "Iconography": 8.6,
+            "Consistency and polish": 8.4,
+            "Clarity": 8.6,
+            "Overall": 8.6
+          },
+          "mean": 8.5625
+        },
+        {
+          "model": "gpt-6-astra",
+          "scores": {
+            "Typography": 8.7,
+            "Hierarchy": 8.6,
+            "Spacing and density": 8.2,
+            "Color and contrast": 9,
+            "Iconography": 8.7,
+            "Consistency and polish": 8.5,
+            "Clarity": 8.4,
+            "Overall": 8.6
+          },
+          "mean": 8.5875
+        }
+      ],
+      "mean": 8.454166666666664
+    }
+  ],
+  "limitations": [
+    "Subjective image-based assessment; no interaction or implementation validation.",
+    "Final mockups use a simplified illustrative mesh and proposal controls. Measurement semantics and recovery operations need validation before implementation.",
+    "Round 6 regressed; round 5 retained. Terra individual mean remains below 8.5."
+  ],
+  "generation": "Built-in image_gen",
+  "prompts": "prompt-round-1.txt and prompts-round-2.json through prompts-round-6.json"
+}

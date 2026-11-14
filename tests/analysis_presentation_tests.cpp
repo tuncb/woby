@@ -10,6 +10,19 @@
 #include <fstream>
 #include <random>
 
+TEST_CASE("attention list retains incomplete and unavailable checks even without findings")
+{
+    using namespace woby;
+    CHECK_FALSE(diagnosticNeedsAttention({AnalysisResultState::ready, 0}));
+    CHECK(diagnosticNeedsAttention({AnalysisResultState::ready, 1}));
+    for (const auto phase : {AnalysisResultState::notRun, AnalysisResultState::queued,
+            AnalysisResultState::running, AnalysisResultState::outdated, AnalysisResultState::canceled,
+            AnalysisResultState::failed, AnalysisResultState::partial, AnalysisResultState::unavailable}) {
+        CHECK(diagnosticNeedsAttention({phase, 0}));
+        CHECK(diagnosticNeedsAttention({phase, 2}));
+    }
+}
+
 namespace {
 using namespace woby;
 struct AnalysisFixture {
@@ -459,4 +472,23 @@ TEST_CASE("difference analysis deletion undo and redo preserve the independent a
     commitSceneHistoryStep(history, f.state, std::move(*redo), true);
     CHECK_FALSE(findComparison(f.state, difference));
     CHECK(findComparison(f.state, surface));
+}
+
+TEST_CASE("combined check summaries retain findings and incomplete coverage from either input")
+{
+    using S = woby::AnalysisResultState;
+    const auto clean = woby::combineDiagnosticSummaries({S::ready, 0}, {S::ready, 0});
+    CHECK_FALSE(woby::diagnosticNeedsAttention(clean));
+    const auto findings = woby::combineDiagnosticSummaries({S::ready, 2}, {S::ready, 3});
+    CHECK(findings.count == 5);
+    CHECK(findings.state == S::ready);
+    CHECK(woby::diagnosticNeedsAttention(findings));
+    for (bool reverse : {false, true}) {
+        const woby::DiagnosticSummary a{S::ready, 0}, b{S::unavailable, 0};
+        const auto partial = reverse ? woby::combineDiagnosticSummaries(b, a) : woby::combineDiagnosticSummaries(a, b);
+        CHECK(partial.state == S::partial);
+        CHECK(woby::diagnosticNeedsAttention(partial));
+    }
+    CHECK(woby::combineDiagnosticSummaries({S::unavailable, 0}, {S::unavailable, 0}).state == S::unavailable);
+    CHECK(woby::combineDiagnosticSummaries({S::ready, 0}, {S::failed, 0}).state == S::failed);
 }

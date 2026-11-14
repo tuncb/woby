@@ -122,7 +122,7 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit, ScenePaneLa
             setAllAnnotationsVisible(state, visible != state.annotations.size());
         }
         ImGui::TableNextColumn();
-        open = ImGui::CollapsingHeader("Annotations", state.annotations.empty() ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_DefaultOpen);
+        open = woby::drawSectionHeader("Annotations", state.annotations.empty() ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::EndTable();
     }
     if (layout) {

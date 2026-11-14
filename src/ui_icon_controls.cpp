@@ -14,7 +14,50 @@ constexpr const char* hiddenIcon = "\xef\x81\xb0";
 constexpr const char* mixedStateIcon = "\xef\x81\xa8";
 
 float uiSize(float value) { return value * ImGui::GetStyle().FontScaleMain; }
-float renderModeButtonSize() { return uiSize(28.0f); }
+float renderModeButtonSize() { return uiSize(32.0f); }
+
+bool drawSectionHeader(const char* label, int flags)
+{
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0, 0, 0, 0));
+    const bool open = ImGui::CollapsingHeader(label, flags);
+    ImGui::PopStyleColor();
+    return open;
+}
+
+void drawPaneHeading(const char* text)
+{
+    ImGui::PushFont(nullptr, ImGui::GetFontSize() * 1.25f);
+    ImGui::TextUnformatted(text);
+    ImGui::PopFont();
+}
+
+bool drawToggleField(const char* label, bool& value, bool mixed)
+{
+    ImGui::PushID(label);
+    const float height = ImGui::GetFrameHeight();
+    const float width = uiSize(42);
+    const auto start = ImGui::GetCursorScreenPos();
+    const float available = ImGui::GetContentRegionAvail().x;
+    const float labelWidth = std::max(1.0f, available - width - uiSize(16));
+    const float labelHeight = ImGui::CalcTextSize(label, nullptr, false, labelWidth).y;
+    const float rowHeight = std::max(height, labelHeight);
+    const bool changed = ImGui::InvisibleButton("toggle", {std::max(1.0f, available), rowHeight}, ImGuiButtonFlags_EnableNav);
+    if (changed) { value = mixed || !value; }
+    auto* draw = ImGui::GetWindowDrawList();
+    draw->AddText(nullptr, 0, {start.x, start.y + (rowHeight - labelHeight) * .5f},
+        ImGui::GetColorU32(ImGuiCol_Text), label, nullptr, labelWidth);
+    if (ImGui::GetCurrentContext()->LogEnabled) { ImGui::LogRenderedText(&start, label); }
+    const ImVec2 low(start.x + available - width, start.y + (rowHeight - uiSize(22)) * .5f);
+    const ImVec2 high(low.x + width, low.y + uiSize(22));
+    draw->AddRectFilled(low, high, ImGui::GetColorU32(value || mixed ? ImGuiCol_CheckMark : ImGuiCol_FrameBg), uiSize(11));
+    draw->AddRect(low, high, ImGui::GetColorU32(ImGuiCol_Border), uiSize(11));
+    const float x = mixed ? low.x + width * .5f : value ? high.x - uiSize(11) : low.x + uiSize(11);
+    draw->AddCircleFilled({x, low.y + uiSize(11)}, uiSize(8), ImGui::GetColorU32(ImGuiCol_Text));
+    ImGui::RenderNavCursor({start, {start.x + available, start.y + rowHeight}}, ImGui::GetItemID());
+    if (mixed) { setLastItemTooltip("Mixed values. Click to enable for all selected objects."); }
+    ImGui::PopID();
+    return changed;
+}
 
 void setLastItemTooltip(const char* text)
 {
@@ -242,7 +285,7 @@ bool drawInformationHeader(const char* label, const char* title, const char* tex
             informationIconSize() + ImGui::GetStyle().ItemSpacing.x);
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
-        open = ImGui::CollapsingHeader(label, defaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
+        open = drawSectionHeader(label, defaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
         const float headerHeight = ImGui::GetItemRectSize().y;
         ImGui::TableNextColumn();
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + std::max(0.0f, (headerHeight - informationIconSize()) * 0.5f));
@@ -427,7 +470,7 @@ void drawSceneItemOutline()
     low.x = std::max(low.x, clipLow.x + 1.0f);
     high.x = std::min(high.x, clipHigh.x - 1.0f);
     if (high.x > low.x) {
-        draw->AddRect(low, high, ImGui::GetColorU32(ImGuiCol_Text), 2.0f);
+        draw->AddRectFilled(low, {low.x + uiSize(3), high.y}, ImGui::GetColorU32(ImGuiCol_CheckMark), 2.0f);
     }
 }
 

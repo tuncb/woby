@@ -99,7 +99,7 @@ TEST_CASE("inspector axis inputs align across columns at different pane widths a
                     for (size_t i = 0; i + 3 < corners.size(); i += 4) {
                         const ImRect field(corners[i], corners[i + 2]);
                         // Checkboxes also use FrameBg; only wide numeric fields
-                        // participate in the three-column alignment assertion.
+                        // participate in the two-column alignment assertion.
                         if (field.GetWidth() > field.GetHeight()) { fields.push_back(field); }
                     }
                 }
@@ -107,20 +107,20 @@ TEST_CASE("inspector axis inputs align across columns at different pane widths a
                 ImGui::EndFrame();
                 if (frame == 0) { continue; }
                 // Ignore single controls such as the analysis-mode combo. The
-                // transform inputs have three fields on each row.
+                // transform inputs have two fields on each of three axis rows.
                 const auto allFields = fields;
                 std::erase_if(fields, [&](const auto& field) {
                     return std::count_if(allFields.begin(), allFields.end(), [&](const auto& other) {
                         return other.Min.y == field.Min.y;
-                    }) != 3;
+                    }) != 2;
                 });
                 REQUIRE(fields.size() >= 6);
                 std::sort(fields.begin(), fields.end(), [](const auto& a, const auto& b) {
                     return a.Min.y != b.Min.y ? a.Min.y < b.Min.y : a.Min.x < b.Min.x;
                 });
-                for (size_t row = 0; row < 2; ++row) {
-                    const auto first = row * 3;
-                    for (size_t axis = 1; axis < 3; ++axis) {
+                for (size_t row = 0; row < 3; ++row) {
+                    const auto first = row * 2;
+                    for (size_t axis = 1; axis < 2; ++axis) {
                         const auto next = first + axis;
                         CHECK(fields[next].Min.y == doctest::Approx(fields[first].Min.y));
                         CHECK(fields[next].Max.y == doctest::Approx(fields[first].Max.y));
@@ -1387,7 +1387,7 @@ TEST_CASE("reset icons fit an input row and activate only their own enabled cont
     }
 }
 
-TEST_CASE("selected tree row outlines end inside the reserved delete column clip")
+TEST_CASE("selected tree rows use a narrow leading accent inside the clip")
 {
     KeyboardFixture fixture;
     ImGui::NewFrame();
@@ -1409,7 +1409,8 @@ TEST_CASE("selected tree row outlines end inside the reserved delete column clip
         CHECK(x <= clipHigh.x + 0.001f);
         rightmost = std::max(rightmost, x);
     }
-    CHECK(rightmost > clipHigh.x - 2.0f);
+    CHECK(rightmost <= ImGui::GetItemRectMin().x + woby::uiSize(4));
+    CHECK(rightmost > ImGui::GetItemRectMin().x);
     if (open) { ImGui::TreePop(); }
     ImGui::PopClipRect();
     ImGui::End();

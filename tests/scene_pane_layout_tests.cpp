@@ -27,6 +27,7 @@ struct ScenePaneFixture {
     std::array<ImGuiWindow*, scenePaneSectionCount> bodies{};
     ImGuiWindow* pane = nullptr;
     float windowHeight = 900;
+    int modelCount = 80;
 
     explicit ScenePaneFixture(float scale = 1)
     {
@@ -82,7 +83,7 @@ struct ScenePaneFixture {
             ImGui::EndTable();
         }
         if (beginScenePaneSection(layout, ScenePaneSection::models, modelsOpen)) {
-            for (int i = 0; i < 80; ++i) { ImGui::Text("Model %d", i); }
+            for (int i = 0; i < modelCount; ++i) { ImGui::Text("Model %d", i); }
         }
         endScenePaneSection(layout, ScenePaneSection::models);
         record(0, "models_header");
@@ -256,4 +257,59 @@ TEST_CASE("scene pane lists scroll independently while headers remain visible")
     CHECK(f.bodies[3]->Scroll.y == viewsScroll);
     CHECK(f.pane->Scroll.y == 0);
     for (size_t i = 0; i < 4; ++i) { CHECK(f.headers[i].y == headers[i].y); }
+}
+
+TEST_CASE("content sized scene sections remove empty space and scroll the containing pane")
+{
+    ScenePaneFixture f;
+    f.layout.contentSized = true;
+    f.modelCount = 1;
+    for (int i = 0; i < 8; ++i) { f.frame(); }
+    REQUIRE(f.bodies[0]);
+    CHECK(f.bodies[0]->Size.y < 80);
+    CHECK(f.bodies[0]->ScrollMax.y == 0);
+    f.modelCount = 80;
+    for (int i = 0; i < 8; ++i) { f.frame(); }
+    CHECK(f.pane->ScrollMax.y > 0);
+    CHECK(f.bodies[0]->ScrollMax.y == 0);
+}
+
+TEST_CASE("labelled switches toggle mixed values and respect disabled state")
+{
+    ScenePaneFixture f;
+    bool value = false, disabled = false, mixed = true;
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    ImVec2 position;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({20, 20});
+        ImGui::SetNextWindowSize({400, 160});
+        ImGui::Begin("Switch");
+        ImGui::BeginDisabled(disabled);
+        if (drawToggleField("Faces", value, mixed)) { mixed = false; }
+        const auto low = ImGui::GetItemRectMin();
+        const auto high = ImGui::GetItemRectMax();
+        position = {(low.x + high.x) * .5f, (low.y + high.y) * .5f};
+        ImGui::EndDisabled();
+        ImGui::End(); ImGui::EndFrame();
+    };
+    const auto click = [&] {
+        auto& io = ImGui::GetIO();
+        io.AddMousePosEvent(position.x, position.y); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame(); frame();
+    };
+    frame(); frame();
+    click(); CHECK(value); CHECK_FALSE(mixed);
+    click(); CHECK_FALSE(value);
+    disabled = true;
+    frame(); click(); CHECK_FALSE(value);
+    disabled = false;
+    frame(); frame();
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Tab, true); frame();
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Tab, false); frame(); frame();
+    REQUIRE(f.context->NavIdIsAlive);
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Space, true); frame();
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Space, false); frame(); frame();
+    CHECK(value);
 }

@@ -117,7 +117,7 @@ struct ComparisonNameFixture {
 };
 } // namespace
 
-TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
+TEST_CASE("analysis rows show check status and reveal source metadata in the hover hint")
 {
     ComparisonNameFixture f;
     woby::Mesh mesh;
@@ -164,8 +164,8 @@ TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
         ImGui::NewFrame(); ImGui::SetNextWindowPos({20, 20}); ImGui::SetNextWindowSize({500, 400});
         ImGui::Begin("Compact analysis rows"); ImGui::LogToBuffer(0);
         woby::drawComparisonObjects(f.state, f.edit, runtimes);
-        const auto minimum = ImGui::GetItemRectMin();
-        row = {ImGui::GetWindowPos().x + 100, minimum.y + woby::renderModeButtonSize() * .5f};
+        const auto* header = ImGui::TableFindByID(ImGui::GetID("analysis_header"));
+        row = {ImGui::GetWindowPos().x + 100, header->OuterRect.Max.y + ImGui::GetStyle().ItemSpacing.y + woby::renderModeButtonSize() * .5f};
         endY = ImGui::GetCursorPosY();
         contents = f.context->LogBuffer.c_str(); ImGui::LogFinish(); ImGui::End(); ImGui::EndFrame();
     };
@@ -175,7 +175,7 @@ TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
     CHECK(contents.find("Inspection one") != std::string::npos);
     CHECK(contents.find(expectedTask) == std::string::npos);
     CHECK(contents.find("Sources:") == std::string::npos);
-    CHECK(contents.find("checks with findings") == std::string::npos);
+    CHECK((contents.find(" with findings") != std::string::npos) == (woby::comparisonTask(f.state, f.id) == woby::AnalysisTask::meshChecks));
     const auto before = woby::createSceneDocument(f.state);
     const auto revision = f.state.sceneEditRevision;
     ImGui::GetIO().AddMousePosEvent(row.x, row.y);
@@ -195,6 +195,9 @@ TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
     ImGui::GetIO().AddMousePosEvent(-1000, -1000);
     const auto second = woby::createComparison(f.state);
     woby::renameComparison(f.state, second, "Inspection two");
+    runtime.inspector.queries.geometryRevision = f.state.revisions.geometry;
+    runtime.inspector.queries.analysisRevision = f.state.revisions.analysis;
+    runtime.inspector.queries.labelsRevision = f.state.revisions.labels;
     frame(); frame();
     CHECK(contents.find("Inspection two") != std::string::npos);
     CHECK(contents.find("Sources:") == std::string::npos);
@@ -510,7 +513,7 @@ TEST_CASE("analysis inspectors keep measurements separate from diagnostic findin
         ImGui::EndFrame();
     }
     INFO(contents);
-    CHECK((contents.find("Diagnostics") != std::string::npos) == (task == woby::AnalysisTask::meshChecks));
+    CHECK((contents.find("Check status") != std::string::npos) == (task == woby::AnalysisTask::meshChecks));
     CHECK((contents.find("Size limits") != std::string::npos) == (task == woby::AnalysisTask::meshQuality));
     CHECK((contents.find("Mean distance") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));
     CHECK((contents.find("Group A") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));
@@ -568,7 +571,7 @@ TEST_CASE("analysis UV inspector shows all findings and only relevant normalizat
     CHECK(contents.find("Missing UV triangles") != std::string::npos);
     CHECK(contents.find("125 | Missing UVs") != std::string::npos);
     CHECK(contents.find("Full result") != std::string::npos);
-    CHECK(contents.find("Diagnostics") == std::string::npos);
+    CHECK(contents.find("Check status") == std::string::npos);
     CHECK((contents.find("Area / stretch scale") != std::string::npos)
         == (settings.uvMetric == woby::UvQualityMetric::area || settings.uvMetric == woby::UvQualityMetric::minStretch));
     CHECK(woby::createSceneDocument(f.state) == before);
@@ -667,7 +670,7 @@ TEST_CASE("analysis properties distinguish queued calculating failed and inactiv
     for (const auto* label : {"Queued...", "Calculating analysis...", "Analysis failed"}) {
         CHECK((contents.find(label) != std::string::npos) == (std::string(status) == label));
     }
-    CHECK((contents.find("Diagnostics") != std::string::npos)
+    CHECK((contents.find("Check status") != std::string::npos)
         == (woby::comparisonSettings(f.state, f.id).mode != woby::ComparisonMode::surfaceQuality));
     CHECK(contents.find("Updating...") == std::string::npos);
     CHECK((contents.find("Retry") != std::string::npos) == (std::string(status) == "Analysis failed"));
@@ -1327,6 +1330,9 @@ TEST_CASE("diagnostics show all checks including zero counts and pending results
         ImGui::SetNextWindowSize({900, 1700});
         ImGui::Begin("All diagnostic checks");
         ImGui::LogToBuffer();
+        for (auto* child : f.context->Windows) {
+            child->StateStorage.SetBool(child->GetID("All check controls"), true);
+        }
         woby::drawComparisonPanelContents(f.state, runtimes);
         contents = f.context->LogBuffer.c_str();
         ImGui::LogFinish();
@@ -1387,6 +1393,9 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
         ImGui::SetNextWindowSize(ImVec2(900, 1400));
         ImGui::Begin("Diagnostic controls");
         ImGui::LogToBuffer();
+        for (auto* child : f.context->Windows) {
+            child->StateStorage.SetBool(child->GetID("All check controls"), true);
+        }
         woby::drawComparisonPanelContents(f.state, runtimes);
         contents = f.context->LogBuffer.c_str();
         ImGui::LogFinish();
@@ -1451,7 +1460,7 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
         CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{f.id});
         return;
     }
-    const auto diagnosticsHeading = contents.find("Diagnostics");
+    const auto diagnosticsHeading = contents.find("Check status");
     REQUIRE(diagnosticsHeading != std::string::npos);
     const auto headingRow = contents.substr(diagnosticsHeading,
         contents.find('\n', diagnosticsHeading) - diagnosticsHeading);
@@ -1524,10 +1533,10 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
         REQUIRE_FALSE(f.context->OpenPopupStack.empty());
         const auto* settingsPopup = f.context->OpenPopupStack.back().Window;
         REQUIRE(settingsPopup);
-        CHECK(contents.find("Automatic updates") != std::string::npos);
+        CHECK(contents.find("Auto update") != std::string::npos);
         const auto start = settingsPopup->DC.CursorStartPos;
         const ImVec2 automatic(start.x + ImGui::GetFrameHeight() * .5f,
-            start.y + ImGui::GetTextLineHeightWithSpacing() + 1 + ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeight() * .5f);
+            start.y + ImGui::GetTextLineHeight() * 3.25f + ImGui::GetStyle().ItemSpacing.y * 4 + ImGui::GetFrameHeight() * .5f);
         click(automatic);
         auto expected = before;
         woby::setDiagnosticAutoUpdate(expected, rowCategories[row], !woby::diagnosticAutoUpdate(before, rowCategories[row]));
@@ -1601,7 +1610,7 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
     CHECK(popup->Pos.y > openingGear.y);
     CHECK(popup->Pos.y < openingGear.y + woby::renderModeButtonSize());
     CHECK(popup->Pos.x + popup->Size.x == doctest::Approx(openingGear.x + woby::renderModeButtonSize() * 0.5f).epsilon(0.002));
-    CHECK(popup->Size.x == doctest::Approx(woby::uiSize(360)));
+    CHECK(popup->Size.x == doctest::Approx(woby::uiSize(500)));
     CHECK(popup->Pos.y + popup->Size.y < io.DisplaySize.y);
     CHECK(contents.find(finSettings ? "Maximum area ratio" : "Maximum size ratio") != std::string::npos);
     CHECK(f.state.sceneEditRevision == revision);
@@ -1651,11 +1660,14 @@ TEST_CASE("diagnostics keep readable labels and reachable controls as properties
     ImGuiTable* diagnostics = nullptr;
     float paneWidth = 900.0f;
     const auto frame = [&] {
-        ImGui::GetIO().DisplaySize = {1200 * scale, 1600 * scale};
+        ImGui::GetIO().DisplaySize = {1200 * scale, 3200 * scale};
         ImGui::NewFrame();
         ImGui::SetNextWindowPos({20, 20});
-        ImGui::SetNextWindowSize({paneWidth * scale, 1500 * scale});
+        ImGui::SetNextWindowSize({paneWidth * scale, 3100 * scale});
         ImGui::Begin("Responsive diagnostic properties");
+        for (auto* child : f.context->Windows) {
+            child->StateStorage.SetBool(child->GetID("All check controls"), true);
+        }
         woby::drawComparisonPanelContents(f.state, runtimes);
         for (auto* window : f.context->Windows) {
             if (auto* table = ImGui::TableFindByID(window->GetID("Analysis diagnostics"))) {
@@ -1748,12 +1760,15 @@ TEST_CASE("diagnostic settings popup edits only its analysis and persists withou
     ImVec2 gear;
     std::string contents;
     const auto frame = [&] {
-        ImGui::GetIO().DisplaySize = ImVec2(900, 1000);
+        ImGui::GetIO().DisplaySize = ImVec2(900, 3000);
         ImGui::NewFrame();
         ImGui::SetNextWindowPos(ImVec2(20, 20));
-        ImGui::SetNextWindowSize(ImVec2(650, 900));
+        ImGui::SetNextWindowSize(ImVec2(650, 2900));
         ImGui::Begin("Diagnostic properties");
         ImGui::LogToBuffer();
+        for (auto* child : f.context->Windows) {
+            child->StateStorage.SetBool(child->GetID("All check controls"), true);
+        }
         woby::drawComparisonPanelContents(f.state, runtimes);
         contents = f.context->LogBuffer.c_str();
         ImGui::LogFinish();
@@ -1780,7 +1795,7 @@ TEST_CASE("diagnostic settings popup edits only its analysis and persists withou
         ImGui::GetIO().AddKeyEvent(value, true); frame();
         ImGui::GetIO().AddKeyEvent(value, false); frame(); frame();
     };
-    frame(); frame();
+    for (int warmup = 0; warmup < 5; ++warmup) { frame(); }
     CHECK(contents.find("Needle edge ratio") == std::string::npos);
     CHECK(contents.find("Cap angle (degrees)") == std::string::npos);
     REQUIRE(gear.x > 0);
@@ -1805,7 +1820,7 @@ TEST_CASE("diagnostic settings popup edits only its analysis and persists withou
     CHECK(woby::comparisonSettings(f.state, f.id).degenerates.needleThresholdRatio == 2500);
     // Switching analyses must never reuse the first analysis's open parameter frame.
     woby::selectSceneObject(f.state, other);
-    frame(); frame();
+    for (int warmup = 0; warmup < 5; ++warmup) { frame(); }
     CHECK(contents.find("Needle edge ratio") == std::string::npos);
     CHECK(woby::comparisonSettings(f.state, other) == originalOther);
     struct SavedFixture {
@@ -1935,4 +1950,82 @@ TEST_CASE("difference analysis inspector shows inputs placement and build contro
     }
     CHECK(woby::createSceneDocument(f.state) == before);
     CHECK_FALSE(woby::comparisonSettings(f.state, id).difference.created);
+}
+
+TEST_CASE("detector settings page is local to the selected analysis and does not edit the scene on entry")
+{
+    ComparisonNameFixture f;
+    const auto other = woby::createComparison(f.state);
+    woby::setAnalysisTask(f.state, f.id, woby::AnalysisTask::meshChecks);
+    woby::selectSceneObject(f.state, f.id);
+    woby::ComparisonRuntimes runtimes;
+    runtimes.objects[f.id].inspector.settingsPage = woby::DiagnosticCategory::thinRegions;
+    const auto settings = woby::comparisonSettings(f.state, f.id);
+    const auto revision = f.state.sceneEditRevision;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowSize({650, 1100});
+        ImGui::Begin("Settings page");
+        ImGui::LogToBuffer();
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        const std::string text = f.context->LogBuffer.c_str();
+        ImGui::LogFinish(); ImGui::End(); ImGui::EndFrame();
+        return text;
+    };
+    frame();
+    CHECK(frame().find("Maximum thickness (model units)") != std::string::npos);
+    CHECK(f.context->OpenPopupStack.empty());
+    CHECK(woby::comparisonSettings(f.state, f.id) == settings);
+    CHECK(f.state.sceneEditRevision == revision);
+    woby::selectSceneObject(f.state, other);
+    frame();
+    CHECK(frame().find("Maximum thickness (model units)") == std::string::npos);
+    CHECK_FALSE(runtimes.objects[other].inspector.settingsPage.has_value());
+}
+
+TEST_CASE("grouped check list keeps unfinished checks visible and runs all available detectors")
+{
+    ComparisonNameFixture f;
+    woby::Mesh mesh;
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
+    f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, f.id);
+    woby::setAnalysisTask(f.state, f.id, woby::AnalysisTask::meshChecks);
+    woby::selectSceneObject(f.state, f.id);
+    woby::ComparisonRuntimes runtimes;
+    ImGuiTable* checks = nullptr;
+    ImVec2 runAll;
+    const auto frame = [&] {
+        ImGui::GetIO().DisplaySize = {1000, 2400};
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({20, 20});
+        ImGui::SetNextWindowSize({650, 2300});
+        ImGui::Begin("Grouped checks");
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        for (auto* window : f.context->Windows) {
+            if (std::string(window->Name).find("comparison_properties") == std::string::npos) { continue; }
+            if (auto* table = ImGui::TableFindByID(window->GetID("check_status"))) {
+                checks = table;
+                runAll = {table->OuterRect.Min.x + 80, table->OuterRect.Max.y
+                    + ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeight() * .5f};
+            }
+        }
+        ImGui::End(); ImGui::EndFrame();
+    };
+    for (int i = 0; i < 5; ++i) { frame(); }
+    REQUIRE(checks);
+    CHECK(checks->CurrentRow + 1 == woby::diagnosticCategoryCount);
+    const auto revision = f.state.sceneEditRevision;
+    auto& io = ImGui::GetIO();
+    io.AddMousePosEvent(runAll.x, runAll.y); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame(); frame();
+    const auto* analysis = woby::findComparison(f.state, f.id);
+    for (const auto& request : analysis->detectorRequests) { CHECK(request.revision == 1); CHECK_FALSE(request.cancel); }
+    CHECK(analysis->intersectionRequestRevision == 1);
+    CHECK(f.state.sceneEditRevision == revision);
 }

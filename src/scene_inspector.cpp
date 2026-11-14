@@ -145,6 +145,7 @@ bool propertyHeading(InspectorEditor& editor, const char* title, const char* too
     const char* informationText = nullptr)
 {
     bool open = false;
+    ImGui::Spacing();
     ImGui::PushID(static_cast<int>(group));
     // Separate fixed-width cells keep the passive hint and reset hit target outside the header.
     if (ImGui::BeginTable("heading", informationText ? 3 : 2, ImGuiTableFlags_NoSavedSettings)) {
@@ -156,7 +157,7 @@ bool propertyHeading(InspectorEditor& editor, const char* title, const char* too
         ImGui::TableSetupColumn("Reset", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFrameHeight());
         ImGui::TableNextColumn();
         if (collapsible) {
-            open = ImGui::CollapsingHeader(title, ImGuiTreeNodeFlags_DefaultOpen);
+            open = woby::drawSectionHeader(title, ImGuiTreeNodeFlags_DefaultOpen);
         } else {
             ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted(title);
@@ -174,35 +175,36 @@ bool propertyHeading(InspectorEditor& editor, const char* title, const char* too
     return open;
 }
 
-void axisFields(InspectorEditor& editor, const char* title, const char* tooltip,
-    UiObjectProperty first, UiPropertyGroup group)
+void transformFields(InspectorEditor& editor)
 {
-    ImGui::PushID(title);
-    propertyHeading(editor, title, tooltip, group, false);
-    if (ImGui::BeginTable("axes", 3)) {
-        // Keep labels in their own row so input frame padding cannot shift
-        // the text baseline of subsequent columns.
-        ImGui::TableNextRow();
+    if (ImGui::BeginTable("transform_axes", 3, ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Axis", ImGuiTableColumnFlags_WidthFixed, uiSize(36));
+        ImGui::TableSetupColumn("Translation", ImGuiTableColumnFlags_WidthStretch, 1);
+        ImGui::TableSetupColumn("Rotation (degrees)", ImGuiTableColumnFlags_WidthStretch, 1);
+        ImGui::TableHeadersRow();
         for (int axis = 0; axis < 3; ++axis) {
-            ImGui::TableNextColumn();
+            ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted(axis == 0 ? "X" : axis == 1 ? "Y" : "Z");
-        }
-        ImGui::TableNextRow();
-        for (int axis = 0; axis < 3; ++axis) {
             ImGui::TableNextColumn();
-            numericInput(editor, static_cast<UiObjectProperty>(static_cast<int>(first) + axis));
+            numericInput(editor, static_cast<UiObjectProperty>(static_cast<int>(UiObjectProperty::translationX) + axis));
+            ImGui::TableNextColumn();
+            numericInput(editor, static_cast<UiObjectProperty>(static_cast<int>(UiObjectProperty::rotationX) + axis));
         }
+        ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TableNextColumn();
+        resetButton(editor, "Reset translation", UiPropertyGroup::translation);
+        ImGui::TableNextColumn();
+        resetButton(editor, "Reset rotation", UiPropertyGroup::rotation);
         ImGui::EndTable();
     }
-    ImGui::PopID();
 }
 
-void renderModeField(InspectorEditor& editor, const char* label, const char* icon, UiObjectProperty property)
+void renderModeField(InspectorEditor& editor, const char* label, UiObjectProperty property)
 {
     const auto current = inspectorProperty(editor.snapshot, property);
     bool value = current.value != 0.0f;
     ImGui::BeginDisabled(!current.available);
-    if (drawRenderModeField(label, icon, value, current.mixed)) {
+    if (drawToggleField(label, value, current.mixed)) {
         setSelectedObjectProperty(editor, property, value ? 1.0f : 0.0f);
     }
     ImGui::EndDisabled();
@@ -308,7 +310,9 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
         if (analysisMode.available) {
             int mode = static_cast<int>(analysisMode.value) - 1;
             if (analysisMode.mixed) { ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, true); }
-            if (ImGui::Combo("Analysis mode", &mode, "Per volume\0Whole\0")) {
+            ImGui::TextUnformatted("Analysis mode");
+            ImGui::SetNextItemWidth(-1);
+            if (ImGui::Combo("##Analysis mode", &mode, "Per volume\0Whole\0")) {
                 setSelectedObjectProperty(editor, UiObjectProperty::analysisMode, static_cast<float>(mode + 1));
             }
             if (analysisMode.mixed) { ImGui::PopItemFlag(); }
@@ -316,10 +320,7 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
         }
         if (propertyHeading(editor, "Transform",
                 "Reset translation, rotation, and scale on selected objects.", UiPropertyGroup::transform, true)) {
-            axisFields(editor, "Translation", "Reset translation on selected objects to zero.",
-                UiObjectProperty::translationX, UiPropertyGroup::translation);
-            axisFields(editor, "Rotation (degrees)", "Reset rotation on selected objects to zero.",
-                UiObjectProperty::rotationX, UiPropertyGroup::rotation);
+            transformFields(editor);
             if (ImGui::BeginTable("scale", 3)) {
                 ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
@@ -351,16 +352,17 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
                 if (drawVisibilityIconField("selected objects", visible, visibility.mixed)) {
                     setSelectedObjectsVisible(editor, visible);
                 }
+                ImGui::SameLine();
+                ImGui::TextUnformatted("Model visible");
             }
-            if (visibility.available) { ImGui::SameLine(); }
-            renderModeField(editor, "Solid mesh", solidMeshIcon, UiObjectProperty::solidMesh);
-            ImGui::SameLine();
-            renderModeField(editor, "Triangle edges", trianglesIcon, UiObjectProperty::triangles);
-            ImGui::SameLine();
-            renderModeField(editor, "Vertices", verticesIcon, UiObjectProperty::vertices);
+            renderModeField(editor, "Faces", UiObjectProperty::solidMesh);
+            renderModeField(editor, "Edges", UiObjectProperty::triangles);
+            renderModeField(editor, "Points", UiObjectProperty::vertices);
             const auto vertexSize = inspectorProperty(editor.snapshot, UiObjectProperty::vertexSize);
             {
-                ImGui::SameLine(0.0f, 0.0f);
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted("Point size");
+                ImGui::SameLine();
                 ImGui::BeginDisabled(!vertexSize.available);
                 float value = vertexSize.available ? vertexSize.value : 1.0f;
                 ImGui::SetNextItemWidth(std::min(uiSize(100.0f), ImGui::GetContentRegionAvail().x));
@@ -396,14 +398,13 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
             ImGui::BeginDisabled(!uv.available);
             bool uvEnabled = uv.value != 0.0f;
             if (uv.mixed) { ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, true); }
-            if (ImGui::Checkbox("UV coloring", &uvEnabled)) {
+            if (drawToggleField("UV coloring", uvEnabled, uv.mixed)) {
                 setSelectedObjectProperty(editor, UiObjectProperty::uvGrid, uv.mixed || uvEnabled ? 1.0f : 0.0f);
             }
             if (uv.mixed) { ImGui::PopItemFlag(); }
             ImGui::EndDisabled();
             if (!uv.available) { ImGui::TextDisabled("No UV coordinates in this selection"); }
             else {
-                ImGui::SameLine();
                 drawInformationIcon("uv_help", "UV grid",
                     "Shows supplied UV coordinates on solid surfaces. Cyan lines mark constant U; orange lines mark constant V.\n\n"
                     "Density is cells per UV unit (0.1 to 1000). U and V can be changed independently. "
