@@ -31,13 +31,14 @@ void drawPaneHeading(const char* text)
     ImGui::PopFont();
 }
 
-bool drawToggleField(const char* label, bool& value, bool mixed)
+bool drawToggleField(const char* label, bool& value, bool mixed, float fieldWidth)
 {
     ImGui::PushID(label);
     const float height = ImGui::GetFrameHeight();
     const float width = uiSize(42);
     const auto start = ImGui::GetCursorScreenPos();
-    const float available = ImGui::GetContentRegionAvail().x;
+    const float available = fieldWidth > 0 ? std::min(fieldWidth, ImGui::GetContentRegionAvail().x)
+        : ImGui::GetContentRegionAvail().x;
     const float labelWidth = std::max(1.0f, available - width - uiSize(16));
     const float labelHeight = ImGui::CalcTextSize(label, nullptr, false, labelWidth).y;
     const float rowHeight = std::max(height, labelHeight);
@@ -452,8 +453,11 @@ bool drawSceneItemButton(const char* label, float width, bool selected)
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
     ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.0f, 0.5f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+    // Flat scene rows reserve the same disclosure gutter as model tree rows.
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+        ImVec2(ImGui::GetTreeNodeToLabelSpacing(), ImGui::GetStyle().FramePadding.y));
     const bool pressed = ImGui::Button(label, ImVec2(std::max(1.0f, width), renderModeButtonSize()));
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(3);
     ImGui::PopStyleColor(3);
     return pressed;
 }

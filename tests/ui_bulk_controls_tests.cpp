@@ -1,8 +1,10 @@
 #include "ui_bulk_controls.h"
 #include "scene_name_controls.h"
+#include "ui_icon_controls.h"
 
 #include <doctest/doctest.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include <array>
 
@@ -84,6 +86,38 @@ TEST_CASE("Delete belongs to one clicked list and does not follow the pointer")
     f.click(f.positions[1]);
     f.pressDelete();
     CHECK(f.deletes == std::array<int, 2>{1, 1});
+}
+
+TEST_CASE("scene row selection preserves bounds and reserves the tree label gutter")
+{
+    SelectionShortcutFixture f;
+    std::array<ImRect, 2> bounds;
+    std::array<float, 2> textStarts{};
+    for (size_t selected = 0; selected < 2; ++selected) {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({20, 20});
+        ImGui::SetNextWindowSize({400, 400});
+        ImGui::Begin("Row geometry");
+        const auto start = ImGui::GetCursorScreenPos();
+        const int vertexStart = ImGui::GetWindowDrawList()->VtxBuffer.Size;
+        woby::drawSceneItemButton("Row", 280, selected != 0);
+        bounds[selected] = f.context->LastItemData.Rect;
+        textStarts[selected] = 1000;
+        const auto& vertices = ImGui::GetWindowDrawList()->VtxBuffer;
+        for (int i = vertexStart; i < vertices.Size; ++i) {
+            if (vertices[i].col == ImGui::GetColorU32(ImGuiCol_Text)) {
+                textStarts[selected] = std::min(textStarts[selected], vertices[i].pos.x);
+            }
+        }
+        CHECK(textStarts[selected] == doctest::Approx(start.x + ImGui::GetTreeNodeToLabelSpacing()).epsilon(.03));
+        CHECK(bounds[selected].Min.x == start.x);
+        CHECK(bounds[selected].GetWidth() == 280);
+        CHECK(bounds[selected].GetHeight() == woby::renderModeButtonSize());
+        ImGui::End(); ImGui::EndFrame();
+    }
+    CHECK(bounds[0].Min.x == bounds[1].Min.x);
+    CHECK(bounds[0].Min.y == bounds[1].Min.y);
+    CHECK(textStarts[0] == textStarts[1]);
 }
 
 TEST_CASE("Delete is blocked by disabled controls dialogs modifiers and lost list focus")

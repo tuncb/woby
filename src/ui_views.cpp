@@ -35,7 +35,6 @@ void drawViews(UiState& state, ViewNameEdit& edit, ScenePaneLayout& layout)
         static UiSelectionRows rows;
         beginSelectionRows(rows, state);
         bool duplicate = false, remove = false, selectAll = false;
-        if (layout.contentSized && ImGui::Button("+ Save view", {-1, 0})) { createView(state); }
         if (state.views.empty()) { ImGui::TextDisabled("Save the camera and display settings."); }
         const auto beginRename = [&](ViewId id) {
             if (const auto* view = findView(state, id)) {
@@ -52,13 +51,18 @@ void drawViews(UiState& state, ViewNameEdit& edit, ScenePaneLayout& layout)
             const auto id = view.id;
             const auto order = registerSelectionRow(rows, id);
             ImGui::PushID(std::to_string(id).c_str());
+            // Reserve the visibility column without implying that views can be hidden.
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + button + spacing);
             const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - button - spacing);
             if (edit.id == id) {
                 const bool focusing = edit.focus;
                 if (focusing) { ImGui::SetKeyboardFocusHere(); edit.focus = false; }
                 ImGui::SetNextItemWidth(nameWidth);
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+                    ImVec2(ImGui::GetTreeNodeToLabelSpacing(), ImGui::GetStyle().FramePadding.y));
                 const bool entered = ImGui::InputText("##name", &edit.text,
                     ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+                ImGui::PopStyleVar();
                 if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) { edit.id = 0; }
                 else if (entered || (!focusing && ImGui::IsItemDeactivated())) {
                     renameView(state, id, edit.text);

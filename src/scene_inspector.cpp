@@ -68,14 +68,28 @@ void numericInput(InspectorEditor& editor, UiObjectProperty property, float disp
     ImGui::EndDisabled();
 }
 
-void scalarField(InspectorEditor& editor, const char* label, UiObjectProperty property, float displayScale = 1.0f)
+bool beginPropertyTable(const char* id)
 {
-    if (!inspectorProperty(editor.snapshot, property).available && property != UiObjectProperty::opacity) { return; }
+    if (!ImGui::BeginTable(id, 3, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings)) { return false; }
+    ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch, 1);
+    ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 1);
+    ImGui::TableSetupColumn("Reset", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFrameHeight());
+    return true;
+}
+
+void propertyLabel(const char* label)
+{
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(label);
     ImGui::TableNextColumn();
+}
+
+void scalarField(InspectorEditor& editor, const char* label, UiObjectProperty property, float displayScale = 1.0f)
+{
+    if (!inspectorProperty(editor.snapshot, property).available && property != UiObjectProperty::opacity) { return; }
+    propertyLabel(label);
     numericInput(editor, property, displayScale);
 }
 
@@ -97,9 +111,7 @@ void colorField(InspectorEditor& editor)
     std::array<float, 3> color{red.value, green.value, blue.value};
     ImGui::PushID("part_color");
     ImGui::BeginDisabled(!red.available);
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted("Color");
-    ImGui::SameLine();
+    propertyLabel("Color");
     const bool open = ImGui::ColorButton("##swatch", {color[0], color[1], color[2], 1},
         ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop);
     const auto low = ImGui::GetItemRectMin(), high = ImGui::GetItemRectMax();
@@ -204,9 +216,12 @@ void renderModeField(InspectorEditor& editor, const char* label, UiObjectPropert
     const auto current = inspectorProperty(editor.snapshot, property);
     bool value = current.value != 0.0f;
     ImGui::BeginDisabled(!current.available);
-    if (drawToggleField(label, value, current.mixed)) {
+    propertyLabel(label);
+    ImGui::PushID(label);
+    if (drawToggleField("", value, current.mixed, uiSize(42))) {
         setSelectedObjectProperty(editor, property, value ? 1.0f : 0.0f);
     }
+    ImGui::PopID();
     ImGui::EndDisabled();
 }
 
@@ -321,10 +336,7 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
         if (propertyHeading(editor, "Transform",
                 "Reset translation, rotation, and scale on selected objects.", UiPropertyGroup::transform, true)) {
             transformFields(editor);
-            if (ImGui::BeginTable("scale", 3)) {
-                ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Reset", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFrameHeight());
+            if (beginPropertyTable("scale")) {
                 scalarField(editor, "Uniform scale (x)", UiObjectProperty::scale);
                 ImGui::TableNextColumn();
                 resetButton(editor, "Reset scale on selected objects to 1.", UiPropertyGroup::scale);
@@ -342,47 +354,44 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
                 "Empty containers keep unavailable controls disabled.\n\n"
                 "Visibility includes file and folder contents. Hiding objects keeps them selected; "
                 "click mixed visibility to show all selected objects.")) {
-            if (ImGui::BeginTable("appearance", 2)) {
+            if (beginPropertyTable("appearance")) {
                 scalarField(editor, "Opacity (0-100%)", UiObjectProperty::opacity, 100.0f);
+                const auto visibility = editor.snapshot.visibility;
+                if (visibility.available) {
+                    propertyLabel("Model visible");
+                    bool visible = visibility.value != 0.0f;
+                    if (drawVisibilityIconField("selected objects", visible, visibility.mixed)) {
+                        setSelectedObjectsVisible(editor, visible);
+                    }
+                }
+                renderModeField(editor, "Faces", UiObjectProperty::solidMesh);
+                renderModeField(editor, "Edges", UiObjectProperty::triangles);
+                renderModeField(editor, "Points", UiObjectProperty::vertices);
+                const auto vertexSize = inspectorProperty(editor.snapshot, UiObjectProperty::vertexSize);
+                {
+                    propertyLabel("Point size");
+                    ImGui::BeginDisabled(!vertexSize.available);
+                    float value = vertexSize.available ? vertexSize.value : 1.0f;
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+                        ImVec2(ImGui::GetStyle().FramePadding.x,
+                            std::max(0.0f, (renderModeButtonSize() - ImGui::GetFontSize()) * 0.5f)));
+                    if (ImGui::DragFloat("##vertex_size", &value, 0.05f, minVertexSizeScale, maxVertexSizeScale,
+                            vertexSize.mixed ? "Mixed" : "%.2g x", ImGuiSliderFlags_AlwaysClamp)) {
+                        setSelectedObjectProperty(editor, UiObjectProperty::vertexSize, value);
+                    }
+                    ImGui::PopStyleVar();
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Vertex size multiplier on selected files or parts; folders edit contained file multipliers. Ctrl-click to enter a value.");
+                    }
+                    ImGui::EndDisabled();
+                }
                 ImGui::EndTable();
-            }
-            const auto visibility = editor.snapshot.visibility;
-            if (visibility.available) {
-                bool visible = visibility.value != 0.0f;
-                if (drawVisibilityIconField("selected objects", visible, visibility.mixed)) {
-                    setSelectedObjectsVisible(editor, visible);
-                }
-                ImGui::SameLine();
-                ImGui::TextUnformatted("Model visible");
-            }
-            renderModeField(editor, "Faces", UiObjectProperty::solidMesh);
-            renderModeField(editor, "Edges", UiObjectProperty::triangles);
-            renderModeField(editor, "Points", UiObjectProperty::vertices);
-            const auto vertexSize = inspectorProperty(editor.snapshot, UiObjectProperty::vertexSize);
-            {
-                ImGui::AlignTextToFramePadding();
-                ImGui::TextUnformatted("Point size");
-                ImGui::SameLine();
-                ImGui::BeginDisabled(!vertexSize.available);
-                float value = vertexSize.available ? vertexSize.value : 1.0f;
-                ImGui::SetNextItemWidth(std::min(uiSize(100.0f), ImGui::GetContentRegionAvail().x));
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
-                    ImVec2(ImGui::GetStyle().FramePadding.x,
-                        std::max(0.0f, (renderModeButtonSize() - ImGui::GetFontSize()) * 0.5f)));
-                if (ImGui::DragFloat("##vertex_size", &value, 0.05f, minVertexSizeScale, maxVertexSizeScale,
-                        vertexSize.mixed ? "Mixed" : "%.2g x", ImGuiSliderFlags_AlwaysClamp)) {
-                    setSelectedObjectProperty(editor, UiObjectProperty::vertexSize, value);
-                }
-                ImGui::PopStyleVar();
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Vertex size multiplier on selected files or parts; folders edit contained file multipliers. Ctrl-click to enter a value.");
-                }
-                ImGui::EndDisabled();
             }
             const auto lineDepth = inspectorProperty(editor.snapshot, UiObjectProperty::lineDepthTest);
             if (lineDepth.available) {
                 ImGui::Spacing();
-                if (ImGui::BeginTable("line_style", 2)) {
+                if (beginPropertyTable("line_style")) {
                     scalarField(editor, "Line width (1-12 px)", UiObjectProperty::lineWidth);
                     ImGui::EndTable();
                 }
@@ -398,8 +407,12 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
             ImGui::BeginDisabled(!uv.available);
             bool uvEnabled = uv.value != 0.0f;
             if (uv.mixed) { ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, true); }
-            if (drawToggleField("UV coloring", uvEnabled, uv.mixed)) {
-                setSelectedObjectProperty(editor, UiObjectProperty::uvGrid, uv.mixed || uvEnabled ? 1.0f : 0.0f);
+            if (beginPropertyTable("uv_toggle")) {
+                propertyLabel("UV coloring");
+                if (drawToggleField("", uvEnabled, uv.mixed, uiSize(42))) {
+                    setSelectedObjectProperty(editor, UiObjectProperty::uvGrid, uv.mixed || uvEnabled ? 1.0f : 0.0f);
+                }
+                ImGui::EndTable();
             }
             if (uv.mixed) { ImGui::PopItemFlag(); }
             ImGui::EndDisabled();
@@ -415,19 +428,22 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
                 const char* modes[] = {"Grid", "U gradient", "V gradient"};
                 if (ImGui::Combo("UV color",&mode,modes,3)) { setSelectedObjectProperty(editor,UiObjectProperty::uvColorMode,static_cast<float>(mode)); }
                 if (colorMode.mixed) { ImGui::TextDisabled("Mixed coloring modes"); }
-                if (mode != 0 && ImGui::BeginTable("uv_range",2)) {
+                if (mode != 0 && beginPropertyTable("uv_range")) {
                     scalarField(editor,"Blue: range minimum",UiObjectProperty::uvMinimum);
                     scalarField(editor,"Yellow: range maximum",UiObjectProperty::uvMaximum);
                     ImGui::EndTable();
                 }
-                if (mode == 0 && (uvEnabled || uv.mixed) && ImGui::BeginTable("uv_density", 2)) {
+                if (mode == 0 && (uvEnabled || uv.mixed) && beginPropertyTable("uv_density")) {
                     scalarField(editor, "U cells / UV unit", UiObjectProperty::uvDensityU);
                     scalarField(editor, "V cells / UV unit", UiObjectProperty::uvDensityV);
                     ImGui::EndTable();
                 }
             }
             ImGui::Spacing();
-            colorField(editor);
+            if (beginPropertyTable("color")) {
+                colorField(editor);
+                ImGui::EndTable();
+            }
         }
         if (drawInformationHeader("Geometry", "Geometry",
                 "Size includes transforms and visible selected parts.\n\n"

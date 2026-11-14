@@ -262,7 +262,7 @@ TEST_CASE("analysis sidebar lists every task without a filter for more than four
     CHECK_FALSE(woby::comparisonSettings(f.state, hidden).enabled);
 }
 
-TEST_CASE("analysis rows use the full width without an inline delete button")
+TEST_CASE("analysis rows reserve the action column without an inline delete button")
 {
     ComparisonNameFixture f;
     woby::renameComparison(f.state, f.id, std::string(300, 'x'));
@@ -280,6 +280,7 @@ TEST_CASE("analysis rows use the full width without an inline delete button")
     f.frame(); f.frame();
     const auto revision = f.state.sceneEditRevision;
     const auto otherName = woby::findComparison(f.state, other)->name;
+    const auto selection = f.state.selectedSceneObjects;
     const auto* window = ImGui::FindWindowByName("Scene");
     REQUIRE(window);
     f.click({window->WorkRect.Max.x - woby::renderModeButtonSize() * .5f, f.row.y});
@@ -287,7 +288,9 @@ TEST_CASE("analysis rows use the full width without an inline delete button")
     REQUIRE(woby::findComparison(f.state, f.id));
     CHECK(f.state.comparisons.size() == 2);
     CHECK(f.state.sceneEditRevision == revision);
+    CHECK(f.state.selectedSceneObjects == selection);
     if (f.edit.objectId != woby::invalidSceneObjectId) { f.key(ImGuiKey_Escape); }
+    f.click({f.row.x, f.row.y});
     f.click({f.row.x, f.row.y}, ImGuiMouseButton_Right);
     f.frame();
     REQUIRE_FALSE(f.context->OpenPopupStack.empty());

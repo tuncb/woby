@@ -1030,8 +1030,12 @@ void drawDiagnosticNavigation(UiState& state, ComparisonRuntime& runtime, bool c
         const auto order = registerSelectionRow(attentionRows, key);
         ImGui::PushID(row.name);
         ImGui::TableNextRow(); ImGui::TableNextColumn();
-        const bool selected = comparisonSettings(state, id).diagnosticCategory == row.category;
-        if (ImGui::Selectable(row.name, selected, 0, {0, ImGui::GetFrameHeight()})) {
+        const auto& selection = findComparison(state, id)->detectorSelection;
+        const bool selected = selection.ids.empty()
+            ? comparisonSettings(state, id).diagnosticCategory == row.category
+            : selectionContains(selection.ids, key);
+        ImGui::AlignTextToFramePadding();
+        if (ImGui::Selectable(row.name, selected, ImGuiSelectableFlags_SpanAllColumns, {0, ImGui::GetFrameHeight()})) {
             selectDetectorRow(state, id, row.category, order, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift);
             auto edited = comparisonSettings(state, id);
             edited.diagnosticCategory = row.category;
@@ -1054,14 +1058,15 @@ void drawDiagnosticNavigation(UiState& state, ComparisonRuntime& runtime, bool c
     }
     if (completed) {
         const auto label = std::to_string(completed) + " completed checks - No findings";
-        if (ImGui::TreeNode(label.c_str())) {
-            if (ImGui::BeginTable("completed_checks", 2)) {
+        if (ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen)) {
+            if (ImGui::BeginTable("completed_checks", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
+                ImGui::TableSetupColumn("Check", ImGuiTableColumnFlags_WidthStretch, 2);
+                ImGui::TableSetupColumn("Result", ImGuiTableColumnFlags_WidthStretch, 1);
                 for (const auto& row : rows) {
                     if (!diagnosticNeedsAttention(summaryFor(row.category))) { checkRow(row); }
                 }
                 ImGui::EndTable();
             }
-            ImGui::TreePop();
         }
     }
     const auto selectionActions = endSelectionRows(attentionRows);
@@ -2295,12 +2300,13 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
             setComparisonSettings(state, settings, id);
         }
         ImGui::SameLine();
-        const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+        const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x
+            - renderModeButtonSize() - ImGui::GetStyle().ItemSpacing.x);
         if (edit.objectId == id) {
             const bool focusing = edit.focus;
             if (focusing) { ImGui::SetKeyboardFocusHere(); edit.focus = false; }
             ImGui::SetNextItemWidth(nameWidth);
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x,
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetTreeNodeToLabelSpacing(),
                 std::max(0.0f, (renderModeButtonSize() - ImGui::GetTextLineHeight()) * 0.5f)));
             const bool entered = ImGui::InputText("##comparison_name_edit", &edit.text,
                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
@@ -2355,19 +2361,13 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
                 findings += hasFindings;
                 pending += incomplete;
             }
-            ImGui::Indent(renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.x);
+            const float indent = renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.x + ImGui::GetTreeNodeToLabelSpacing();
+            ImGui::Indent(indent);
             ImGui::TextWrapped("%zu %s with findings", findings, findings == 1 ? "check" : "checks");
             if (pending) { ImGui::TextColored({1, .73f, .28f, 1}, "Checks incomplete"); }
-            ImGui::Unindent(renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.x);
+            ImGui::Unindent(indent);
         }
         ImGui::PopID();
-    }
-    if (layout && layout->contentSized) {
-        if (ImGui::Button("+ Add analysis", {-1, 0})) { ImGui::OpenPopup("add_analysis_action"); }
-        if (ImGui::BeginPopup("add_analysis_action")) {
-            drawAnalysisCreationMenu(state);
-            ImGui::EndPopup();
-        }
     }
     const auto shortcuts = endSelectionRows(rows);
     selectAll = shortcuts.selectAll || selectAll;

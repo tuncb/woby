@@ -165,12 +165,13 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit, ScenePaneLa
         ImGui::SameLine();
         const bool missing = !item.section && !item.text && (!item.targetValid || !findSceneObject(state, item.targetId));
         const std::string label = item.settings.name + (item.targetPending ? " [preparing]" : missing ? " [needs reattachment]" : "") + "##annotation";
-        const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+        const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x
+            - renderModeButtonSize() - ImGui::GetStyle().ItemSpacing.x);
         if (edit.objectId == id) {
             const bool focusing = edit.focus;
             if (focusing) { ImGui::SetKeyboardFocusHere(); edit.focus = false; }
             ImGui::SetNextItemWidth(nameWidth);
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x,
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetTreeNodeToLabelSpacing(),
                 std::max(0.0f, (renderModeButtonSize() - ImGui::GetTextLineHeight()) * 0.5f)));
             const bool entered = ImGui::InputText("##annotation_name_edit", &edit.text,
                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);

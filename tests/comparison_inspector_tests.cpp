@@ -231,6 +231,51 @@ struct InspectorFixture {
     }
 };
 
+TEST_CASE("check status highlights all selected detectors across both columns")
+{
+    InspectorFixture f;
+    for (auto& detector : f.runtimes.objects[f.id].results.value.detectors) {
+        detector.phase = IntersectionPhase::notChecked;
+    }
+    const std::array<uint64_t, 2> selected{
+        static_cast<uint64_t>(DiagnosticCategory::boundary) + 1,
+        static_cast<uint64_t>(DiagnosticCategory::holes) + 1};
+    selectDetectorRows(f.state, f.id, selected);
+    f.frame(); f.frame();
+    ImGuiWindow* properties = nullptr;
+    for (auto* window : f.context->Windows) {
+        if (std::string_view(window->Name).find("comparison_properties") != std::string_view::npos) { properties = window; }
+    }
+    REQUIRE(properties);
+    // Filled selection rectangles must reach the result column for both rows.
+    const auto color = ImGui::GetColorU32(ImGuiCol_Header);
+    std::vector<float> selectedRows;
+    const auto& vertices = properties->DrawList->VtxBuffer;
+    for (int i = 0; i + 3 < vertices.Size; ++i) {
+        const auto& a = vertices[i];
+        const auto& b = vertices[i + 1];
+        const auto& c = vertices[i + 2];
+        const auto& d = vertices[i + 3];
+        if (a.col == color && b.col == color && c.col == color && d.col == color
+            && b.pos.x - a.pos.x > properties->Size.x * .8f && a.pos.y == b.pos.y
+            && c.pos.y > a.pos.y && d.pos.y == c.pos.y) {
+            selectedRows.push_back(a.pos.y);
+        }
+    }
+    CHECK(selectedRows.size() == 2);
+    REQUIRE(!selectedRows.empty());
+    // The result cell is also a row target. Ctrl-click toggles just that row.
+    auto& io = ImGui::GetIO();
+    io.AddMousePosEvent(properties->Pos.x + properties->Size.x * .85f,
+        selectedRows.front() + ImGui::GetFrameHeight() * .5f);
+    f.frame();
+    io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); f.frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); f.frame();
+    io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    CHECK(findComparison(f.state, f.id)->detectorSelection.ids == std::vector<uint64_t>{selected[1]});
+}
+
 TEST_CASE("distance inspector applies maximum percentages without numeric range fields")
 {
     InspectorFixture f;

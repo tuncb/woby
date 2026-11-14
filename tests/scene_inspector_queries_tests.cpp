@@ -1,5 +1,6 @@
 #include "scene_inspector.h"
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <algorithm>
 #include "comparison_runtime.h"
 #include "scene_history.h"
@@ -404,6 +405,41 @@ TEST_CASE("analysis fallback preserves the requested result side before derived 
             const bool displayOriginal = mode == ComparisonMode::distance ? effective.distanceOnOriginal : effective.quality.onOriginal;
             const auto ready = readyComparisonSettings(runtime, f.state, id);
             CHECK(ready.mode == (displayOriginal ? ComparisonMode::original : ComparisonMode::repaired));
+        }
+    }
+}
+
+TEST_CASE("property tables keep value and reset columns aligned at different pane widths") {
+    const auto previous = ImGui::GetCurrentContext();
+    auto* context = ImGui::CreateContext();
+    struct Cleanup {
+        ImGuiContext* context;
+        ImGuiContext* previous;
+        ~Cleanup() { ImGui::DestroyContext(context); ImGui::SetCurrentContext(previous); }
+    } cleanup{context, previous};
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr; io.DisplaySize = {1000, 1800}; io.DeltaTime = 1.0f / 60.0f;
+    unsigned char* pixels = nullptr; int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    PropertiesFixture f;
+    for (float paneWidth : {320.0f, 560.0f}) {
+        for (int frame = 0; frame < 3; ++frame) {
+            ImGui::NewFrame();
+            ImGui::SetNextWindowSize({paneWidth, 1700});
+            ImGui::Begin("Property alignment");
+            drawSceneInspector(f.state, f.runtime);
+            ImGui::End(); ImGui::EndFrame();
+        }
+        std::vector<ImGuiTable*> tables;
+        for (auto* window : context->Windows) {
+            for (const char* name : {"scale", "appearance", "uv_toggle", "color"}) {
+                if (auto* table = ImGui::TableFindByID(window->GetID(name))) { tables.push_back(table); }
+            }
+        }
+        REQUIRE(tables.size() == 4);
+        for (const auto* table : tables) {
+            CHECK(table->Columns[1].WorkMinX == doctest::Approx(tables.front()->Columns[1].WorkMinX));
+            CHECK(table->Columns[2].WorkMinX == doctest::Approx(tables.front()->Columns[2].WorkMinX));
         }
     }
 }

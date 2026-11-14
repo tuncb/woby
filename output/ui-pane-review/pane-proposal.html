@@ -1,0 +1,102 @@
+<style>
+#pane-review {font-family:var(--font-sans);color:var(--foreground)}
+#pane-review .label {margin:16px 0 8px;font-weight:500}
+#pane-review .pair {display:grid;grid-template-columns:minmax(250px,.85fr) minmax(340px,1.35fr);gap:16px}
+#pane-review .pane {background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);padding:16px;min-width:0}
+#pane-review h3 {font-size:16px;margin:0 0 16px;font-weight:500}
+#pane-review .head {display:flex;align-items:center;justify-content:space-between;gap:8px;margin:18px 0 8px}
+#pane-review button,#pane-review input,#pane-review select {font:inherit;color:inherit;background:var(--secondary);border:1px solid var(--border);border-radius:4px;padding:6px 8px;min-width:0}
+#pane-review button {cursor:pointer}
+#pane-review button:focus-visible {outline:2px solid var(--ring);outline-offset:2px}
+#pane-review .row {display:grid;grid-template-columns:30px 20px minmax(0,1fr) 30px;align-items:center;min-height:38px;border-left:3px solid transparent;gap:4px}
+#pane-review .row.selected {background:var(--accent);border-left-color:var(--primary)}
+#pane-review .row button {border-color:transparent;background:transparent;padding:4px}
+#pane-review .row .name {text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pane-review .hint {color:var(--muted-foreground);font-size:12px}
+#pane-review .status {margin:2px 0 10px 61px;font-size:12px}
+#pane-review .field {display:grid;grid-template-columns:minmax(75px,1fr) minmax(60px,1.2fr) 24px;gap:8px;align-items:center;margin:10px 0}
+#pane-review .field input,#pane-review .field select {width:100%;box-sizing:border-box}
+#pane-review .field input[type=checkbox] {width:18px;justify-self:start}
+#pane-review .check {display:grid;grid-template-columns:minmax(120px,1fr) 84px 28px 28px;gap:4px;align-items:center;padding:5px 0;border-left:3px solid transparent}
+#pane-review .check.selected {background:var(--accent);border-left-color:var(--primary)}
+#pane-review .check button {padding:5px 3px;border-color:transparent;background:transparent}
+#pane-review .check .name {text-align:left}
+#pane-review .check span {font-size:12px}
+#pane-review .actions {display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
+#pane-review .warning {border-left:3px solid var(--warning);padding-left:10px;margin:12px 0}
+#pane-review table {width:100%;border-collapse:collapse;margin:12px 0;font-variant-numeric:tabular-nums}
+#pane-review th,#pane-review td {text-align:right;padding:8px;border-bottom:1px solid var(--border);font-weight:400}
+#pane-review th:first-child,#pane-review td:first-child {text-align:left}
+#pane-review summary {cursor:pointer;padding:8px 0}
+#pane-review .sample {display:flex;gap:8px;align-items:center;margin:12px 0}
+#pane-review .sample select {flex:1}
+#pane-review img {width:100%;height:auto}
+@media(max-width:650px) {#pane-review .pair {grid-template-columns:1fr} #pane-review .check {grid-template-columns:minmax(90px,1fr) 74px 26px 26px}}
+</style>
+<div id="pane-review">
+<div class="label">Proposed layout · illustrative content</div>
+<div class="pair">
+<section class="pane" aria-label="Proposed scene pane">
+<h3>Scene</h3>
+<div class="head"><span>▸ Display</span></div>
+<div class="head"><span>▾ Models · 1</span><button aria-label="Toggle all model visibility" data-eye>👁</button></div>
+<div class="row" data-scene="model"><button aria-label="Show model" data-eye>👁</button><span>▸</span><button class="name">03-two-necks.obj</button><button aria-label="Create analysis for this model">＋</button></div>
+<div class="head"><span>▾ Analyses · 1</span><button aria-label="Add analysis">＋ Add</button></div>
+<div class="row selected" data-scene="analysis"><button aria-label="Toggle analysis visibility" data-eye>👁</button><span></span><button class="name">Two necks: 1 mm and 0.5 mm</button><span></span></div>
+<div class="status">1 check with findings · Incomplete</div>
+<div class="head"><span>▸ Annotations</span></div>
+<div class="head"><span>▾ Saved views</span><button>＋ Save</button></div>
+<div class="hint">Save camera and display settings.</div>
+<hr>
+<div class="hint">Select either scene row. Its text position stays fixed. Blank cells preserve the common columns.</div>
+</section>
+<section class="pane" aria-label="Proposed analysis pane">
+<h3>Analysis</h3>
+<label class="field"><span>Name</span><input value="Two necks" aria-label="Analysis name"><span></span></label>
+<label class="field"><span>Task</span><select aria-label="Analysis task"><option>Mesh checks</option></select><span></span></label>
+<details><summary>Sources · 1 part · 76 triangles</summary><div>03-two-necks.obj</div></details>
+<div class="head"><span>Checks</span><button>Run all</button></div>
+<div class="check selected"><button class="name">Thin regions</button><span>2+ · Partial</span><button data-eye aria-label="Toggle thin region visibility">👁</button><button data-settings aria-label="Thin region settings">⚙</button></div>
+<div class="check"><button class="name">Self-intersections</button><span>Not run</span><button data-eye aria-label="Toggle intersection visibility">👁</button><button data-settings aria-label="Intersection settings">⚙</button></div>
+<details><summary>9 completed · No findings</summary><div class="hint">Completed checks use the same name, status, eye and settings columns.</div></details>
+<div class="head"><span id="detail-name">Thin regions</span><button id="run-check">Rerun check</button></div>
+<div class="warning" id="result-state">Partial — some sources or candidate pairs were not checked.</div>
+<div id="thin-detail">
+<table aria-label="Illustrative thin-region results"><thead><tr><th>Region</th><th>Minimum</th><th>Typical</th></tr></thead><tbody><tr><td>Region 1</td><td>1</td><td>1</td></tr><tr><td>Region 2</td><td>0.5</td><td>0.5</td></tr></tbody></table>
+<div class="hint">Model units · sampled thickness estimate</div>
+<div class="actions"><button id="prev" aria-label="Previous finding">‹</button><span id="position" aria-live="polite">Region 1 of 2 known</span><button id="next" aria-label="Next finding">›</button><button>Frame result</button></div>
+</div>
+<details><summary>Method and coverage</summary><div class="hint">Keep technical limits, confidence, and size estimates here. Keep partial-result status visible above.</div></details>
+<details id="settings"><summary>Check settings</summary><label class="field"><span>Auto update</span><input type="checkbox" checked><span></span></label><div class="hint">Detector-specific fields open here.</div></details>
+<details><summary>Result display</summary><span class="hint">Scene display controls remain separate from check inputs.</span></details>
+</section></div>
+<div class="label">Shared property grid · model and detector examples</div>
+<div class="pair">
+<section class="pane" aria-label="Model property alignment">
+<h3>Model appearance</h3>
+<label class="field"><span>Opacity (%)</span><input value="100"><button aria-label="Reset opacity">↶</button></label>
+<div class="field"><span>Visible</span><button data-eye aria-label="Toggle model visibility">👁</button><span></span></div>
+<label class="field"><span>Faces</span><input type="checkbox" checked><span></span></label>
+<label class="field"><span>Edges</span><input type="checkbox"><span></span></label>
+<label class="field"><span>Points</span><input type="checkbox"><span></span></label>
+<label class="field"><span>Point size (×)</span><input value="1"><button aria-label="Reset point size">↶</button></label>
+<div class="hint">All values start on one edge. Reset actions have a fixed end column.</div>
+</section>
+<section class="pane" aria-label="Detector property alignment">
+<h3>Thin regions settings</h3>
+<label class="field"><span>Auto update</span><input type="checkbox" checked><span></span></label>
+<label class="field"><span>Absolute limit</span><input type="checkbox"><span></span></label>
+<label class="field"><span>Max thickness</span><input value="1" disabled><span></span></label>
+<div class="hint">Thickness in model units</div>
+<label class="field"><span>Relative limit</span><input type="checkbox" checked><span></span></label>
+<label class="field"><span>Maximum ratio</span><input value="0.2"><span></span></label>
+<div class="hint">Reference: area-weighted 95th percentile thickness.</div>
+<details><summary>How these limits work</summary><div>Either enabled limit can mark a face as thin. Changes apply immediately. Save the scene to keep them.</div></details>
+</section></div>
+<details><summary>Evidence · implemented analysis screenshot</summary><img src="D:/woby/output/ui-hill-climb/implemented-analysis.png" alt="Existing analysis UI with duplicate Add analysis and Save view controls, and a selected check highlight that excludes the result column."></details>
+<div class="hint">Concept only. Icons are schematic; use the application's eye and settings icons. Controls change this example only. Run and creation buttons are illustrative.</div>
+</div>
+<script>
+(()=>{const root=document.getElementById('pane-review');root.querySelectorAll('[data-scene] .name').forEach(b=>b.onclick=()=>{root.querySelectorAll('[data-scene]').forEach(r=>r.classList.remove('selected'));b.parentElement.classList.add('selected')});root.querySelectorAll('[data-eye]').forEach(b=>{b.setAttribute('aria-pressed','true');b.onclick=()=>{const visible=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(visible));b.textContent=visible?'👁':'⊘'}});let region=1;function move(){root.querySelector('#position').textContent='Region '+region+' of 2 known'}root.querySelector('#prev').onclick=()=>{region=region===1?2:1;move()};root.querySelector('#next').onclick=()=>{region=region===1?2:1;move()};root.querySelectorAll('.check .name').forEach(b=>b.onclick=()=>{root.querySelectorAll('.check').forEach(r=>r.classList.remove('selected'));b.parentElement.classList.add('selected');const thin=b.textContent==='Thin regions';root.querySelector('#detail-name').textContent=b.textContent;root.querySelector('#thin-detail').hidden=!thin;root.querySelector('#result-state').textContent=thin?'Partial — some sources or candidate pairs were not checked.':'Not run — run this check to inspect its results.';root.querySelector('#run-check').textContent=thin?'Rerun check':'Run check'});root.querySelectorAll('[data-settings]').forEach(b=>b.onclick=()=>{b.parentElement.querySelector('.name').click();const s=root.querySelector('#settings');s.open=!s.open})})();
+</script>
+
