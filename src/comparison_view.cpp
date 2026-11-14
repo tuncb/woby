@@ -697,45 +697,69 @@ void drawThinRegionFindings(UiState& state, const ComparisonRuntime& runtime, Sc
     const auto& result = (settings.diagnosticSide == ComparisonSide::a ? runtime.results.value.original : runtime.results.value.repaired).thickness;
     if (!result.measurements) { return; }
     const auto& measurements = *result.measurements;
-    ImGui::TextWrapped("Thickness values use model units. The minimum is a sampled estimate.");
-    if (ImGui::TreeNode("Method and coverage")) {
-    ImGui::TextWrapped("%zu measured faces; %zu unknown faces. Measurements are sampled estimates. The minimum is not a guaranteed global minimum.",measurements.measuredFaces,measurements.unknownFaces);
-    ImGui::TextWrapped("Relative reference: area-weighted 95th percentile per analysis batch. Connected faces and measured opposite faces form one region. Confidence is the supported ray fraction.");
-    if (settings.thickness.showMap) { ImGui::TextWrapped("Thickness map: red = thin, blue = reference thickness or greater, gray = unknown. Each batch has its own scale."); }
-    for (const auto& source : measurements.sources) {
-        if (!source.unavailableReason.empty()) { ImGui::TextWrapped("%s: %s",source.geometry->source.c_str(),source.unavailableReason.c_str()); }
-    }
-        ImGui::TreePop();
-    }
+    if (result.regions.empty()) { return; }
     const auto* comparison = findComparison(state,id);
-    const size_t selected = comparison->diagnosticFocus ? comparison->diagnosticFocus->index : 0;
-    const size_t begin = selected/diagnosticPageSize*diagnosticPageSize;
-    if (ImGui::BeginTable("thin_region_findings",3,ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-        ImGui::TableSetupColumn("Source / region"); ImGui::TableSetupColumn("Minimum"); ImGui::TableSetupColumn("Typical");
-        ImGui::TableHeadersRow();
-        for (size_t i = begin; i < std::min(begin+diagnosticPageSize,result.regions.size()); ++i) {
-            const auto& region = result.regions[i]; const auto& source = measurements.sources[region.source];
-            ImGui::PushID(static_cast<int>(i)); ImGui::TableNextRow(); ImGui::TableNextColumn();
-            const auto label = "Region " + std::to_string(i+1);
-            if (ImGui::Selectable(label.c_str(),comparison->diagnosticFocus && selected == i,ImGuiSelectableFlags_SpanAllColumns)) {
-                selectComparisonDiagnostic(state,runtime.results.value,runtime.results.signature,i,id);
-            }
-            if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s\nRelative thickness: %.6g\nSurface area: %.6g", source.geometry->source.c_str(), region.relativeThickness, region.area); }
-            for (const auto value : {region.minimum,region.typical}) { ImGui::TableNextColumn(); ImGui::Text("%.6g",value); }
-            ImGui::PopID();
+    const auto& focus = comparison->diagnosticFocus;
+    const bool focused = focus && focus->category == DiagnosticCategory::thinRegions
+        && focus->side == settings.diagnosticSide && focus->index < result.regions.size();
+    const size_t selected = focused ? focus->index : 0;
+    const auto& region = result.regions[selected];
+    if (ImGui::BeginChild("thin_region_card", {0, 0}, ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+        ImGui::Text("Region %zu", selected + 1);
+        ImGui::SameLine();
+        if (focused) { ImGui::TextColored(ImVec4(1, 1, .1f, 1), "%s", settings.thickness.show ? "Selected" : "Hidden"); }
+        else if (ImGui::SmallButton("Focus")) {
+            selectComparisonDiagnostic(state, runtime.results.value, runtime.results.signature, selected, id);
         }
-        ImGui::EndTable();
+        ImGui::Spacing();
+        ImGui::TextDisabled("Thickness - Model units");
+        if (ImGui::BeginTable("thickness_values", 2, ImGuiTableFlags_SizingStretchSame)) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn(); ImGui::TextUnformatted("Minimum (est.)");
+            ImGui::TableNextColumn(); ImGui::TextUnformatted("Typical");
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn(); ImGui::Text("%.6g", region.minimum);
+            ImGui::TableNextColumn(); ImGui::Text("%.6g", region.typical);
+            ImGui::EndTable();
+        }
+        ImGui::Spacing();
+        if (ImGui::BeginTable("region_metrics", 2, ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthStretch, 2);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 1);
+            ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextUnformatted("Faces");
+            ImGui::TableNextColumn(); ImGui::Text("%zu", region.faces.size());
+            ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextWrapped("Element size (est.)");
+            ImGui::TableNextColumn(); ImGui::Text("<= %.6g", region.suggestedSize);
+            ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextWrapped("Elements through thickness");
+            ImGui::TableNextColumn(); ImGui::Text("%d", settings.thickness.elementsThroughThickness);
+            ImGui::EndTable();
+        }
+        if (ImGui::TreeNode("Details")) {
+            ImGui::Text("Ray support: %.1f%%", region.confidence * 100);
+            ImGui::Text("Relative thickness: %.6g", region.relativeThickness);
+            ImGui::Text("Surface area: %.6g", region.area);
+            if (region.source < measurements.sources.size() && measurements.sources[region.source].geometry) {
+                ImGui::TextWrapped("Source: %s", measurements.sources[region.source].geometry->source.c_str());
+            }
+            ImGui::Text("Measured faces: %zu", measurements.measuredFaces);
+            ImGui::Text("Unknown faces: %zu", measurements.unknownFaces);
+            for (const auto& source : measurements.sources) {
+                if (!source.unavailableReason.empty() && source.geometry) {
+                    ImGui::TextWrapped("%s: %s", source.geometry->source.c_str(), source.unavailableReason.c_str());
+                }
+            }
+            ImGui::TreePop();
+        }
     }
-    ImGui::BeginDisabled(begin == 0);
-    if (ImGui::Button("Previous regions")) { selectComparisonDiagnostic(state,runtime.results.value,runtime.results.signature,begin-diagnosticPageSize,id); }
-    ImGui::EndDisabled(); ImGui::SameLine(); ImGui::BeginDisabled(begin+diagnosticPageSize >= result.regions.size());
-    if (ImGui::Button("Next regions")) { selectComparisonDiagnostic(state,runtime.results.value,runtime.results.signature,begin+diagnosticPageSize,id); }
+    ImGui::EndChild();
+    ImGui::BeginDisabled(selected == 0);
+    if (ImGui::Button("Previous##region")) { selectComparisonDiagnostic(state, runtime.results.value, runtime.results.signature, selected - 1, id); }
+    ImGui::EndDisabled(); ImGui::SameLine();
+    ImGui::Text("%zu / %zu", selected + 1, result.regions.size());
+    ImGui::SameLine(); ImGui::BeginDisabled(selected + 1 >= result.regions.size());
+    if (ImGui::Button("Next##region")) { selectComparisonDiagnostic(state, runtime.results.value, runtime.results.signature, selected + 1, id); }
     ImGui::EndDisabled();
-    if (selected < result.regions.size()) {
-        const auto& region = result.regions[selected];
-        ImGui::TextWrapped("%zu faces; ray confidence %.1f%%. Preliminary element size <= %.6g for %d elements through the sampled minimum thickness. Element growth and solver accuracy are not evaluated.",
-            region.faces.size(),region.confidence*100,region.suggestedSize,settings.thickness.elementsThroughThickness);
-    }
 }
 
 void drawDegenerateFindings(UiState& state, const ComparisonRuntime& runtime, bool current, SceneObjectId id)
@@ -1034,22 +1058,42 @@ void drawDiagnosticNavigation(UiState& state, ComparisonRuntime& runtime, bool c
         const bool selected = selection.ids.empty()
             ? comparisonSettings(state, id).diagnosticCategory == row.category
             : selectionContains(selection.ids, key);
-        ImGui::AlignTextToFramePadding();
-        if (ImGui::Selectable(row.name, selected, ImGuiSelectableFlags_SpanAllColumns, {0, ImGui::GetFrameHeight()})) {
+        const char* unit = row.category == DiagnosticCategory::thinRegions
+            ? (summary.count == 1 ? "region" : "regions") : (summary.count == 1 ? "finding" : "findings");
+        const auto countText = formatCount(summary.count) + " " + unit;
+        const auto status = summary.state == AnalysisResultState::partial ? "Incomplete - " + countText
+            : summary.state == AnalysisResultState::ready ? (summary.count ? countText : std::string("No findings"))
+            : std::string(analysisResultStateLabel(summary.state));
+        const auto position = ImGui::GetCursorScreenPos();
+        const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+        const float height = ImGui::CalcTextSize(row.name, nullptr, false, width).y
+            + ImGui::GetStyle().ItemSpacing.y + ImGui::CalcTextSize(status.c_str(), nullptr, false, width).y;
+        if (selected) { ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_Header)); }
+        if (ImGui::Selectable("##check", false, 0, {0, height})) {
             selectDetectorRow(state, id, row.category, order, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift);
             auto edited = comparisonSettings(state, id);
             edited.diagnosticCategory = row.category;
             setComparisonSettings(state, edited, id);
         }
         setLastItemTooltip(diagnosticHint(row.category));
+        ImGui::SetCursorScreenPos(position);
+        ImGui::TextWrapped("%s", row.name);
+        if (summary.state == AnalysisResultState::partial) { ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, .72f, .25f, 1.0f)); }
+        ImGui::TextWrapped("%s", status.c_str());
+        if (summary.state == AnalysisResultState::partial) { ImGui::PopStyleColor(); }
         ImGui::TableNextColumn();
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextWrapped("%s", diagnosticSummaryText(summary).c_str());
+        drawDiagnosticSettingsButton(state, id, row.category, row.name);
+        ImGui::TableNextColumn();
+        drawDetectorUpdate(state, comparisonDetectorStatus(runtime.results.value, row.category), hasA || hasB, id, row.category);
         ImGui::PopID();
     };
-    if (ImGui::BeginTable("check_status", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
-        ImGui::TableSetupColumn("Check", ImGuiTableColumnFlags_WidthStretch, 2);
-        ImGui::TableSetupColumn("Result", ImGuiTableColumnFlags_WidthStretch, 1);
+    const auto setupCheckColumns = [] {
+        ImGui::TableSetupColumn("Check", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Settings", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
+        ImGui::TableSetupColumn("Run", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
+    };
+    if (ImGui::BeginTable("check_status", 3, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
+        setupCheckColumns();
         for (const auto& row : rows) {
             if (diagnosticNeedsAttention(summaryFor(row.category))) { checkRow(row); }
             else { ++completed; }
@@ -1059,9 +1103,8 @@ void drawDiagnosticNavigation(UiState& state, ComparisonRuntime& runtime, bool c
     if (completed) {
         const auto label = std::to_string(completed) + " completed checks - No findings";
         if (ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen)) {
-            if (ImGui::BeginTable("completed_checks", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
-                ImGui::TableSetupColumn("Check", ImGuiTableColumnFlags_WidthStretch, 2);
-                ImGui::TableSetupColumn("Result", ImGuiTableColumnFlags_WidthStretch, 1);
+            if (ImGui::BeginTable("completed_checks", 3, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
+                setupCheckColumns();
                 for (const auto& row : rows) {
                     if (!diagnosticNeedsAttention(summaryFor(row.category))) { checkRow(row); }
                 }
@@ -1140,35 +1183,30 @@ void drawDiagnosticNavigation(UiState& state, ComparisonRuntime& runtime, bool c
     case DiagnosticCategory::degenerateTriangles: visible = &selectedSettings.degenerates.show; break;
     case DiagnosticCategory::thinRegions: visible = &selectedSettings.thickness.show; break;
     }
-    if (visible && drawVisibilityField("Findings visible", *visible)) { setComparisonSettings(state, selectedSettings, id); }
-    if (ImGui::Button("\xef\x80\x93 Settings")) { runtime.inspector.settingsPage = selectedSettings.diagnosticCategory; }
-    ImGui::SameLine();
-    drawDetectorUpdate(state, comparisonDetectorStatus(runtime.results.value, selectedSettings.diagnosticCategory),
-        hasA || hasB, id, selectedSettings.diagnosticCategory);
+    if (visible && drawVisibilityField(*visible ? "Visible" : "Hidden", *visible)) { setComparisonSettings(state, selectedSettings, id); }
     const auto& findings = comparisonDiagnosticEdges(runtime.results.value, selected.diagnosticSide, selected.diagnosticCategory);
     const bool ready = inspectorDetectorReady(runtime, state, id, selected.diagnosticCategory);
     const auto selectedPhase = comparisonDetectorStatus(runtime.results.value, selected.diagnosticCategory).phase;
     const auto selectedSummary = diagnosticSummary(selected.diagnosticSide == ComparisonSide::a ? runtime.results.value.original : runtime.results.value.repaired,
         selected.diagnosticCategory, selectedPhase, ready);
-    ImGui::TextWrapped("%s",
-        selectedSummary.state == AnalysisResultState::ready && !selectedSummary.count ? "No findings" : analysisResultStateLabel(selectedSummary.state));
-    if (selectedSummary.state == AnalysisResultState::partial) { ImGui::TextWrapped("Known findings only. Some sources or candidate pairs were not checked."); }
-    ImGui::BeginDisabled(!ready || findings.empty());
-    int step = 0;
-    if (ImGui::Button("Previous finding")) { step = -1; }
-    ImGui::SameLine();
-    if (ImGui::Button("Next finding")) { step = 1; }
-    ImGui::EndDisabled();
-    if (step) { navigateComparisonDiagnostic(state, runtime.results.value, runtime.results.signature, step, id); }
-    ImGui::BeginDisabled(!inspectorStagesReady(runtime, state, id, comparisonSource));
-    if (ImGui::Button("Full result")) { frameComparison(state, id); }
-    setLastItemTooltip("Clear finding focus and frame the full analysis result.");
-    ImGui::EndDisabled();
+    if (!ready || !selectedSummary.count) {
+        ImGui::TextUnformatted(selectedSummary.state == AnalysisResultState::ready ? "No findings"
+            : selectedSummary.state == AnalysisResultState::partial ? "Incomplete" : analysisResultStateLabel(selectedSummary.state));
+    }
+    const bool thinRegions = selected.diagnosticCategory == DiagnosticCategory::thinRegions;
+    if (!thinRegions) {
+        ImGui::BeginDisabled(!ready || findings.empty());
+        int step = 0;
+        if (ImGui::Button("Previous finding")) { step = -1; }
+        ImGui::SameLine();
+        if (ImGui::Button("Next finding")) { step = 1; }
+        ImGui::EndDisabled();
+        if (step) { navigateComparisonDiagnostic(state, runtime.results.value, runtime.results.signature, step, id); }
+    }
     current = inspectorStagesReady(runtime, state, id, comparisonSource);
     validateComparisonDiagnosticFocus(state, runtime.results.value, current ? runtime.results.signature : 0, id, runtime.inspector.queries.signature);
     const auto* comparison = findComparison(state, id);
-    if (!current) { ImGui::TextWrapped("Diagnostics unavailable until results are ready"); }
-    else if (comparison->diagnosticFocus) {
+    if (current && comparison->diagnosticFocus && !thinRegions) {
         const auto& focus = *comparison->diagnosticFocus;
         const char* name = focus.category == DiagnosticCategory::boundary ? "Boundary"
             : focus.category == DiagnosticCategory::nonManifoldVertices ? "Non-manifold vertex"
@@ -1182,7 +1220,6 @@ void drawDiagnosticNavigation(UiState& state, ComparisonRuntime& runtime, bool c
             : focus.category == DiagnosticCategory::duplicateTriangles ? "Duplicate triangle group" : "Winding edges";
         const auto count = comparisonDiagnosticEdges(runtime.results.value, focus.side, focus.category).size();
         ImGui::TextColored(ImVec4(1, 1, .1f, 1), "%s: %zu of %zu", name, focus.index + 1, count);
-        ImGui::TextWrapped("Focused finding is highlighted in yellow");
     }
     drawDuplicateFindings(state, runtime, current, id);
     drawDegenerateFindings(state, runtime, current, id);
@@ -1190,6 +1227,9 @@ void drawDiagnosticNavigation(UiState& state, ComparisonRuntime& runtime, bool c
     drawIntersectionFindings(state, runtime, current, id);
     drawTopologyFindings(state, runtime, current, id);
     drawTopologyInspectionFindings(state, runtime, current, id);
+    ImGui::BeginDisabled(!inspectorStagesReady(runtime, state, id, comparisonSource));
+    if (ImGui::Button("Show full analysis")) { frameComparison(state, id); }
+    ImGui::EndDisabled();
 
 }
 
@@ -1722,6 +1762,8 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     const auto &a = runtime.results.value.original.diagnostics;
     const auto &b = runtime.results.value.repaired.diagnostics;
     if (!inspectorStagesReady(runtime, state, id, comparisonTopology)) { return; }
+    ImGui::Spacing();
+    ImGui::SeparatorText("Mesh diagnostics");
     if (both) {
         ImGui::TextWrapped("Numerically collapsed triangles: %s -> %s", formatCount(a.degenerateTriangles).c_str(), formatCount(b.degenerateTriangles).c_str());
         ImGui::TextWrapped("Geometric duplicate triangles: %s -> %s", formatCount(a.duplicateTriangles).c_str(), formatCount(b.duplicateTriangles).c_str());

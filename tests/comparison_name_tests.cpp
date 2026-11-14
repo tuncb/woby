@@ -2008,6 +2008,8 @@ TEST_CASE("detector settings page is local to the selected analysis and does not
 TEST_CASE("grouped check list keeps unfinished checks visible and runs all available detectors")
 {
     ComparisonNameFixture f;
+    ImGui::GetStyle().FramePadding.y = 7.0f;
+    ImGui::GetStyle().CellPadding.y = 7.0f;
     woby::Mesh mesh;
     editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
     editMeshGeometry(mesh).indices = {0, 1, 2};
@@ -2021,6 +2023,8 @@ TEST_CASE("grouped check list keeps unfinished checks visible and runs all avail
     woby::ComparisonRuntimes runtimes;
     ImGuiTable* checks = nullptr;
     ImVec2 runAll;
+    ImVec2 runCheck;
+    ImVec2 settingsButton;
     const auto frame = [&] {
         ImGui::GetIO().DisplaySize = {1000, 2400};
         ImGui::NewFrame();
@@ -2034,6 +2038,9 @@ TEST_CASE("grouped check list keeps unfinished checks visible and runs all avail
                 checks = table;
                 runAll = {table->OuterRect.Min.x + 80, table->OuterRect.Max.y
                     + ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeight() * .5f};
+                runCheck = {table->Columns[2].MinX + ImGui::GetStyle().CellPadding.x + woby::renderModeButtonSize() * .5f,
+                    table->RowPosY1 + ImGui::GetStyle().CellPadding.y + woby::renderModeButtonSize() * .5f};
+                settingsButton = {table->Columns[1].MinX + ImGui::GetStyle().CellPadding.x + woby::renderModeButtonSize() * .5f, runCheck.y};
             }
         }
         ImGui::End(); ImGui::EndFrame();
@@ -2041,6 +2048,9 @@ TEST_CASE("grouped check list keeps unfinished checks visible and runs all avail
     for (int i = 0; i < 5; ++i) { frame(); }
     REQUIRE(checks);
     CHECK(checks->CurrentRow + 1 == woby::diagnosticCategoryCount);
+    CHECK(checks->RowPosY2 - checks->RowPosY1
+        <= std::max(woby::renderModeButtonSize(), ImGui::GetTextLineHeight() * 2 + ImGui::GetStyle().ItemSpacing.y)
+            + 2.0f * ImGui::GetStyle().CellPadding.y + 0.01f);
     const auto revision = f.state.sceneEditRevision;
     auto& io = ImGui::GetIO();
     io.AddMousePosEvent(runAll.x, runAll.y); frame();
@@ -2050,4 +2060,92 @@ TEST_CASE("grouped check list keeps unfinished checks visible and runs all avail
     for (const auto& request : analysis->detectorRequests) { CHECK(request.revision == 1); CHECK_FALSE(request.cancel); }
     CHECK(analysis->intersectionRequestRevision == 1);
     CHECK(f.state.sceneEditRevision == revision);
+    const auto selectedCategory = analysis->settings.diagnosticCategory;
+    io.AddMousePosEvent(runCheck.x, runCheck.y); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame(); frame();
+    CHECK(analysis->intersectionRequestRevision == 2);
+    CHECK(analysis->settings.diagnosticCategory == selectedCategory);
+    io.AddMousePosEvent(settingsButton.x, settingsButton.y); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame(); frame();
+    REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+    CHECK_FALSE(runtimes.objects[f.id].inspector.settingsPage.has_value());
+    CHECK(analysis->settings.diagnosticCategory == selectedCategory);
+    CHECK(f.state.sceneEditRevision == revision);
+}
+
+TEST_CASE("thin region cards display one region and navigation selects the next result")
+{
+    ComparisonNameFixture f;
+    woby::Mesh mesh;
+    editMeshGeometry(mesh).vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    editMeshGeometry(mesh).indices = {0, 1, 2};
+    editMeshGeometry(mesh).nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(meshGeometry(mesh).vertices);
+    f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, f.id);
+    woby::setAnalysisTask(f.state, f.id, woby::AnalysisTask::meshChecks);
+    auto settings = woby::comparisonSettings(f.state, f.id);
+    settings.diagnosticCategory = woby::DiagnosticCategory::thinRegions;
+    woby::setComparisonSettings(f.state, settings, f.id);
+    woby::selectSceneObject(f.state, f.id);
+    woby::ComparisonRuntimes runtimes;
+    auto& runtime = runtimes.objects[f.id];
+    runtime.gpu.ready = true;
+    runtime.results.signature = woby::comparisonGeometrySignature(f.state, f.id);
+    runtime.results.cache = {runtime.results.signature, woby::comparisonSource | woby::comparisonDetectors};
+    for (auto& detector : runtime.results.value.detectors) { detector.phase = woby::IntersectionPhase::complete; }
+    auto& surface = runtime.results.value.original;
+    surface.thickness.settings = settings.thickness;
+    surface.thickness.measurements = std::make_shared<woby::ThicknessMeasurements>();
+    surface.thickness.regions.resize(2);
+    surface.thinRegionBounds.resize(2);
+    surface.thickness.regions[0].minimum = 1;
+    surface.thickness.regions[0].typical = 1;
+    surface.thickness.regions[1].minimum = 2;
+    surface.thickness.regions[1].typical = 2;
+    ImVec2 next;
+    const auto frame = [&] {
+        ImGui::GetIO().DisplaySize = {1000, 2400};
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({20, 20});
+        ImGui::SetNextWindowSize({650, 2300});
+        ImGui::Begin("Thin region cards");
+        ImGui::LogToBuffer(0);
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        const std::string contents = f.context->LogBuffer.c_str();
+        ImGui::LogFinish();
+        for (auto* window : f.context->Windows) {
+            if (std::string(window->Name).find("thin_region_card") == std::string::npos) { continue; }
+            const auto spacing = ImGui::GetStyle().ItemSpacing;
+            next = {window->Pos.x + ImGui::CalcTextSize("Previous").x + ImGui::GetStyle().FramePadding.x * 2
+                + ImGui::CalcTextSize("1 / 2").x + spacing.x * 2 + 10,
+                window->Pos.y + window->Size.y + spacing.y + ImGui::GetFrameHeight() * .5f};
+        }
+        ImGui::End(); ImGui::EndFrame();
+        return contents;
+    };
+    const auto before = woby::createSceneDocument(f.state);
+    for (int i = 0; i < 5; ++i) { frame(); }
+    const auto text = frame();
+    INFO(text);
+    CHECK(text.find("Region 1") != std::string::npos);
+    CHECK(text.find("Region 2") == std::string::npos);
+    CHECK(text.find("Mesh diagnostics") > text.find("Region 1"));
+    CHECK(woby::createSceneDocument(f.state) == before);
+    CHECK_FALSE(woby::findComparison(f.state, f.id)->diagnosticFocus.has_value());
+    auto& io = ImGui::GetIO();
+    io.AddMousePosEvent(next.x, next.y); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame(); frame();
+    const auto* analysis = woby::findComparison(f.state, f.id);
+    REQUIRE(analysis->diagnosticFocus.has_value());
+    CHECK(analysis->diagnosticFocus->index == 1);
+    CHECK(frame().find("Region 2") != std::string::npos);
+    // The last region must not wrap to the first region.
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
+    CHECK(analysis->diagnosticFocus->index == 1);
 }

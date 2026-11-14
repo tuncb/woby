@@ -231,7 +231,7 @@ struct InspectorFixture {
     }
 };
 
-TEST_CASE("check status highlights all selected detectors across both columns")
+TEST_CASE("check status highlights selected detector rows and supports selection through status text")
 {
     InspectorFixture f;
     for (auto& detector : f.runtimes.objects[f.id].results.value.detectors) {
@@ -247,7 +247,7 @@ TEST_CASE("check status highlights all selected detectors across both columns")
         if (std::string_view(window->Name).find("comparison_properties") != std::string_view::npos) { properties = window; }
     }
     REQUIRE(properties);
-    // Filled selection rectangles must reach the result column for both rows.
+    // Filled selection rectangles cover both selected rows, including their controls.
     const auto color = ImGui::GetColorU32(ImGuiCol_Header);
     std::vector<float> selectedRows;
     const auto& vertices = properties->DrawList->VtxBuffer;
@@ -264,10 +264,11 @@ TEST_CASE("check status highlights all selected detectors across both columns")
     }
     CHECK(selectedRows.size() == 2);
     REQUIRE(!selectedRows.empty());
-    // The result cell is also a row target. Ctrl-click toggles just that row.
+    // The status below the name is also a row target. Ctrl-click toggles just that row.
     auto& io = ImGui::GetIO();
-    io.AddMousePosEvent(properties->Pos.x + properties->Size.x * .85f,
-        selectedRows.front() + ImGui::GetFrameHeight() * .5f);
+    io.AddMousePosEvent(properties->Pos.x + 100,
+        selectedRows.front() + ImGui::GetStyle().CellPadding.y + ImGui::GetTextLineHeightWithSpacing()
+            + ImGui::GetTextLineHeight() * .5f);
     f.frame();
     io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
     io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); f.frame();
