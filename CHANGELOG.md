@@ -2,6 +2,13 @@
 
 Notable changes by release tag. Versions with no notable changes are omitted.
 
+## v0.34.0
+
+- Added thin-region thickness analysis with visualization, exports, and sample scenes.
+- Added tetrahedral quality metrics and quadratic validity checks.
+- Improved point cloud navigation performance.
+- Improved scene and analysis controls and comparison findings navigation.
+
 ## v0.33.0
 
 - Added approximate and standalone difference mesh analysis.
