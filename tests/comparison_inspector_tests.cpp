@@ -233,7 +233,13 @@ struct InspectorFixture {
 
 TEST_CASE("check status highlights selected detector rows and supports selection through status text")
 {
+    bool macOSBehaviors = false;
+    SUBCASE("Windows and Linux selection modifier") {}
+    SUBCASE("macOS selection modifier") { macOSBehaviors = true; }
     InspectorFixture f;
+    auto& io = ImGui::GetIO();
+    io.ConfigMacOSXBehaviors = macOSBehaviors;
+    const auto modifier = macOSBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl;
     for (auto& detector : f.runtimes.objects[f.id].results.value.detectors) {
         detector.phase = IntersectionPhase::notChecked;
     }
@@ -264,16 +270,15 @@ TEST_CASE("check status highlights selected detector rows and supports selection
     }
     CHECK(selectedRows.size() == 2);
     REQUIRE(!selectedRows.empty());
-    // The status below the name is also a row target. Ctrl-click toggles just that row.
-    auto& io = ImGui::GetIO();
+    // The status below the name is also a row target. Ctrl-click or Command-click toggles that row.
     io.AddMousePosEvent(properties->Pos.x + 100,
         selectedRows.front() + ImGui::GetStyle().CellPadding.y + ImGui::GetTextLineHeightWithSpacing()
             + ImGui::GetTextLineHeight() * .5f);
     f.frame();
-    io.AddKeyEvent(ImGuiMod_Ctrl, true); f.frame();
+    io.AddKeyEvent(modifier, true); f.frame();
     io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); f.frame();
     io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); f.frame();
-    io.AddKeyEvent(ImGuiMod_Ctrl, false); f.frame();
+    io.AddKeyEvent(modifier, false); f.frame();
     CHECK(findComparison(f.state, f.id)->detectorSelection.ids == std::vector<uint64_t>{selected[1]});
 }
 
