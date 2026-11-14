@@ -2346,27 +2346,6 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
                 ImGui::EndPopup();
             }
         }
-        if (foundRuntime != runtimes.objects.end()
-            && comparisonTask(state, id) == AnalysisTask::meshChecks
-            && comparisonInspectorCacheCurrent(foundRuntime->second.inspector.queries, state, id)) {
-            const auto& inspector = foundRuntime->second.inspector;
-            size_t findings = 0, pending = 0;
-            for (const auto& check : inspector.diagnosticSummaries) {
-                bool hasFindings = false, incomplete = false;
-                for (size_t side = 0; side < 2; ++side) {
-                    if (!inspector.queries.inputs[side].summary.enabledPartCount) { continue; }
-                    hasFindings |= check[side].count != 0;
-                    incomplete |= check[side].state != AnalysisResultState::ready;
-                }
-                findings += hasFindings;
-                pending += incomplete;
-            }
-            const float indent = renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.x + ImGui::GetTreeNodeToLabelSpacing();
-            ImGui::Indent(indent);
-            ImGui::TextWrapped("%zu %s with findings", findings, findings == 1 ? "check" : "checks");
-            if (pending) { ImGui::TextColored({1, .73f, .28f, 1}, "Checks incomplete"); }
-            ImGui::Unindent(indent);
-        }
         ImGui::PopID();
     }
     const auto shortcuts = endSelectionRows(rows);

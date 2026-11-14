@@ -117,7 +117,7 @@ struct ComparisonNameFixture {
 };
 } // namespace
 
-TEST_CASE("analysis rows show check status and reveal source metadata in the hover hint")
+TEST_CASE("analysis rows show only names and reveal check status and source metadata in the hover hint")
 {
     ComparisonNameFixture f;
     woby::Mesh mesh;
@@ -140,7 +140,12 @@ TEST_CASE("analysis rows show check status and reveal source metadata in the hov
     const char* expectedTask = "Mesh checks";
     const char* expectedStatus = "Checks pending";
     bool missing = false;
+    bool complete = false;
     SUBCASE("checks include the finding summary") {}
+    SUBCASE("completed checks show ready in the hint") {
+        runtime.inspector.diagnosticSummaries[1][0].state = woby::AnalysisResultState::ready;
+        expectedStatus = "Ready"; complete = true;
+    }
     SUBCASE("quality includes the result status") {
         woby::setAnalysisTask(f.state, f.id, woby::AnalysisTask::meshQuality);
         expectedTask = "Mesh quality"; expectedStatus = "Ready";
@@ -160,10 +165,18 @@ TEST_CASE("analysis rows show check status and reveal source metadata in the hov
     std::string contents;
     float endY = 0;
     ImVec2 row;
+    ImRect lastItem;
+    ImGuiID lastItemId = 0;
+    ImGuiID nameId = 0;
     const auto frame = [&] {
         ImGui::NewFrame(); ImGui::SetNextWindowPos({20, 20}); ImGui::SetNextWindowSize({500, 400});
         ImGui::Begin("Compact analysis rows"); ImGui::LogToBuffer(0);
         woby::drawComparisonObjects(f.state, f.edit, runtimes);
+        lastItem = f.context->LastItemData.Rect;
+        lastItemId = f.context->LastItemData.ID;
+        ImGui::PushID(std::to_string(f.id).c_str());
+        nameId = ImGui::GetID("###comparison_row");
+        ImGui::PopID();
         const auto* header = ImGui::TableFindByID(ImGui::GetID("analysis_header"));
         row = {ImGui::GetWindowPos().x + 100, header->OuterRect.Max.y + ImGui::GetStyle().ItemSpacing.y + woby::renderModeButtonSize() * .5f};
         endY = ImGui::GetCursorPosY();
@@ -175,7 +188,12 @@ TEST_CASE("analysis rows show check status and reveal source metadata in the hov
     CHECK(contents.find("Inspection one") != std::string::npos);
     CHECK(contents.find(expectedTask) == std::string::npos);
     CHECK(contents.find("Sources:") == std::string::npos);
-    CHECK((contents.find(" with findings") != std::string::npos) == (woby::comparisonTask(f.state, f.id) == woby::AnalysisTask::meshChecks));
+    CHECK(contents.find(" with findings") == std::string::npos);
+    CHECK(contents.find("Checks incomplete") == std::string::npos);
+    CHECK(lastItem.GetHeight() == doctest::Approx(woby::renderModeButtonSize()));
+    CHECK(lastItem.GetCenter().y == doctest::Approx(row.y));
+    CHECK(lastItem.Max.x <= 520 - ImGui::GetStyle().WindowPadding.x + 1);
+    CHECK(lastItemId == nameId);
     const auto before = woby::createSceneDocument(f.state);
     const auto revision = f.state.sceneEditRevision;
     ImGui::GetIO().AddMousePosEvent(row.x, row.y);
@@ -187,7 +205,8 @@ TEST_CASE("analysis rows show check status and reveal source metadata in the hov
     CHECK(contents.find("Double-click to rename") != std::string::npos);
     if (missing) { CHECK(contents.find(runtime.inspector.queries.inputs[0].summary.issue) != std::string::npos); }
     else if (woby::comparisonSettings(f.state, f.id).mode != woby::ComparisonMode::surfaceQuality) {
-        CHECK(contents.find("1 checks with findings | 1 not run") != std::string::npos);
+        CHECK(contents.find(complete ? "1 checks with findings | 0 not run"
+            : "1 checks with findings | 1 not run") != std::string::npos);
     }
     CHECK(endY == doctest::Approx(oneRowEnd));
     CHECK(woby::createSceneDocument(f.state) == before);
