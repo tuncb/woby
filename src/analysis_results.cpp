@@ -489,6 +489,7 @@ void startAnalysisExport(AnalysisExportRuntime& runtime, const MeshComparison& r
         auto& dest = side == 0 ? snapshot.original : snapshot.repaired;
         dest.topology = source.topology; dest.duplicates = source.duplicates;
         dest.degenerates = source.degenerates; dest.intersections = source.intersections;
+        dest.thickness = source.thickness;
         dest.tetrahedralQuality = source.tetrahedralQuality;
     }
     runtime.stop = {}; runtime.written = 0; runtime.target = target; runtime.path = path;

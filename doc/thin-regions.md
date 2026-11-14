@@ -5,6 +5,10 @@ Create a mesh-check analysis and add the model surface to its sources. Run
 to show or hide the result. Select a region to frame it and show a measurement
 line between its two surfaces.
 
+Use the [test models](../assets/samples/thin-regions/README.md) to try known wall
+thicknesses, a tapered plate, separate solids, and an open surface. Each model has
+a scene with saved detector settings.
+
 The detector samples four points on each triangle. It casts seven rays at each
 point: one inward normal ray and six rays in a cone with a 25-degree half-angle.
 A sample needs at least three opposing-surface hits within 1.5 times its shortest
@@ -44,11 +48,17 @@ cancelable background job.
 ## Control API
 
 ```text
-woby ctl analysis run ANALYSIS_ID --detector thin_regions
-woby ctl analysis set ANALYSIS_ID --thickness-absolute-enabled true --maximum-thickness 1
+woby ctl analysis set ANALYSIS_ID --thickness-absolute-enabled true --maximum-thickness 1 --thickness-relative-enabled false
 woby ctl analysis set ANALYSIS_ID --thickness-map true --thickness-elements 3
+woby ctl analysis run ANALYSIS_ID --detector thin_regions
+woby ctl analysis results ANALYSIS_ID --json
 woby ctl analysis findings ANALYSIS_ID --detector thin_regions --collection /findings
 ```
+
+`analysis run` queues the detector. Use `analysis results` to wait for current
+results before reading findings. Add `--instance INSTANCE_ID` after `ctl` when
+you need to select a running viewer. `--thin-regions true` enables automatic
+updates when geometry changes.
 
 Use `/findings/0/faces` for the source triangle references in the first region.
 Full analysis export includes all retained region and face records. Exported

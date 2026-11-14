@@ -1,0 +1,55 @@
+# Thin-region sample; all model paths are relative.
+version = 22
+show_grid = false
+show_origin = false
+up_axis = "z"
+
+[camera]
+target = [20.0, 10.0, 0.0]
+yaw_radians = 0.9
+pitch_radians = 0.55
+roll_radians = 0
+distance = 68.0
+vertical_fov_degrees = 60
+near_plane = 0.01
+
+[[files]]
+path = "04-tapered-plate.obj"
+visible = false
+[[files.groups]]
+name = "surface"
+show_vertices = false
+show_triangles = false
+
+[[analyses]]
+name = "Taper: 6 mm down to 0.5 mm"
+translation = [0, 0, 0]
+analysis_type = "mesh"
+analysis_task = "mesh_checks"
+analysis_enabled = true
+analysis_mode = "a"
+analysis_show_edges = false
+analysis_show_boundaries = false
+analysis_show_non_manifold = false
+analysis_show_winding = false
+analysis_show_non_manifold_vertices = false
+analysis_show_holes = false
+analysis_show_fins = false
+show_duplicate_points = false
+show_duplicate_triangles = false
+show_degenerate_triangles = false
+diagnostic_category = "thin_regions"
+diagnostic_side = "a"
+analysis_thickness_auto_update = true
+analysis_thickness_show = true
+analysis_thickness_map = true
+analysis_thickness_absolute_enabled = true
+analysis_thickness_relative_enabled = false
+analysis_thickness_maximum = 1.5
+analysis_thickness_maximum_relative = 0.2
+analysis_thickness_minimum_region_area = 0
+analysis_thickness_elements = 3
+[[analyses.a]]
+file_index = 0
+group_index = 0
+name = "04-tapered-plate.obj / surface"

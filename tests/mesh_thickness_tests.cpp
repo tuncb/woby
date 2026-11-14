@@ -221,3 +221,34 @@ TEST_CASE("thickness exports measurements source references and complete nested 
     const auto json = nlohmann::json::parse(out.str());
     CHECK(json["aToB"]["detectors"]["thin_regions"]["findings"][0]["faces"].size() == 125);
 }
+
+TEST_CASE("thickness background export retains both sides after live results are replaced")
+{
+    Files files;
+    AnalysisExportRuntime runtime;
+    auto result = computeComparisonStages(meshFor(plate()),meshFor(plate(2)),comparisonSource | comparisonThickness,
+        {}, {},TopologyMode::originalIndex,{}, {},0,{},absolute(2.1));
+    REQUIRE(result.original.thickness.regions.size() == 1);
+    REQUIRE(result.repaired.thickness.regions.size() == 1);
+    result.original.thickness.coordinateOrigin = {100,200,300};
+    auto& region = result.original.thickness.regions[0];
+    region.faces.resize(125,region.faces.front());
+    const nlohmann::json summary{{"aToB",{{"detectors",nlohmann::json::object()}}},
+        {"bToA",{{"detectors",nlohmann::json::object()}}}};
+    std::ostringstream expected;
+    writeAnalysisResults(expected,result,summary);
+    const auto path = files.root/"thickness.json";
+    startAnalysisExport(runtime,result,summary,"thickness",path);
+    result = {}; // The background job must own its regions and immutable measurements.
+    runtime.worker.wait();
+    REQUIRE(analysisExportStatus(runtime)["state"] == "complete");
+    std::ifstream input(path);
+    const auto exported = nlohmann::json::parse(input);
+    CHECK(exported == nlohmann::json::parse(expected.str()));
+    const auto& a = exported["aToB"]["detectors"]["thin_regions"];
+    const auto& b = exported["bToA"]["detectors"]["thin_regions"];
+    CHECK(a["knownCount"] == 1); CHECK(b["knownCount"] == 1);
+    CHECK(a["findings"][0]["faces"].size() == 125);
+    CHECK(a["findings"][0]["minimumThickness"].get<double>() == doctest::Approx(1));
+    CHECK(b["findings"][0]["minimumThickness"].get<double>() == doctest::Approx(2));
+}
