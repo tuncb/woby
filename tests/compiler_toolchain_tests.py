@@ -1,6 +1,7 @@
 """Build a small fixture with the real toolchain and check compiler rejection."""
 
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -34,6 +35,10 @@ set(CMAKE_CXX_STANDARD 20)
 add_executable(complete complete.cpp c_source.c)
 woby_enable_project_warnings(complete)
 woby_enable_enum_switch_warnings(complete)
+if(WIN32)
+    target_sources(complete PRIVATE version.rc)
+    target_compile_options(complete PRIVATE "$<$<COMPILE_LANGUAGE:RC>:/C65001>")
+endif()
 add_library(incomplete OBJECT incomplete.cpp)
 woby_enable_enum_switch_warnings(incomplete)
 ''', encoding="utf-8")
@@ -47,6 +52,7 @@ int select_mode(Mode mode) {
 int main() { return select_mode(Mode::first) + c_value(); }
 ''', encoding="utf-8")
         (self.source / "c_source.c").write_text("int c_value(void) { return 0; }\n", encoding="utf-8")
+        (self.source / "version.rc").write_text('#include <windows.h>\n1 RCDATA { "compiler fixture" }\n', encoding="utf-8")
         (self.source / "incomplete.cpp").write_text('''
 enum class Mode { first, second };
 int select_mode(Mode mode) {
@@ -54,10 +60,10 @@ int select_mode(Mode mode) {
 }
 ''', encoding="utf-8")
 
-    def configure(self, toolchain):
-        args = [CMAKE, "-S", str(self.source), "-B", str(self.build), "-G", GENERATOR,
+    def configure(self, toolchain, generator=GENERATOR):
+        args = [CMAKE, "-S", str(self.source), "-B", str(self.build), "-G", generator,
                 f"-DCMAKE_TOOLCHAIN_FILE={toolchain}", f"-DWOBY_LLVM_ROOT={LLVM_ROOT}"]
-        if GENERATOR.startswith("Visual Studio"):
+        if generator.startswith("Visual Studio"):
             args += ["-A", PLATFORM, "-T", "ClangCL,host=x64"]
         else:
             args += ["-DCMAKE_BUILD_TYPE=Release"]
@@ -84,6 +90,16 @@ int select_mode(Mode mode) {
         configured = self.configure(toolchain)
         self.assertNotEqual(configured.returncode, 0, configured.stdout)
         self.assertIn("requires upstream Clang 0.0.1", configured.stdout)
+
+    @unittest.skipUnless(os.name == "nt" and os.environ.get("VCToolsInstallDir"),
+                         "Windows Ninja resource check requires the Visual Studio environment")
+    def test_ninja_windows_resources_use_the_llvm_preprocessor(self):
+        configured = self.configure(SOURCE / "cmake/toolchains/llvm.cmake", "Ninja")
+        self.assertEqual(configured.returncode, 0, configured.stdout)
+        built = subprocess.run([CMAKE, "--build", str(self.build), "--target", "complete"],
+                               text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.assertEqual(built.returncode, 0, built.stdout)
+        self.assertNotIn("warning:", built.stdout.lower(), built.stdout)
 
 
 if __name__ == "__main__":
