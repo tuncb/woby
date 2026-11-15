@@ -56,12 +56,12 @@ if(CMAKE_HOST_APPLE)
     endif()
     # Pair Apple's runtime with its headers. LLVM's bundled libc++ headers can
     # reference newer atomic-wait symbols that the macOS runtime does not have.
-    execute_process(COMMAND xcrun --find clang++
-        OUTPUT_VARIABLE woby_xcode_clang OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
-    get_filename_component(woby_xcode_bin "${woby_xcode_clang}" DIRECTORY)
-    get_filename_component(woby_libcxx_headers "${woby_xcode_bin}/../include/c++/v1" ABSOLUTE)
+    execute_process(COMMAND xcrun --sdk macosx clang++ -isysroot "${CMAKE_OSX_SYSROOT}" -E -x c++ -v /dev/null
+        OUTPUT_QUIET ERROR_VARIABLE woby_xcode_search COMMAND_ERROR_IS_FATAL ANY)
+    string(REGEX MATCH "[\r\n][ \t]+([^\r\n]+/c\\+\\+/v1)[ \t]*[\r\n]" woby_libcxx_match "${woby_xcode_search}")
+    string(STRIP "${CMAKE_MATCH_1}" woby_libcxx_headers)
     if(NOT EXISTS "${woby_libcxx_headers}/__config")
-        message(FATAL_ERROR "Xcode libc++ headers are missing at ${woby_libcxx_headers}")
+        message(FATAL_ERROR "Could not locate Xcode libc++ headers.\n${woby_xcode_search}")
     endif()
     foreach(language IN ITEMS CXX OBJCXX)
         string(APPEND CMAKE_${language}_FLAGS_INIT " -nostdinc++ -isystem \"${woby_libcxx_headers}\"")
