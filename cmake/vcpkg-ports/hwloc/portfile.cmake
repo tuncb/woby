@@ -1,4 +1,5 @@
-# Remove this overlay when the pinned port declares the Windows terminal APIs.
+# Use the upstream Windows CMake build with clang-cl. The Autotools Windows
+# utility build adds MinGW-only flags such as -mwindows.
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO open-mpi/hwloc
@@ -8,6 +9,40 @@ vcpkg_from_github(
         fix_shared_win_build.patch
         stdout_fileno.patch
 )
+
+if(VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_MINGW)
+    vcpkg_cmake_configure(
+        SOURCE_PATH "${SOURCE_PATH}/contrib/windows-cmake"
+        OPTIONS -DHWLOC_ENABLE_TESTING=OFF)
+    vcpkg_cmake_install()
+    vcpkg_copy_pdbs()
+    vcpkg_copy_tools(TOOL_NAMES hwloc-bind hwloc-calc hwloc-diff hwloc-distrib
+        hwloc-gather-cpuid hwloc-info hwloc-patch lstopo-no-graphics lstopo lstopo-win
+        AUTO_CLEAN)
+    foreach(configuration IN ITEMS "" "/debug")
+        if(configuration STREQUAL "/debug" AND VCPKG_BUILD_TYPE)
+            continue()
+        endif()
+        set(pkgconfig_dir "${CURRENT_PACKAGES_DIR}${configuration}/lib/pkgconfig")
+        file(MAKE_DIRECTORY "${pkgconfig_dir}")
+        file(WRITE "${pkgconfig_dir}/hwloc.pc"
+"prefix=${CURRENT_PACKAGES_DIR}
+exec_prefix=\${prefix}
+libdir=\${prefix}${configuration}/lib
+includedir=\${prefix}/include
+
+Name: hwloc
+Description: Hardware locality detection and management library
+Version: ${VERSION}
+Libs: -L\${libdir} -lhwloc
+Cflags: -I\${includedir}
+")
+    endforeach()
+    vcpkg_fixup_pkgconfig()
+    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+    vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")
+    return()
+endif()
 
 if(VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_MINGW)
     set(OPTIONS ac_cv_prog_cc_c99= # To avoid the compiler check for C99 which will fail for MSVC
