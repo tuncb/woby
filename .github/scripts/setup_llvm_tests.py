@@ -2,6 +2,7 @@
 
 import hashlib
 import io
+from contextlib import redirect_stdout
 import json
 from pathlib import Path
 import subprocess
@@ -101,6 +102,24 @@ class LlvmSetupTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "SDK directory is missing"):
                 setup_llvm.platform_environment("Darwin")
         self.assertEqual(setup_llvm.platform_environment("Windows"), {})
+
+    def test_partial_install_is_retried_and_verified_install_is_reused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "LLVM tools"
+            (root / "bin").mkdir(parents=True)
+            (root / "bin/clang-cl.exe").touch()
+            with patch.object(setup_llvm.platform, "system", return_value="Windows"), \
+                    patch.object(setup_llvm.platform, "machine", return_value="AMD64"), \
+                    patch("sys.argv", ["setup_llvm.py", "--destination", str(root)]), \
+                    patch.dict(setup_llvm.os.environ, {}, clear=True), \
+                    patch.object(setup_llvm, "install_package") as install, \
+                    patch.object(setup_llvm, "verify_compilers", return_value=setup_llvm.compiler_paths(root, "Windows")), \
+                    redirect_stdout(io.StringIO()):
+                setup_llvm.main()
+                install.assert_called_once()
+                install.reset_mock()
+                setup_llvm.main()
+                install.assert_not_called()
 
     def test_manifest_contains_every_ci_platform_with_a_checksum(self):
         manifest = json.loads(setup_llvm.MANIFEST.read_text(encoding="utf-8"))

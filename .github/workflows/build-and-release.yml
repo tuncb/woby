@@ -170,7 +170,8 @@ jobs:
         run: uv python install
 
       - name: Restore pinned LLVM
-        uses: actions/cache@v5
+        id: llvm-cache
+        uses: actions/cache/restore@v5
         with:
           path: ${{ runner.temp }}/woby-llvm
           key: llvm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('cmake/llvm-toolchain.json') }}
@@ -178,6 +179,13 @@ jobs:
       - name: Select pinned Clang
         shell: pwsh
         run: uv run .github/scripts/setup_llvm.py --destination "$env:RUNNER_TEMP/woby-llvm"
+
+      - name: Save verified LLVM
+        if: steps.llvm-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ runner.temp }}/woby-llvm
+          key: ${{ steps.llvm-cache.outputs.cache-primary-key }}
 
       - name: Test CI helpers
         shell: pwsh
