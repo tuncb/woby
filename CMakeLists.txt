@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-# Use the level-set allocation fix in local and CI dependency builds.
+# Use the shared dependency fixes in local and CI builds.
 list(APPEND VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg-ports")
 list(APPEND VCPKG_OVERLAY_TRIPLETS "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg-triplets")
 if(NOT DEFINED VCPKG_TARGET_TRIPLET)
