@@ -228,3 +228,14 @@ replace_exact(src/NoGraphicsAPIMetal.mm
                 if (color.resolve_view) commands->pass.colorAttachments[i].storeAction = MTLStoreActionStoreAndMultisampleResolve;]==])
 
 replace_exact(src/NoGraphicsAPI.cpp "#include <assert.h>" "#include <assert.h>\n#include <algorithm>")
+
+# These checks are used only in builds with assertions or validation layers.
+replace_exact(src/NoGraphicsAPI.cpp
+    "constexpr uint32 max_instance_layers = 64;"
+    "[[maybe_unused]] constexpr uint32 max_instance_layers = 64;")
+replace_exact(src/NoGraphicsAPI.cpp
+    "bool has_valid_texture_usage_bits(TextureUsage usage) noexcept"
+    "[[maybe_unused]] bool has_valid_texture_usage_bits(TextureUsage usage) noexcept")
+replace_exact(src/NoGraphicsAPI.cpp
+    "~(VK_QUEUE_TRANSFER_BIT | VK_QUEUE_SPARSE_BINDING_BIT | VK_QUEUE_PROTECTED_BIT)"
+    "~VkQueueFlags(VK_QUEUE_TRANSFER_BIT | VK_QUEUE_SPARSE_BINDING_BIT | VK_QUEUE_PROTECTED_BIT)")
