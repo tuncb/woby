@@ -1,10 +1,12 @@
 """Test LLVM selection, package verification, and GitHub environment export."""
 
 import hashlib
+import io
 import json
 from pathlib import Path
 import subprocess
 import tempfile
+import tarfile
 import unittest
 from unittest.mock import patch
 
@@ -63,15 +65,19 @@ class LlvmSetupTests(unittest.TestCase):
     def test_verified_package_is_extracted_with_paths_containing_spaces(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "LLVM tools"
-            payload = b"package fixture"
+            data = io.BytesIO()
+            with tarfile.open(fileobj=data, mode="w:xz") as archive:
+                entry = tarfile.TarInfo("LLVM-release/bin/clang")
+                entry.size = len(b"compiler fixture")
+                archive.addfile(entry, io.BytesIO(b"compiler fixture"))
+            payload = data.getvalue()
             def download(url, destination):
                 self.assertIn("/llvmorg-23.1.5/", url)
                 destination.write_bytes(payload)
-            with patch.object(setup_llvm.urllib.request, "urlretrieve", side_effect=download), \
-                    patch.object(setup_llvm.subprocess, "run") as run:
-                setup_llvm.install_package(root, {"filename": "llvm.tar.zst", "sha256": hashlib.sha256(payload).hexdigest()}, "23.1.5")
-                run.assert_called_once_with(["tar", "-xf", str(root.parent / "llvm.tar.zst"), "-C", str(root), "--strip-components=1"], check=True)
-            self.assertFalse((root.parent / "llvm.tar.zst").exists())
+            with patch.object(setup_llvm.urllib.request, "urlretrieve", side_effect=download):
+                setup_llvm.install_package(root, {"filename": "llvm.tar.xz", "sha256": hashlib.sha256(payload).hexdigest()}, "23.1.5")
+            self.assertEqual((root / "bin/clang").read_bytes(), b"compiler fixture")
+            self.assertFalse((root.parent / "llvm.tar.xz").exists())
 
     def test_export_keeps_paths_intact_and_appends_environment(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -2,16 +2,16 @@
   "version": "23.1.5",
   "packages": {
     "Windows-X64": {
-      "filename": "clang+llvm-23.1.5-x86_64-pc-windows-msvc.tar.zst",
-      "sha256": "b2be33385ddc86e83511417a060de927ae8b09d1f3017cc3cdce5c73cd5029d7"
+      "filename": "clang+llvm-23.1.5-x86_64-pc-windows-msvc.tar.xz",
+      "sha256": "62fdada7f6fa2b73856486dfbbdba3d2c1882991621615bcb55c60207611c6d4"
     },
     "Linux-X64": {
-      "filename": "LLVM-23.1.5-Linux-X64.tar.zst",
-      "sha256": "c3107384835f788768f614db610e87fba7077f125ca950eb02a78bab0a308065"
+      "filename": "LLVM-23.1.5-Linux-X64.tar.xz",
+      "sha256": "f72edb0b36580ece7f52e23858f00c18fad4e87395ea7ad05d7e55c39f8fc78a"
     },
     "Darwin-ARM64": {
-      "filename": "LLVM-23.1.5-macOS-ARM64.tar.zst",
-      "sha256": "503de30ef90311e0b143623801b19af2250adac6d69faed65ad0051170202e3b"
+      "filename": "LLVM-23.1.5-macOS-ARM64.tar.xz",
+      "sha256": "aba592b4a15e8f90c634c5367b51ec8418b8bcd2829865db331a17dc9418dcff"
     }
   }
 }

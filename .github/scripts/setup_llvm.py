@@ -77,9 +77,13 @@ def main():
     if key not in manifest["packages"]:
         parser.error(f"Unsupported LLVM platform: {key}")
     root = (args.root or args.destination).resolve()
-    if args.destination and not compiler_paths(root, system)["CXX"].is_file():
-        install_package(root, manifest["packages"][key], manifest["version"])
+    package = manifest["packages"][key]
+    stamp = root / ".woby-llvm-package"
+    if args.destination and (not stamp.is_file() or stamp.read_text(encoding="utf-8").strip() != package["sha256"]):
+        install_package(root, package, manifest["version"])
     compilers = verify_compilers(root, system, manifest["version"])
+    if args.destination:
+        stamp.write_text(package["sha256"] + "\n", encoding="utf-8")
     values = export_environment(root, compilers, os.environ)
     print(f"Selected LLVM {manifest['version']}")
     for name, value in values.items():
