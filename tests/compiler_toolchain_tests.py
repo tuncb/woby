@@ -32,7 +32,9 @@ endif()
 include("{SOURCE.as_posix()}/cmake/WobyCompiler.cmake")
 include("{SOURCE.as_posix()}/cmake/WobyWarnings.cmake")
 set(CMAKE_CXX_STANDARD 20)
-add_executable(complete complete.cpp c_source.c)
+find_package(Threads REQUIRED)
+add_executable(complete complete.cpp multiply_add.cpp c_source.c)
+target_link_libraries(complete PRIVATE Threads::Threads)
 woby_enable_project_warnings(complete)
 woby_enable_enum_switch_warnings(complete)
 if(WIN32)
@@ -44,14 +46,26 @@ woby_enable_enum_switch_warnings(incomplete)
 ''', encoding="utf-8")
         (self.source / "complete.cpp").write_text('''
 #include <string>
+#include <atomic>
+#include <thread>
 extern "C" int c_value(void);
+double multiply_add(double a, double b, double c);
 enum class Mode { first, second };
 int select_mode(Mode mode) {
     switch (mode) { case Mode::first: return 0; case Mode::second: return 1; }
     return 2;
 }
-int main() { return select_mode(Mode::first) + c_value() + static_cast<int>(std::string{}.size()); }
+int main() {
+    std::atomic<int> ready{0};
+    std::jthread worker([&] { ready.store(1); ready.notify_one(); });
+    ready.wait(0);
+    // Separate rounding gives zero; a fused multiply-add gives -2^-104.
+    if (multiply_add(0x1.0000000000001p0, 0x1.ffffffffffffep-1, -1.0) != 0.0) return 10;
+    return select_mode(Mode::first) + c_value() + static_cast<int>(std::string{}.size());
+}
 ''', encoding="utf-8")
+        (self.source / "multiply_add.cpp").write_text(
+            "double multiply_add(double a, double b, double c) { return a * b + c; }\n", encoding="utf-8")
         (self.source / "c_source.c").write_text("#include <stdlib.h>\nint c_value(void) { return abs(0); }\n", encoding="utf-8")
         (self.source / "version.rc").write_text('#include <windows.h>\n1 RCDATA { "compiler fixture" }\n', encoding="utf-8")
         (self.source / "incomplete.cpp").write_text('''
@@ -70,7 +84,7 @@ int select_mode(Mode mode) {
             args += ["-DCMAKE_BUILD_TYPE=Release"]
         return subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    def test_c_and_cpp_build_and_missing_enum_case_is_an_error(self):
+    def test_c_and_cpp_build_without_implicit_fma_and_missing_enum_is_an_error(self):
         configured = self.configure(SOURCE / "cmake/toolchains/llvm.cmake")
         self.assertEqual(configured.returncode, 0, configured.stdout)
         for target, success in [("complete", True), ("incomplete", False)]:
@@ -79,6 +93,10 @@ int select_mode(Mode mode) {
             if success:
                 self.assertEqual(built.returncode, 0, built.stdout)
                 self.assertNotIn("warning:", built.stdout.lower(), built.stdout)
+                directory = self.build / "Release" if GENERATOR.startswith("Visual Studio") else self.build
+                executable = directory / ("complete.exe" if os.name == "nt" else "complete")
+                ran = subprocess.run([str(executable)], capture_output=True, text=True)
+                self.assertEqual(ran.returncode, 0, f"Compiler changed separate multiply-add rounding: {ran.stdout}{ran.stderr}")
             else:
                 self.assertNotEqual(built.returncode, 0, built.stdout)
                 self.assertIn("-Wswitch-enum", built.stdout)

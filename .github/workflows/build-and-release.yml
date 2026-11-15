@@ -194,6 +194,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           uv run .github/scripts/setup_llvm_tests.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          uv run tests/compiler_toolchain_tests.py cmake "$env:GITHUB_WORKSPACE" "$env:WOBY_LLVM_ROOT" Ninja ""
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & .github/scripts/linux-runtime-dependencies.test.ps1
           & .github/scripts/setup-graphics-toolchain.test.ps1
 

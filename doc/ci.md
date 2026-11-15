@@ -5,7 +5,9 @@ from the release workflow. All three platforms use Ninja, vcpkg, and Release
 builds, and run the application tests before uploading packages. Local builds
 and CI use upstream Clang 23.1.5, pinned in `cmake/llvm-toolchain.json`.
 Windows uses `clang-cl` with the Visual Studio SDK and standard library.
-macOS uses upstream Clang with the Xcode SDK. CI verifies each LLVM download
+macOS uses upstream Clang with the Xcode SDK and its matching libc++ headers.
+All platforms disable implicit floating-point multiply-add contraction in Woby.
+CI verifies each LLVM download
 with its SHA-256 hash and caches it before building dependencies.
 
 Windows builds use the GUI subsystem for the viewer. Launch tests check the PE

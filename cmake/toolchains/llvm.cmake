@@ -54,6 +54,18 @@ if(CMAKE_HOST_APPLE)
             OUTPUT_VARIABLE woby_macos_sdk OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
         set(CMAKE_OSX_SYSROOT "${woby_macos_sdk}" CACHE PATH "Active macOS SDK")
     endif()
+    # Pair Apple's runtime with its headers. LLVM's bundled libc++ headers can
+    # reference newer atomic-wait symbols that the macOS runtime does not have.
+    execute_process(COMMAND xcrun --find clang++
+        OUTPUT_VARIABLE woby_xcode_clang OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+    get_filename_component(woby_xcode_bin "${woby_xcode_clang}" DIRECTORY)
+    get_filename_component(woby_libcxx_headers "${woby_xcode_bin}/../include/c++/v1" ABSOLUTE)
+    if(NOT EXISTS "${woby_libcxx_headers}/__config")
+        message(FATAL_ERROR "Xcode libc++ headers are missing at ${woby_libcxx_headers}")
+    endif()
+    foreach(language IN ITEMS CXX OBJCXX)
+        string(APPEND CMAKE_${language}_FLAGS_INIT " -nostdinc++ -isystem \"${woby_libcxx_headers}\"")
+    endforeach()
 endif()
 
 # Preserve vcpkg's architecture, runtime linkage, and port flags. These values

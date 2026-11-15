@@ -104,6 +104,8 @@ Add lines, review areas, and comments to a surface. Select an annotation to edit
 Local and CI builds use upstream **Clang 23.1.5**. Install that LLVM release,
 including `clang-cl` on Windows. Windows still requires Visual Studio 2026 C++
 tools and the Windows SDK. macOS requires the Xcode 26 SDK and Metal tools.
+The C++ standard library stays platform-specific: MSVC on Windows, libstdc++
+on Linux, and Xcode's matching libc++ headers and runtime on macOS.
 
 On Windows, the presets select `C:/Program Files/LLVM`. For another installation,
 set `WOBY_LLVM_ROOT` to the LLVM directory before configuring. On Linux and macOS,
