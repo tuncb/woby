@@ -1,10 +1,10 @@
-# Remove this overlay when upstream can grow a LevelSet table with no moved vertices.
+# Keep the allocation fix and self-contained stream declarations until upstream includes them.
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO elalish/manifold
     REF "v${VERSION}"
     SHA512 439ff566bdf7703f257efcc79cec7679790042edfcdb3a57b865c8fa6a13fd59d87452900e0d3707eca03e700528c4037a84f35007f0940b72534834c138b5dd
-    PATCHES level-set-table-growth.patch
+    PATCHES level-set-table-growth.patch include-iosfwd.patch
 )
 
 vcpkg_cmake_configure(
