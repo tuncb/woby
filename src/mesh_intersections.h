@@ -11,7 +11,7 @@ struct IntersectionLimits {
 };
 struct IntersectionSettings {
     bool autoUpdate = false, show = true;
-    IntersectionLimits limits;
+    IntersectionLimits limits{};
     friend bool operator==(const IntersectionSettings&, const IntersectionSettings&) = default;
 };
 struct IntersectionFinding {

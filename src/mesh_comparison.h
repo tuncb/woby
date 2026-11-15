@@ -116,9 +116,9 @@ void invalidateComparisonDetectors(MeshComparison& result, uint32_t stages);
 struct ComparisonCacheStatus {
     uint64_t signature = 0;
     uint32_t completed = 0;
-    DegenerateSettings degenerates;
+    DegenerateSettings degenerates{};
     TopologyMode topologyMode = TopologyMode::originalIndex;
-    ThicknessSettings thickness;
+    ThicknessSettings thickness{};
 };
 [[nodiscard]] uint32_t requestedComparisonStages(const ComparisonSettings& settings, bool bothInputs,
     bool fullResults = false);

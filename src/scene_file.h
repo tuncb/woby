@@ -98,19 +98,22 @@ struct SceneNodeRecord {
     friend bool operator==(const SceneNodeRecord&, const SceneNodeRecord&) = default;
 };
 
+// Keep this type complete before optional checks its construction traits.
+struct SceneComparisonPlacement {
+    std::array<double, 16> parent{}, model{};
+    std::array<double, 3> sourceOrigin{}, sceneOrigin{};
+    // Translation already included in parent/model. Absent in older scenes.
+    std::optional<std::array<double, 3>> alignmentOffset;
+    friend bool operator==(const SceneComparisonPlacement&, const SceneComparisonPlacement&) = default;
+};
+
 struct SceneComparisonPartRecord {
     int fileIndex = -1;
     int groupIndex = -1;
     std::string name;
     bool enabled = true;
-    struct Placement {
-        std::array<double, 16> parent{}, model{};
-        std::array<double, 3> sourceOrigin{}, sceneOrigin{};
-        // Translation already included in parent/model. Absent in older scenes.
-        std::optional<std::array<double, 3>> alignmentOffset;
-        friend bool operator==(const Placement&, const Placement&) = default;
-    };
-    std::optional<Placement> placement;
+    using Placement = SceneComparisonPlacement;
+    std::optional<Placement> placement{};
     friend bool operator==(const SceneComparisonPartRecord&, const SceneComparisonPartRecord&) = default;
 };
 

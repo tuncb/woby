@@ -149,13 +149,13 @@ struct Operation
 {
     ViewId view = 0;
     OperationType type = OperationType::touch;
-    Encoder encoder;
-    std::shared_ptr<Program> program;
-    std::shared_ptr<Texture> source, destination;
+    Encoder encoder{};
+    std::shared_ptr<Program> program{};
+    std::shared_ptr<Texture> source{}, destination{};
     gpu::uint32x3 groups{1, 1, 1};
     uint16_t x = 0, y = 0, sourceX = 0, sourceY = 0, width = 0, height = 0;
-    std::shared_ptr<PointPacket> points;
-    std::array<std::shared_ptr<Program>, 2> transparencyResolve;
+    std::shared_ptr<PointPacket> points{};
+    std::array<std::shared_ptr<Program>, 2> transparencyResolve{};
 };
 struct ArenaPage
 {
@@ -185,7 +185,7 @@ struct ReadRequest
     std::shared_ptr<Texture> texture;
     void *destination = nullptr;
     uint32_t ready = 0;
-    std::shared_ptr<Buffer> buffer;
+    std::shared_ptr<Buffer> buffer{};
 };
 struct Readback
 {
