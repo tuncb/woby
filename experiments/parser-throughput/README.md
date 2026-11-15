@@ -19,7 +19,7 @@ decoder in generated research headers. It does not change production parsing.
 ```powershell
 cmake --preset vs2026-vcpkg -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON
 cmake --build --preset vs2026-vcpkg --config Release --target woby_parser_benchmark
-python experiments/parser-throughput/run.py build/vs2026-vcpkg/bin/Release/woby_parser_benchmark.exe build/parser-results.json --rounds 5 --max-background-cpu 15
+python experiments/parser-throughput/run.py build/vs2026-vcpkg-clang/bin/Release/woby_parser_benchmark.exe build/parser-results.json --rounds 5 --max-background-cpu 15
 uv run experiments/parser-throughput/report.py build/parser-results.json doc/parser-throughput-performance
 ```
 

@@ -33,7 +33,7 @@ From the repository root:
 ```powershell
 cmake --preset vs2026-vcpkg -DWOBY_BUILD_SIMPLIFICATION_PROBES=ON
 cmake --build --preset vs2026-vcpkg --config Release --target woby_simplification_10_probe
-build/vs2026-vcpkg/bin/Release/woby_simplification_10_probe.exe --self-test
+build/vs2026-vcpkg-clang/bin/Release/woby_simplification_10_probe.exe --self-test
 experiments/simplification-10/run.ps1 -Runs 5
 experiments/simplification-10/run.ps1 -Model C:/work/temp/uploads_files_2720101_BusGameMap.obj -Runs 3
 ```
@@ -71,7 +71,7 @@ the timer. It measures the detector; import and source preparation are excluded.
 ```powershell
 cmake --preset vs2026-vcpkg -DWOBY_BUILD_SIMPLIFICATION_PROBES=ON -DWOBY_TEST_INTERSECTION_FMA=ON
 cmake --build --preset vs2026-vcpkg --config Release --target woby_tests woby_intersection_fma_tests woby_intersection_adoption_benchmark
-ctest --test-dir build/vs2026-vcpkg -C Release -R 'mesh_intersection_predicates_tests|intersection_fma_contract|mesh_intersections_tests' --output-on-failure
+ctest --test-dir build/vs2026-vcpkg-clang -C Release -R 'mesh_intersection_predicates_tests|intersection_fma_contract|mesh_intersections_tests' --output-on-failure
 experiments/simplification-10/run-adoption.ps1 -Model D:/temp/obj_tests/uploads_files_2720101_BusGameMap.obj -Runs 7
 ```
 

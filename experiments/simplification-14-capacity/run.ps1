@@ -1,4 +1,4 @@
-param([string]$BinaryDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg/bin/Release'),
+param([string]$BinaryDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang/bin/Release'),
       [string]$InputFile = (Join-Path $PSScriptRoot '../../doc/simplification-14-results.json'),
       [string]$Output = (Join-Path $PSScriptRoot '../../doc/simplification-14-capacity-results.json'))
 $ErrorActionPreference = 'Stop'

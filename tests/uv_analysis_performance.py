@@ -7,7 +7,7 @@ analysis and GPU buffer preparation. Screenshots are outside timed intervals.
 Raw observations and screenshots are retained in the requested output directory.
 
 Example from the repository root:
-    uv run tests/uv_analysis_performance.py build/vs2026-vcpkg/bin/Release/woby.exe MODEL.obj build/uv-perf
+    uv run tests/uv_analysis_performance.py build/vs2026-vcpkg-clang/bin/Release/woby.exe MODEL.obj build/uv-perf
 
 Each round uses a fresh viewer with two seconds of warm-up per scenario. Source
 geometry is hidden when measuring a separate analysis; that analysis remains

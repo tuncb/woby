@@ -183,7 +183,7 @@ def main():
                 if source.exists():
                     shutil.copy2(source, symbols / (name + suffix))
             executables[name] = digest(symbols / (name + ".exe"))
-        for path in (ROOT / "build/vs2026-vcpkg/experiments/obj-profile").glob("*.map"):
+        for path in (ROOT / "build/vs2026-vcpkg-clang/experiments/obj-profile").glob("*.map"):
             shutil.copy2(path, symbols / path.name)
         source_paths = list((ROOT / "src").glob("*.cpp")) + list((ROOT / "src").glob("*.h"))
         source_paths += list((ROOT / "third_party/rapidobj/include/rapidobj").glob("*.hpp"))

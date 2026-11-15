@@ -66,7 +66,7 @@ there is no parser opt-in switch. To build and exercise it:
 ```powershell
 cmake --preset vs2026-vcpkg -DWOBY_TEST_HEADLESS=ON -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON
 cmake --build --preset vs2026-vcpkg --config Debug
-ctest --test-dir build/vs2026-vcpkg -C Debug --output-on-failure
+ctest --test-dir build/vs2026-vcpkg-clang -C Debug --output-on-failure
 ```
 
 `tests/obj_prototype_tests.cpp` belongs to the regular unit suite and compares
@@ -81,7 +81,7 @@ For an idle-machine CPU comparison, build the benchmark in Release and run:
 
 ```powershell
 cmake --build --preset vs2026-vcpkg --config Release --target woby_obj_prototype_benchmark
-python tests/obj_prototype_benchmark.py build/vs2026-vcpkg/bin/Release/woby_obj_prototype_benchmark.exe D:/models/example.obj --rounds 3 --output build/prototype-results.json
+python tests/obj_prototype_benchmark.py build/vs2026-vcpkg-clang/bin/Release/woby_obj_prototype_benchmark.exe D:/models/example.obj --rounds 3 --output build/prototype-results.json
 ```
 
 Use `--reference-executable absolute/path/to/previous-benchmark.exe` to include

@@ -4,8 +4,8 @@
 # ///
 """Verify camera commands against actual scene pixels and saved scene reloads.
 
-uv run tests/ctl_camera_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe
-uv run tests/ctl_camera_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe --headless
+uv run tests/ctl_camera_smoke.py build/vs2026-vcpkg-clang/bin/Debug/woby.exe
+uv run tests/ctl_camera_smoke.py build/vs2026-vcpkg-clang/bin/Debug/woby.exe --headless
 """
 import json
 import math

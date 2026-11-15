@@ -1,5 +1,5 @@
 param(
-    [string]$BuildDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg'),
+    [string]$BuildDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang'),
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '../../doc/benchmarks/simplification-19-dense-set'),
     [string]$Output = (Join-Path $PSScriptRoot '../../doc/simplification-19-dense-set-results.json'),
     [string[]]$Models = @('D:/temp/obj_tests/uploads_files_2720101_BusGameMap.obj', 'D:/temp/obj_tests/powerplant.obj')

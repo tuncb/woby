@@ -244,7 +244,7 @@ def check_rejected_attribute_indices(executables):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bin", type=Path, default=ROOT / "build/vs2026-vcpkg/bin/Release")
+    parser.add_argument("--bin", type=Path, default=ROOT / "build/vs2026-vcpkg-clang/bin/Release")
     parser.add_argument("--variants", default=DEFAULT_VARIANTS)
     parser.add_argument("--gather-workers", type=parse_workers, default=parse_workers("1,8"))
     parser.add_argument("--preparation", default="deferred,eager")

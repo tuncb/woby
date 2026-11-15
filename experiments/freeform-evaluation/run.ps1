@@ -1,5 +1,5 @@
 param(
-    [string]$Executable = "$PSScriptRoot/../../build/vs2026-vcpkg/bin/Release/woby_freeform_evaluation_probe.exe",
+    [string]$Executable = "$PSScriptRoot/../../build/vs2026-vcpkg-clang/bin/Release/woby_freeform_evaluation_probe.exe",
     [string[]]$Models = @('--synthetic', 'D:/temp/obj_tests/parametric/tubes_as_nurbs.obj', 'D:/temp/obj_tests/parametric/SA_Row3_x01000.obj'),
     [string]$Output = "$PSScriptRoot/../../build/freeform-evaluation/results.json"
 )

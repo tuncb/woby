@@ -693,11 +693,11 @@ Capture folder: {root}
 Build: cmake --preset vs2026-vcpkg -DWOBY_BUILD_OBJ_PROFILE=ON -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON -DWOBY_PARSER_FASTFLOAT_HEADER={root.as_posix()}/fast_float-v8.3.2.h
 cmake --build --preset vs2026-vcpkg --config Release
 ctest --preset vs2026-vcpkg -C Release
-uv run experiments/loading-audit/run.py build/vs2026-vcpkg/bin/Release "{data['provenance']['model']}" --output NEW_UNIQUE_CAPTURE_FOLDER --rounds 3 --fast-float-header "{root / 'fast_float-v8.3.2.h'}"
-build/vs2026-vcpkg/bin/Release/woby_loading_audit_kernels.exe "{data['provenance']['model']}" 3 > NEW_UNIQUE_CAPTURE_FOLDER/kernels.json
+uv run experiments/loading-audit/run.py build/vs2026-vcpkg-clang/bin/Release "{data['provenance']['model']}" --output NEW_UNIQUE_CAPTURE_FOLDER --rounds 3 --fast-float-header "{root / 'fast_float-v8.3.2.h'}"
+build/vs2026-vcpkg-clang/bin/Release/woby_loading_audit_kernels.exe "{data['provenance']['model']}" 3 > NEW_UNIQUE_CAPTURE_FOLDER/kernels.json
 python experiments/loading-audit/census.py "{data['provenance']['model']}" NEW_UNIQUE_CAPTURE_FOLDER/census.json
-uv run experiments/obj-profile/deep_tools.py "{data['provenance']['model']}" --executable build/vs2026-vcpkg/bin/Release/woby_obj_profile_sse2.exe --output NEW_UNIQUE_CAPTURE_FOLDER/calibration --mode flop-control --sets fp
-uv run experiments/obj-profile/run.py build/vs2026-vcpkg/bin/Release/woby_obj_profile_sse2.exe "{data['provenance']['model']}" --modes parser --workers 1,16 --rounds 3 --compare-executable build/vs2026-vcpkg/bin/Release/woby_obj_profile_avx2.exe --output NEW_UNIQUE_CAPTURE_FOLDER/parser-simd/isa-comparison.json
+uv run experiments/obj-profile/deep_tools.py "{data['provenance']['model']}" --executable build/vs2026-vcpkg-clang/bin/Release/woby_obj_profile_sse2.exe --output NEW_UNIQUE_CAPTURE_FOLDER/calibration --mode flop-control --sets fp
+uv run experiments/obj-profile/run.py build/vs2026-vcpkg-clang/bin/Release/woby_obj_profile_sse2.exe "{data['provenance']['model']}" --modes parser --workers 1,16 --rounds 3 --compare-executable build/vs2026-vcpkg-clang/bin/Release/woby_obj_profile_avx2.exe --output NEW_UNIQUE_CAPTURE_FOLDER/parser-simd/isa-comparison.json
 Preserve both compiler variants and their main.asm listings before any rebuild. Collect separate --instructions runs into parser-simd/context-samples.json; keep them out of medians.
 uv run experiments/loading-audit/parser_simd.py CAPTURE_FOLDER
 uv run experiments/loading-audit/micro_run.py PRESERVED_AVX2_PROFILE_EXE "{data['provenance']['model']}" NEW_UNIQUE_CAPTURE_FOLDER/parser-microarchitecture --steps topology,timing,collect

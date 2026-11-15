@@ -116,7 +116,7 @@ def file_identity(path):
 def source_identities(root=ROOT):
     paths = set((root / "experiments/corner-mapping").glob("*"))
     paths.add(root / "CMakeLists.txt")
-    paths.update((root / "build/vs2026-vcpkg/experiments/corner-mapping/generated").rglob("*"))
+    paths.update((root / "build/vs2026-vcpkg-clang/experiments/corner-mapping/generated").rglob("*"))
     paths.update((root / "experiments/obj-profile" / name) for name in ("profile.cpp", "profile.h", "generate.py"))
     paths.update((root / "src" / name) for name in
                  ("obj_mesh.cpp", "obj_mesh.h", "obj_freeform.cpp", "obj_freeform.h",
@@ -310,7 +310,7 @@ def execute_sweep(model, executables, configurations, rounds, timeout, output_pa
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("model", type=Path)
-    parser.add_argument("--bin", type=Path, default=ROOT / "build/vs2026-vcpkg/bin/Release")
+    parser.add_argument("--bin", type=Path, default=ROOT / "build/vs2026-vcpkg-clang/bin/Release")
     parser.add_argument("--variants", default=DEFAULT_VARIANTS)
     parser.add_argument("--gather-workers", type=parse_workers, default=parse_workers("1,2,8"))
     parser.add_argument("--parser-workers", type=int, default=16)

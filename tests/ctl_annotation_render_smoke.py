@@ -4,7 +4,7 @@
 # ///
 """Check rendered annotation alignment on large models with Y-up and Z-up.
 
-uv run tests/ctl_annotation_render_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe
+uv run tests/ctl_annotation_render_smoke.py build/vs2026-vcpkg-clang/bin/Debug/woby.exe
 """
 import json
 import os

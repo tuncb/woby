@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$Model,
     [ValidateRange(3,20)][int]$Runs=7,
-    [string]$Executable=(Join-Path $PSScriptRoot '../../build/vs2026-vcpkg/bin/Release/woby_intersection_adoption_benchmark.exe'),
+    [string]$Executable=(Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang/bin/Release/woby_intersection_adoption_benchmark.exe'),
     [string]$OutputDirectory=(Join-Path $PSScriptRoot '../../build/intersection-predicate-adoption')
 )
 $ErrorActionPreference='Stop'
@@ -17,8 +17,8 @@ foreach($relative in @('src/mesh_intersections.cpp','src/mesh_intersection_predi
     'experiments/simplification-10/CMakeLists.txt','experiments/simplification-10/run-adoption.ps1',
     'experiments/simplification-10/predicate.cpp','experiments/simplification-10/probe.h',
     'experiments/simplification-10/rational-baseline.cpp',
-    'build/vs2026-vcpkg/experiments/simplification-10/production_rational_baseline.cpp',
-    'build/vs2026-vcpkg/vcpkg_installed/x64-windows/include/predicates.h')) {
+    'build/vs2026-vcpkg-clang/experiments/simplification-10/production_rational_baseline.cpp',
+    'build/vs2026-vcpkg-clang/vcpkg_installed/x64-windows/include/predicates.h')) {
     $sourceHashes[$relative]=(Get-FileHash -LiteralPath (Join-Path $repoPath $relative) -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 $executableHash=(Get-FileHash -LiteralPath $executablePath -Algorithm SHA256).Hash.ToLowerInvariant()

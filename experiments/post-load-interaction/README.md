@@ -11,7 +11,7 @@ Build and check the probe in Release mode:
 ```powershell
 cmake --preset vs2026-vcpkg -DWOBY_BUILD_BENCHMARKS=ON
 cmake --build --preset vs2026-vcpkg --config Release --target woby woby_post_load_interaction_probe
-build/vs2026-vcpkg/bin/Release/woby_post_load_interaction_probe.exe --self-test
+build/vs2026-vcpkg-clang/bin/Release/woby_post_load_interaction_probe.exe --self-test
 ```
 
 Measure the specified model. The source path must be absolute. Each CPU operation
@@ -20,7 +20,7 @@ Center clicks must return the group ID. Corner clicks must return zero.
 The output separates changing selection from the geometry queries that follow it.
 
 ```powershell
-build/vs2026-vcpkg/bin/Release/woby_post_load_interaction_probe.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj build/beartrap-interaction-cpu.json
+build/vs2026-vcpkg-clang/bin/Release/woby_post_load_interaction_probe.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj build/beartrap-interaction-cpu.json
 ```
 
 Add `--verify` to measure an 81-point combined-mode grid and check one hit and
@@ -34,7 +34,7 @@ only. The JSON output records triangle/node visit counts for each click.
 Measure rendering and removal in the desktop viewer:
 
 ```powershell
-uv run experiments/post-load-interaction/render.py build/vs2026-vcpkg/bin/Release/woby.exe D:/temp/obj_tests build/beartrap-interaction-render --suite render --select 20190810_BearTrap_Ground_Model --rounds 1 --seconds 2 --warmup 1 --operation-timeout 240
+uv run experiments/post-load-interaction/render.py build/vs2026-vcpkg-clang/bin/Release/woby.exe D:/temp/obj_tests build/beartrap-interaction-render --suite render --select 20190810_BearTrap_Ground_Model --rounds 1 --seconds 2 --warmup 1 --operation-timeout 240
 ```
 
 The render script uses `tests/stress/run.py` for process ownership, readiness
@@ -46,7 +46,7 @@ it, and removes it in solid mode. It checks the resulting empty scenes.
 Check selected-model UI frames through temporary saved views:
 
 ```powershell
-uv run experiments/post-load-interaction/selection.py build/vs2026-vcpkg/bin/Release/woby.exe D:/temp/obj_tests build/beartrap-selection-frames --suite lifecycle --select 20190810_BearTrap_Ground_Model --rounds 1 --operation-timeout 240 --width 1920 --height 1080
+uv run experiments/post-load-interaction/selection.py build/vs2026-vcpkg-clang/bin/Release/woby.exe D:/temp/obj_tests build/beartrap-selection-frames --suite lifecycle --select 20190810_BearTrap_Ground_Model --rounds 1 --operation-timeout 240 --width 1920 --height 1080
 ```
 
 This workflow uses the harness's unique temporary fixture directory and its model

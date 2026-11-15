@@ -1,5 +1,5 @@
 param(
-    [string]$Executable = "$PSScriptRoot/../../build/vs2026-vcpkg/bin/Release/woby_simplification_16_probe.exe",
+    [string]$Executable = "$PSScriptRoot/../../build/vs2026-vcpkg-clang/bin/Release/woby_simplification_16_probe.exe",
     [string]$Model = 'D:/temp/obj_tests/uploads_files_2720101_BusGameMap.obj',
     [string]$LargeModel = 'D:/temp/obj_tests/powerplant.obj',
     [int]$Samples = 5,

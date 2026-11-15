@@ -1,6 +1,6 @@
 """Exercise difference CLI jobs in a headless viewer with synthetic models.
 
-uv run tests/ctl_difference_smoke.py build/vs2026-vcpkg/bin/Release/woby.exe
+uv run tests/ctl_difference_smoke.py build/vs2026-vcpkg-clang/bin/Release/woby.exe
 """
 import json
 import os

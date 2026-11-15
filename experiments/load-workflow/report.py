@@ -339,7 +339,7 @@ def report(data, output):
 <p>Three repeats show run-to-run ranges, not statistical confidence. Laptop power/thermal behavior, the display compositor and unrelated system activity remain sources of noise even with build/test guards. The conclusions apply to this branch, hardware, corpus and warm-cache workflow. Other formats, cold starts, saved-scene restoration, detectors/analysis execution, editing/undo and every possible OBJ grammar combination are outside this campaign.</p>
 <h3>Reproduce</h3><pre>cmake --preset vs2026-vcpkg -DWOBY_PROFILE_LOAD_WORKFLOW=ON
 cmake --build --preset vs2026-vcpkg --config Release --target woby
-uv run experiments/load-workflow/run.py build/vs2026-vcpkg/bin/Release/woby.exe build/workflow-results --rounds 3
+uv run experiments/load-workflow/run.py build/vs2026-vcpkg-clang/bin/Release/woby.exe build/workflow-results --rounds 3
 python experiments/load-workflow/analyze.py build/workflow-results
 uv run experiments/load-workflow/report.py build/workflow-results
 

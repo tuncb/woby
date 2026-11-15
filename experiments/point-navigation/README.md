@@ -26,7 +26,7 @@ Use a new output directory for each command. Run each campaign separately. Do
 not run a build, test suite, or another viewer during a campaign.
 
 ```powershell
-uv run tests/point_render_benchmark.py build/vs2026-vcpkg/bin/Release/woby.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj build/points-new --rounds 3 --sizes 1 4 8 --full-frames 24 --navigation-frames 72 --visible-window
+uv run tests/point_render_benchmark.py build/vs2026-vcpkg-clang/bin/Release/woby.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj build/points-new --rounds 3 --sizes 1 4 8 --full-frames 24 --navigation-frames 72 --visible-window
 ```
 
 Use `--zoom 0.35` for a close view. Use `--points-only` to disable surfaces and
@@ -54,7 +54,7 @@ context. Use the sample comparison below to validate the compute renderer.
 ## Exact GPU comparison
 
 ```powershell
-uv run experiments/point-navigation/validate.py build/vs2026-vcpkg/bin/Release/woby_point_validation.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj build/point-navigation-baseline-app/assets/shaders/spirv/cs_opaque_raster.bin build/points-validation-new
+uv run experiments/point-navigation/validate.py build/vs2026-vcpkg-clang/bin/Release/woby_point_validation.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj build/point-navigation-baseline-app/assets/shaders/spirv/cs_opaque_raster.bin build/points-validation-new
 ```
 
 The probe uses the production upload and point submission code. It compares
@@ -77,7 +77,7 @@ largest round p95. Each gzip file contains the complete original measurement
 record. Mixed scene conditions, duplicate rounds, failed runs, guard failures,
 and nonfinite timings are rejected.
 
-Run `ctest --test-dir build/vs2026-vcpkg -C Release --output-on-failure -j 4`
+Run `ctest --test-dir build/vs2026-vcpkg-clang -C Release --output-on-failure -j 4`
 for the full suite. The point GPU tests cover dense overlap, equal-depth IDs,
 clipped and empty queries, viewport edges, refinement, backend changes, colors,
 and 1/4x MSAA. The reporting tests check round aggregation and rejected evidence.

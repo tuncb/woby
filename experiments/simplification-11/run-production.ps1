@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)][string]$BaselineBinary,
-    [string]$CandidateBinary = "$PSScriptRoot/../../build/vs2026-vcpkg/bin/Release/woby_annotation_history_benchmark.exe",
+    [string]$CandidateBinary = "$PSScriptRoot/../../build/vs2026-vcpkg-clang/bin/Release/woby_annotation_history_benchmark.exe",
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
     [ValidateRange(1,9)][int]$Samples = 5,
     [ValidateRange(1,9)][int]$SamplesPerProcess = 1,

@@ -1,7 +1,7 @@
 param(
     [string]$Model,
     [ValidateRange(1,20)][int]$Runs=5,
-    [string]$Executable=(Join-Path $PSScriptRoot '../../build/vs2026-vcpkg/bin/Release/woby_simplification_10_probe.exe'),
+    [string]$Executable=(Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang/bin/Release/woby_simplification_10_probe.exe'),
     [string]$OutputDirectory=(Join-Path $PSScriptRoot '../../build/simplification-10/results')
 )
 $ErrorActionPreference='Stop'
@@ -18,7 +18,7 @@ $metadata=[ordered]@{
     cpu=(Get-CimInstance Win32_Processor | Select-Object -First 1).Name
     executable_sha256=(Get-FileHash -LiteralPath $executablePath).Hash
     production_source_sha256=(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot '../../src/mesh_intersections.cpp')).Hash
-    installed_predicates_sha256=(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg/vcpkg_installed/x64-windows/include/predicates.h')).Hash
+    installed_predicates_sha256=(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang/vcpkg_installed/x64-windows/include/predicates.h')).Hash
     sources=$sourceHashes
     runs=$Runs
     allocation_scope='C++ global new/new[] requested payload only. Excludes malloc internals, allocator headers, aligned new, DLL-internal allocations, source geometry and caller input. Timings use the same replacement allocator with recording disabled.'

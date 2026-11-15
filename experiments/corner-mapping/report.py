@@ -331,7 +331,7 @@ def reproduction(batch):
     model = data.get("model", {}).get("path", "MODEL.obj")
     binaries = [identity.get("path") for identity in data.get("executables", {}).values() if identity.get("path")]
     parents = {str(Path(path).parent) for path in binaries}
-    bin_path = next(iter(parents)) if len(parents) == 1 else "build/vs2026-vcpkg/bin/Release"
+    bin_path = next(iter(parents)) if len(parents) == 1 else "build/vs2026-vcpkg-clang/bin/Release"
     for index, parser_workers in enumerate(parser_counts, 1):
         selected = [config for config in configs if config["parser_workers"] == parser_workers]
         gather = sorted({config["gather_workers"] for config in selected if config["variant"] not in {"baseline", "pointer"}}) or [1]

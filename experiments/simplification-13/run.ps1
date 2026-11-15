@@ -1,5 +1,5 @@
 param([string]$Model = 'D:/temp/obj_tests/uploads_files_2720101_BusGameMap.obj',
-      [string]$BinaryDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg/bin/Release'),
+      [string]$BinaryDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang/bin/Release'),
       [string]$Output = (Join-Path $PSScriptRoot '../../doc/simplification-13-results.json'))
 $ErrorActionPreference = 'Stop'
 if (Test-Path -LiteralPath $Output) { throw "Output already exists: $Output" }

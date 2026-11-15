@@ -1,7 +1,7 @@
 """Exercise every scene-control family through a temporary real viewer.
 
-uv run tests/ctl_controls_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe \
-    build/vs2026-vcpkg/example-plugins/Debug/woby_off_importer.dll
+uv run tests/ctl_controls_smoke.py build/vs2026-vcpkg-clang/bin/Debug/woby.exe \
+    build/vs2026-vcpkg-clang/example-plugins/Debug/woby_off_importer.dll
 """
 import json
 import math

@@ -1,6 +1,6 @@
 """Exercise non-manifold vertices and hole loops in the real viewer, including rendered overlays.
 
-python tests/ctl_holes_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe build/holes-qa
+python tests/ctl_holes_smoke.py build/vs2026-vcpkg-clang/bin/Debug/woby.exe build/holes-qa
 """
 import json
 import os

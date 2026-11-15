@@ -34,8 +34,8 @@ Use the repository's Visual Studio development preset and its normal toolchain:
 ```powershell
 cmake --preset vs2026-vcpkg -DWOBY_BUILD_OVERLAY_PROTOTYPE=ON -DWOBY_TEST_HEADLESS=ON
 cmake --build --preset vs2026-vcpkg
-ctest --test-dir build/vs2026-vcpkg -C Debug --output-on-failure
-cmake --build build/vs2026-vcpkg --config Release --target woby_overlay_prototype woby_overlay_tests --parallel 2
+ctest --test-dir build/vs2026-vcpkg-clang -C Debug --output-on-failure
+cmake --build build/vs2026-vcpkg-clang --config Release --target woby_overlay_prototype woby_overlay_tests --parallel 2
 ```
 
 The recorded run used Slang 2026.18.3, selected through `-DWOBY_SLANGC=...`.
@@ -61,7 +61,7 @@ cache and must not be interpreted as cold-load measurements.
 
 ```powershell
 uv run experiments/mesh-overlays/run.py `
-  build/vs2026-vcpkg/bin/Release/woby_overlay_prototype.exe `
+  build/vs2026-vcpkg-clang/bin/Release/woby_overlay_prototype.exe `
   D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj `
   build/overlay-beartrap-new --samples 4 --ids 0 --rounds 3 --seconds 2 --warmup 1
 ```

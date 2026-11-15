@@ -1,4 +1,4 @@
-param([string]$BuildDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg'))
+param([string]$BuildDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang'))
 $ErrorActionPreference = 'Stop'
 $buildPath = (Resolve-Path -LiteralPath $BuildDirectory).Path
 $cache = Get-Content -LiteralPath (Join-Path $buildPath 'CMakeCache.txt')

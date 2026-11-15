@@ -1,6 +1,6 @@
 """Exercise analysis rendering, persistence, and invalidation in a real viewer.
 
-uv run tests/ctl_comparisons_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe \
+uv run tests/ctl_comparisons_smoke.py build/vs2026-vcpkg-clang/bin/Debug/woby.exe \
     build/analysis-qa
 """
 import json

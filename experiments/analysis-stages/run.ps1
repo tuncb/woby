@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$Model,
     [ValidateRange(1,5)][int]$Samples = 3,
-    [string]$Executable = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg/bin/Release/woby_analysis_stages_probe.exe'),
+    [string]$Executable = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang/bin/Release/woby_analysis_stages_probe.exe'),
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '../../build/analysis-stages/results')
 )
 $ErrorActionPreference = 'Stop'

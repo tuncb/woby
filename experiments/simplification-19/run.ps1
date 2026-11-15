@@ -1,4 +1,4 @@
-param([string]$BinaryDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg/bin/Release'),
+param([string]$BinaryDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang/bin/Release'),
       [string]$OutputDirectory = (Join-Path $PSScriptRoot '../../doc/benchmarks/simplification-19'),
       [string]$Output = (Join-Path $PSScriptRoot '../../doc/simplification-19-results.json'),
       [string[]]$Models = @('D:/temp/obj_tests/uploads_files_2720101_BusGameMap.obj', 'D:/temp/obj_tests/powerplant.obj'))
@@ -55,7 +55,7 @@ foreach ($model in $Models) {
 }
 $hashes = [ordered]@{}
 foreach ($name in @('main.cpp','CMakeLists.txt','run.ps1','../../src/analysis_index.h','../../tests/performance_benchmarks.cpp','../../tests/benchmark_analysis_index.h',
-    '../../build/vs2026-vcpkg/hash-probe/mesh_comparison.cpp','../../build/vs2026-vcpkg/hash-probe/mesh_duplicates.cpp','../../build/vs2026-vcpkg/hash-probe/mesh_topology.cpp')) {
+    '../../build/vs2026-vcpkg-clang/hash-probe/mesh_comparison.cpp','../../build/vs2026-vcpkg-clang/hash-probe/mesh_duplicates.cpp','../../build/vs2026-vcpkg-clang/hash-probe/mesh_topology.cpp')) {
     $path = Join-Path $PSScriptRoot $name
     if (Test-Path -LiteralPath $path) { $hashes[$name] = (Get-FileHash -LiteralPath $path).Hash }
 }

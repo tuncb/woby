@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $modelPath = (Resolve-Path -LiteralPath $Model).Path
 $resultPath = [IO.Path]::GetFullPath($OutputDirectory)
-$executable = (Resolve-Path (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg/bin/Release/woby_face_display_probe.exe')).Path
+$executable = (Resolve-Path (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang/bin/Release/woby_face_display_probe.exe')).Path
 New-Item -ItemType Directory -Force -Path $resultPath | Out-Null
 $metadata = [ordered]@{
     commit = (& git -C $PSScriptRoot rev-parse HEAD)

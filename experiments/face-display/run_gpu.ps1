@@ -1,13 +1,13 @@
 param(
     [Parameter(Mandatory)][string]$Model,
-    [string]$Assets = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg/bin/Debug/assets'),
+    [string]$Assets = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang/bin/Debug/assets'),
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '../../build/face-display/gpu-results')
 )
 $ErrorActionPreference = 'Stop'
 $modelPath = (Resolve-Path -LiteralPath $Model).Path
 $assetPath = (Resolve-Path -LiteralPath $Assets).Path
 $resultPath = [IO.Path]::GetFullPath($OutputDirectory)
-$executable = (Resolve-Path (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg/bin/Release/woby_face_display_gpu_probe.exe')).Path
+$executable = (Resolve-Path (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang/bin/Release/woby_face_display_gpu_probe.exe')).Path
 New-Item -ItemType Directory -Force -Path $resultPath | Out-Null
 $metadata = [ordered]@{
     parent_commit = (& git -C $PSScriptRoot rev-parse HEAD)

@@ -269,10 +269,10 @@ def main():
         for name in ('CMakeLists.txt','CMakePresets.json','vcpkg.json','AGENTS.md'):
             archive.write(repo/name,'sources/'+name)
         for directory in ('e2e-viewer','upload-viewer'):
-            generated=repo/'build/vs2026-vcpkg/experiments/obj-profile'/directory
+            generated=repo/'build/vs2026-vcpkg-clang/experiments/obj-profile'/directory
             for path in generated.rglob('*'):
                 if path.is_file(): archive.write(path,'generated/'+directory+'/'+str(path.relative_to(generated)).replace('\\','/'))
-        asm=repo/'build/vs2026-vcpkg/experiments/obj-profile/woby_obj_profile_sse2.dir/Release/main.asm'
+        asm=repo/'build/vs2026-vcpkg-clang/experiments/obj-profile/woby_obj_profile_sse2.dir/Release/main.asm'
         if asm.exists(): archive.write(asm,'assembly/sse2-main.asm')
         if (output/'REPRODUCE.txt').exists(): archive.write(output/'REPRODUCE.txt','REPRODUCE.txt')
     print(json.dumps({'report':str(output/'report.html'),'summary_bytes':summary_path.stat().st_size,'archive_bytes':(output/'measurements.zip').stat().st_size}),flush=True)

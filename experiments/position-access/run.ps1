@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory)][string]$Model,
-    [string]$BinaryDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg/bin/Release'),
+    [string]$BinaryDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang/bin/Release'),
     [string]$BaselineDirectory = (Join-Path $PSScriptRoot '../../build/position-storage-baseline'),
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '../../build/position-access-model'),
     [ValidateRange(1, 9)][int]$Samples = 3,

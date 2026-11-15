@@ -2,7 +2,11 @@
 
 The `Build and Test` workflow runs on pushes to `main`, manual dispatch, and calls
 from the release workflow. All three platforms use Ninja, vcpkg, and Release
-builds, and run the application tests before uploading packages.
+builds, and run the application tests before uploading packages. Local builds
+and CI use upstream Clang 23.1.5, pinned in `cmake/llvm-toolchain.json`.
+Windows uses `clang-cl` with the Visual Studio SDK and standard library.
+macOS uses upstream Clang with the Xcode SDK. CI verifies each LLVM download
+with its SHA-256 hash and caches it before building dependencies.
 
 Windows builds use the GUI subsystem for the viewer. Launch tests check the PE
 subsystem, an Explorer-style launch with no console, attachment to a hidden
@@ -26,9 +30,9 @@ Interactive Finder launch and rendering should be checked on a Mac.
 ## Dependency caching
 
 `cmake/ci-vcpkg-revision.txt` pins the vcpkg checkout. The CI configuration helper
-copies the root `vcpkg.json` into `build/ci-vcpkg` and adds that same revision as
-its `builtin-baseline`. This keeps the checkout and package baseline together
-without changing the local development manifest or Debug preset.
+copies the root `vcpkg.json` into `build/ci-vcpkg` and checks that its
+`builtin-baseline` matches the pinned checkout. Local development uses the same
+baseline. The local presets build Debug and Release dependencies with Clang.
 
 CI uses the `woby-ci-*` triplets for both target dependencies and native host
 tools. They build Release dependencies only. The Linux triplet inherits the
@@ -36,7 +40,7 @@ existing dynamic-linkage and SDL settings; Windows and macOS retain their
 previous linkage choices.
 
 The binary cache key includes the pinned revision, compiler identity (including
-the Windows SDK), runner image, triplet contents, and dependency manifest. Woby's
+the Windows SDK), runner image, triplets, LLVM toolchain, and dependency manifest. Woby's
 own version fields are excluded, so a version bump alone keeps the same key.
 Dependency changes get a new key and can restore compatible packages using a
 prefix for the same toolchain. vcpkg still validates each package's ABI.
@@ -47,8 +51,8 @@ therefore preserves the completed dependency binaries. A failed dependency
 installation does not save an incomplete archive under the complete-cache key.
 
 Changing the CI triplets or pin requires an initial cache fill. To update vcpkg,
-put the desired full commit SHA in `cmake/ci-vcpkg-revision.txt`; the generated
-baseline and cache identity update automatically. Confirm all three platform
+put the desired full commit SHA in both `cmake/ci-vcpkg-revision.txt` and
+`vcpkg.json` (`builtin-baseline`). The cache identity updates automatically. Confirm all three platform
 jobs pass before tagging the update.
 
 ## Release package reuse
@@ -82,6 +86,7 @@ Run the CI helper tests with Node.js:
 
 ```powershell
 node --test .github/scripts/ci-config.test.cjs .github/scripts/resolve-release-build.test.cjs
+uv run .github/scripts/setup_llvm_tests.py
 ```
 
 Run `actionlint` to check workflow syntax and expressions. Continue using
@@ -90,14 +95,16 @@ Debug validation. Runner-specific dependency builds and cross-run artifact
 downloads are validated by GitHub Actions.
 
 Both local test presets (`vs2026-vcpkg` and `ninja-vcpkg`) exclude CTest's
-`slow` label. CI runs the development suite with `-LE '^slow$'` and then runs
-the slow suite separately with `-L '^slow$'`. Both steps must pass before
+`slow` and `graphics` labels. CI runs the development suite with
+`-LE '^(slow|graphics)$'`, the slow suite with `-L '^slow$'`, and the graphics
+suite with `-L '^graphics$' -LE '^slow$'`. All three steps must pass before
 packaging; an empty selection is an error. CI continues to use Ninja and vcpkg.
 
-The slow suite contains four expensive integration or scale regressions:
+The slow suite includes these integration and scale regressions:
 
 - `woby_update_helper_smoke`: real updater process handoff, rollback and restart.
 - `woby_runtime_build_graph`: fixture builds that verify runtime staging dependencies.
+- `woby_compiler_toolchain`: C, C++, resource, compiler-version, and enum-warning checks.
 - `analysis measures both surfaces above the former triangle cap`: end-to-end large mesh analysis.
 - `command history evicts results without ever reusing admitted retry keys`: production-capacity retry history.
 
@@ -109,4 +116,4 @@ cases without adding a discovery process launch for every test.
 Use the presets for local development. An unfiltered `ctest --test-dir ...`
 still selects all tests, and directly invoking `woby_tests` bypasses preset
 filtering. For explicit investigation of a CI slow-test failure, use
-`ctest --test-dir build/vs2026-vcpkg -C Debug -L '^slow$' --output-on-failure`.
+`ctest --preset vs2026-vcpkg-slow --output-on-failure`.

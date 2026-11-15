@@ -716,7 +716,7 @@ The end-to-end CLI check exercises all six diagnostics, pagination, source/layou
 probes, invalid inputs, and save/load, with rendered color checks:
 
 ```powershell
-uv run tests/ctl_uv_quality_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe
+uv run tests/ctl_uv_quality_smoke.py build/vs2026-vcpkg-clang/bin/Debug/woby.exe
 ```
 
 Collapsed UV triangles are magenta; missing UVs and degenerate surface triangles

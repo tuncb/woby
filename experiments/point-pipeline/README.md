@@ -28,7 +28,7 @@ you build a change. Use `D:/.worktree` for a separate Windows checkout if needed
 $env:VCPKG_ROOT='C:/work/vcpkg'
 cmake --preset vs2026-vcpkg -DWOBY_BUILD_POINT_PIPELINE=ON
 cmake --build --preset vs2026-vcpkg --config Release
-ctest --test-dir build/vs2026-vcpkg -C Release -R woby_point_pipeline_gpu --output-on-failure
+ctest --test-dir build/vs2026-vcpkg-clang -C Release -R woby_point_pipeline_gpu --output-on-failure
 ```
 
 This optional target runs on Windows Vulkan. It needs 64-bit buffer atomics,
@@ -39,7 +39,7 @@ fragment barycentrics, and GPU timestamps. It is off in a normal build.
 Use a new output directory. Run campaigns, builds, and tests separately.
 
 ```powershell
-uv run experiments/point-pipeline/run.py build/vs2026-vcpkg/bin/Release/woby_point_pipeline.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj build/point-pipeline-reference-app/assets/shaders/spirv build/pipeline-new --frames 24 --rounds 3
+uv run experiments/point-pipeline/run.py build/vs2026-vcpkg-clang/bin/Release/woby_point_pipeline.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj build/point-pipeline-reference-app/assets/shaders/spirv build/pipeline-new --frames 24 --rounds 3
 ```
 
 Use `--zoom 0.35` for a close view and `--samples 1` to check single sampling.
@@ -106,8 +106,8 @@ Keep the four files from `shaders/native` and the SPIR-V directory from the
 same reference build. Build candidates into a new directory:
 
 ```powershell
-uv run experiments/point-pipeline/shader_variants.py build/reference-source build/reference-app/assets/shaders/spirv build/shader-candidates --compiler C:/tools/slang/2026.18.3/bin/slangc.exe --ngapi build/vs2026-vcpkg/_deps/woby_ngapi-src --validator C:/VulkanSDK/1.4.357.0/Bin/spirv-val.exe --variants threads256 sample-generic split-vertices early-tests
-uv run experiments/point-pipeline/shader_audit.py build/vs2026-vcpkg/bin/Release/woby_point_pipeline.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj build/reference-app/assets/shaders/spirv build/shader-candidates build/shader-audit-new --variants repeat threads256 sample-generic --workloads combined:1 combined:4 combined:8 points:8 --frames 24 --rounds 4
+uv run experiments/point-pipeline/shader_variants.py build/reference-source build/reference-app/assets/shaders/spirv build/shader-candidates --compiler C:/tools/slang/2026.18.3/bin/slangc.exe --ngapi build/vs2026-vcpkg-clang/_deps/woby_ngapi-src --validator C:/VulkanSDK/1.4.357.0/Bin/spirv-val.exe --variants threads256 sample-generic split-vertices early-tests
+uv run experiments/point-pipeline/shader_audit.py build/vs2026-vcpkg-clang/bin/Release/woby_point_pipeline.exe D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj build/reference-app/assets/shaders/spirv build/shader-candidates build/shader-audit-new --variants repeat threads256 sample-generic --workloads combined:1 combined:4 combined:8 points:8 --frames 24 --rounds 4
 uv run experiments/point-pipeline/audit_summary.py build/shader-audit-new --output build/shader-audit-summary.json
 ```
 

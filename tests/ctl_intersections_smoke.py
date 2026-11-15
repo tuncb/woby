@@ -1,6 +1,6 @@
 """Exercise intersection findings in the real viewer; optionally save screenshots.
 
-python tests/ctl_intersections_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe build/intersection-qa
+python tests/ctl_intersections_smoke.py build/vs2026-vcpkg-clang/bin/Debug/woby.exe build/intersection-qa
 """
 import json
 import os

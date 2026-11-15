@@ -1,6 +1,6 @@
 """Exercise degenerate findings in the real viewer; optionally save screenshots.
 
-python tests/ctl_degenerates_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe build/degenerate-qa
+python tests/ctl_degenerates_smoke.py build/vs2026-vcpkg-clang/bin/Debug/woby.exe build/degenerate-qa
 """
 import json
 import os

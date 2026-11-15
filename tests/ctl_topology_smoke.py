@@ -1,6 +1,6 @@
 """Exercise source topology in the real viewer, including rendered overlays.
 
-python tests/ctl_topology_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe build/topology-qa
+python tests/ctl_topology_smoke.py build/vs2026-vcpkg-clang/bin/Debug/woby.exe build/topology-qa
 """
 import json
 import os

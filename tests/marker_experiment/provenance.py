@@ -42,8 +42,8 @@ def main():
     (logs/"instrumentation.patch").write_bytes(subprocess.check_output(["git","-C",str(WORKTREE),"diff","--",*tracked]))
     harness={str(p.relative_to(ROOT)).replace("\\","/"):digest(p) for folder in ("marker_experiment","hover_experiment","render_fps")
              for p in (ROOT/"tests"/folder).glob("*") if p.is_file()}
-    release=WORKTREE/"build/vs2026-vcpkg/bin/Release/woby.exe"
-    shaders=WORKTREE/"build/vs2026-vcpkg/assets/shaders/dx11"
+    release=WORKTREE/"build/vs2026-vcpkg-clang/bin/Release/woby.exe"
+    shaders=WORKTREE/"build/vs2026-vcpkg-clang/assets/shaders/dx11"
     report=dict(commit=head,worktree=str(WORKTREE),reproduced_files=tracked+generated,
                 compiled_sources={name:digest(WORKTREE/name) for name in tracked+generated},harness=harness,
                 binaries={str(release):digest(release)},shaders={p.name:digest(p) for p in shaders.glob("*.bin")},

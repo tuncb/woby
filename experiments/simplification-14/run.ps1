@@ -1,4 +1,4 @@
-param([string]$BinaryDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg/bin/Release'),
+param([string]$BinaryDirectory = (Join-Path $PSScriptRoot '../../build/vs2026-vcpkg-clang/bin/Release'),
       [string]$Output = (Join-Path $PSScriptRoot '../../doc/simplification-14-results.json'),
       [string[]]$Models = @('D:/temp/obj_tests/uploads_files_2720101_BusGameMap.obj',
           'D:/temp/obj_tests/powerplant.obj', 'D:/temp/obj_tests/san-miguel.obj',
