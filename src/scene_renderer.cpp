@@ -33,26 +33,6 @@ std::array<float, 4> scaledRgbColor(const std::array<float, 4>& color, float sca
     };
 }
 
-std::vector<uint32_t> buildLineIndices(const std::vector<uint32_t>& triangleIndices)
-{
-    std::vector<uint32_t> lineIndices;
-    lineIndices.reserve((triangleIndices.size() / 3u) * 6u);
-
-    for (size_t index = 0; index + 2u < triangleIndices.size(); index += 3u) {
-        const uint32_t a = triangleIndices[index + 0u];
-        const uint32_t b = triangleIndices[index + 1u];
-        const uint32_t c = triangleIndices[index + 2u];
-        lineIndices.push_back(a);
-        lineIndices.push_back(b);
-        lineIndices.push_back(b);
-        lineIndices.push_back(c);
-        lineIndices.push_back(c);
-        lineIndices.push_back(a);
-    }
-
-    return lineIndices;
-}
-
 uint64_t renderState(
     uint64_t depthTest,
     bool writeDepth,

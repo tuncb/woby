@@ -284,7 +284,9 @@ TEST_CASE("automatic clipping keeps close surfaces pickable across scales axes a
             auto camera = woby::cameraLookingAt({}, {0, 0, .05f * scale}, {0, 0, -.3f * scale}, up);
             camera.nearPlane = .1f * scale;
             for (const bool homogeneous : {false, true}) {
-                CAPTURE(scale); CAPTURE(up); CAPTURE(homogeneous);
+                CAPTURE(scale);
+                CAPTURE(up);
+                CAPTURE(homogeneous);
                 for (const bool automatic : {false, true}) {
                     camera.automaticNearPlane = automatic;
                     const auto projected = woby::scenePickView(camera, up, state.sceneBounds, 320, 240, homogeneous, 1);

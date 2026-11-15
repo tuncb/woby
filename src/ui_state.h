@@ -113,7 +113,7 @@ struct UiComparisonPart {
     // Retained when a source is removed, so missing inputs remain repairable.
     std::string name;
     bool enabled = true;
-    std::optional<SceneComparisonPartRecord::Placement> placement;
+    std::optional<SceneComparisonPartRecord::Placement> placement{};
     friend bool operator==(const UiComparisonPart&, const UiComparisonPart&) = default;
 };
 

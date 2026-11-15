@@ -111,7 +111,8 @@ TEST_CASE("Quadratic tetrahedra use curved geometry for the issue 119 boundary")
         {254.3635074243922,2398.7790346086781,116.21018683577208}}};
     for (const bool translated : {false,true}) {
         for (unsigned reversed = 0; reversed < 4; ++reversed) {
-            CAPTURE(translated); CAPTURE(reversed);
+            CAPTURE(translated);
+            CAPTURE(reversed);
             ImportTetrahedralData data;
             data.tetrahedra.group_count = 0;
             data.cells[1] = {10,{3,1,2,10,8,5,9,11,12,13}};
@@ -198,7 +199,8 @@ TEST_CASE("Tetrahedral imports preserve duplicate and overlapping cells")
 {
     for (const uint32_t nodeCount : {4u,10u}) {
         for (unsigned mode = 0; mode < 3; ++mode) {
-            CAPTURE(nodeCount); CAPTURE(mode);
+            CAPTURE(nodeCount);
+            CAPTURE(mode);
             ImportTetrahedralData data;
             if (mode < 2) {
                 data.cells[1] = data.cells[0];
@@ -222,7 +224,8 @@ TEST_CASE("Tetrahedral imports retain all faces with more than two incident cell
 {
     for (const uint32_t nodeCount : {4u,10u}) {
         for (size_t rotation = 0; rotation < 3; ++rotation) {
-            CAPTURE(nodeCount); CAPTURE(rotation);
+            CAPTURE(nodeCount);
+            CAPTURE(rotation);
             ImportTetrahedralData data;
             std::vector<WobyImportVertex> vertices(std::begin(data.vertices),std::end(data.vertices));
             vertices.insert(vertices.end(), {{{0,0,2},{},{}},{{0,0,1},{},{}},{{.5,0,1},{},{}},{{0,.5,1},{},{}}});

@@ -125,7 +125,8 @@ size_t differences(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b)
 TEST_CASE("GPU shader edges preserve occlusion picking targets UV color and portable fallback")
 {
     for (const bool msaa : {false, true}) for (const bool ids : {false, true}) {
-        CAPTURE(msaa); CAPTURE(ids);
+        CAPTURE(msaa);
+        CAPTURE(ids);
         EdgeGpuFixture fixture; initialize(fixture, msaa, ids);
         auto plan = woby::buildSceneDrawPlan(fixture.state);
         const auto visible = capture(fixture, plan);

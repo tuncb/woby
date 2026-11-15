@@ -314,7 +314,10 @@ TEST_CASE("Typed roots preserve uint32 marker IDs and reset copied parameters be
             for (const uint32_t sourceDelta : {0u, 7u}) {
                 if (sourceDelta && (!compact || !markerId || markerId > UINT32_MAX - sourceDelta
                     || sourceFirst > UINT32_MAX - sourceDelta)) { continue; }
-                CAPTURE(compact); CAPTURE(markerId); CAPTURE(sourceFirst); CAPTURE(sourceDelta);
+                CAPTURE(compact);
+                CAPTURE(markerId);
+                CAPTURE(sourceFirst);
+                CAPTURE(sourceDelta);
                 std::vector<Point> data(compact ? 65537 : 3);
                 const std::array<uint32_t, 3> offsets{65536, 65535, 1};
                 std::vector<uint32_t> pointIndices(65537);
@@ -395,7 +398,11 @@ TEST_CASE("Reversed depth resolves close and distant layers independent of draw 
                 g::setViewTransform(1, view.view.data(), view.renderProjection.data(), true);
                 for (const bool frontFirst : {false, true}) {
                     for (const auto test : {WOBY_GPU_STATE_DEPTH_TEST_LESS, WOBY_GPU_STATE_DEPTH_TEST_LEQUAL}) {
-                        CAPTURE(msaa); CAPTURE(distance); CAPTURE(angle); CAPTURE(frontFirst); CAPTURE(test);
+                        CAPTURE(msaa);
+                        CAPTURE(distance);
+                        CAPTURE(angle);
+                        CAPTURE(frontFirst);
+                        CAPTURE(test);
                         g::touch(0);
                         for (int draw = 0; draw < 2; ++draw) {
                             const bool front = (draw == 0) == frontFirst;

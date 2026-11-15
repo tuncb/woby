@@ -237,7 +237,9 @@ TEST_CASE("Index merge validates each triplet lane and preserves relative refere
             REQUIRE(copy() == rapidobj_errc::Success);
             CHECK(output.back().position_index == -9);
             for (size_t i = start; i < start + size; ++i) {
-                CAPTURE(size); CAPTURE(start); CAPTURE(i);
+                CAPTURE(size);
+                CAPTURE(start);
+                CAPTURE(i);
                 CHECK(output[i].position_index == 7);
                 CHECK(output[i].texcoord_index == -1);
                 CHECK(output[i].normal_index == -1);
@@ -298,7 +300,9 @@ TEST_CASE("Vertex colors preserve missing entries weights and order at every blo
     const std::vector<uint32_t> expected{0, 0xff000000, 0, 0xff0080ff, 0xff00ff00, 0, 0xffff00ff, 0};
     for (const auto block : {size_t{1}, size_t{17}, size_t{59}, size_t{4096}}) {
         for (const auto workers : {size_t{1}, size_t{4}}) for (int source = 0; source < 3; ++source) {
-            CAPTURE(block); CAPTURE(workers); CAPTURE(source);
+            CAPTURE(block);
+            CAPTURE(workers);
+            CAPTURE(source);
             Parsed parsed;
             rapidobj::PrototypeOptions options; options.chunk_bytes = block; options.read_bytes = 7; options.workers = workers;
             std::istringstream stream(text);
@@ -420,7 +424,8 @@ TEST_CASE("Seeded parser stress preserves geometry across worker counts and nati
         reference.result = rapidobj::ParseMemoryPrototype(text, reference.buffers(), rapidobj::MaterialLibrary::Ignore(), options);
         for (size_t workers : {size_t{1}, size_t{2}, size_t{4}, size_t{16}}) {
             for (size_t bytes : {size_t{256 * 1024}, size_t{4 * 1024 * 1024}}) {
-                CAPTURE(workers); CAPTURE(bytes);
+                CAPTURE(workers);
+                CAPTURE(bytes);
                 options.workers = workers; options.chunk_bytes = bytes;
                 Parsed file;
                 file.result = rapidobj::ParseFilePrototype(path, file.buffers(), options);
@@ -477,7 +482,9 @@ TEST_CASE("Parser stress preserves first-error diagnostics at native boundaries"
             text += "v another_error\n";
             const auto path = fixture.write(text);
             for (size_t workers : {size_t{2}, size_t{4}, size_t{16}}) {
-                CAPTURE(edge); CAPTURE(shift); CAPTURE(workers);
+                CAPTURE(edge);
+                CAPTURE(shift);
+                CAPTURE(workers);
                 Parsed parsed;
                 rapidobj::PrototypeOptions options; options.workers = workers;
                 parsed.result = rapidobj::ParseFilePrototype(path, parsed.buffers(), options);

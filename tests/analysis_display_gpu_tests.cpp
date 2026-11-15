@@ -122,7 +122,8 @@ std::vector<uint8_t> capture(DisplayFixture& f, g::VertexBufferHandle source, g:
 }
 TEST_CASE("GPU face displays match expanded quality UV distance and comparison wireframes") {
     for (const bool msaa : {false, true}) for (const bool markers : {false, true}) {
-        CAPTURE(msaa); CAPTURE(markers);
+        CAPTURE(msaa);
+        CAPTURE(markers);
         DisplayFixture f; initialize(f, msaa, markers);
         woby::Mesh mesh;
         auto& geometry = woby::editMeshGeometry(mesh);

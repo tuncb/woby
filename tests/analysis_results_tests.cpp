@@ -202,7 +202,8 @@ TEST_CASE("direct export matches the established schema for every detector on bo
         for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
             const auto& detectors = output[side == ComparisonSide::a ? "aToB" : "bToA"]["detectors"];
             for (const auto* detector : diagnosticCategoryKeys) {
-                CAPTURE(detector); CAPTURE(unavailable);
+                CAPTURE(detector);
+                CAPTURE(unavailable);
                 CHECK(detectors[detector] == analysisDetectorSummary(r, side, detector));
             }
         }

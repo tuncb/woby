@@ -1403,7 +1403,7 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
     woby::selectSceneObject(f.state, f.id);
     woby::ComparisonRuntimes runtimes;
     ImGuiTable* diagnostics = nullptr;
-    ImVec2 gear, eye, divider, intersectionRun, intersectionEye;
+    ImVec2 gear, eye, intersectionRun, intersectionEye;
     std::array<ImVec2, woby::backgroundDetectorCount> updateButtons;
     std::array<ImVec2, woby::diagnosticCategoryCount> settingsButtons;
     std::array<ImVec2, woby::diagnosticCategoryCount> findingLabels;

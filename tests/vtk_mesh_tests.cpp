@@ -73,7 +73,8 @@ TEST_CASE("VTK reader retains duplicate and degenerate tetrahedra for inspection
 {
     for (const bool modern : {false,true}) {
         for (const uint32_t nodeCount : {4u,10u}) {
-            CAPTURE(modern); CAPTURE(nodeCount);
+            CAPTURE(modern);
+            CAPTURE(nodeCount);
             const ImportTetrahedralData data;
             const std::vector<uint32_t> cell(data.cells[0].nodes,data.cells[0].nodes+nodeCount);
             const uint32_t type = nodeCount == 10 ? 24u : 10u;

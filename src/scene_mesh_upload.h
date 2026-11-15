@@ -37,7 +37,7 @@ struct GpuMeshUpload {
 struct LoadedModelRuntime {
     GpuMesh gpuMesh;
     uint8_t requestedFeatures = 0;
-    std::shared_ptr<graphics::BufferUpload> featureUpload;
+    std::shared_ptr<graphics::BufferUpload> featureUpload{};
     uint8_t uploadingFeatures = 0;
     uint64_t featureGeometryRevision = 0;
 };

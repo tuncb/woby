@@ -766,7 +766,9 @@ TEST_CASE("OBJ prototype resolves rational trimming and attributes across logica
     const auto reference = woby::loadObjMeshLegacy(path);
     for (const woby::ObjPrototypeOptions options : {
             woby::ObjPrototypeOptions{1, 1, 1}, {47, 7, 2}, {113, 19, 4}, {4 * 1024 * 1024, 256 * 1024, 2}}) {
-        CAPTURE(options.chunkBytes); CAPTURE(options.readBytes); CAPTURE(options.workers);
+        CAPTURE(options.chunkBytes);
+        CAPTURE(options.readBytes);
+        CAPTURE(options.workers);
         const auto file = woby::loadObjMeshPrototype(path, {}, options);
         const auto memory = woby::loadObjMeshTextPrototype(rationalTrimmed, {}, options);
         sameMesh(reference, file); sameMesh(reference, memory);
@@ -795,7 +797,8 @@ TEST_CASE("OBJ prototype retains physical diagnostics independently of read and 
             {"cstype bezier\ndeg 2\ncurv 0 1 -4 -2 -1\nparm u 0 1\nend\n", 6},
             {"cstype cardinal\n", 4}, {"vp 0 0\ncon 1 2\n", 5}, {"f 1 2 \\\n", 4}}) {
         for (size_t workers : {size_t{1}, size_t{3}}) {
-            CAPTURE(tail); CAPTURE(workers);
+            CAPTURE(tail);
+            CAPTURE(workers);
             const auto error = failureLine(prefix + tail, {16, 3, workers});
             CHECK_FALSE(error.empty());
             CHECK(error.find("line " + std::to_string(line)) != std::string::npos);
@@ -900,7 +903,8 @@ TEST_CASE("OBJ prototype reports the earliest error at every raw block alignment
         const auto text = "#" + std::string(padding, 'x') + "\n" + body;
         const auto path = fixture.write(text);
         for (int source = 0; source < 3; ++source) {
-            CAPTURE(padding); CAPTURE(source);
+            CAPTURE(padding);
+            CAPTURE(source);
             std::vector<woby::Coordinate> positions, normals;
             std::vector<std::array<double, 2>> texcoords;
             rapidobj::GeometryBuffers buffers{positions, texcoords, normals};

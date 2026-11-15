@@ -59,7 +59,10 @@ TEST_CASE("Native freeform upload preserves CPU rational surfaces curves and tri
         while (g::frame()<ready) {}
         CHECK(triangles==meshGeometry(mesh).indices); CHECK(lines==meshGeometry(mesh).lineIndices);
         for (size_t i=0;i<output.size();++i) {
-            CAPTURE(i); CAPTURE(authored); CAPTURE(trimmed); CAPTURE(distant);
+            CAPTURE(i);
+            CAPTURE(authored);
+            CAPTURE(trimmed);
+            CAPTURE(distant);
             for (size_t k=0;k<3;++k) {
                 CHECK(output[i].position[k]==meshGeometry(mesh).vertices[i].position[k]);
                 CHECK(output[i].normal[k]==meshGeometry(mesh).vertices[i].normal[k]);
