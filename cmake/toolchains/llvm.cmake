@@ -47,6 +47,13 @@ endif()
 if(CMAKE_HOST_APPLE)
     set(CMAKE_OBJC_COMPILER "${woby_c}")
     set(CMAKE_OBJCXX_COMPILER "${woby_cxx}")
+    # Upstream Clang does not infer the active Xcode SDK for make-based ports.
+    # vcpkg exports this sysroot when it obtains flags for OpenSSL and Autotools.
+    if(NOT CMAKE_OSX_SYSROOT)
+        execute_process(COMMAND xcrun --sdk macosx --show-sdk-path
+            OUTPUT_VARIABLE woby_macos_sdk OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+        set(CMAKE_OSX_SYSROOT "${woby_macos_sdk}" CACHE PATH "Active macOS SDK")
+    endif()
 endif()
 
 # Preserve vcpkg's architecture, runtime linkage, and port flags. These values

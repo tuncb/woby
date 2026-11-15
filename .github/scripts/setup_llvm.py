@@ -53,8 +53,18 @@ def install_package(root, package, version):
         archive.unlink(missing_ok=True)
 
 
-def export_environment(root, compilers, environ):
-    values = {"WOBY_LLVM_ROOT": str(root), **{key: str(value) for key, value in compilers.items()}}
+def platform_environment(system):
+    if system != "Darwin":
+        return {}
+    sdk = subprocess.run(["xcrun", "--sdk", "macosx", "--show-sdk-path"],
+                         check=True, capture_output=True, text=True).stdout.strip()
+    if not Path(sdk).is_dir():
+        raise RuntimeError(f"macOS SDK directory is missing: {sdk}")
+    return {"SDKROOT": sdk}
+
+
+def export_environment(root, compilers, environ, extra=None):
+    values = {"WOBY_LLVM_ROOT": str(root), **{key: str(value) for key, value in compilers.items()}, **(extra or {})}
     if environ.get("GITHUB_ENV"):
         with Path(environ["GITHUB_ENV"]).open("a", encoding="utf-8") as output:
             for key, value in values.items():
@@ -84,7 +94,7 @@ def main():
     compilers = verify_compilers(root, system, manifest["version"])
     if args.destination:
         stamp.write_text(package["sha256"] + "\n", encoding="utf-8")
-    values = export_environment(root, compilers, os.environ)
+    values = export_environment(root, compilers, os.environ, platform_environment(system))
     print(f"Selected LLVM {manifest['version']}")
     for name, value in values.items():
         print(f"{name}={value}")

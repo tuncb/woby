@@ -43,15 +43,16 @@ add_library(incomplete OBJECT incomplete.cpp)
 woby_enable_enum_switch_warnings(incomplete)
 ''', encoding="utf-8")
         (self.source / "complete.cpp").write_text('''
+#include <string>
 extern "C" int c_value(void);
 enum class Mode { first, second };
 int select_mode(Mode mode) {
     switch (mode) { case Mode::first: return 0; case Mode::second: return 1; }
     return 2;
 }
-int main() { return select_mode(Mode::first) + c_value(); }
+int main() { return select_mode(Mode::first) + c_value() + static_cast<int>(std::string{}.size()); }
 ''', encoding="utf-8")
-        (self.source / "c_source.c").write_text("int c_value(void) { return 0; }\n", encoding="utf-8")
+        (self.source / "c_source.c").write_text("#include <stdlib.h>\nint c_value(void) { return abs(0); }\n", encoding="utf-8")
         (self.source / "version.rc").write_text('#include <windows.h>\n1 RCDATA { "compiler fixture" }\n', encoding="utf-8")
         (self.source / "incomplete.cpp").write_text('''
 enum class Mode { first, second };

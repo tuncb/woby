@@ -91,6 +91,17 @@ class LlvmSetupTests(unittest.TestCase):
             self.assertEqual(saved, {"EXISTING": "value", **values})
             self.assertEqual(path_file.read_text(encoding="utf-8").strip(), str(root / "bin"))
 
+    def test_macos_sdk_is_selected_and_must_exist(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(setup_llvm.subprocess, "run") as run:
+            sdk = Path(directory) / "SDK with spaces"
+            sdk.mkdir()
+            run.return_value = subprocess.CompletedProcess([], 0, stdout=str(sdk) + "\n")
+            self.assertEqual(setup_llvm.platform_environment("Darwin"), {"SDKROOT": str(sdk)})
+            run.return_value = subprocess.CompletedProcess([], 0, stdout=str(sdk / "missing"))
+            with self.assertRaisesRegex(RuntimeError, "SDK directory is missing"):
+                setup_llvm.platform_environment("Darwin")
+        self.assertEqual(setup_llvm.platform_environment("Windows"), {})
+
     def test_manifest_contains_every_ci_platform_with_a_checksum(self):
         manifest = json.loads(setup_llvm.MANIFEST.read_text(encoding="utf-8"))
         for key in ("Windows-X64", "Linux-X64", "Darwin-ARM64"):
