@@ -48,7 +48,10 @@ prefix for the same toolchain. vcpkg still validates each package's ABI.
 The workflow saves the cache immediately after successful CMake configuration,
 before compiling and testing Woby. A later application build or test failure
 therefore preserves the completed dependency binaries. A failed dependency
-installation does not save an incomplete archive under the complete-cache key.
+installation saves completed packages under a separate partial-cache key.
+The next run can restore those packages through the toolchain prefix. vcpkg
+checks each package before reuse; only successful configuration saves the
+complete-cache key.
 
 Changing the CI triplets or pin requires an initial cache fill. To update vcpkg,
 put the desired full commit SHA in both `cmake/ci-vcpkg-revision.txt` and

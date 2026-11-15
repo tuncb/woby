@@ -1,0 +1,17 @@
+diff --git a/utils/lstopo/lstopo.c b/utils/lstopo/lstopo.c
+index a946581c3..ecbf64aff 100644
+--- a/utils/lstopo/lstopo.c
++++ b/utils/lstopo/lstopo.c
+@@ -58,6 +58,12 @@
+ # endif
+ #endif
+ 
++#if _MSC_VER
++#include <io.h>
++#define isatty _isatty
++#define STDOUT_FILENO _fileno( stdout )
++#endif
++
+ #ifdef ANDROID
+ extern void setJNIEnv();
+ #endif

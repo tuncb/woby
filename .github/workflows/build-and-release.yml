@@ -245,6 +245,7 @@ jobs:
         run: .github/scripts/setup-graphics-toolchain.ps1 -Destination "$env:RUNNER_TEMP/woby-graphics-tools"
 
       - name: Configure CMake
+        id: configure
         shell: pwsh
         run: |
           cmake `
@@ -258,6 +259,13 @@ jobs:
             -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/cmake/vcpkg-triplets" `
             -DVCPKG_TARGET_TRIPLET="${{ matrix.vcpkg_triplet }}" `
             -DVCPKG_HOST_TRIPLET="${{ matrix.vcpkg_triplet }}"
+
+      - name: Save completed dependencies after a configure failure
+        if: failure() && steps.configure.outcome == 'failure' && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .vcpkg-cache
+          key: ${{ steps.ci.outputs.cache-key }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
 
       # Preserve completed dependencies even when compiling or testing Woby later fails.
       - name: Save vcpkg packages
