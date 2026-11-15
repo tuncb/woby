@@ -101,6 +101,32 @@ Add lines, review areas, and comments to a surface. Select an annotation to edit
 
 ## Development tests
 
+Local and CI builds use upstream **Clang 23.1.5**. Install that LLVM release,
+including `clang-cl` on Windows. Windows still requires Visual Studio 2026 C++
+tools and the Windows SDK. macOS requires the Xcode 26 SDK and Metal tools.
+
+On Windows, the presets select `C:/Program Files/LLVM`. For another installation,
+set `WOBY_LLVM_ROOT` to the LLVM directory before configuring. On Linux and macOS,
+set the same variable to select upstream LLVM. Apple Clang does not satisfy the
+version check. Both Woby and vcpkg dependencies use this compiler. The dependency
+baseline in `vcpkg.json` must match `cmake/ci-vcpkg-revision.txt`.
+
+The vcpkg presets use a repository-local `.vcpkg` checkout. Prepare it once:
+
+```powershell
+git clone https://github.com/microsoft/vcpkg.git .vcpkg
+git -C .vcpkg checkout --detach (Get-Content cmake/ci-vcpkg-revision.txt).Trim()
+.vcpkg/bootstrap-vcpkg.bat -disableMetrics
+```
+
+On Linux and macOS, check out the same revision and run `bootstrap-vcpkg.sh`.
+
+The preset names now use separate `build/<preset>-clang` directories.
+The old MSVC build directories can remain on disk. To verify an installation,
+run `uv run .github/scripts/setup_llvm.py --root "C:/Program Files/LLVM"`.
+CI downloads packages and checks their SHA-256 hashes from
+`cmake/llvm-toolchain.json`.
+
 Build the Debug configuration, then run the CPU, slow, and graphics suites separately:
 
 ```powershell
@@ -113,4 +139,4 @@ ctest --preset vs2026-vcpkg-graphics
 
 The presets use four CTest jobs. CPU tests run in source-file groups. Slow cases run separately and are excluded from their file groups. Graphics tests share a resource lock. Enable `WOBY_TEST_HEADLESS` at configuration time to include the headless rendering tests.
 
-Use `ctest --preset vs2026-vcpkg -R scene_history` to run a file group. To run one case, call `build/vs2026-vcpkg/bin/Debug/woby_tests.exe --test-case="case name"`. Individual case names and source locations remain in failure output. CI uses Ninja and the same three suite filters.
+Use `ctest --preset vs2026-vcpkg -R scene_history` to run a file group. To run one case, call `build/vs2026-vcpkg-clang/bin/Debug/woby_tests.exe --test-case="case name"`. Individual case names and source locations remain in failure output. CI uses Ninja and the same three suite filters.

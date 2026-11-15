@@ -2,6 +2,17 @@ cmake_minimum_required(VERSION 3.24)
 
 # Use the level-set allocation fix in local and CI dependency builds.
 list(APPEND VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg-ports")
+list(APPEND VCPKG_OVERLAY_TRIPLETS "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg-triplets")
+if(NOT DEFINED VCPKG_TARGET_TRIPLET)
+    if(CMAKE_HOST_WIN32)
+        set(VCPKG_TARGET_TRIPLET woby-x64-windows CACHE STRING "Woby dependency platform")
+    elseif(CMAKE_HOST_APPLE)
+        set(VCPKG_TARGET_TRIPLET woby-arm64-osx CACHE STRING "Woby dependency platform")
+    else()
+        set(VCPKG_TARGET_TRIPLET woby-x64-linux-dynamic CACHE STRING "Woby dependency platform")
+    endif()
+endif()
+set(VCPKG_HOST_TRIPLET "${VCPKG_TARGET_TRIPLET}" CACHE STRING "Woby build tool platform")
 
 option(WOBY_BUILD_HASH_BENCHMARKS "Build opt-in hash table and scene query benchmarks" OFF)
 if(WOBY_BUILD_HASH_BENCHMARKS)
@@ -17,6 +28,8 @@ if(APPLE)
     # Enable Objective-C++ in the common scope of the backend and Metal tests.
     enable_language(OBJCXX)
 endif()
+
+include(cmake/WobyCompiler.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -892,6 +905,13 @@ if(BUILD_TESTING)
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
         "-DSTAGING_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/cmake/StageRuntimeFiles.cmake"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/runtime_files_tests.cmake")
+    add_test(NAME woby_llvm_setup COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/.github/scripts/setup_llvm_tests.py")
+    add_test(NAME woby_compiler_toolchain COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_toolchain_tests.py"
+        "${CMAKE_COMMAND}" "${CMAKE_CURRENT_SOURCE_DIR}" "${WOBY_LLVM_ROOT}"
+        "${CMAKE_GENERATOR}" "${CMAKE_GENERATOR_PLATFORM}")
+    set_tests_properties(woby_compiler_toolchain PROPERTIES LABELS slow)
     # Check the configured targets, including optional source replacements.
     file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/shared-sources-$<CONFIG>.cmake" CONTENT
 "set(source_root [==[${CMAKE_CURRENT_SOURCE_DIR}]==])

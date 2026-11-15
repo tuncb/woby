@@ -11,11 +11,14 @@ function canonicalJson(value) {
     return JSON.stringify(value);
 }
 
-function createCiConfig({ manifest, revision, triplets, ports = {}, compiler, os, arch, triplet, image }) {
+function createCiConfig({ manifest, revision, triplets, ports = {}, toolchains = {}, compiler, os, arch, triplet, image }) {
     revision = revision.trim();
     if (!/^[a-f0-9]{40}$/.test(revision)) throw new Error('Expected a full vcpkg commit SHA.');
     if (!compiler.trim()) throw new Error('Missing CI compiler identity.');
     if (!triplets[`${triplet}.cmake`]) throw new Error(`Unknown CI triplet: ${triplet}`);
+    if (manifest['builtin-baseline'] && manifest['builtin-baseline'] !== revision) {
+        throw new Error('Local and CI vcpkg baselines must match.');
+    }
 
     const ciManifest = { ...manifest, 'builtin-baseline': revision };
     const dependencyManifest = { ...ciManifest };
@@ -28,6 +31,8 @@ function createCiConfig({ manifest, revision, triplets, ports = {}, compiler, os
     const toolchainHash = createHash('sha256').update(canonicalJson({
         revision, compiler: compiler.trim().replace(/\r\n/g, '\n'), os, arch, triplet, image,
         triplets: normalizedTriplets,
+        toolchains: Object.fromEntries(Object.entries(toolchains).map(([name, text]) =>
+            [name.replaceAll('\\', '/'), text.replace(/\r\n/g, '\n')])),
     })).digest('hex');
     const normalizedPorts = Object.fromEntries(Object.entries(ports).map(([name, text]) =>
         [name.replaceAll('\\', '/'), text.replace(/\r\n/g, '\n')]));
@@ -51,7 +56,10 @@ function main() {
     const config = createCiConfig({
         manifest: JSON.parse(fs.readFileSync(path.join(root, 'vcpkg.json'), 'utf8')),
         revision: fs.readFileSync(path.join(root, 'cmake/ci-vcpkg-revision.txt'), 'utf8'),
-        triplets, ports, compiler: process.env.WOBY_CI_COMPILER_ID || '',
+        triplets, ports,
+        toolchains: Object.fromEntries(['cmake/toolchains/llvm.cmake', 'cmake/llvm-toolchain.json'].map(name =>
+            [name, fs.readFileSync(path.join(root, name), 'utf8')])),
+        compiler: process.env.WOBY_CI_COMPILER_ID || '',
         os: process.env.RUNNER_OS, arch: process.env.RUNNER_ARCH,
         triplet: process.env.WOBY_CI_TRIPLET,
         image: `${process.env.ImageOS || ''}/${process.env.ImageVersion || ''}`,

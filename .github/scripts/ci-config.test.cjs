@@ -9,11 +9,12 @@ function inputs() {
         manifest: { name: 'woby', 'version-string': '0.7.1', dependencies: [
             'doctest', { name: 'sdl3', features: ['vulkan'] },
         ] },
-        revision: 'a'.repeat(40), compiler: 'MSVC 19.51;SDK 26100',
+        revision: 'a'.repeat(40), compiler: 'Clang 23.1.5;MSVC 19.51;SDK 26100',
         os: 'Windows', arch: 'X64', image: 'windows-2025/20260901',
         triplet: 'woby-ci-x64-windows',
         triplets: { 'woby-ci-x64-windows.cmake': 'set(VCPKG_BUILD_TYPE release)\n' },
         ports: { 'manifold/fix.patch': 'level-set allocation fix\n' },
+        toolchains: { 'cmake/toolchains/llvm.cmake': 'compiler selection\n' },
     };
 }
 
@@ -75,6 +76,8 @@ test('compiler, SDK, vcpkg revision, image, and included triplet changes invalid
         input => { input.revision = 'b'.repeat(40); },
         input => { input.image += '-updated'; },
         input => { input.triplets['woby-x64-linux-dynamic.cmake'] = 'changed'; },
+        input => { input.compiler = 'Clang 23.1.6;MSVC 19.51;SDK 26100'; },
+        input => { input.toolchains['cmake/toolchains/llvm.cmake'] += 'changed'; },
     ]) {
         const input = inputs();
         change(input);
@@ -88,6 +91,7 @@ test('JSON key order and checkout line endings do not change cache identity', ()
     after.manifest.dependencies[1] = { features: ['vulkan'], name: 'sdl3' };
     after.triplets['woby-ci-x64-windows.cmake'] = 'set(VCPKG_BUILD_TYPE release)\r\n';
     after.ports = { 'manifold\\fix.patch': 'level-set allocation fix\r\n' };
+    after.toolchains = { 'cmake\\toolchains\\llvm.cmake': 'compiler selection\r\n' };
     after.revision += '\r\n';
     assert.equal(createCiConfig(before).key, createCiConfig(after).key);
 });
@@ -97,6 +101,7 @@ test('invalid pin, absent compiler, and unknown triplet fail before a cache can 
         input => { input.revision = 'main'; },
         input => { input.compiler = ''; },
         input => { input.triplet = 'missing'; },
+        input => { input.manifest['builtin-baseline'] = 'b'.repeat(40); },
     ]) {
         const input = inputs();
         change(input);

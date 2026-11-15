@@ -8,41 +8,51 @@
   "configurePresets": [
     {
       "name": "vs2026-vcpkg",
-      "displayName": "Visual Studio 2026 + vcpkg manifest",
+      "displayName": "Visual Studio 2026 + Clang + vcpkg manifest",
+      "environment": { "VCPKG_ROOT": "${sourceDir}/.vcpkg" },
       "generator": "Visual Studio 18 2026",
       "architecture": "x64",
-      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolset": "ClangCL,host=x64",
+      "binaryDir": "${sourceDir}/build/${presetName}-clang",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/llvm.cmake",
+        "VCPKG_TARGET_TRIPLET": "woby-x64-windows",
+        "VCPKG_HOST_TRIPLET": "woby-x64-windows",
         "CMAKE_VS_GLOBALS": "UseMultiToolTask=true;EnforceProcessCountAcrossBuilds=true"
       }
     },
     {
       "name": "vs2026",
-      "displayName": "Visual Studio 2026 with installed packages",
+      "displayName": "Visual Studio 2026 + Clang with installed packages",
       "generator": "Visual Studio 18 2026",
       "architecture": "x64",
-      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolset": "ClangCL,host=x64",
+      "binaryDir": "${sourceDir}/build/${presetName}-clang",
       "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/llvm.cmake",
         "CMAKE_VS_GLOBALS": "UseMultiToolTask=true;EnforceProcessCountAcrossBuilds=true"
       }
     },
     {
       "name": "ninja-vcpkg",
-      "displayName": "Ninja + vcpkg manifest",
+      "displayName": "Ninja + Clang + vcpkg manifest",
+      "environment": { "VCPKG_ROOT": "${sourceDir}/.vcpkg" },
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
+      "binaryDir": "${sourceDir}/build/${presetName}-clang",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/llvm.cmake"
       }
     },
     {
       "name": "ninja",
-      "displayName": "Ninja with installed packages",
+      "displayName": "Ninja + Clang with installed packages",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
+      "binaryDir": "${sourceDir}/build/${presetName}-clang",
       "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/llvm.cmake",
         "CMAKE_BUILD_TYPE": "Debug"
       }
     }
