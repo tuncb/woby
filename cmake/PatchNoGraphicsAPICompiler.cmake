@@ -1,0 +1,18 @@
+# Apply compiler settings before FetchContent creates the native targets.
+file(READ "${NGAPI_SOURCE}/CMakeLists.txt" source)
+set(before [=[        target_compile_options(${target} PRIVATE /EHs-c- /GR-)]=])
+set(after [=[        target_compile_options(${target} PRIVATE /EHs-c- /GR-)
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+            # clang-cl /GR- disables RTTI data, but retains the RTTI language feature.
+            target_compile_options(${target} PRIVATE /clang:-fno-rtti)
+        endif()]=])
+string(FIND "${source}" "${after}" already_patched)
+if(NOT already_patched EQUAL -1)
+    return()
+endif()
+string(FIND "${source}" "${before}" position)
+if(position EQUAL -1)
+    message(FATAL_ERROR "NoGraphicsAPI no-RTTI compiler settings changed upstream")
+endif()
+string(REPLACE "${before}" "${after}" source "${source}")
+file(WRITE "${NGAPI_SOURCE}/CMakeLists.txt" "${source}")

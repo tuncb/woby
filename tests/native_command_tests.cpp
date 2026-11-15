@@ -116,7 +116,7 @@ VKAPI_ATTR void VKAPI_CALL destroyFence(VkDevice, VkFence value, const VkAllocat
 }
 VKAPI_ATTR VkResult VKAPI_CALL instanceVersion(uint32_t* output) { *output = VK_API_VERSION_1_4; return VK_SUCCESS; }
 VKAPI_ATTR VkResult VKAPI_CALL instanceExtensions(const char*, uint32_t* count, VkExtensionProperties*) { *count = 0; return VK_SUCCESS; }
-VKAPI_ATTR VkResult VKAPI_CALL instanceLayers(uint32_t* count, VkLayerProperties*) { *count = 0; return VK_SUCCESS; }
+[[maybe_unused]] VKAPI_ATTR VkResult VKAPI_CALL instanceLayers(uint32_t* count, VkLayerProperties*) { *count = 0; return VK_SUCCESS; }
 VKAPI_ATTR VkResult VKAPI_CALL createInstance(const VkInstanceCreateInfo*, const VkAllocationCallbacks*, VkInstance* output) {
     *output = handle<VkInstance>(0xcdcd);
     return VK_ERROR_OUT_OF_HOST_MEMORY;

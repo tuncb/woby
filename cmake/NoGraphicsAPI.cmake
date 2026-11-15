@@ -3,6 +3,8 @@ include(FetchContent)
 FetchContent_Declare(woby_ngapi
     URL https://github.com/sebbbi/NoGraphicsAPI/archive/ae017a2f545abc0847e546cc7e84139bf3cc4241.zip
     URL_HASH SHA256=3a51391ca3004b391a1b86b972e16c9004e532bedf26f9419211fbd5d228a722
+    PATCH_COMMAND "${CMAKE_COMMAND}" "-DNGAPI_SOURCE=<SOURCE_DIR>"
+        -P "${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPICompiler.cmake"
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(woby_ngapi)
 set(NGAPI_SOURCE "${woby_ngapi_SOURCE_DIR}")
