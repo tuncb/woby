@@ -1,11 +1,13 @@
-#pragma once
+module;
 
 #include <array>
 #include <filesystem>
 #include <future>
 #include <string>
 
-namespace woby {
+export module woby.file_associations;
+
+export namespace woby {
 
 enum class FileAssociationType { scene, obj };
 enum class FileAssociationAction { none, refresh, registerCopy, removeRegistration, openDefaults };

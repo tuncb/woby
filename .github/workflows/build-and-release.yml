@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - trial/file-associations-modules
   workflow_dispatch:
   workflow_call:
 
@@ -165,6 +166,13 @@ jobs:
           version: "0.11.28"
           # The Python helpers use only the standard library.
           enable-cache: false
+
+      - name: Install CMake 4.5
+        shell: pwsh
+        run: |
+          uv tool install cmake==4.5.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          uv tool dir --bin >> $env:GITHUB_PATH
 
       - name: Install pinned Python
         run: uv python install

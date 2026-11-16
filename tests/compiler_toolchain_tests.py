@@ -34,6 +34,7 @@ include("{SOURCE.as_posix()}/cmake/WobyWarnings.cmake")
 set(CMAKE_CXX_STANDARD 20)
 find_package(Threads REQUIRED)
 add_executable(complete complete.cpp multiply_add.cpp c_source.c)
+file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/executable-$<CONFIG>.txt" CONTENT "$<TARGET_FILE:complete>")
 target_link_libraries(complete PRIVATE Threads::Threads)
 woby_enable_project_warnings(complete)
 woby_enable_enum_switch_warnings(complete)
@@ -93,8 +94,7 @@ int select_mode(Mode mode) {
             if success:
                 self.assertEqual(built.returncode, 0, built.stdout)
                 self.assertNotIn("warning:", built.stdout.lower(), built.stdout)
-                directory = self.build / "Release" if GENERATOR.startswith("Visual Studio") else self.build
-                executable = directory / ("complete.exe" if os.name == "nt" else "complete")
+                executable = Path((self.build / "executable-Release.txt").read_text())
                 ran = subprocess.run([str(executable)], capture_output=True, text=True)
                 self.assertEqual(ran.returncode, 0, f"Compiler changed separate multiply-add rounding: {ran.stdout}{ran.stderr}")
             else:

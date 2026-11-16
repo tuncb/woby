@@ -40,7 +40,7 @@
 #include "ui_icon_controls.h"
 #include "ui_popup_controls.h"
 #include "settings_dialog.h"
-#include <file_associations.h>
+import woby.file_associations;
 #include "main_menu.h"
 #include "recent_files_runtime.h"
 #include "utf8_path.h"

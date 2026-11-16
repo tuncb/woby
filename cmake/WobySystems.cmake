@@ -32,7 +32,7 @@ function(woby_configure_system_checks)
     set(patterns)
     foreach(index RANGE ${last_root})
         string(JSON root GET "${inventory}" roots ${index})
-        foreach(extension IN ITEMS h hpp hh hxx inl inc cpp cc cxx mm)
+        foreach(extension IN ITEMS h hpp hh hxx inl inc cpp cc cxx mm cppm)
             list(APPEND patterns "${root}/*.${extension}")
         endforeach()
     endforeach()
@@ -61,6 +61,11 @@ function(woby_configure_system_checks)
             continue()
         endif()
         get_target_property(sources "${target}" SOURCES)
+        get_target_property(module_sets "${target}" CXX_MODULE_SETS)
+        foreach(module_set IN LISTS module_sets)
+            get_target_property(module_sources "${target}" "CXX_MODULE_SET_${module_set}")
+            list(APPEND sources ${module_sources})
+        endforeach()
         get_target_property(source_directory "${target}" SOURCE_DIR)
         set(target_sources)
         foreach(source IN LISTS sources)
@@ -95,13 +100,9 @@ function(woby_configure_system_checks)
         # Clang gives each compilation a unique fragment. The CLI selects the
         # newest command for each configured target/source pair.
         if(MSVC)
-            set(options "/clang:-fmodules-decluse" "/clang:-Werror=private-header"
-                "/clang:-fmodule-map-file=${output}/systems.modulemap"
-                "/clang:-gen-cdb-fragment-path" "/clang:${fragment_directory}")
+            set(options "/clang:-gen-cdb-fragment-path" "/clang:${fragment_directory}")
         else()
-            set(options "-fmodules-decluse" "-Werror=private-header"
-                "-fmodule-map-file=${output}/systems.modulemap"
-                "-gen-cdb-fragment-path" "${fragment_directory}")
+            set(options "-gen-cdb-fragment-path" "${fragment_directory}")
         endif()
         target_compile_options("${target}" PRIVATE "$<$<COMPILE_LANGUAGE:CXX,OBJCXX>:${options}>")
         string(JOIN "\n" source_text ${target_sources})
@@ -113,9 +114,11 @@ function(woby_configure_system_checks)
     set(command "${Python3_EXECUTABLE}" "${checker}" check
         --root "${PROJECT_SOURCE_DIR}" --build "${PROJECT_BINARY_DIR}"
         --config "$<CONFIG>" --llvm-root "${WOBY_LLVM_ROOT}")
-    add_custom_target(woby_check_systems COMMAND ${command}
+    add_custom_target(woby_check_systems ALL COMMAND ${command}
         DEPENDS ${checked_targets} VERBATIM USES_TERMINAL)
     if(BUILD_TESTING)
+        add_test(NAME woby_module_checker COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/module_checker_tests.py")
+        set_tests_properties(woby_module_checker PROPERTIES LABELS "unit;cpu")
         add_test(NAME woby_system_boundaries COMMAND ${command})
         set_tests_properties(woby_system_boundaries PROPERTIES LABELS "unit;cpu" TIMEOUT 1800)
         add_test(NAME woby_system_checker COMMAND "${Python3_EXECUTABLE}"

@@ -1,5 +1,9 @@
-#include <file_associations.h>
-#include "windows.h"
+module;
+
+#include <array>
+#include <filesystem>
+#include <future>
+#include <string>
 #include "utf8_path.h"
 
 #include <chrono>
@@ -7,12 +11,22 @@
 #include <utility>
 
 #ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
 #include <shellapi.h>
 #include <shlobj.h>
 #include <shlwapi.h>
 #include <limits>
 #include <vector>
 
+#endif
+
+module woby.file_associations;
+import :windows;
+
+#ifdef _WIN32
 namespace woby {
 namespace {
 constexpr const wchar_t* capabilities = L"Software\\Woby\\FileAssociations\\Capabilities";

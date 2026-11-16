@@ -1,6 +1,7 @@
-#pragma once
+module;
 
-#include <file_associations.h>
+#include <filesystem>
+#include <string>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -8,6 +9,12 @@
 #endif
 #include <windows.h>
 
+#endif
+
+module woby.file_associations:windows;
+import woby.file_associations;
+
+#ifdef _WIN32
 namespace woby {
 
 // All registry paths are relative to userRoot. Tests use an isolated key.

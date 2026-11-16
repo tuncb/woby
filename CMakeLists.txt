@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 4.5)
 
 # Use the shared dependency fixes in local and CI builds.
 list(APPEND VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg-ports")
@@ -70,9 +70,16 @@ if(NOT WIN32)
 endif()
 
 add_library(woby_file_associations STATIC src/file_associations/internal/file_associations.cpp)
-target_include_directories(woby_file_associations
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src/file_associations/api"
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_sources(woby_file_associations PUBLIC FILE_SET CXX_MODULES FILES
+    src/file_associations/api/file_associations.cppm
+    src/file_associations/internal/windows.cppm)
+if(MSVC)
+    # CMake 4.5 passes -TP before the module map's -x c++-module. Clang reports
+    # the superseded language switch as unused; retain all source diagnostics.
+    set_source_files_properties(src/file_associations/api/file_associations.cppm
+        src/file_associations/internal/windows.cppm PROPERTIES COMPILE_OPTIONS "-Qunused-arguments")
+endif()
+target_include_directories(woby_file_associations PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_link_libraries(woby_file_associations PRIVATE Threads::Threads)
 if(WIN32)
     target_link_libraries(woby_file_associations PRIVATE advapi32 shell32 shlwapi ole32)
@@ -310,7 +317,9 @@ target_link_libraries(woby_core
         spdlog::spdlog
 )
 # Static-library compilation need not wait for link-only dependencies.
-set_target_properties(woby_core PROPERTIES OPTIMIZE_DEPENDENCIES ON)
+# Keep the module provider in this static library's compile dependency graph.
+# With CMake 4.5, OPTIMIZE_DEPENDENCIES removes its BMI mapping from woby_core.
+set_target_properties(woby_core PROPERTIES OPTIMIZE_DEPENDENCIES OFF)
 woby_enable_project_warnings(woby_core)
 woby_enable_enum_switch_warnings(woby_core)
 woby_enable_precompiled_headers(woby_core)
@@ -700,6 +709,7 @@ if(BUILD_TESTING)
         tests/dummy_tests.cpp
         tests/command_line_tests.cpp
         tests/file_discovery_tests.cpp
+        tests/file_associations_runtime_tests.cpp
         tests/marker_pick_tests.cpp
         tests/hover_pick_tests.cpp
         tests/surface_annotation_tests.cpp
@@ -745,7 +755,7 @@ if(BUILD_TESTING)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/native")
     target_include_directories(woby_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
     if(WIN32)
-        target_sources(woby_tests PRIVATE tests/windows_paths_tests.cpp tests/file_associations_tests.cpp
+        target_sources(woby_tests PRIVATE tests/windows_paths_tests.cpp tests/file_associations_tests.cpp tests/file_associations_ui_tests.cpp
             packaging/windows/long_paths.manifest)
         add_test(NAME woby_windows_manifests COMMAND "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/windows_manifest_tests.py"
@@ -814,6 +824,7 @@ if(BUILD_TESTING)
 
     woby_enable_project_warnings(woby_tests)
     woby_enable_precompiled_headers(woby_tests <doctest/doctest.h>)
+    set_source_files_properties(tests/file_associations_tests.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
     set_source_files_properties(tests/mesh_intersection_predicates_tests.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
     if(MSVC)
         set_source_files_properties(tests/mesh_intersection_predicates_tests.cpp PROPERTIES COMPILE_OPTIONS /fp:strict)

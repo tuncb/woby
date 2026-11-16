@@ -16,7 +16,7 @@ import tomllib
 
 
 HEADERS = {".h", ".hpp", ".hh", ".hxx", ".inl", ".inc"}
-SOURCES = {".cpp", ".cc", ".cxx", ".mm"}
+SOURCES = {".cpp", ".cc", ".cxx", ".mm", ".cppm"}
 LEGACY = "WobyLegacy"
 
 
@@ -29,6 +29,8 @@ class System:
     api_dependencies: tuple[str, ...]
     implementation_dependencies: tuple[str, ...]
     tests: tuple[Path, ...]
+    module: str = ""
+    partitions: tuple[tuple[str, Path], ...] = ()
 
 
 @dataclass
@@ -75,10 +77,27 @@ def load_inventory(root: Path) -> Inventory:
         systems[name] = System(name, base, api, internal,
                                tuple(spec.get("api_dependencies", [])),
                                tuple(spec.get("implementation_dependencies", [])),
-                               tuple(project_path(root, value) for value in spec.get("tests", [])))
+                               tuple(project_path(root, value) for value in spec.get("tests", [])),
+                               spec.get("module", ""),
+                               tuple((part, project_path(base, path)) for part, path in spec.get("partitions", {}).items()))
     if not systems:
         raise ValueError("Declare at least one system")
     legacy = config["legacy"]
+    names = set()
+    for system in systems.values():
+        if system.module:
+            if not re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*", system.module) or system.module in names:
+                raise ValueError(f"Invalid or duplicate module name: {system.module}")
+            names.add(system.module)
+        elif system.partitions:
+            raise ValueError(f"Partitions require a named module: {system.name}")
+        paths = set()
+        for name, path in system.partitions:
+            if (not re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*", name)
+                    or path in paths or path.suffix != ".cppm"
+                    or not (path.is_relative_to(system.api) or path.is_relative_to(system.internal))):
+                raise ValueError(f"Invalid module partition: {system.name}:{name}")
+            paths.add(path)
     dependencies = tuple(legacy.get("dependencies", []))
     valid = set(systems) | {"legacy"}
     for name, values in [("legacy", dependencies)] + [
@@ -127,7 +146,7 @@ def load_inventory(root: Path) -> Inventory:
             owner = LEGACY
             for system in systems.values():
                 if path.is_relative_to(system.api):
-                    if path.suffix not in HEADERS:
+                    if path.suffix not in HEADERS and not (system.module and path.suffix == ".cppm"):
                         raise ValueError(f"API directories must contain headers, not source files: {path}")
                     owner = module_name(system.name)
                 elif path.is_relative_to(system.internal):
@@ -143,6 +162,17 @@ def load_inventory(root: Path) -> Inventory:
         raise ValueError("System test files must be inside a checked legacy root")
     return Inventory(root, systems, dependencies, files, tuple(sorted(set(roots + [
         system.root for system in systems.values()]))))
+
+
+def compiler_owner(inventory: Inventory, path: Path) -> str:
+    owner = inventory.files[path]
+    for system in inventory.systems.values():
+        if system.module and owner in {module_name(system.name), module_name(system.name, False)}:
+            for partition, source in system.partitions:
+                if source == path:
+                    return system.module + ":" + partition
+            return system.module
+    return owner
 
 
 def path_pattern(path: Path, directory: bool = False) -> str:
@@ -222,7 +252,7 @@ def generate(inventory: Inventory, output: Path) -> None:
         lines.append("}")
     write_changed(output / "systems.modulemap", "\n".join(lines) + "\n")
     write_changed(output / "clang-tidy.json", json.dumps(tidy_config(inventory), indent=2) + "\n")
-    data = {"sources": {path.as_posix(): owner for path, owner in sorted(inventory.files.items())
+    data = {"sources": {path.as_posix(): compiler_owner(inventory, path) for path in sorted(inventory.files)
                         if path.suffix in SOURCES},
             "roots": [path.as_posix() for path in inventory.roots]}
     write_changed(output / "inventory.json", json.dumps(data, indent=2) + "\n")
@@ -243,6 +273,9 @@ def clean_arguments(record: dict, *, api: bool = False) -> list[str]:
         if value in {"-MJ", "-gen-cdb-fragment-path", "--gen-cdb-fragment-path",
                      "-o", "-MF", "-MT", "-MQ", "-serialize-diagnostics"}:
             i += 2
+            continue
+        if value.startswith("-fmodule-output="):
+            i += 1
             continue
         if value.startswith(("-MJ", "-gen-cdb-fragment-path=", "--gen-cdb-fragment-path=")):
             i += 1
@@ -362,7 +395,7 @@ def load_commands(inventory: Inventory, directory: Path) -> list[dict]:
             arguments = clean_arguments(record)
             owners = {arg.removeprefix("/clang:").removeprefix("-fmodule-name=") for arg in arguments
                       if arg.removeprefix("/clang:").startswith("-fmodule-name=")}
-            if owners != {inventory.files[source]}:
+            if owners != {compiler_owner(inventory, source)}:
                 raise ValueError(f"Reconfigure and build {target}; source ownership changed: {source}")
             record["arguments"] = arguments + [str(source)]
             records.append(record)
@@ -371,10 +404,10 @@ def load_commands(inventory: Inventory, directory: Path) -> list[dict]:
     return records
 
 
-def run_process(arguments: list[str], directory: Path) -> tuple[int, str, str]:
+def run_process(arguments: list[str], directory: Path, timeout: int = 180) -> tuple[int, str, str]:
     try:
         result = subprocess.run(arguments, cwd=directory, text=True, encoding="utf-8", errors="replace",
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180)
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired as error:
         return 1, "", f"Command timed out: {arguments[0]} ({directory})\n{error}"
@@ -460,6 +493,9 @@ def api_checks(inventory: Inventory, records: list[dict], output: Path, temporar
 
 def check(inventory: Inventory, output: Path, configuration: str, llvm_root: Path, jobs: int) -> int:
     generate(inventory, output)
+    if any(system.module for system in inventory.systems.values()):
+        from check_module_dependencies import check_modules
+        return check_modules(inventory, output, configuration, llvm_root, jobs)
     directory = output / configuration
     records = load_commands(inventory, directory)
     tidy = llvm_root / "bin" / ("clang-tidy.exe" if os.name == "nt" else "clang-tidy")
