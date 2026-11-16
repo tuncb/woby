@@ -10,3 +10,12 @@ foreach(language IN ITEMS C CXX OBJC OBJCXX)
         endif()
     endif()
 endforeach()
+
+if(APPLE)
+    # The toolchain pairs upstream Clang with Apple's libc++ headers/runtime.
+    # Apple supplies no std module units, but Clang discovers LLVM's bundled
+    # units. CMake 4.5 scans them even when the source does not import std.
+    # Clear that incompatible metadata after project() discovers the compiler.
+    # CMake also forwards this value to its compiler and library probes.
+    set(CMAKE_CXX_STDLIB_MODULES_JSON "")
+endif()

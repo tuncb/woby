@@ -24,7 +24,7 @@ class CompilerToolchainTests(unittest.TestCase):
         self.source.mkdir()
         self.build = self.root / "build"
         (self.source / "CMakeLists.txt").write_text(f'''
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 4.5)
 project(compiler_fixture LANGUAGES C CXX)
 if(APPLE)
     enable_language(OBJCXX)
@@ -109,6 +109,54 @@ int select_mode(Mode mode) {
         configured = self.configure(toolchain)
         self.assertNotEqual(configured.returncode, 0, configured.stdout)
         self.assertIn("requires upstream Clang 0.0.1", configured.stdout)
+
+    def test_named_module_and_threads_without_standard_library_module_units(self):
+        (self.source / "CMakeLists.txt").write_text(f'''
+cmake_minimum_required(VERSION 4.5)
+project(module_fixture LANGUAGES CXX)
+include("{SOURCE.as_posix()}/cmake/WobyCompiler.cmake")
+if(NOT APPLE)
+    # Exercise the same lack of std module units on other CI platforms.
+    set(CMAKE_CXX_STDLIB_MODULES_JSON "")
+endif()
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+find_package(Threads REQUIRED)
+add_library(greeting STATIC)
+target_sources(greeting PUBLIC FILE_SET CXX_MODULES FILES greeting.cppm)
+if(MSVC)
+    set_source_files_properties(greeting.cppm PROPERTIES COMPILE_OPTIONS "-Qunused-arguments")
+endif()
+add_executable(consumer consumer.cpp)
+target_link_libraries(consumer PRIVATE greeting Threads::Threads)
+file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/executable-$<CONFIG>.txt" CONTENT "$<TARGET_FILE:consumer>")
+''', encoding="utf-8")
+        (self.source / "greeting.cppm").write_text('''
+module;
+#include <string>
+export module greeting;
+export int greeting_size() { return static_cast<int>(std::string{"hello"}.size()); }
+''', encoding="utf-8")
+        (self.source / "consumer.cpp").write_text('''
+#include <thread>
+import greeting;
+int main() {
+    int size = 0;
+    { std::jthread worker([&] { size = greeting_size(); }); }
+    return size == 5 ? 0 : 1;
+}
+''', encoding="utf-8")
+        configured = self.configure(SOURCE / "cmake/toolchains/llvm.cmake", "Ninja")
+        self.assertEqual(configured.returncode, 0, configured.stdout)
+        built = subprocess.run([CMAKE, "--build", str(self.build), "--verbose"],
+                               text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.assertEqual(built.returncode, 0, built.stdout)
+        self.assertNotIn("warning:", built.stdout.lower(), built.stdout)
+        self.assertNotIn("std.cppm", built.stdout, built.stdout)
+        self.assertNotIn("std.compat.cppm", built.stdout, built.stdout)
+        executable = Path((self.build / "executable-Release.txt").read_text())
+        ran = subprocess.run([str(executable)], capture_output=True, text=True)
+        self.assertEqual(ran.returncode, 0, f"{ran.stdout}{ran.stderr}")
 
     @unittest.skipUnless(os.name == "nt" and os.environ.get("VCToolsInstallDir"),
                          "Windows Ninja resource check requires the Visual Studio environment")
