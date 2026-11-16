@@ -298,6 +298,15 @@ jobs:
             -DVCPKG_TARGET_TRIPLET="${{ matrix.vcpkg_triplet }}" `
             -DVCPKG_HOST_TRIPLET="${{ matrix.vcpkg_triplet }}"
 
+      - name: Show CMake configure diagnostics
+        if: failure() && steps.configure.outcome == 'failure'
+        shell: pwsh
+        run: |
+          $configureLog = "build/${{ matrix.package_name }}/CMakeFiles/CMakeConfigureLog.yaml"
+          if (Test-Path -LiteralPath $configureLog) {
+            Get-Content -LiteralPath $configureLog
+          }
+
       - name: Save completed dependencies after a configure failure
         if: failure() && steps.configure.outcome == 'failure' && steps.vcpkg-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
