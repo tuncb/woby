@@ -83,7 +83,11 @@ int select_mode(Mode mode) {
             args += ["-A", PLATFORM, "-T", "ClangCL,host=x64"]
         else:
             args += ["-DCMAKE_BUILD_TYPE=Release"]
-        return subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        configured = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        log = self.build / "CMakeFiles/CMakeConfigureLog.yaml"
+        if configured.returncode and log.exists():
+            configured.stdout += "\n" + "\n".join(log.read_text(encoding="utf-8").splitlines()[-160:])
+        return configured
 
     def test_c_and_cpp_build_without_implicit_fma_and_missing_enum_is_an_error(self):
         configured = self.configure(SOURCE / "cmake/toolchains/llvm.cmake")
@@ -111,14 +115,18 @@ int select_mode(Mode mode) {
         self.assertIn("requires upstream Clang 0.0.1", configured.stdout)
 
     def test_named_module_and_threads_without_standard_library_module_units(self):
+        (self.source / "std.cppm").write_text(
+            '#include "missing-standard-library-header.h"\nexport module std;\n',
+            encoding="utf-8")
+        metadata = self.source / "stdlib.modules.json"
+        metadata.write_text(json.dumps({"version": 1, "revision": 0, "modules": [
+            {"logical-name": "std", "source-path": "std.cppm", "is-interface": True},
+        ]}), encoding="utf-8")
         (self.source / "CMakeLists.txt").write_text(f'''
 cmake_minimum_required(VERSION 4.5)
+set(CMAKE_CXX_STDLIB_MODULES_JSON "{metadata.as_posix()}")
 project(module_fixture LANGUAGES CXX)
 include("{SOURCE.as_posix()}/cmake/WobyCompiler.cmake")
-if(NOT APPLE)
-    # Exercise the same lack of std module units on other CI platforms.
-    set(CMAKE_CXX_STDLIB_MODULES_JSON "")
-endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Threads REQUIRED)
@@ -146,8 +154,19 @@ int main() {
     return size == 5 ? 0 : 1;
 }
 ''', encoding="utf-8")
-        configured = self.configure(SOURCE / "cmake/toolchains/llvm.cmake", "Ninja")
+        toolchain = SOURCE / "cmake/toolchains/llvm.cmake"
+        if sys.platform != "darwin":
+            # Exercise Apple's lack of std module units on the other platforms.
+            # Set the compiler capability before project(), as the real toolchain does.
+            toolchain = self.source / "fixture-toolchain.cmake"
+            toolchain.write_text(f'''
+include("{SOURCE.as_posix()}/cmake/toolchains/llvm.cmake")
+set(CMAKE_CXX_COMPILER_IMPORT_STD_ERROR_MESSAGE "Fixture has no std module units.")
+''', encoding="utf-8")
+        configured = self.configure(toolchain, "Ninja")
         self.assertEqual(configured.returncode, 0, configured.stdout)
+        configure_log = (self.build / "CMakeFiles/CMakeConfigureLog.yaml").read_text(encoding="utf-8")
+        self.assertNotIn("@cmake_cxx_std@synth", configure_log)
         built = subprocess.run([CMAKE, "--build", str(self.build), "--verbose"],
                                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         self.assertEqual(built.returncode, 0, built.stdout)
