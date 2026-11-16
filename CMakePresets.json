@@ -1,15 +1,17 @@
 {
   "version": 6,
   "cmakeMinimumRequired": {
-    "major": 3,
-    "minor": 24,
+    "major": 4,
+    "minor": 5,
     "patch": 0
   },
   "configurePresets": [
     {
       "name": "vs2026-vcpkg",
       "displayName": "Visual Studio 2026 + Clang + vcpkg manifest",
-      "environment": { "VCPKG_ROOT": "${sourceDir}/.vcpkg" },
+      "environment": {
+        "VCPKG_ROOT": "${sourceDir}/.vcpkg"
+      },
       "generator": "Visual Studio 18 2026",
       "architecture": "x64",
       "toolset": "ClangCL,host=x64",
@@ -37,7 +39,9 @@
     {
       "name": "ninja-vcpkg",
       "displayName": "Ninja + Clang + vcpkg manifest",
-      "environment": { "VCPKG_ROOT": "${sourceDir}/.vcpkg" },
+      "environment": {
+        "VCPKG_ROOT": "${sourceDir}/.vcpkg"
+      },
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}-clang",
       "cacheVariables": {
@@ -54,6 +58,17 @@
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/llvm.cmake",
         "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "module-trial-vcpkg",
+      "displayName": "Module trial: Ninja Multi-Config + Clang + vcpkg",
+      "inherits": "ninja-vcpkg",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build/module-trial-vcpkg",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": null,
+        "CMAKE_CONFIGURATION_TYPES": "Debug;Release"
       }
     }
   ],
@@ -77,6 +92,12 @@
     {
       "name": "ninja",
       "configurePreset": "ninja"
+    },
+    {
+      "name": "module-trial-vcpkg",
+      "configurePreset": "module-trial-vcpkg",
+      "configuration": "Release",
+      "jobs": 2
     }
   ],
   "testPresets": [
@@ -156,6 +177,22 @@
         },
         "exclude": {
           "label": "^slow$"
+        }
+      }
+    },
+    {
+      "name": "module-trial-vcpkg",
+      "configurePreset": "module-trial-vcpkg",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 4
+      },
+      "filter": {
+        "exclude": {
+          "label": "^(slow|graphics)$"
         }
       }
     }

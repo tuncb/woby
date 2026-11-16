@@ -101,7 +101,7 @@ Add lines, review areas, and comments to a surface. Select an annotation to edit
 
 ## Development tests
 
-Local and CI builds use upstream **Clang 23.1.5**. Install that LLVM release,
+Local and CI builds require **CMake 4.5** and upstream **Clang 23.1.5**. Install that LLVM release,
 including `clang-cl` on Windows. Windows still requires Visual Studio 2026 C++
 tools and the Windows SDK. macOS requires the Xcode 26 SDK and Metal tools.
 The C++ standard library stays platform-specific: MSVC on Windows, libstdc++
@@ -129,16 +129,73 @@ run `uv run .github/scripts/setup_llvm.py --root "C:/Program Files/LLVM"`.
 CI downloads packages and checks their SHA-256 hashes from
 `cmake/llvm-toolchain.json`.
 
-Build the Debug configuration, then run the CPU, slow, and graphics suites separately:
+For this trial, use an x64 Visual Studio developer shell on Windows. Build Release, then run the CPU, slow, and graphics suites separately:
 
 ```powershell
-cmake --preset vs2026-vcpkg
-cmake --build --preset vs2026-vcpkg
-ctest --preset vs2026-vcpkg
-ctest --preset vs2026-vcpkg-slow
-ctest --preset vs2026-vcpkg-graphics
+cmake --preset module-trial-vcpkg
+cmake --build --preset module-trial-vcpkg
+ctest --preset module-trial-vcpkg
+ctest --test-dir build/module-trial-vcpkg -C Release -j 4 -L "^slow$" --output-on-failure
+ctest --test-dir build/module-trial-vcpkg -C Release -j 4 -L "^graphics$" -LE "^slow$" --output-on-failure
 ```
 
 The presets use four CTest jobs. CPU tests run in source-file groups. Slow cases run separately and are excluded from their file groups. Graphics tests share a resource lock. Enable `WOBY_TEST_HEADLESS` at configuration time to include the headless rendering tests.
 
-Use `ctest --preset vs2026-vcpkg -R scene_history` to run a file group. To run one case, call `build/vs2026-vcpkg-clang/bin/Debug/woby_tests.exe --test-case="case name"`. Individual case names and source locations remain in failure output. CI uses Ninja and the same three suite filters.
+Use `ctest --preset module-trial-vcpkg -R scene_history` to run a file group. To run one case, call `build/module-trial-vcpkg/bin/Release/woby_tests.exe --test-case="case name"`. Individual case names and source locations remain in failure output. CI uses Ninja and the same three suite filters.
+
+### System boundaries: C++ module trial
+
+This branch builds File Associations as the C++20 named module
+`woby.file_associations`. Its exported structs and functions are in
+`src/file_associations/api/file_associations.cppm`. The Windows registry
+functions belong to the internal `:windows` partition. Callers use
+`import woby.file_associations;`.
+
+The trial requires CMake 4.5 and the pinned LLVM distribution. Use an x64
+Visual Studio developer shell on Windows. The Visual Studio generator with
+ClangCL cannot build these modules; this branch uses a separate Ninja
+Multi-Config preset for local builds:
+
+```powershell
+cmake --preset module-trial-vcpkg
+cmake --build --preset module-trial-vcpkg
+ctest --preset module-trial-vcpkg
+```
+
+The build preset selects Release. CI uses Ninja with Release on Windows,
+Linux, and macOS. The trial branch has a push trigger for this matrix.
+Standard-library and third-party headers remain headers. Objective-C++
+adapters remain outside named modules.
+
+`systems.toml` defines file ownership, the module name, partition paths,
+API dependencies, implementation dependencies, and approved internal tests.
+API units may use only API dependencies. Implementation units and approved
+tests may also use implementation dependencies. An API cannot import an
+internal partition. An allowed transitive dependency does not permit a direct
+import unless it is also declared.
+
+CMake assigns the expected module name to each source. Clang rejects a file
+that tries to declare membership in a different module. The normal build
+runs `woby_check_systems`: Clang scans the recorded compile commands and the
+checker compares P1689 import dependencies and textual header dependencies
+with the manifest. Missing commands, undeclared imports, and textual includes
+of module sources fail the check. These checks cover active preprocessor
+branches; the platform CI jobs supply the other configurations.
+
+The internal registry tests are implementation units of the same module.
+The partition's BMI is made available to the test target through CMake's
+public file set; this does not export its declarations to other modules.
+Settings-dialog tests remain ordinary API consumers. Public runtime tests
+run on all three platforms.
+
+Two build adjustments were needed locally. CMake 4.5 supplies a redundant
+language flag when ClangCL compiles module interfaces; those sources suppress
+unused driver-argument diagnostics. Source warnings remain enabled. Also,
+`woby_core` must disable `OPTIMIZE_DEPENDENCIES` so CMake retains its module
+provider in the compile dependency graph. Internal module tests do not use
+the test target's precompiled header.
+
+The previous textual-module-map checker remains in the repository for
+comparison and its fixture tests still run. The trial uses the named-module
+checker for production code. The checks do not track state mutations or
+all declaration uses made available through re-exports.

@@ -1,0 +1,17 @@
+version = 1
+
+# Unmigrated code can consume system APIs. Its own boundaries are not checked yet.
+[legacy]
+roots = ["src", "tests", "include", "shaders/native"]
+dependencies = ["file_associations"]
+
+[systems.file_associations]
+module = "woby.file_associations"
+partitions = { windows = "internal/windows.cppm" }
+root = "src/file_associations"
+api = "api"
+internal = "internal"
+api_dependencies = []
+# utf8_path.h still belongs to legacy code.
+implementation_dependencies = ["legacy"]
+tests = ["tests/file_associations_tests.cpp"]

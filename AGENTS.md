@@ -27,7 +27,7 @@
 
 # Build rules
 
-- For local development, use vs2026-vcpkg preset instead of ninja + vcpkg.
+- For this C++ module trial, use module-trial-vcpkg in an x64 Visual Studio developer shell. The Visual Studio + ClangCL generator does not support named modules.
 - CI flow should depend on ninja + vcpkg.
 
 # Architectural rules

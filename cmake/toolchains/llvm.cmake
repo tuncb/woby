@@ -66,6 +66,11 @@ if(CMAKE_HOST_APPLE)
     foreach(language IN ITEMS CXX OBJCXX)
         string(APPEND CMAKE_${language}_FLAGS_INIT " -nostdinc++ -isystem \"${woby_libcxx_headers}\"")
     endforeach()
+    # CMake 4.5 can discover LLVM's std module units even though we use Apple's
+    # headers. Mark import std unavailable before compiler detection and its
+    # nested probes cache that incompatible metadata. Named modules still work.
+    set(CMAKE_CXX_COMPILER_IMPORT_STD_ERROR_MESSAGE
+        "Apple libc++ does not supply compatible std module units.")
 endif()
 
 # Preserve vcpkg's architecture, runtime linkage, and port flags. These values

@@ -66,7 +66,7 @@ def make_fixture(root):
         "version": presets["version"],
         "configurePresets": [
             {"name": name, "generator": GENERATOR, "binaryDir": fixture.build.as_posix()}
-            for name in ("vs2026-vcpkg", "ninja-vcpkg")
+            for name in sorted({preset["configurePreset"] for preset in local_tests if "configurePreset" in preset})
         ],
         "testPresets": [dict(preset, configuration="Debug") for preset in local_tests],
     }
