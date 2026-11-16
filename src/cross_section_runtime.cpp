@@ -1,6 +1,7 @@
 #include "cross_section_runtime.h"
 #include "annotation_work.h"
 #include "scene_queries.h"
+#include <algorithm>
 #include <map>
 
 namespace woby {
@@ -24,6 +25,11 @@ struct CrossSectionRuntime {
 };
 bool updateCrossSections(SceneQueryRuntime& runtime, const UiState& state)
 {
+    // The MSVC Debug library allocates iterator bookkeeping even for an empty vector.
+    if (!runtime.sections && std::none_of(state.annotations.begin(), state.annotations.end(),
+            [](const auto& item) { return item.section.has_value(); })) {
+        return false;
+    }
     std::vector<SectionRequest> requests;
     bool analysisSections = false;
     for (const auto& item : state.annotations) {
@@ -39,9 +45,6 @@ bool updateCrossSections(SceneQueryRuntime& runtime, const UiState& state)
         settings.sourceColors.clear();
         requests.push_back({item.objectId, std::move(settings), item.targetIds, item.sectionAnalysis, item.sectionSides});
         analysisSections |= item.sectionAnalysis.has_value();
-    }
-    if (!runtime.sections && requests.empty()) {
-        return false;
     }
     if (!runtime.sections) {
         runtime.sections = std::make_shared<CrossSectionRuntime>();

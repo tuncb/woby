@@ -7,6 +7,7 @@
 #include "automation_registry.h"
 #include "control_scene.h"
 #include "command_line.h"
+#include "allocation_probe.h"
 #include <nlohmann/json.hpp>
 #include <doctest/doctest.h>
 #include <algorithm>
@@ -115,6 +116,36 @@ std::shared_ptr<const CrossSectionResult> waitResult(SceneQueryRuntime& runtime,
     return {};
 }
 } // namespace
+TEST_CASE("cross section polling without sections allocates nothing")
+{
+    UiState state;
+    SceneQueryRuntime runtime;
+    SUBCASE("empty scene") {}
+    SUBCASE("ordinary annotation") { state.annotations.emplace_back(); }
+    bool changed = false;
+    const auto poll = [&] {
+        for (int i = 0; i < 100; ++i) { changed |= updateCrossSections(runtime, state); }
+    };
+#if defined(_MSC_VER) && defined(_DEBUG)
+    CHECK(test::countAllocations(poll) == 0);
+#else
+    poll();
+#endif
+    CHECK_FALSE(changed);
+    CHECK_FALSE(runtime.sections);
+}
+TEST_CASE("removing the last cross section clears its cached result")
+{
+    Fixture f;
+    const auto id = f.add();
+    SceneQueryRuntime runtime;
+    REQUIRE(waitResult(runtime, f.state, id));
+    deleteAnnotation(f.state, id);
+    REQUIRE(f.state.annotations.empty());
+    CHECK(updateCrossSections(runtime, f.state));
+    CHECK_FALSE(crossSectionResult(runtime, id));
+    CHECK_FALSE(updateCrossSections(runtime, f.state));
+}
 TEST_CASE("analysis section sources match analysis geometry with nested transforms and display translation")
 {
     Fixture f;
