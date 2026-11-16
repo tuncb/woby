@@ -30,14 +30,20 @@ jobs:
             package_name: woby-windows-x64
             vcpkg_triplet: woby-ci-x64-windows
             archive_extension: zip
+            cmake_archive: cmake-4.5.0-windows-x86_64.zip
+            cmake_sha256: 301b1728317ccd84e984b02e366a8293735bc5ac618757d3d8f58b578f062411
           - os: ubuntu-latest
             package_name: woby-linux-x64
             vcpkg_triplet: woby-ci-x64-linux
             archive_extension: tar.gz
+            cmake_archive: cmake-4.5.0-linux-x86_64.tar.gz
+            cmake_sha256: 81f0d5b0960fb6adc8197030ffc827fba937640d51e73e39e0e9e40d88c66f6f
           - os: macos-26
             package_name: woby-macos-arm64
             vcpkg_triplet: woby-ci-arm64-osx
             archive_extension: tar.gz
+            cmake_archive: cmake-4.5.0-macos-universal.tar.gz
+            cmake_sha256: a645d69fd21e521759cc0c64e7c60462d43faf0c7214ac05f75c80f7c5037dde
 
     steps:
       - name: Check out repository
@@ -169,10 +175,32 @@ jobs:
 
       - name: Install CMake 4.5
         shell: pwsh
+        env:
+          CMAKE_ARCHIVE: ${{ matrix.cmake_archive }}
+          CMAKE_SHA256: ${{ matrix.cmake_sha256 }}
         run: |
-          uv tool install cmake==4.5.0
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          uv tool dir --bin >> $env:GITHUB_PATH
+          $destination = Join-Path $env:RUNNER_TEMP "woby-cmake"
+          New-Item -ItemType Directory -Force $destination | Out-Null
+          $archive = Join-Path $destination $env:CMAKE_ARCHIVE
+          Invoke-WebRequest "https://github.com/Kitware/CMake/releases/download/v4.5.0/$env:CMAKE_ARCHIVE" -OutFile $archive
+          if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $env:CMAKE_SHA256) {
+            throw "CMake archive checksum mismatch."
+          }
+          if ($IsWindows) {
+            Expand-Archive -LiteralPath $archive -DestinationPath $destination -Force
+          } else {
+            tar -xzf $archive -C $destination
+            if ($LASTEXITCODE -ne 0) { throw "CMake extraction failed." }
+          }
+          $root = Join-Path $destination ($env:CMAKE_ARCHIVE -replace '\.(zip|tar\.gz)$', '')
+          $bin = if ($IsMacOS) { Join-Path $root "CMake.app/Contents/bin" } else { Join-Path $root "bin" }
+          $cmake = Join-Path $bin $(if ($IsWindows) { "cmake.exe" } else { "cmake" })
+          $version = & $cmake --version
+          if ($LASTEXITCODE -ne 0 -or $version[0] -ne "cmake version 4.5.0") {
+            throw "The downloaded CMake has an unexpected version: $version"
+          }
+          $version
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value $bin
 
       - name: Install pinned Python
         run: uv python install
