@@ -69,8 +69,10 @@ if(NOT WIN32)
     find_package(OpenSSL REQUIRED)
 endif()
 
-add_library(woby_file_associations STATIC src/file_associations.cpp)
-target_include_directories(woby_file_associations PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+add_library(woby_file_associations STATIC src/file_associations/internal/file_associations.cpp)
+target_include_directories(woby_file_associations
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src/file_associations/api"
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_link_libraries(woby_file_associations PRIVATE Threads::Threads)
 if(WIN32)
     target_link_libraries(woby_file_associations PRIVATE advapi32 shell32 shlwapi ole32)
@@ -997,3 +999,6 @@ if(WOBY_BUILD_OBJ_BENCHMARKS)
 endif()
 
 woby_stage_runtime_dlls("${WOBY_RUNTIME_DIRECTORY}" ${woby_runtime_targets})
+
+include(cmake/WobySystems.cmake)
+woby_configure_system_checks()

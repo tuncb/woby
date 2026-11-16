@@ -1,4 +1,4 @@
-#include "file_associations_windows.h"
+#include "file_associations/internal/windows.h"
 #include "utf8_path.h"
 #include "settings_dialog.h"
 #include "ui_state.h"

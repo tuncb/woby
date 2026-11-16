@@ -1,0 +1,15 @@
+version = 1
+
+# Unmigrated code can consume system APIs. Its own boundaries are not checked yet.
+[legacy]
+roots = ["src", "tests", "include", "shaders/native"]
+dependencies = ["file_associations"]
+
+[systems.file_associations]
+root = "src/file_associations"
+api = "api"
+internal = "internal"
+api_dependencies = []
+# utf8_path.h and the existing settings-dialog tests still belong to legacy code.
+implementation_dependencies = ["legacy"]
+tests = ["tests/file_associations_tests.cpp"]

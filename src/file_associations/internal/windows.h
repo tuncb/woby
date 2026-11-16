@@ -1,6 +1,6 @@
 #pragma once
 
-#include "file_associations.h"
+#include <file_associations.h>
 
 #ifdef _WIN32
 #ifndef NOMINMAX

@@ -142,3 +142,50 @@ ctest --preset vs2026-vcpkg-graphics
 The presets use four CTest jobs. CPU tests run in source-file groups. Slow cases run separately and are excluded from their file groups. Graphics tests share a resource lock. Enable `WOBY_TEST_HEADLESS` at configuration time to include the headless rendering tests.
 
 Use `ctest --preset vs2026-vcpkg -R scene_history` to run a file group. To run one case, call `build/vs2026-vcpkg-clang/bin/Debug/woby_tests.exe --test-case="case name"`. Individual case names and source locations remain in failure output. CI uses Ninja and the same three suite filters.
+
+### System boundaries
+
+File Associations is the first source system. Its public headers are in
+`src/file_associations/api`; its implementation and Windows
+registry header are in `src/file_associations/internal`. Callers include
+`<file_associations.h>`. The existing link targets remain in use.
+
+`systems.toml` declares API dependencies, implementation dependencies, and the exact
+unit-test files that may use a system's internals. Unmigrated code has a temporary
+`legacy` identity. It may use the File Associations API, but not its internal headers.
+The implementation's dependency on `legacy` permits the existing UTF-8 path utility
+and the settings-dialog tests. This is a migration boundary, not a complete division
+of the application into systems.
+
+CMake generates Clang module maps and assigns a module identity to each source file.
+Normal builds reject private includes and undeclared system dependencies. This uses
+textual headers; it does not enable compiled C++ modules. Clang also records the actual
+compile commands, including when the Visual Studio generator is used.
+
+To build and run the complete check:
+
+```powershell
+cmake --build --preset vs2026-vcpkg --config Release --target woby_check_systems
+```
+
+After a build, the same checker can run directly:
+
+```powershell
+uv run tools/check_systems.py check --build build/vs2026-vcpkg-clang --config Release
+```
+
+Use `--llvm-root` for an LLVM installation outside `WOBY_LLVM_ROOT` or the default
+Windows location. The pinned distribution must include `clang-tidy` and
+`clang-scan-deps`. Both checker tests are part of the normal CTest development suite,
+so CI runs them with its Ninja build.
+
+The checker scans each built C++ source in the manifest's roots, compiles each public
+header independently, and uses Clang's declaration locations to reject internal
+function, variable, member, and type references. The semantic checks run on sources
+whose dependencies include internal files. This includes indirect header paths and function addresses. Only
+explicitly named unit tests receive internal access. A missing compile command fails
+the check; build that configuration first.
+
+These checks cover active preprocessor branches. Platform CI supplies the other
+platform configurations. The first checker does not track state mutations or detect
+hand-written declarations of internal functions that omit their defining header.

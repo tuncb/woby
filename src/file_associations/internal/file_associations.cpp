@@ -1,5 +1,5 @@
-#include "file_associations.h"
-#include "file_associations_windows.h"
+#include <file_associations.h>
+#include "windows.h"
 #include "utf8_path.h"
 
 #include <chrono>

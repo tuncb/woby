@@ -1,7 +1,7 @@
 #pragma once
 
 #include "update_ui.h"
-#include "file_associations.h"
+#include <file_associations.h>
 #include <imgui.h>
 
 namespace woby {
